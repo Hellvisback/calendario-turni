@@ -1,5 +1,6 @@
 package com.turni.calendario.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -37,7 +38,13 @@ fun ReperibilitaSettingsScreen(
     var config by remember { mutableStateOf(ShiftRepository.reperibilitaConfig) }
     var saveSuccessMessage by remember { mutableStateOf<String?>(null) }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -56,7 +63,7 @@ fun ReperibilitaSettingsScreen(
                 onClick = onDismiss,
                 shape = CircleShape,
                 color = ObsidianSurfaceContainer,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(

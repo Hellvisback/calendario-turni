@@ -272,10 +272,7 @@ object GoogleCalendarSyncHelper {
 
         for (id in eventIds) {
             try {
-                val deleteUri = buildSyncAdapterUri(
-                    ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id),
-                    cal
-                )
+                val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
                 contentResolver.delete(deleteUri, null, null)
             } catch (e: Exception) {
                 e.printStackTrace()
@@ -285,8 +282,6 @@ object GoogleCalendarSyncHelper {
 
     /**
      * Rimuove dal calendario tutti gli eventi creati dall'app (identificati dal tag di sync).
-     * Utilizza CALLER_IS_SYNCADAPTER con l'account Google associato per evitare
-     * l'avviso di sicurezza "Eliminazione di più di 50 eventi" di Android.
      */
     fun clearAppEventsFromCalendar(context: Context, targetCalendarId: Long?): Int {
         if (!hasCalendarPermissions(context)) return 0
@@ -322,8 +317,7 @@ object GoogleCalendarSyncHelper {
         var deletedCount = 0
         for (id in eventIds) {
             try {
-                val baseUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
-                val deleteUri = buildSyncAdapterUri(baseUri, cal)
+                val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
                 val rows = contentResolver.delete(deleteUri, null, null)
                 if (rows > 0) {
                     deletedCount += rows
@@ -333,43 +327,18 @@ object GoogleCalendarSyncHelper {
             }
         }
 
-        // Forza refresh e sincronizzazione immediata
+        // Notifica al ContentResolver che i calendari sono cambiati
         forceGoogleCalendarSync(context, cal)
 
         return deletedCount
     }
 
     /**
-     * Costruisce una URI con i parametri di sincronizzazione autenticata
-     * per evitare avvisi di cancellazione di massa da parte di Android SyncManager.
-     */
-    private fun buildSyncAdapterUri(baseUri: Uri, cal: DeviceCalendarInfo): Uri {
-        return if (cal.accountName.isNotBlank() && cal.accountType.isNotBlank()) {
-            baseUri.buildUpon()
-                .appendQueryParameter(CalendarContract.CALLER_IS_SYNCADAPTER, "true")
-                .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_NAME, cal.accountName)
-                .appendQueryParameter(CalendarContract.Calendars.ACCOUNT_TYPE, cal.accountType)
-                .build()
-        } else {
-            baseUri
-        }
-    }
-
-    /**
-     * Notifica il ContentResolver e richiede un aggiornamento immediato della sincronizzazione
-     * con i server Google tramite la Google SyncAdapter nativa di Android.
+     * Notifica il ContentResolver per richiedere il refresh dei dati calendario.
      */
     fun forceGoogleCalendarSync(context: Context, cal: DeviceCalendarInfo?) {
         try {
             context.contentResolver.notifyChange(CalendarContract.Events.CONTENT_URI, null)
-            if (cal != null && cal.accountName.isNotBlank() && cal.accountType.isNotBlank()) {
-                val account = Account(cal.accountName, cal.accountType)
-                val extras = Bundle().apply {
-                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_MANUAL, true)
-                    putBoolean(android.content.ContentResolver.SYNC_EXTRAS_EXPEDITED, true)
-                }
-                android.content.ContentResolver.requestSync(account, CalendarContract.AUTHORITY, extras)
-            }
         } catch (e: Exception) {
             e.printStackTrace()
         }

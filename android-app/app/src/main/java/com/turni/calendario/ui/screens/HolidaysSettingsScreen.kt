@@ -1,5 +1,6 @@
 package com.turni.calendario.ui.screens
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -31,6 +32,8 @@ import com.turni.calendario.ui.theme.*
 fun HolidaysSettingsScreen(
     onDismiss: () -> Unit
 ) {
+    BackHandler(onBack = onDismiss)
+
     val enabledIds = ShiftRepository.enabledHolidayIds
 
     val nationalHolidays = remember {
@@ -47,6 +50,7 @@ fun HolidaysSettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .background(ObsidianBackground)
+            .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
         // Top App Bar Ergonomica Breccia (Unico tasto indietro in alto)
@@ -63,7 +67,7 @@ fun HolidaysSettingsScreen(
                     shape = CircleShape,
                     color = ObsidianSurfaceContainer,
                     border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(

@@ -28,73 +28,70 @@ import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
 import com.turni.calendario.ui.theme.*
 
+enum class SettingsSubScreen {
+    NONE,
+    CLOUD_BACKUP,
+    GOOGLE_CALENDAR_SYNC,
+    IMPORT_SHIFTS,
+    PDF_EXPORT,
+    REPERIBILITA,
+    SMART_ALARMS,
+    HOLIDAYS
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     onSubScreenActiveChanged: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
-    var showCloudBackupScreen by remember { mutableStateOf(false) }
-    var showGoogleSyncScreen by remember { mutableStateOf(false) }
-    var showImportShiftsScreen by remember { mutableStateOf(false) }
-    var showReperibilitaScreen by remember { mutableStateOf(false) }
-    var showSmartAlarmsScreen by remember { mutableStateOf(false) }
-    var showPdfExportScreen by remember { mutableStateOf(false) }
-    var showHolidaysScreen by remember { mutableStateOf(false) }
+    var activeSubScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
     var showWeekStartDialog by remember { mutableStateOf(false) }
     var showTimeFormatDialog by remember { mutableStateOf(false) }
     var importStatusMessage by remember { mutableStateOf<String?>(null) }
 
-    val isSubScreenActive = showCloudBackupScreen || showGoogleSyncScreen || showImportShiftsScreen ||
-            showReperibilitaScreen || showSmartAlarmsScreen || showPdfExportScreen || showHolidaysScreen
+    val isSubScreenActive = activeSubScreen != SettingsSubScreen.NONE
 
     LaunchedEffect(isSubScreenActive) {
         onSubScreenActiveChanged(isSubScreenActive)
     }
 
     BackHandler(enabled = isSubScreenActive) {
-        showCloudBackupScreen = false
-        showGoogleSyncScreen = false
-        showImportShiftsScreen = false
-        showReperibilitaScreen = false
-        showSmartAlarmsScreen = false
-        showPdfExportScreen = false
-        showHolidaysScreen = false
+        activeSubScreen = SettingsSubScreen.NONE
     }
 
-    if (showPdfExportScreen) {
-        PdfExportScreen(onDismiss = { showPdfExportScreen = false })
-        return
-    }
-
-    if (showHolidaysScreen) {
-        HolidaysSettingsScreen(onDismiss = { showHolidaysScreen = false })
-        return
-    }
-
-    if (showCloudBackupScreen) {
-        CloudBackupScreen(onDismiss = { showCloudBackupScreen = false })
-        return
-    }
-
-    if (showGoogleSyncScreen) {
-        GoogleCalendarSyncScreen(onDismiss = { showGoogleSyncScreen = false })
-        return
-    }
-
-    if (showImportShiftsScreen) {
-        ImportShiftsScreen(onDismiss = { showImportShiftsScreen = false })
-        return
-    }
-
-    if (showReperibilitaScreen) {
-        ReperibilitaSettingsScreen(onDismiss = { showReperibilitaScreen = false })
-        return
-    }
-
-    if (showSmartAlarmsScreen) {
-        SmartAlarmsSettingsScreen(onDismiss = { showSmartAlarmsScreen = false })
-        return
+    when (activeSubScreen) {
+        SettingsSubScreen.PDF_EXPORT -> {
+            PdfExportScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.HOLIDAYS -> {
+            HolidaysSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.CLOUD_BACKUP -> {
+            CloudBackupScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.GOOGLE_CALENDAR_SYNC -> {
+            GoogleCalendarSyncScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.IMPORT_SHIFTS -> {
+            ImportShiftsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.REPERIBILITA -> {
+            ReperibilitaSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.SMART_ALARMS -> {
+            SmartAlarmsSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            return
+        }
+        SettingsSubScreen.NONE -> {
+            // Mostra menu principale impostazioni
+        }
     }
 
     Box(modifier = Modifier.fillMaxSize()) {
@@ -241,7 +238,7 @@ fun SettingsScreen(
                 icon = Icons.Default.CloudSync,
                 title = "Account Google & Cloud Backup",
                 subtitle = "Backup automatico crittografato su Google Drive",
-                onClick = { showCloudBackupScreen = true }
+                onClick = { activeSubScreen = SettingsSubScreen.CLOUD_BACKUP }
             )
         }
 
@@ -260,21 +257,21 @@ fun SettingsScreen(
                     icon = Icons.Default.UploadFile,
                     title = "Importazione Turni (Excel / CSV)",
                     subtitle = "Carica o incolla turni da file o tabella",
-                    onClick = { showImportShiftsScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.IMPORT_SHIFTS }
                 )
                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
                 SettingsRow(
                     icon = Icons.Default.PictureAsPdf,
                     title = "Esportazione PDF & Stampa",
                     subtitle = "Condividi prospetto turni identico a SuperShift (Elenco, Mese, Anno)",
-                    onClick = { showPdfExportScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.PDF_EXPORT }
                 )
                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
                 SettingsRow(
                     icon = Icons.Default.Event,
                     title = "Sincronizza con Google Calendar",
                     subtitle = "Crea eventi nel calendario nativo dello smartphone",
-                    onClick = { showGoogleSyncScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.GOOGLE_CALENDAR_SYNC }
                 )
             }
         }
@@ -300,7 +297,7 @@ fun SettingsScreen(
                     icon = Icons.Default.PhoneCallback,
                     title = "Gestione Reperibilità Software",
                     subtitle = repSubtitle,
-                    onClick = { showReperibilitaScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.REPERIBILITA }
                 )
                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
                 val alarmConfig = ShiftRepository.smartAlarmsConfig
@@ -314,7 +311,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Alarm,
                     title = "Sveglie Automatiche Intelligenti",
                     subtitle = alarmSubtitle,
-                    onClick = { showSmartAlarmsScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.SMART_ALARMS }
                 )
             }
         }
@@ -334,7 +331,7 @@ fun SettingsScreen(
                     icon = Icons.Default.Flag,
                     title = "Festività Nazionali, Religiose & CCNL",
                     subtitle = "${ShiftRepository.enabledHolidayIds.size} festività selezionate (evidenziate in rosso)",
-                    onClick = { showHolidaysScreen = true }
+                    onClick = { activeSubScreen = SettingsSubScreen.HOLIDAYS }
                 )
                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
                 SettingsRow(

@@ -234,11 +234,15 @@ data class ActionFeedback(
     val timestamp: Long = System.currentTimeMillis()
 )
 
-private data class Particle(
-    val angle: Double,
-    val distance: Float,
-    val size: Float,
-    val color: Color
+private data class PerimeterParticle(
+    val edge: Int,           // 0: Top, 1: Bottom, 2: Left, 3: Right, 4: Top-Left, 5: Top-Right, 6: Bottom-Left, 7: Bottom-Right
+    val edgeRatio: Float,    // 0f..1f along the edge
+    val burstDx: Float,      // outward delta X in dp
+    val burstDy: Float,      // outward delta Y in dp
+    val sizeDp: Float,       // size in dp
+    val color: Color,
+    val isDiamond: Boolean,  // variety: sparkling diamond or glowing circle
+    val rotationSpeed: Float // degrees to rotate over progress
 )
 
 @Composable
@@ -253,28 +257,62 @@ fun ParticleBurstEffect(
         val random = java.util.Random(triggerKey)
         val palette = if (isDestructive) {
             listOf(
-                Color(0xFFEF4444),
-                Color(0xFFF43F5E),
-                Color(0xFFFB923C),
-                Color(0xFFFCA5A5),
-                Color.White
+                Color(0xFFEF4444), // Fiery red
+                Color(0xFFF43F5E), // Rose red
+                Color(0xFFFB923C), // Flame orange
+                Color(0xFFF97316), // Vivid orange
+                Color(0xFFFDE047), // Ember gold
+                Color(0xFFFFFFFF)  // Spark white
             )
         } else {
             listOf(
-                Color(0xFF10B981),
-                Color(0xFF38BDF8),
-                Color(0xFFFBBF24),
-                Color(0xFF34D399),
-                Color(0xFFEC4899),
-                Color.White
+                Color(0xFF10B981), // Emerald
+                Color(0xFF34D399), // Mint green
+                Color(0xFF38BDF8), // Cyan sky
+                Color(0xFFFBBF24), // Gold amber
+                Color(0xFFA855F7), // Neon purple
+                Color(0xFFFFFFFF)  // Diamond white
             )
         }
-        List(28) {
-            val angle = random.nextDouble() * 2 * Math.PI
-            val distance = (15f + random.nextFloat() * 45f)
-            val size = (2.2f + random.nextFloat() * 3.0f)
+
+        List(48) { index ->
+            val edge = when {
+                index < 16 -> 0  // Top edge
+                index < 32 -> 1  // Bottom edge
+                index < 38 -> 2  // Left edge
+                index < 44 -> 3  // Right edge
+                else -> 4 + (index - 44) // 4 Corners
+            }
+            val edgeRatio = random.nextFloat()
+            val spreadX = (random.nextFloat() - 0.5f) * 30f
+            val spreadY = (random.nextFloat() - 0.5f) * 30f
+
+            val (dx, dy) = when (edge) {
+                0 -> Pair(spreadX, -(25f + random.nextFloat() * 45f))       // Top: burst upwards
+                1 -> Pair(spreadX, +(25f + random.nextFloat() * 45f))       // Bottom: burst downwards
+                2 -> Pair(-(30f + random.nextFloat() * 50f), spreadY)       // Left: burst leftwards
+                3 -> Pair(+(30f + random.nextFloat() * 50f), spreadY)       // Right: burst rightwards
+                4 -> Pair(-(25f + random.nextFloat() * 35f), -(25f + random.nextFloat() * 35f)) // Top-Left
+                5 -> Pair(+(25f + random.nextFloat() * 35f), -(25f + random.nextFloat() * 35f)) // Top-Right
+                6 -> Pair(-(25f + random.nextFloat() * 35f), +(25f + random.nextFloat() * 35f)) // Bottom-Left
+                else -> Pair(+(25f + random.nextFloat() * 35f), +(25f + random.nextFloat() * 35f)) // Bottom-Right
+            }
+
+            val size = 2.4f + random.nextFloat() * 3.8f
             val color = palette[random.nextInt(palette.size)]
-            Particle(angle, distance, size, color)
+            val isDiamond = random.nextBoolean()
+            val rotSpeed = (random.nextFloat() - 0.5f) * 540f
+
+            PerimeterParticle(
+                edge = edge,
+                edgeRatio = edgeRatio,
+                burstDx = dx,
+                burstDy = dy,
+                sizeDp = size,
+                color = color,
+                isDiamond = isDiamond,
+                rotationSpeed = rotSpeed
+            )
         }
     }
 
@@ -283,7 +321,7 @@ fun ParticleBurstEffect(
         animProgress.animateTo(
             targetValue = 1f,
             animationSpec = androidx.compose.animation.core.tween(
-                durationMillis = 650,
+                durationMillis = 850,
                 easing = androidx.compose.animation.core.FastOutSlowInEasing
             )
         )
@@ -292,19 +330,51 @@ fun ParticleBurstEffect(
     val progress = animProgress.value
     if (progress in 0.001f..0.999f) {
         androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
-            val center = this.center
+            val w = size.width
+            val h = size.height
             val alpha = (1f - progress).coerceIn(0f, 1f)
-            particles.forEach { p ->
-                val dist = p.distance * progress * density
-                val px = center.x + (Math.cos(p.angle) * dist).toFloat()
-                val py = center.y + (Math.sin(p.angle) * dist).toFloat()
-                val radius = (p.size * (1f - progress * 0.40f) * density).coerceAtLeast(1f)
 
-                drawCircle(
-                    color = p.color.copy(alpha = alpha),
-                    radius = radius,
-                    center = androidx.compose.ui.geometry.Offset(px, py)
-                )
+            particles.forEach { p ->
+                val startX = when (p.edge) {
+                    0, 1 -> p.edgeRatio * w
+                    2 -> 0f
+                    3 -> w
+                    4, 6 -> 0f
+                    5, 7 -> w
+                    else -> w / 2f
+                }
+                val startY = when (p.edge) {
+                    0 -> 0f
+                    1 -> h
+                    2, 3 -> p.edgeRatio * h
+                    4, 5 -> 0f
+                    6, 7 -> h
+                    else -> h / 2f
+                }
+
+                val currentX = startX + (p.burstDx * progress * density)
+                val currentY = startY + (p.burstDy * progress * density)
+                val particleRadius = (p.sizeDp * (1f - progress * 0.35f) * density).coerceAtLeast(1.2f)
+
+                if (p.isDiamond) {
+                    // Sparkling diamond / rotated square
+                    val half = particleRadius
+                    val diamondPath = androidx.compose.ui.graphics.Path().apply {
+                        moveTo(currentX, currentY - half)
+                        lineTo(currentX + half, currentY)
+                        lineTo(currentX, currentY + half)
+                        lineTo(currentX - half, currentY)
+                        close()
+                    }
+                    drawPath(path = diamondPath, color = p.color.copy(alpha = alpha))
+                } else {
+                    // Glowing soft circular spark
+                    drawCircle(
+                        color = p.color.copy(alpha = alpha),
+                        radius = particleRadius,
+                        center = androidx.compose.ui.geometry.Offset(currentX, currentY)
+                    )
+                }
             }
         }
     }

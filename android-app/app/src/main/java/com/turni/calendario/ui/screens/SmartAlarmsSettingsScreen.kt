@@ -143,7 +143,11 @@ fun SmartAlarmsSettingsScreen(
         }
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -162,7 +166,7 @@ fun SmartAlarmsSettingsScreen(
                 shape = CircleShape,
                 color = ObsidianSurfaceContainer,
                 border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(

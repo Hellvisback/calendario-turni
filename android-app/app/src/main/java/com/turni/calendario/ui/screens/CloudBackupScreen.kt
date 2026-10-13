@@ -4,6 +4,7 @@ package com.turni.calendario.ui.screens
 
 import android.content.Intent
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -89,8 +90,14 @@ fun CloudBackupScreen(
         }
     }
 
+    BackHandler(onBack = onDismiss)
+
     // Wrap in Box for overlay popup
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -404,16 +411,21 @@ fun CloudBackupScreen(
         // Tasto Principale 1-Tap: Salva Backup su Google Drive Diretto
         Button(
             onClick = {
-                val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
-                if (ok) {
-                    val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                    lastBackupTime = now
-                    val accName = currentAccount?.displayName ?: "Google Drive"
-                    statusMessage = "Backup salvato con successo su Google Drive ($accName)!"
-                    Toast.makeText(context, "Backup salvato su Google Drive!", Toast.LENGTH_SHORT).show()
-                } else {
-                    statusMessage = "Errore durante il salvataggio automatico su Google Drive."
-                    Toast.makeText(context, "Errore salvataggio backup", Toast.LENGTH_SHORT).show()
+                try {
+                    val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
+                    if (ok) {
+                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                        lastBackupTime = now
+                        val accName = currentAccount?.displayName ?: "Google Drive"
+                        popupType = PopupType.SUCCESS
+                        statusMessage = "Backup salvato con successo nel Cloud ($accName)!"
+                    } else {
+                        popupType = PopupType.ERROR
+                        statusMessage = "Errore durante il salvataggio del backup nel Cloud."
+                    }
+                } catch (e: Throwable) {
+                    popupType = PopupType.ERROR
+                    statusMessage = "Errore: ${e.localizedMessage ?: "Impossibile salvare il backup"}"
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -492,14 +504,19 @@ fun CloudBackupScreen(
                 confirmButton = {
                     Button(
                         onClick = {
-                            val res = GoogleDriveBackupHelper.restoreCloudBackupDirect(context)
                             showConfirmRestoreDialog = false
-                            if (res.success) {
-                                statusMessage = "Ripristino completato! ${res.shiftsCount} turni recuperati."
-                                Toast.makeText(context, "Database ripristinato con successo!", Toast.LENGTH_LONG).show()
-                            } else {
-                                statusMessage = res.message
-                                Toast.makeText(context, res.message, Toast.LENGTH_SHORT).show()
+                            try {
+                                val res = GoogleDriveBackupHelper.restoreCloudBackupDirect(context)
+                                if (res.success) {
+                                    popupType = PopupType.SUCCESS
+                                    statusMessage = "Ripristino completato! ${res.shiftsCount} turni recuperati dal Cloud."
+                                } else {
+                                    popupType = PopupType.ERROR
+                                    statusMessage = res.message
+                                }
+                            } catch (e: Throwable) {
+                                popupType = PopupType.ERROR
+                                statusMessage = "Errore durante il ripristino: ${e.localizedMessage ?: "Errore sconosciuto"}"
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)

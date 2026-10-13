@@ -5,6 +5,7 @@ package com.turni.calendario.ui.screens
 import android.Manifest
 import android.provider.CalendarContract
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -151,8 +152,14 @@ fun GoogleCalendarSyncScreen(
         list
     }
 
+    BackHandler(onBack = onDismiss)
+
     // Wrap everything in a Box to allow overlay popup
-    Box(modifier = Modifier.fillMaxSize()) {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -571,21 +578,29 @@ fun GoogleCalendarSyncScreen(
                     } else {
                         isSyncing = true
                         scope.launch(Dispatchers.IO) {
-                            val count = GoogleCalendarSyncHelper.syncShiftsToCalendar(
-                                context = context,
-                                targetCalendarId = selectedCalendarId,
-                                shiftsToSync = shiftsToSync,
-                                syncExactHours = syncExactHours,
-                                reminderMinutesBefore = if (setReminderOneHourBefore) 60 else null,
-                                includeRestDays = includeRestDays
-                            )
+                            try {
+                                val count = GoogleCalendarSyncHelper.syncShiftsToCalendar(
+                                    context = context,
+                                    targetCalendarId = selectedCalendarId,
+                                    shiftsToSync = shiftsToSync,
+                                    syncExactHours = syncExactHours,
+                                    reminderMinutesBefore = if (setReminderOneHourBefore) 60 else null,
+                                    includeRestDays = includeRestDays
+                                )
 
-                            withContext(Dispatchers.Main) {
-                                isSyncing = false
-                                syncCooldownUntil = System.currentTimeMillis() + 300_000L
-                                cooldownRemainingSeconds = 300L
-                                popupType = PopupType.SUCCESS
-                                popupMessage = "Sincronizzazione completata! $count turni inseriti nel tuo Google Calendar. Abbiamo forzato l'aggiornamento: attendi 1-2 minuti affinché Google Calendar completi la vista."
+                                withContext(Dispatchers.Main) {
+                                    isSyncing = false
+                                    syncCooldownUntil = System.currentTimeMillis() + 300_000L
+                                    cooldownRemainingSeconds = 300L
+                                    popupType = PopupType.SUCCESS
+                                    popupMessage = "Sincronizzazione completata: $count turni inseriti su Google Calendar!"
+                                }
+                            } catch (e: Throwable) {
+                                withContext(Dispatchers.Main) {
+                                    isSyncing = false
+                                    popupType = PopupType.ERROR
+                                    popupMessage = "Errore sincronizzazione: ${e.localizedMessage ?: "Verifica i permessi del calendario"}"
+                                }
                             }
                         }
                     }
@@ -692,18 +707,26 @@ fun GoogleCalendarSyncScreen(
                             showConfirmDeleteDialog = false
                             isDeleting = true
                             scope.launch(Dispatchers.IO) {
-                                val removed = GoogleCalendarSyncHelper.clearAppEventsFromCalendar(context, selectedCalendarId)
+                                try {
+                                    val removed = GoogleCalendarSyncHelper.clearAppEventsFromCalendar(context, selectedCalendarId)
 
-                                withContext(Dispatchers.Main) {
-                                    isDeleting = false
-                                    syncCooldownUntil = System.currentTimeMillis() + 300_000L
-                                    cooldownRemainingSeconds = 300L
-                                    if (removed > 0) {
-                                        popupType = PopupType.SUCCESS
-                                        popupMessage = "Rimossi con successo $removed turni dal calendario. Abbiamo forzato l'aggiornamento Google: attendi 1-2 minuti affinché i server completino la rimozione."
-                                    } else {
-                                        popupType = PopupType.INFO
-                                        popupMessage = "Nessun evento dell'app presente nel calendario selezionato."
+                                    withContext(Dispatchers.Main) {
+                                        isDeleting = false
+                                        syncCooldownUntil = System.currentTimeMillis() + 300_000L
+                                        cooldownRemainingSeconds = 300L
+                                        if (removed > 0) {
+                                            popupType = PopupType.SUCCESS
+                                            popupMessage = "Rimossi $removed turni dal calendario Google!"
+                                        } else {
+                                            popupType = PopupType.INFO
+                                            popupMessage = "Nessun evento dell'app presente nel calendario selezionato."
+                                        }
+                                    }
+                                } catch (e: Throwable) {
+                                    withContext(Dispatchers.Main) {
+                                        isDeleting = false
+                                        popupType = PopupType.ERROR
+                                        popupMessage = "Errore durante la rimozione: ${e.localizedMessage ?: "Errore di accesso al calendario"}"
                                     }
                                 }
                             }

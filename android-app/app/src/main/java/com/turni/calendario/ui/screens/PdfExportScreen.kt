@@ -3,6 +3,7 @@
 package com.turni.calendario.ui.screens
 
 import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -48,10 +49,13 @@ fun PdfExportScreen(
     var showShiftFilterDialog by remember { mutableStateOf(false) }
     var showDateRangeDialog by remember { mutableStateOf(false) }
 
+    BackHandler(onBack = onDismiss)
+
     Column(
         modifier = Modifier
             .fillMaxSize()
             .background(ObsidianBackground)
+            .statusBarsPadding()
     ) {
         // Top App Bar Ergonomica Breccia (Unico tasto indietro in alto)
         Row(
@@ -67,29 +71,31 @@ fun PdfExportScreen(
                     shape = CircleShape,
                     color = ObsidianSurfaceContainer,
                     border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                    modifier = Modifier.size(38.dp)
+                    modifier = Modifier.size(44.dp)
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
                             imageVector = Icons.Default.ArrowBack,
                             contentDescription = "Indietro",
                             tint = TextPrimary,
-                            modifier = Modifier.size(20.dp)
+                            modifier = Modifier.size(22.dp)
                         )
                     }
                 }
                 Spacer(modifier = Modifier.width(14.dp))
-                Column {
+                Column(modifier = Modifier.weight(1f, fill = false)) {
                     Text(
                         text = "Esporta & Stampa PDF",
                         color = TextPrimary,
                         fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold
+                        fontWeight = FontWeight.ExtraBold,
+                        maxLines = 1
                     )
                     Text(
                         text = "Prospetto turni professionale",
                         fontSize = 12.sp,
-                        color = TextSecondary
+                        color = TextSecondary,
+                        maxLines = 1
                     )
                 }
             }
@@ -104,7 +110,9 @@ fun PdfExportScreen(
                     fontSize = 10.sp,
                     fontWeight = FontWeight.Black,
                     color = ObsidianPrimary,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                    maxLines = 1,
+                    softWrap = false,
+                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
                 )
             }
         }
@@ -667,33 +675,94 @@ private fun ExportToggleRow(
     }
 }
 
-// Miniatura per Anteprima Elenco
+// Miniatura per Anteprima Elenco (Allineata al nuovo layout PdfGenerator)
 @Composable
 private fun PreviewElencoContent(options: PdfExportOptions) {
-    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).lowercase(Locale.ITALIAN)
-    val titleText = "$monthName ${options.startDate.year}"
+    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
+    val stats = ShiftRepository.getComprehensiveReportStats(options.startDate, options.endDate)
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(8.dp)
+            .padding(5.dp)
     ) {
-        Text(
-            text = titleText,
-            fontSize = 7.sp,
-            fontWeight = FontWeight.Bold,
-            color = Color.Black
-        )
-        Spacer(modifier = Modifier.height(4.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            Text("Giorno", fontSize = 4.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray, modifier = Modifier.weight(0.7f))
-            Text("Ora", fontSize = 4.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray, modifier = Modifier.weight(1f))
-            Text("Titolo", fontSize = 4.sp, fontWeight = FontWeight.Bold, color = Color.DarkGray, modifier = Modifier.weight(1.3f))
+        // 1. Header Fascia Navy
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(3.dp))
+                .background(Color(0xFF0F172A))
+                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(3.dp))
+                .padding(horizontal = 4.dp, vertical = 2.5.dp)
+        ) {
+            Column {
+                Text(
+                    text = "CALENDARIO TURNI",
+                    fontSize = 4.5.sp,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White
+                )
+                Text(
+                    text = "$monthName ${options.startDate.year}",
+                    fontSize = 3.8.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = Color(0xFF38BDF8)
+                )
+            }
         }
-        Divider(color = Color(0xFFE0E0E0), thickness = 0.5.dp, modifier = Modifier.padding(vertical = 2.dp))
 
-        val previewDates = (0 until 8).map { options.startDate.plusDays(it.toLong()) }
-        previewDates.forEach { date ->
+        Spacer(modifier = Modifier.height(2.5.dp))
+
+        // 2. Micro Card Statistiche
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(1.5.dp)
+        ) {
+            listOf(
+                Pair(String.format(Locale.US, "%.0fh", stats.totalHours), "Ore"),
+                Pair("${stats.workedDays}", "Turni"),
+                Pair("${stats.countRiposo}R", "Riposi"),
+                Pair("+${String.format(Locale.US, "%.0fh", stats.totalOvertimeHours)}", "Extra")
+            ).forEach { (valore, label) ->
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .clip(RoundedCornerShape(2.dp))
+                        .background(Color(0xFFF1F5F9))
+                        .border(0.3.dp, Color(0xFFCBD5E1), RoundedCornerShape(2.dp))
+                        .padding(vertical = 1.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                        Text(valore, fontSize = 3.6.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
+                        Text(label, fontSize = 2.4.sp, color = Color(0xFF64748B))
+                    }
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(2.5.dp))
+
+        // 3. Intestazione Tabella
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(1.5.dp))
+                .background(Color(0xFF1E293B))
+                .padding(horizontal = 3.dp, vertical = 1.5.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Text("GIORNO", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(0.7f))
+                Text("ORA", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(0.9f))
+                Text("TURNO", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1.4f))
+            }
+        }
+
+        Spacer(modifier = Modifier.height(1.dp))
+
+        // 4. Righe della Tabella con Zebra Striping e Pillole
+        val previewDates = (0 until 9).map { options.startDate.plusDays(it.toLong()) }
+        previewDates.forEachIndexed { idx, date ->
             val dayNum = date.dayOfMonth
             val dayOfWeek = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).lowercase(Locale.ITALIAN)
             val isSunday = date.dayOfWeek == java.time.DayOfWeek.SUNDAY
@@ -704,63 +773,82 @@ private fun PreviewElencoContent(options: PdfExportOptions) {
             val activeShift = shifts.firstOrNull()
             val def = activeShift?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
 
-            val timeStr = when {
-                def != null && def.isAllDay -> "Tutto il giorno"
-                def != null -> "${def.startTime} - ${def.endTime}"
-                else -> "--:--"
+            val rowBg = when {
+                isHoliday -> Color(0xFFFEF2F2)
+                idx % 2 == 1 -> Color(0xFFF8FAFC)
+                else -> Color.White
             }
-            val titleStr = def?.name ?: if (isHoliday) (holiday?.name ?: "Domenica") else "-"
-            val dotColor = def?.let { Color(it.colorHex) } ?: Color.Transparent
 
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(vertical = 1.dp),
+                    .background(rowBg)
+                    .border(0.2.dp, Color(0xFFE2E8F0))
+                    .padding(horizontal = 2.dp, vertical = 1.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Text(
-                    text = "$dayNum $dayOfWeek",
-                    fontSize = 3.5.sp,
-                    color = if (isHoliday) Color.Red else Color.Black,
-                    fontWeight = if (isHoliday) FontWeight.Bold else FontWeight.Normal,
+                    text = String.format(Locale.ITALIAN, "%02d %s", dayNum, dayOfWeek),
+                    fontSize = 3.sp,
+                    color = if (isHoliday) Color(0xFFDC2626) else Color(0xFF0F172A),
+                    fontWeight = if (isHoliday) FontWeight.Bold else FontWeight.Medium,
                     modifier = Modifier.weight(0.7f)
                 )
+
+                val timeStr = when {
+                    def != null && def.isAllDay -> "Tutto il gg"
+                    def != null -> "${def.startTime}-${def.endTime}"
+                    else -> "—"
+                }
                 Text(
                     text = timeStr,
-                    fontSize = 3.5.sp,
-                    color = Color.Gray,
-                    modifier = Modifier.weight(1f)
+                    fontSize = 2.8.sp,
+                    color = Color(0xFF475569),
+                    modifier = Modifier.weight(0.9f)
                 )
-                Row(
-                    modifier = Modifier.weight(1.3f),
-                    verticalAlignment = Alignment.CenterVertically
+
+                Box(
+                    modifier = Modifier.weight(1.4f),
+                    contentAlignment = Alignment.CenterStart
                 ) {
                     if (def != null) {
                         Box(
                             modifier = Modifier
-                                .size(4.dp)
-                                .clip(CircleShape)
-                                .background(dotColor)
+                                .fillMaxWidth(0.92f)
+                                .clip(RoundedCornerShape(2.dp))
+                                .background(Color(def.colorHex))
+                                .padding(horizontal = 2.dp, vertical = 0.5.dp),
+                            contentAlignment = Alignment.CenterStart
+                        ) {
+                            Text(
+                                text = "${def.shortCode} • ${def.name.take(6)}",
+                                fontSize = 2.8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color.White,
+                                maxLines = 1
+                            )
+                        }
+                    } else if (holiday != null) {
+                        Text(
+                            text = "★ ${holiday.name.take(8)}",
+                            fontSize = 2.6.sp,
+                            color = Color(0xFFDC2626),
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                    } else {
+                        Text("—", fontSize = 2.8.sp, color = Color(0xFF94A3B8))
                     }
-                    Text(
-                        text = titleStr,
-                        fontSize = 3.5.sp,
-                        color = Color.Black,
-                        fontWeight = if (def != null) FontWeight.Medium else FontWeight.Normal,
-                        maxLines = 1
-                    )
                 }
             }
         }
     }
 }
 
-// Miniatura per Anteprima Mese
+// Miniatura per Anteprima Mese (Allineata al nuovo layout PdfGenerator)
 @Composable
 private fun PreviewMeseContent(options: PdfExportOptions) {
-    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).lowercase(Locale.ITALIAN)
+    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
     val ym = java.time.YearMonth.from(options.startDate)
     val firstDay = ym.atDay(1)
     val firstCol = firstDay.dayOfWeek.value - 1
@@ -769,20 +857,52 @@ private fun PreviewMeseContent(options: PdfExportOptions) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp)
+            .padding(4.dp)
     ) {
-        Text("$monthName ${ym.year}", fontSize = 6.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-        Spacer(modifier = Modifier.height(3.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            listOf("L", "M", "M", "G", "V", "S", "D").forEach { d ->
-                Text(d, fontSize = 3.5.sp, color = Color.DarkGray, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+        // Header Fascia Navy Landscape
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(2.5.dp))
+                .background(Color(0xFF0F172A))
+                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(2.5.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Column {
+                    Text("CALENDARIO TURNI • MESE", fontSize = 3.8.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("$monthName ${ym.year}", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
+                }
+                Text("A4 Landscape", fontSize = 2.8.sp, color = Color(0xFF94A3B8))
             }
         }
+
         Spacer(modifier = Modifier.height(2.dp))
+
+        // Intestazione giorni L M M G V S D
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(1.5.dp))
+                .background(Color(0xFF1E293B))
+                .padding(vertical = 1.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                listOf("L", "M", "M", "G", "V", "S", "D").forEach { d ->
+                    Text(d, fontSize = 3.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.height(1.dp))
 
         var curDay = 1
         for (r in 0 until 5) {
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 0.8.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 for (c in 0 until 7) {
                     val cellIndex = r * 7 + c
                     if (cellIndex >= firstCol && curDay <= totalDays) {
@@ -796,27 +916,29 @@ private fun PreviewMeseContent(options: PdfExportOptions) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(16.dp)
-                                .border(0.3.dp, Color(0xFFD0D0D0))
-                                .background(if (isHoliday) Color(0xFFFFEEEE) else Color.White),
+                                .height(17.dp)
+                                .border(0.25.dp, Color(0xFFCBD5E1))
+                                .background(if (isHoliday) Color(0xFFFEF2F2) else Color.White),
                             contentAlignment = Alignment.Center
                         ) {
                             Column(
-                                modifier = Modifier.fillMaxSize().padding(0.8.dp),
+                                modifier = Modifier
+                                    .fillMaxSize()
+                                    .padding(0.8.dp),
                                 horizontalAlignment = Alignment.CenterHorizontally,
                                 verticalArrangement = Arrangement.SpaceBetween
                             ) {
                                 Text(
                                     text = "$curDay",
-                                    fontSize = 2.8.sp,
-                                    color = if (isHoliday) Color.Red else Color.DarkGray,
+                                    fontSize = 2.6.sp,
+                                    color = if (isHoliday) Color(0xFFDC2626) else Color(0xFF0F172A),
                                     fontWeight = FontWeight.Bold,
                                     modifier = Modifier.align(Alignment.End)
                                 )
                                 if (def != null) {
                                     Box(
                                         modifier = Modifier
-                                            .fillMaxWidth(0.9f)
+                                            .fillMaxWidth(0.92f)
                                             .clip(RoundedCornerShape(1.dp))
                                             .background(Color(def.colorHex))
                                             .padding(vertical = 0.3.dp),
@@ -824,7 +946,7 @@ private fun PreviewMeseContent(options: PdfExportOptions) {
                                     ) {
                                         Text(
                                             text = def.shortCode.take(3),
-                                            fontSize = 2.4.sp,
+                                            fontSize = 2.2.sp,
                                             fontWeight = FontWeight.Bold,
                                             color = Color.White
                                         )
@@ -837,8 +959,9 @@ private fun PreviewMeseContent(options: PdfExportOptions) {
                         Box(
                             modifier = Modifier
                                 .weight(1f)
-                                .height(16.dp)
-                                .border(0.3.dp, Color(0xFFE8E8E8))
+                                .height(17.dp)
+                                .border(0.2.dp, Color(0xFFF1F5F9))
+                                .background(Color(0xFFF8FAFC))
                         )
                     }
                 }
@@ -847,27 +970,57 @@ private fun PreviewMeseContent(options: PdfExportOptions) {
     }
 }
 
-// Miniatura per Anteprima Anno
+// Miniatura per Anteprima Anno (Allineata al nuovo layout PdfGenerator)
 @Composable
 private fun PreviewAnnoContent(options: PdfExportOptions) {
     val year = options.selectedYear
-    val months = listOf("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
+    val months = listOf("Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic")
 
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .padding(6.dp)
+            .padding(4.dp)
     ) {
-        Text("$year", fontSize = 6.sp, fontWeight = FontWeight.Bold, color = Color.Black)
-        Spacer(modifier = Modifier.height(2.dp))
-        Row(modifier = Modifier.fillMaxWidth()) {
-            months.forEach { m ->
-                Text(m, fontSize = 2.8.sp, color = Color.Red, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+        // Header Fascia Anno
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(2.dp))
+                .background(Color(0xFF0F172A))
+                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(2.dp))
+                .padding(horizontal = 4.dp, vertical = 2.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text("CALENDARIO TURNI • PIANO ANNUALE $year", fontSize = 3.6.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                Text("12 Mesi", fontSize = 2.8.sp, color = Color(0xFF38BDF8))
             }
         }
+
+        Spacer(modifier = Modifier.height(2.dp))
+
+        // Intestazione Mesi
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(1.dp))
+                .background(Color(0xFF1E293B))
+                .padding(vertical = 0.8.dp)
+        ) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                months.forEach { m ->
+                    Text(m, fontSize = 2.6.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+                }
+            }
+        }
+
         Spacer(modifier = Modifier.height(1.dp))
+
         for (day in 1..10) {
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 0.4.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
                 for (m in 1..12) {
                     val date = try { LocalDate.of(year, m, day) } catch (_: Exception) { null }
                     val shifts = date?.let { ShiftRepository.getShiftsForDate(it) } ?: emptyList()
@@ -876,12 +1029,17 @@ private fun PreviewAnnoContent(options: PdfExportOptions) {
                     Box(
                         modifier = Modifier
                             .weight(1f)
-                            .height(7.dp)
-                            .border(0.2.dp, Color(0xFFE0E0E0))
-                            .background(if (def != null) Color(def.colorHex).copy(alpha = 0.35f) else Color.Transparent),
+                            .height(6.5.dp)
+                            .border(0.2.dp, Color(0xFFE2E8F0))
+                            .background(if (def != null) Color(def.colorHex).copy(alpha = 0.45f) else Color.Transparent),
                         contentAlignment = Alignment.Center
                     ) {
-                        Text("$day", fontSize = 2.2.sp, color = if (def != null) Color.Black else Color.Gray)
+                        Text(
+                            text = "$day",
+                            fontSize = 2.sp,
+                            fontWeight = if (def != null) FontWeight.Bold else FontWeight.Normal,
+                            color = if (def != null) Color(0xFF0F172A) else Color(0xFF94A3B8)
+                        )
                     }
                 }
             }

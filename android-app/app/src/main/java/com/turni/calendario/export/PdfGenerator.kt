@@ -3,8 +3,8 @@ package com.turni.calendario.export
 import android.content.Context
 import android.content.Intent
 import android.graphics.Canvas
+import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
@@ -16,6 +16,7 @@ import java.io.File
 import java.io.FileOutputStream
 import java.time.LocalDate
 import java.time.YearMonth
+import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
 
@@ -69,221 +70,424 @@ object PdfGenerator {
     }
 
     /**
-     * Disegna il prospetto in formato Elenco (A4 verticale: 595 x 842 pt)
+     * Calcola il colore ottimale del testo (bianco o scuro) per garantire il massimo contrasto WCAG
+     * su qualsiasi colore di sfondo del turno.
+     */
+    private fun getContrastingTextColor(colorInt: Int): Int {
+        val r = (colorInt shr 16) and 0xFF
+        val g = (colorInt shr 8) and 0xFF
+        val b = colorInt and 0xFF
+        val luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255.0
+        return if (luminance > 0.62) Color.rgb(15, 23, 42) else Color.WHITE
+    }
+
+    /**
+     * Disegna il prospetto in formato Elenco (A4 verticale: 595 x 842 pt).
+     * Layout professionale: Fascia superiore navy, card statistiche mensili, tabella con zebra striping e pillole colorate.
      */
     private fun renderElencoPdf(doc: PdfDocument, options: PdfExportOptions) {
         val pageInfo = PdfDocument.PageInfo.Builder(595, 842, 1).create()
         val page = doc.startPage(pageInfo)
         val canvas: Canvas = page.canvas
 
-        val paint = Paint(Paint.ANTI_ALIAS_FLAG)
-        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 18f
-            isFakeBoldText = true
-            color = android.graphics.Color.BLACK
+        val leftMargin = 32f
+        val rightMargin = 563f
+        val contentWidth = rightMargin - leftMargin
+
+        val bgPaint = Paint().apply { style = Paint.Style.FILL }
+        val strokePaint = Paint().apply {
+            style = Paint.Style.STROKE
+            isAntiAlias = true
         }
-        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+
+        // 1. Header Superiore Elegante (Fascia Navy Scuro Slate)
+        val headerRect = RectF(leftMargin, 24f, rightMargin, 74f)
+        bgPaint.color = Color.rgb(15, 23, 42) // Slate 900
+        canvas.drawRoundRect(headerRect, 8f, 8f, bgPaint)
+
+        // Bordo sottile ciano sull'header per tocco Liquid Glass
+        strokePaint.color = Color.rgb(2, 132, 199) // Sky 600
+        strokePaint.strokeWidth = 1.2f
+        canvas.drawRoundRect(headerRect, 8f, 8f, strokePaint)
+
+        val headerTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 13.5f
+            isFakeBoldText = true
+            color = Color.WHITE
+        }
+        canvas.drawText("CALENDARIO TURNI", leftMargin + 14f, 44f, headerTitlePaint)
+
+        val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
+        val periodSubtitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 10f
             isFakeBoldText = true
-            color = android.graphics.Color.DKGRAY
+            color = Color.rgb(56, 189, 248) // Sky 400
         }
-        val textPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 9.5f
-            color = android.graphics.Color.BLACK
+        val periodText = if (options.startDate.month == options.endDate.month && options.startDate.year == options.endDate.year) {
+            "PROSPETTO MENSILE • $monthName ${options.startDate.year}"
+        } else {
+            "PERIODO • ${options.startDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))} - ${options.endDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))}"
         }
-        val datePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 9.5f
-            isFakeBoldText = true
-            color = android.graphics.Color.BLACK
+        canvas.drawText(periodText, leftMargin + 14f, 62f, periodSubtitlePaint)
+
+        // Sezione note o diciture utente nell'header a destra
+        val headerNotePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8.5f
+            color = Color.rgb(203, 213, 225) // Slate 300
+            textAlign = Paint.Align.RIGHT
         }
-        val holidayPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 9.5f
-            isFakeBoldText = true
-            color = android.graphics.Color.rgb(200, 30, 30)
+        if (options.headerNotes.isNotBlank()) {
+            canvas.drawText(options.headerNotes.take(45), rightMargin - 14f, 44f, headerNotePaint)
         }
-        val linePaint = Paint().apply {
-            color = android.graphics.Color.rgb(220, 220, 225)
+        val genDatePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            color = Color.rgb(148, 163, 184) // Slate 400
+            textAlign = Paint.Align.RIGHT
+        }
+        val todayStr = LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))
+        canvas.drawText("Data doc: $todayStr", rightMargin - 14f, 61f, genDatePaint)
+
+        // 2. Card Statistiche Mensili Certificate (4 riquadri orizzontali)
+        val stats = ShiftRepository.getComprehensiveReportStats(options.startDate, options.endDate)
+        val statsTop = 82f
+        val statsBottom = 116f
+        val cardGap = 6f
+        val cardWidth = (contentWidth - cardGap * 3f) / 4f
+
+        val statCardBgPaint = Paint().apply {
+            color = Color.rgb(248, 250, 252) // Slate 50
+            style = Paint.Style.FILL
+        }
+        val statCardBorderPaint = Paint().apply {
+            color = Color.rgb(226, 232, 240) // Slate 200
+            style = Paint.Style.STROKE
             strokeWidth = 0.8f
         }
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        // Titolo (es. "ottobre 2026")
-        val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).lowercase(Locale.ITALIAN)
-        val titleText = "$monthName ${options.startDate.year}"
-        canvas.drawText(titleText, 40f, 50f, titlePaint)
-
-        // Intestazione note personalizzate
-        var currentY = 70f
-        if (options.headerNotes.isNotBlank()) {
-            val notePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 9f
-                color = android.graphics.Color.GRAY
-            }
-            canvas.drawText(options.headerNotes.take(80), 40f, currentY, notePaint)
-            currentY += 15f
+        val statValuePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 10.5f
+            isFakeBoldText = true
+            color = Color.rgb(15, 23, 42) // Slate 900
+            textAlign = Paint.Align.CENTER
+        }
+        val statLabelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 6.8f
+            color = Color.rgb(100, 116, 139) // Slate 500
+            textAlign = Paint.Align.CENTER
         }
 
-        // Intestazioni colonne tabella
-        canvas.drawText("Giorno", 40f, currentY + 10f, headerPaint)
+        val cardsData = listOf(
+            Pair(String.format(Locale.US, "%.1fh", stats.totalHours), "Ore Lavorate"),
+            Pair("${stats.workedDays} turni", "Presenze"),
+            Pair("${stats.countRiposo} RIP • ${stats.countSmonto} SMO", "Riposi / Smonti"),
+            Pair("+${String.format(Locale.US, "%.1fh", stats.totalOvertimeHours)} • ${stats.countTrasferte} T", "Straord. / Trasferte")
+        )
+
+        for (i in 0 until 4) {
+            val cLeft = leftMargin + i * (cardWidth + cardGap)
+            val cRight = cLeft + cardWidth
+            val cRect = RectF(cLeft, statsTop, cRight, statsBottom)
+            canvas.drawRoundRect(cRect, 6f, 6f, statCardBgPaint)
+            canvas.drawRoundRect(cRect, 6f, 6f, statCardBorderPaint)
+
+            val centerX = cLeft + cardWidth / 2f
+            canvas.drawText(cardsData[i].first, centerX, statsTop + 16f, statValuePaint)
+            canvas.drawText(cardsData[i].second, centerX, statsTop + 28f, statLabelPaint)
+        }
+
+        // 3. Intestazione Tabella Turni
+        var currentY = 124f
+        val tableHeaderHeight = 18f
+        val tableHeaderRect = RectF(leftMargin, currentY, rightMargin, currentY + tableHeaderHeight)
+        bgPaint.color = Color.rgb(30, 41, 59) // Slate 800
+        canvas.drawRoundRect(tableHeaderRect, 4f, 4f, bgPaint)
+
+        val colHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.8f
+            isFakeBoldText = true
+            color = Color.WHITE
+        }
+        canvas.drawText("GIORNO", leftMargin + 10f, currentY + 12f, colHeaderPaint)
         if (options.includeTime) {
-            canvas.drawText("Ora", 120f, currentY + 10f, headerPaint)
+            canvas.drawText("ORARIO", leftMargin + 85f, currentY + 12f, colHeaderPaint)
         }
-        if (options.includeTitle) {
-            canvas.drawText("Titolo", 250f, currentY + 10f, headerPaint)
+        canvas.drawText("TURNO", leftMargin + 185f, currentY + 12f, colHeaderPaint)
+        if (options.includeDuration) {
+            canvas.drawText("DURATA", leftMargin + 315f, currentY + 12f, colHeaderPaint)
         }
-        currentY += 16f
-        canvas.drawLine(40f, currentY, 555f, currentY, linePaint)
-        currentY += 6f
+        canvas.drawText("NOTE / STATO", leftMargin + 380f, currentY + 12f, colHeaderPaint)
 
-        // Righe dei giorni
+        currentY += tableHeaderHeight + 2f
+
+        // 4. Righe della Tabella con Zebra Striping e Pillole Colorate
+        val rowHeight = 19.5f
         var currDate = options.startDate
-        val maxDays = 31
-        var dayCount = 0
+        var dayIndex = 0
 
-        while (!currDate.isAfter(options.endDate) && dayCount < maxDays && currentY < 780f) {
-            val dayNum = currDate.dayOfMonth
-            val dayOfWeek = currDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).lowercase(Locale.ITALIAN)
+        val rowWhiteBg = Paint().apply { color = Color.WHITE; style = Paint.Style.FILL }
+        val rowZebraBg = Paint().apply { color = Color.rgb(248, 250, 252); style = Paint.Style.FILL } // Slate 50
+        val rowHolidayBg = Paint().apply { color = Color.rgb(254, 242, 242); style = Paint.Style.FILL } // Rose 50
+        val rowDividerPaint = Paint().apply {
+            color = Color.rgb(226, 232, 240) // Slate 200
+            strokeWidth = 0.5f
+        }
+
+        val dateTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8.5f
+            isFakeBoldText = true
+            color = Color.rgb(15, 23, 42)
+        }
+        val holidayDateTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8.5f
+            isFakeBoldText = true
+            color = Color.rgb(220, 38, 38) // Red 600
+        }
+        val timeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8f
+            color = Color.rgb(51, 65, 85) // Slate 700
+        }
+        val durationTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8f
+            color = Color.rgb(71, 85, 105) // Slate 600
+        }
+        val noteTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            color = Color.rgb(100, 116, 139) // Slate 500
+        }
+        val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            isFakeBoldText = true
+        }
+
+        while (!currDate.isAfter(options.endDate) && currentY + rowHeight <= 800f) {
             val isSunday = currDate.dayOfWeek == java.time.DayOfWeek.SUNDAY
             val holiday = ShiftRepository.isHoliday(currDate)
             val isHoliday = holiday != null || isSunday
 
-            // Giorno (es. "1 gio")
-            val dayText = "$dayNum  $dayOfWeek"
-            canvas.drawText(dayText, 40f, currentY + 10f, if (isHoliday) holidayPaint else datePaint)
+            // Background riga
+            val rowRect = RectF(leftMargin, currentY, rightMargin, currentY + rowHeight)
+            val rowBg = when {
+                isHoliday -> rowHolidayBg
+                dayIndex % 2 == 1 -> rowZebraBg
+                else -> rowWhiteBg
+            }
+            canvas.drawRect(rowRect, rowBg)
+            canvas.drawLine(leftMargin, currentY + rowHeight, rightMargin, currentY + rowHeight, rowDividerPaint)
+
+            // Colonna Giorno: "01 gio"
+            val dayNumStr = String.format(Locale.ITALIAN, "%02d", currDate.dayOfMonth)
+            val dayNameStr = currDate.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).lowercase(Locale.ITALIAN)
+            val dayFullLabel = "$dayNumStr $dayNameStr"
+            canvas.drawText(dayFullLabel, leftMargin + 8f, currentY + 13f, if (isHoliday) holidayDateTextPaint else dateTextPaint)
 
             val shifts = ShiftRepository.getShiftsForDate(currDate)
-            val activeShift = shifts.firstOrNull() ?: if (options.includeEmptyRows) null else null
+            val activeShift = shifts.firstOrNull()
+            val def = activeShift?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
+            val extraInfo = ShiftRepository.dayExtraInfo[currDate]
+            val hasTrasferta = ShiftRepository.hasTrasfertaForDate(currDate)
+            val overtime = extraInfo?.overtimeHours ?: (activeShift?.overtimeHours ?: 0f)
 
-            if (activeShift != null) {
-                val def = ShiftRepository.getShiftDefinition(activeShift.shiftDefId)
-                if (def != null && (options.filterShiftId == null || def.id == options.filterShiftId)) {
-                    // Pallino colorato icona
-                    if (options.includeIcon) {
-                        dotPaint.color = (def.colorHex or 0xFF000000).toInt()
-                        canvas.drawCircle(115f, currentY + 7f, 3.5f, dotPaint)
-                    }
+            if (def != null && (options.filterShiftId == null || def.id == options.filterShiftId)) {
+                // Orario
+                if (options.includeTime) {
+                    val timeStr = if (def.isAllDay) "Tutto il giorno" else "${def.startTime} - ${def.endTime}"
+                    canvas.drawText(timeStr, leftMargin + 85f, currentY + 13f, timeTextPaint)
+                }
 
-                    // Ora
-                    if (options.includeTime) {
-                        val timeStr = if (def.isAllDay) "Tutto il giorno" else "${def.startTime} - ${def.endTime}"
-                        canvas.drawText(timeStr, 126f, currentY + 10f, textPaint)
-                    }
+                // Pillola Badge Turno
+                val badgeColor = (def.colorHex or 0xFF000000).toInt()
+                bgPaint.color = badgeColor
+                val badgeLeft = leftMargin + 185f
+                val badgeWidth = 110f
+                val badgeRect = RectF(badgeLeft, currentY + 2.5f, badgeLeft + badgeWidth, currentY + rowHeight - 2.5f)
+                canvas.drawRoundRect(badgeRect, 4.5f, 4.5f, bgPaint)
 
-                    // Titolo
-                    if (options.includeTitle) {
-                        canvas.drawText(def.name, 250f, currentY + 10f, textPaint)
-                    }
+                badgeTextPaint.color = getContrastingTextColor(badgeColor)
+                val badgeTitle = "${def.shortCode} • ${def.name.take(11)}"
+                canvas.drawText(badgeTitle, badgeLeft + 6f, currentY + 12.5f, badgeTextPaint)
+
+                // Durata
+                if (options.includeDuration) {
+                    val durStr = if (def.isAllDay) "—" else def.durationFormatted
+                    canvas.drawText(durStr, leftMargin + 315f, currentY + 13f, durationTextPaint)
+                }
+
+                // Note & Stato (Straordinari, Trasferte, Festività, Note)
+                var details = ""
+                if (overtime > 0f) details += "+${String.format(Locale.US, "%.1fh", overtime)} "
+                if (hasTrasferta) details += "[TRASF] "
+                if (activeShift.notes.isNotBlank()) details += activeShift.notes.take(22)
+                else if (holiday != null && options.includeEvents) details += holiday.name.take(22)
+
+                if (details.isNotBlank()) {
+                    canvas.drawText(details.trim(), leftMargin + 380f, currentY + 13f, noteTextPaint)
                 }
             } else if (holiday != null && options.includeEvents) {
-                // Mostra festività sulla riga
-                canvas.drawText("Festività: ${holiday.name}", 126f, currentY + 10f, holidayPaint)
+                // Riga festività senza turno
+                if (options.includeTime) {
+                    canvas.drawText("Festivo", leftMargin + 85f, currentY + 13f, holidayDateTextPaint)
+                }
+                canvas.drawText("★ ${holiday.name}", leftMargin + 185f, currentY + 13f, holidayDateTextPaint)
+            } else {
+                if (options.includeEmptyRows) {
+                    canvas.drawText("—", leftMargin + 185f, currentY + 13f, noteTextPaint)
+                }
             }
 
-            currentY += 18f
-            canvas.drawLine(40f, currentY, 555f, currentY, linePaint)
-            currentY += 4f
-
+            currentY += rowHeight
             currDate = currDate.plusDays(1)
-            dayCount++
+            dayIndex++
         }
 
-        // Footer festività e logo
-        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 8.5f
-            color = android.graphics.Color.rgb(100, 100, 110)
+        // 5. Footer Professionale
+        val footerLinePaint = Paint().apply {
+            color = Color.rgb(203, 213, 225) // Slate 300
+            strokeWidth = 0.8f
         }
-        val holidayBottom = ShiftRepository.isHoliday(LocalDate.of(options.startDate.year, 10, 4))
-        if (holidayBottom != null) {
-            val bluePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 8.5f
-                color = android.graphics.Color.rgb(30, 100, 200)
-            }
-            canvas.drawText("04/10 ${holidayBottom.name}", 40f, 805f, bluePaint)
+        canvas.drawLine(leftMargin, 810f, rightMargin, 810f, footerLinePaint)
+
+        val footerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            color = Color.rgb(100, 116, 139) // Slate 500
         }
+        val appTag = "Calendario Turni Pro • Documento aziendale e personale"
+        canvas.drawText(appTag, leftMargin, 824f, footerTextPaint)
 
         if (options.includeLogo) {
-            val logoText = "Realizzato con Calendario Turni per Android"
-            val textWidth = footerPaint.measureText(logoText)
-            canvas.drawText(logoText, 555f - textWidth, 805f, footerPaint)
+            val pageInfoText = "Generato con Calendario Turni per Android • Pagina 1 di 1"
+            val textWidth = footerTextPaint.measureText(pageInfoText)
+            canvas.drawText(pageInfoText, rightMargin - textWidth, 824f, footerTextPaint)
         }
 
         doc.finishPage(page)
     }
 
     /**
-     * Disegna il prospetto in formato Mese (A4 orizzontale landscape: 842 x 595 pt)
+     * Disegna il prospetto in formato Mese (A4 orizzontale landscape: 842 x 595 pt).
+     * Griglia calendario ad alta leggibilità con header cromatico, pillole turno e riepilogo statistico.
      */
     private fun renderMesePdf(doc: PdfDocument, options: PdfExportOptions) {
         val pageInfo = PdfDocument.PageInfo.Builder(842, 595, 1).create()
         val page = doc.startPage(pageInfo)
         val canvas: Canvas = page.canvas
 
-        val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 18f
-            isFakeBoldText = true
-            color = android.graphics.Color.BLACK
+        val leftMargin = 32f
+        val rightMargin = 810f
+        val contentWidth = rightMargin - leftMargin
+
+        val bgPaint = Paint().apply { style = Paint.Style.FILL }
+        val strokePaint = Paint().apply {
+            style = Paint.Style.STROKE
+            isAntiAlias = true
         }
-        val headerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 9f
+
+        // 1. Header Superiore Elegante Landscape
+        val headerRect = RectF(leftMargin, 18f, rightMargin, 58f)
+        bgPaint.color = Color.rgb(15, 23, 42) // Slate 900
+        canvas.drawRoundRect(headerRect, 8f, 8f, bgPaint)
+
+        strokePaint.color = Color.rgb(2, 132, 199)
+        strokePaint.strokeWidth = 1.2f
+        canvas.drawRoundRect(headerRect, 8f, 8f, strokePaint)
+
+        val headerTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 14f
             isFakeBoldText = true
-            color = android.graphics.Color.DKGRAY
+            color = Color.WHITE
+        }
+        val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
+        canvas.drawText("CALENDARIO TURNI • PROSPETTO MENSILE", leftMargin + 16f, 38f, headerTitlePaint)
+
+        val periodPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 11f
+            isFakeBoldText = true
+            color = Color.rgb(56, 189, 248)
+        }
+        canvas.drawText("$monthName ${options.startDate.year}", leftMargin + 16f, 51f, periodPaint)
+
+        // Micro-statistiche nell'header a destra
+        val stats = ShiftRepository.getComprehensiveReportStats(options.startDate, options.endDate)
+        val headerStatsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8.5f
+            color = Color.rgb(226, 232, 240)
+            textAlign = Paint.Align.RIGHT
+        }
+        val statsSummary = "Totale: ${String.format(Locale.US, "%.1fh", stats.totalHours)} lavorate | ${stats.workedDays} turni | ${stats.countRiposo} riposi | +${String.format(Locale.US, "%.1fh", stats.totalOvertimeHours)} extra"
+        canvas.drawText(statsSummary, rightMargin - 16f, 38f, headerStatsPaint)
+
+        val noteOrDate = if (options.headerNotes.isNotBlank()) options.headerNotes.take(50) else "Data: ${LocalDate.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy"))}"
+        val subStatsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            color = Color.rgb(148, 163, 184)
+            textAlign = Paint.Align.RIGHT
+        }
+        canvas.drawText(noteOrDate, rightMargin - 16f, 51f, subStatsPaint)
+
+        // 2. Intestazioni Giorni della Settimana (Lunedì - Domenica)
+        val daysOfWeek = listOf("Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica")
+        val gridTop = 66f
+        val colWidth = contentWidth / 7f
+        val headerRowHeight = 18f
+
+        val dayHeaderRect = RectF(leftMargin, gridTop, rightMargin, gridTop + headerRowHeight)
+        bgPaint.color = Color.rgb(30, 41, 59)
+        canvas.drawRoundRect(dayHeaderRect, 4f, 4f, bgPaint)
+
+        val dayHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 8.5f
+            isFakeBoldText = true
+            color = Color.WHITE
             textAlign = Paint.Align.CENTER
         }
+        for (i in 0 until 7) {
+            val colCenterX = leftMargin + i * colWidth + colWidth / 2f
+            canvas.drawText(daysOfWeek[i], colCenterX, gridTop + 12.5f, dayHeaderPaint)
+        }
+
+        // 3. Griglia del Mese
+        val yearMonth = YearMonth.from(options.startDate)
+        val firstDayOfMonth = yearMonth.atDay(1)
+        val firstDayOfWeekIndex = firstDayOfMonth.dayOfWeek.value - 1 // 0 = Lunedì
+        val daysInMonth = yearMonth.lengthOfMonth()
+
         val cellBorderPaint = Paint().apply {
-            color = android.graphics.Color.rgb(190, 195, 205)
+            color = Color.rgb(226, 232, 240)
             style = Paint.Style.STROKE
             strokeWidth = 0.8f
         }
-        val cellHolidayBgPaint = Paint().apply {
-            color = android.graphics.Color.rgb(255, 215, 215)
-            style = Paint.Style.FILL
-        }
+        val cellWhiteBg = Paint().apply { color = Color.WHITE; style = Paint.Style.FILL }
+        val cellHolidayBg = Paint().apply { color = Color.rgb(254, 242, 242); style = Paint.Style.FILL }
+        val cellInactiveBg = Paint().apply { color = Color.rgb(248, 250, 252); style = Paint.Style.FILL }
+
         val dateNumPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 8.5f
+            textSize = 9f
             isFakeBoldText = true
-            color = android.graphics.Color.DKGRAY
+            color = Color.rgb(15, 23, 42)
+            textAlign = Paint.Align.RIGHT
         }
-        val shiftTitlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 7.5f
-            color = android.graphics.Color.BLACK
+        val holidayDateNumPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 9f
+            isFakeBoldText = true
+            color = Color.rgb(220, 38, 38)
+            textAlign = Paint.Align.RIGHT
+        }
+        val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7f
+            isFakeBoldText = true
         }
         val shiftTimePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 6.8f
-            color = android.graphics.Color.DKGRAY
-        }
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        // Titolo
-        val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).lowercase(Locale.ITALIAN)
-        canvas.drawText("$monthName ${options.startDate.year}", 40f, 45f, titlePaint)
-
-        // Intestazioni giorni della settimana (Lunedì - Domenica)
-        val daysOfWeek = listOf("lunedì", "martedì", "mercoledì", "giovedì", "venerdì", "sabato", "domenica")
-        val gridLeft = 40f
-        val gridTop = 65f
-        val gridWidth = 762f
-        val colWidth = gridWidth / 7f
-        val rowHeight = 75f
-
-        for (i in 0 until 7) {
-            val colCenterX = gridLeft + i * colWidth + colWidth / 2f
-            canvas.drawText(daysOfWeek[i], colCenterX, gridTop + 12f, headerPaint)
+            textSize = 6.2f
+            color = Color.rgb(71, 85, 105)
         }
 
-        // Griglia del mese
-        val yearMonth = YearMonth.from(options.startDate)
-        val firstDayOfMonth = yearMonth.atDay(1)
-        val firstDayOfWeekIndex = (firstDayOfMonth.dayOfWeek.value - 1) // 0 for Monday
-        val daysInMonth = yearMonth.lengthOfMonth()
-
+        val rowHeight = 76f
         var currentDay = 1
         var row = 0
 
         while (currentDay <= daysInMonth && row < 6) {
-            val rowTop = gridTop + 20f + row * rowHeight
+            val rowTop = gridTop + headerRowHeight + 2f + row * rowHeight
 
             for (col in 0 until 7) {
-                val cellLeft = gridLeft + col * colWidth
+                val cellLeft = leftMargin + col * colWidth
                 val cellRight = cellLeft + colWidth
                 val cellBottom = rowTop + rowHeight
                 val rect = RectF(cellLeft, rowTop, cellRight, cellBottom)
@@ -295,118 +499,176 @@ object PdfGenerator {
                     val holiday = ShiftRepository.isHoliday(date)
                     val isHoliday = holiday != null || isSunday
 
-                    if (isHoliday) {
-                        canvas.drawRect(rect, cellHolidayBgPaint)
-                    }
+                    canvas.drawRect(rect, if (isHoliday) cellHolidayBg else cellWhiteBg)
                     canvas.drawRect(rect, cellBorderPaint)
 
-                    // Numero del giorno
-                    canvas.drawText(currentDay.toString(), cellRight - 14f, rowTop + 12f, dateNumPaint)
+                    // Numero Giorno
+                    val numPaint = if (isHoliday) holidayDateNumPaint else dateNumPaint
+                    canvas.drawText(currentDay.toString(), cellRight - 6f, rowTop + 12f, numPaint)
 
-                    // Turni del giorno
+                    // Eventuale festività indicata in mini testo
+                    if (holiday != null && options.includeEvents) {
+                        val holNamePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                            textSize = 5.5f
+                            color = Color.rgb(220, 38, 38)
+                            isFakeBoldText = true
+                        }
+                        canvas.drawText(holiday.name.take(14), cellLeft + 5f, rowTop + 11f, holNamePaint)
+                    }
+
+                    // Turni del giorno (Pillole Cromatiche)
                     val shifts = ShiftRepository.getShiftsForDate(date)
-                    var shiftY = rowTop + 24f
+                    var shiftY = rowTop + 18f
+
                     shifts.take(2).forEach { s ->
                         val def = ShiftRepository.getShiftDefinition(s.shiftDefId)
                         if (def != null && (options.filterShiftId == null || def.id == options.filterShiftId)) {
-                            if (options.includeIcon) {
-                                dotPaint.color = (def.colorHex or 0xFF000000).toInt()
-                                canvas.drawCircle(cellLeft + 8f, shiftY - 2.5f, 2.5f, dotPaint)
-                            }
-                            val textStart = if (options.includeIcon) cellLeft + 14f else cellLeft + 6f
-                            if (options.includeTitle) {
-                                canvas.drawText(def.name.take(12), textStart, shiftY, shiftTitlePaint)
-                            }
+                            val badgeColor = (def.colorHex or 0xFF000000).toInt()
+                            bgPaint.color = badgeColor
+
+                            val pillRect = RectF(cellLeft + 4f, shiftY, cellRight - 4f, shiftY + 14f)
+                            canvas.drawRoundRect(pillRect, 3.5f, 3.5f, bgPaint)
+
+                            badgeTextPaint.color = getContrastingTextColor(badgeColor)
+                            val pillText = if (options.includeTitle) "${def.shortCode} • ${def.name.take(8)}" else def.shortCode
+                            canvas.drawText(pillText, cellLeft + 7f, shiftY + 10f, badgeTextPaint)
+
                             if (options.includeTime && !def.isAllDay) {
-                                canvas.drawText("${def.startTime} - ${def.endTime}", textStart, shiftY + 9f, shiftTimePaint)
+                                canvas.drawText("${def.startTime}-${def.endTime}", cellLeft + 5f, shiftY + 22f, shiftTimePaint)
+                                shiftY += 25f
+                            } else {
+                                shiftY += 17f
                             }
-                            shiftY += 20f
                         }
                     }
 
                     currentDay++
                 } else {
-                    // Cella vuota
+                    // Cella inattiva (mese precedente o successivo)
+                    canvas.drawRect(rect, cellInactiveBg)
                     canvas.drawRect(rect, cellBorderPaint)
                 }
             }
             row++
         }
 
-        // Footer
+        // 4. Footer Landscape
+        val footerLinePaint = Paint().apply {
+            color = Color.rgb(203, 213, 225)
+            strokeWidth = 0.8f
+        }
+        canvas.drawLine(leftMargin, 570f, rightMargin, 570f, footerLinePaint)
+
+        val footerTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            color = Color.rgb(100, 116, 139)
+        }
+        canvas.drawText("Calendario Turni Pro • Vista Mensile Stampabile", leftMargin, 582f, footerTextPaint)
+
         if (options.includeLogo) {
-            val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 8.5f
-                color = android.graphics.Color.rgb(100, 100, 110)
-            }
-            val logoText = "Realizzato con Calendario Turni per Android"
-            canvas.drawText(logoText, 842f - 40f - footerPaint.measureText(logoText), 570f, footerPaint)
+            val logoText = "Generato con Calendario Turni per Android"
+            canvas.drawText(logoText, rightMargin - footerTextPaint.measureText(logoText), 582f, footerTextPaint)
         }
 
         doc.finishPage(page)
     }
 
     /**
-     * Disegna il prospetto in formato Anno (A4 orizzontale landscape: 842 x 595 pt)
-     * Tabellone 12 colonne (gen - dic) con le righe 1..31.
+     * Disegna il prospetto in formato Anno (A4 orizzontale landscape: 842 x 595 pt).
+     * Tabellone 12 colonne con le righe 1..31, badge turno perimetrali e festività in evidenza.
      */
     private fun renderAnnoPdf(doc: PdfDocument, options: PdfExportOptions) {
         val pageInfo = PdfDocument.PageInfo.Builder(842, 595, 1).create()
         val page = doc.startPage(pageInfo)
         val canvas: Canvas = page.canvas
 
+        val leftMargin = 30f
+        val rightMargin = 812f
+        val contentWidth = rightMargin - leftMargin
+
+        val bgPaint = Paint().apply { style = Paint.Style.FILL }
+        val strokePaint = Paint().apply {
+            style = Paint.Style.STROKE
+            isAntiAlias = true
+        }
+
+        // Header Annuale
+        val headerRect = RectF(leftMargin, 16f, rightMargin, 50f)
+        bgPaint.color = Color.rgb(15, 23, 42)
+        canvas.drawRoundRect(headerRect, 6f, 6f, bgPaint)
+
+        strokePaint.color = Color.rgb(2, 132, 199)
+        strokePaint.strokeWidth = 1f
+        canvas.drawRoundRect(headerRect, 6f, 6f, strokePaint)
+
         val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 18f
+            textSize = 13f
             isFakeBoldText = true
-            color = android.graphics.Color.BLACK
+            color = Color.WHITE
         }
-        val monthHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+        val year = options.selectedYear
+        canvas.drawText("CALENDARIO TURNI • PIANO ANNUALE $year", leftMargin + 14f, 37f, titlePaint)
+
+        val noteTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
             textSize = 8f
-            isFakeBoldText = true
-            color = android.graphics.Color.rgb(180, 40, 40)
-            textAlign = Paint.Align.CENTER
+            color = Color.rgb(203, 213, 225)
+            textAlign = Paint.Align.RIGHT
         }
-        val dayNumPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 6.5f
-            isFakeBoldText = true
-            color = android.graphics.Color.DKGRAY
-        }
-        val shiftTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-            textSize = 5.8f
-            color = android.graphics.Color.BLACK
-        }
-        val holidayBgPaint = Paint().apply {
-            color = android.graphics.Color.rgb(255, 220, 220)
+        val noteRight = if (options.headerNotes.isNotBlank()) options.headerNotes.take(45) else "Documento di Pianificazione Annuale"
+        canvas.drawText(noteRight, rightMargin - 14f, 37f, noteTextPaint)
+
+        // Colonne dei 12 Mesi
+        val months = listOf("Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic")
+        val gridTop = 56f
+        val colWidth = contentWidth / 12f
+        val rowHeight = 15.2f
+
+        val monthHeaderBg = Paint().apply {
+            color = Color.rgb(30, 41, 59)
             style = Paint.Style.FILL
         }
-        val linePaint = Paint().apply {
-            color = android.graphics.Color.rgb(230, 230, 235)
-            strokeWidth = 0.5f
+        val monthHeaderRect = RectF(leftMargin, gridTop, rightMargin, gridTop + 14f)
+        canvas.drawRoundRect(monthHeaderRect, 3f, 3f, monthHeaderBg)
+
+        val monthHeaderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7.5f
+            isFakeBoldText = true
+            color = Color.WHITE
+            textAlign = Paint.Align.CENTER
         }
-        val dotPaint = Paint(Paint.ANTI_ALIAS_FLAG)
-
-        val year = options.selectedYear
-        canvas.drawText(year.toString(), 35f, 40f, titlePaint)
-
-        val months = listOf("gen", "feb", "mar", "apr", "mag", "giu", "lug", "ago", "set", "ott", "nov", "dic")
-        val gridLeft = 35f
-        val gridTop = 55f
-        val colWidth = 64f
-        val rowHeight = 15f
-
-        // Intestazioni mesi
         for (m in 0 until 12) {
-            val colX = gridLeft + m * colWidth + colWidth / 2f
-            canvas.drawText(months[m], colX, gridTop + 8f, monthHeaderPaint)
+            val colX = leftMargin + m * colWidth + colWidth / 2f
+            canvas.drawText(months[m], colX, gridTop + 10f, monthHeaderPaint)
         }
 
-        // Righe per i giorni da 1 a 31
+        val cellBorderPaint = Paint().apply {
+            color = Color.rgb(226, 232, 240)
+            style = Paint.Style.STROKE
+            strokeWidth = 0.4f
+        }
+        val holidayBgPaint = Paint().apply {
+            color = Color.rgb(254, 242, 242)
+            style = Paint.Style.FILL
+        }
+        val dayNumPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 6.2f
+            isFakeBoldText = true
+            color = Color.rgb(100, 116, 139)
+        }
+        val badgeTextPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 5.8f
+            isFakeBoldText = true
+        }
+
+        // Righe per i giorni 1..31
         for (day in 1..31) {
-            val rowY = gridTop + 14f + (day - 1) * rowHeight
+            val rowY = gridTop + 16f + (day - 1) * rowHeight
 
             for (m in 0 until 12) {
                 val monthIndex = m + 1
-                val colLeft = gridLeft + m * colWidth
+                val colLeft = leftMargin + m * colWidth
+                val colRight = colLeft + colWidth
+                val cellRect = RectF(colLeft, rowY, colRight, rowY + rowHeight)
 
                 val date = try {
                     LocalDate.of(year, monthIndex, day)
@@ -419,42 +681,49 @@ object PdfGenerator {
                     val isHoliday = isSunday || ShiftRepository.isHoliday(date) != null
 
                     if (isHoliday) {
-                        canvas.drawRect(
-                            RectF(colLeft, rowY - 2f, colLeft + colWidth - 2f, rowY + rowHeight - 2f),
-                            holidayBgPaint
-                        )
+                        canvas.drawRect(cellRect, holidayBgPaint)
                     }
+                    canvas.drawRect(cellRect, cellBorderPaint)
 
                     // Numero giorno
-                    canvas.drawText(day.toString(), colLeft + 2f, rowY + 9f, dayNumPaint)
+                    val numStr = String.format(Locale.US, "%02d", day)
+                    canvas.drawText(numStr, colLeft + 2f, rowY + 10.5f, dayNumPaint)
 
-                    // Turno
+                    // Turno del giorno
                     val shifts = ShiftRepository.getShiftsForDate(date)
                     val s = shifts.firstOrNull()
                     if (s != null) {
                         val def = ShiftRepository.getShiftDefinition(s.shiftDefId)
                         if (def != null && (options.filterShiftId == null || def.id == options.filterShiftId)) {
-                            if (options.includeIcon) {
-                                dotPaint.color = (def.colorHex or 0xFF000000).toInt()
-                                canvas.drawCircle(colLeft + 16f, rowY + 7f, 2f, dotPaint)
-                            }
-                            val textX = if (options.includeIcon) colLeft + 20f else colLeft + 15f
-                            canvas.drawText(def.name.take(6), textX, rowY + 9f, shiftTextPaint)
+                            val badgeColor = (def.colorHex or 0xFF000000).toInt()
+                            bgPaint.color = badgeColor
+
+                            val pillLeft = colLeft + 12f
+                            val pillRect = RectF(pillLeft, rowY + 1.8f, colRight - 2f, rowY + rowHeight - 1.8f)
+                            canvas.drawRoundRect(pillRect, 2.5f, 2.5f, bgPaint)
+
+                            badgeTextPaint.color = getContrastingTextColor(badgeColor)
+                            canvas.drawText(def.shortCode.take(4), pillLeft + 3f, rowY + 10f, badgeTextPaint)
                         }
                     }
+                } else {
+                    // Giorno non esistente (es. 30 febbraio)
+                    canvas.drawRect(cellRect, Paint().apply { color = Color.rgb(241, 245, 249); style = Paint.Style.FILL })
+                    canvas.drawRect(cellRect, cellBorderPaint)
                 }
-                canvas.drawLine(colLeft, rowY + rowHeight - 2f, colLeft + colWidth - 2f, rowY + rowHeight - 2f, linePaint)
             }
         }
 
-        // Footer
+        // Footer Annuale
+        val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 7f
+            color = Color.rgb(100, 116, 139)
+        }
+        canvas.drawText("Calendario Turni Pro • Tabellone Annuale $year", leftMargin, 575f, footerPaint)
+
         if (options.includeLogo) {
-            val footerPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize = 8f
-                color = android.graphics.Color.rgb(100, 100, 110)
-            }
-            val logoText = "Realizzato con Calendario Turni per Android"
-            canvas.drawText(logoText, 842f - 40f - footerPaint.measureText(logoText), 565f, footerPaint)
+            val logoText = "Generato con Calendario Turni per Android"
+            canvas.drawText(logoText, rightMargin - footerPaint.measureText(logoText), 575f, footerPaint)
         }
 
         doc.finishPage(page)

@@ -1,6 +1,7 @@
 package com.turni.calendario.ui.screens
 
 import android.net.Uri
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
@@ -170,7 +171,13 @@ fun ImportShiftsScreen(
         feedbackMessage = "Analisi completata: trovate ${result.teams.size} squadre nel tabellone!"
     }
 
-    Box(modifier = Modifier.fillMaxSize()) {
+    BackHandler(onBack = onDismiss)
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .statusBarsPadding()
+    ) {
     Column(
         modifier = Modifier
             .fillMaxSize()
@@ -189,7 +196,7 @@ fun ImportShiftsScreen(
                 onClick = onDismiss,
                 shape = CircleShape,
                 color = ObsidianSurfaceContainer,
-                modifier = Modifier.size(38.dp)
+                modifier = Modifier.size(44.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
