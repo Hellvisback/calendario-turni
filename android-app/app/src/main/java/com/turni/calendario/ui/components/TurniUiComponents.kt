@@ -5,6 +5,8 @@ import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
@@ -928,143 +930,146 @@ fun DayInspectionCard(
 
             Spacer(modifier = Modifier.height(8.dp))
 
-            // SEZIONE STRAORDINARI DEDICATA (Breccia Ergonomics: controlli grandi a portata di pollice)
-            Surface(
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // RIGA 3: AZIONI RAPIDE DEL GIORNO (Trasferta al volo, Reperibilità, Straordinario)
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp),
-                shape = RoundedCornerShape(14.dp),
-                color = ObsidianSurfaceContainer.copy(alpha = 0.75f),
-                border = androidx.compose.foundation.BorderStroke(
-                    1.dp,
-                    if (dayExtra.overtimeHours > 0f) ObsidianPrimary.copy(alpha = 0.5f) else ObsidianBorderSubtle
-                )
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Column(modifier = Modifier.padding(10.dp)) {
+                // 1. TRASFERTA (Toggle istantaneo ad 1 tocco)
+                val isTrasferta = ShiftRepository.hasTrasfertaForDate(date)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isTrasferta) Color(0xFF064E3B) else ObsidianSurfaceHigh,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isTrasferta) Color(0xFF10B981) else ObsidianBorderSubtle
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .bouncyClickable {
+                            ShiftRepository.toggleDayTrasferta(date)
+                        }
+                ) {
                     Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
                     ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(
-                                imageVector = Icons.Default.Schedule,
-                                contentDescription = null,
-                                tint = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextSecondary,
-                                modifier = Modifier.size(16.dp)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = "Straordinario",
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextPrimary
-                            )
-                        }
-
-                        // Badge Ore Straordinario cliccabile per digitazione manuale con tastiera
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = if (dayExtra.overtimeHours > 0f) ObsidianPrimary.copy(alpha = 0.22f) else ObsidianSurfaceHigh,
-                            border = androidx.compose.foundation.BorderStroke(
-                                1.dp,
-                                if (dayExtra.overtimeHours > 0f) ObsidianPrimary else ObsidianBorderSubtle
-                            ),
-                            modifier = Modifier.bouncyClickable {
-                                showManualOvertimeDialog = true
-                            }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Text(
-                                    text = if (dayExtra.overtimeHours > 0f) "+${String.format(Locale.US, "%.2f", dayExtra.overtimeHours).trimEnd('0').trimEnd('.')}h" else "0.0h",
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.ExtraBold,
-                                    color = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextMuted
-                                )
-                                Spacer(modifier = Modifier.width(5.dp))
-                                Icon(
-                                    imageVector = Icons.Default.Edit,
-                                    contentDescription = "Digita a mano",
-                                    tint = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextMuted,
-                                    modifier = Modifier.size(11.dp)
-                                )
-                            }
-                        }
+                        Icon(
+                            imageVector = Icons.Default.FlightTakeoff,
+                            contentDescription = null,
+                            tint = if (isTrasferta) Color(0xFF34D399) else TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = "Trasferta",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isTrasferta) FontWeight.ExtraBold else FontWeight.Medium,
+                            color = if (isTrasferta) Color(0xFF34D399) else TextSecondary,
+                            maxLines = 1
+                        )
                     }
+                }
 
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    // Stepper con step rapidi ±1h e ±0.25h (15 min) + Tasto Calcola da Timbratura
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        OvertimeStepButton(text = "-1h", enabled = dayExtra.overtimeHours >= 1f) {
-                            val next = (dayExtra.overtimeHours - 1.0f).coerceAtLeast(0f)
-                            updateOvertime(next)
-                        }
-                        OvertimeStepButton(text = "-0.25h", enabled = dayExtra.overtimeHours > 0f) {
-                            val next = (dayExtra.overtimeHours - 0.25f).coerceAtLeast(0f)
-                            updateOvertime(next)
-                        }
-                        OvertimeStepButton(text = "+0.25h", enabled = true) {
-                            val next = dayExtra.overtimeHours + 0.25f
-                            updateOvertime(next)
-                        }
-                        OvertimeStepButton(text = "+1h", enabled = true) {
-                            val next = dayExtra.overtimeHours + 1.0f
-                            updateOvertime(next)
-                        }
-
-                        // Tasto Calcola da orario fine effettivo
-                        Surface(
-                            shape = RoundedCornerShape(8.dp),
-                            color = ObsidianSurfaceHigh,
-                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
-                            modifier = Modifier
-                                .weight(1.35f)
-                                .height(32.dp)
-                                .bouncyClickable {
-                                    if (primaryDef != null && !primaryDef.isAllDay) {
-                                        showActualEndTimeDialog = true
-                                    } else {
-                                        showManualOvertimeDialog = true
-                                    }
-                                }
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.Center
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Timer,
-                                    contentDescription = null,
-                                    tint = ObsidianPrimary,
-                                    modifier = Modifier.size(13.dp)
-                                )
-                                Spacer(modifier = Modifier.width(3.dp))
-                                Text(
-                                    text = "Calcola",
-                                    fontSize = 11.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = TextPrimary,
-                                    maxLines = 1,
-                                    softWrap = false
-                                )
+                // 2. REPERIBILITÀ (Toggle con animazione campanella)
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isOnCall) Color(0xFF78350F).copy(alpha = 0.85f) else ObsidianSurfaceHigh,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isOnCall) Color(0xFFF59E0B) else ObsidianBorderSubtle
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp)
+                        .bouncyClickable {
+                            coroutineScope.launch {
+                                bellRotation.snapTo(0f)
+                                bellRotation.animateTo(-24f, tween(40, easing = LinearEasing))
+                                bellRotation.animateTo(22f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(0f, tween(60, easing = FastOutSlowInEasing))
                             }
+                            val currentManual = dayExtra.isOnCallManual
+                            val newManual = if (currentManual == null) !isOnCall else !currentManual
+                            ShiftRepository.setDayOnCallManual(date, newManual)
                         }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = if (isOnCall) Color(0xFFFBBF24) else TextMuted,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .graphicsLayer {
+                                    rotationZ = bellRotation.value
+                                    transformOrigin = TransformOrigin(0.5f, 0.1f)
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(5.dp))
+                        Text(
+                            text = if (isOnCall) "Reperibile" else "Reperibilità",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (isOnCall) FontWeight.ExtraBold else FontWeight.Medium,
+                            color = if (isOnCall) Color(0xFFFBBF24) else TextSecondary,
+                            maxLines = 1
+                        )
+                    }
+                }
+
+                // 3. STRAORDINARIO (Pillola dedicata che apre il dialog completo)
+                val hasOt = dayExtra.overtimeHours > 0f
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (hasOt) ObsidianPrimary.copy(alpha = 0.22f) else ObsidianSurfaceHigh,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (hasOt) ObsidianPrimary else ObsidianBorderSubtle
+                    ),
+                    modifier = Modifier
+                        .weight(1.05f)
+                        .height(42.dp)
+                        .bouncyClickable {
+                            showManualOvertimeDialog = true
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Schedule,
+                            contentDescription = null,
+                            tint = if (hasOt) ObsidianPrimary else TextMuted,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(4.dp))
+                        Text(
+                            text = if (hasOt) "+${String.format(Locale.US, "%.2f", dayExtra.overtimeHours).trimEnd('0').trimEnd('.')}h" else "Straord.",
+                            fontSize = 11.5.sp,
+                            fontWeight = if (hasOt) FontWeight.ExtraBold else FontWeight.Medium,
+                            color = if (hasOt) ObsidianPrimary else TextSecondary,
+                            maxLines = 1
+                        )
                     }
                 }
             }
 
-            Spacer(modifier = Modifier.height(7.dp))
+            Spacer(modifier = Modifier.height(8.dp))
 
-            // SEZIONE NOTE DEL GIORNO
+            // RIGA 4: SEZIONE NOTE & TAG DEL GIORNO (Formazione, Condotta, Visite...)
             Surface(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -1080,7 +1085,7 @@ fun DayInspectionCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .padding(horizontal = 11.dp, vertical = 8.dp),
+                            .padding(horizontal = 11.dp, vertical = 9.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.SpaceBetween
                     ) {
@@ -1092,12 +1097,13 @@ fun DayInspectionCard(
                                 imageVector = Icons.Default.EditNote,
                                 contentDescription = null,
                                 tint = Color(0xFF38BDF8),
-                                modifier = Modifier.size(17.dp)
+                                modifier = Modifier.size(18.dp)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = dayExtra.notes,
                                 fontSize = 12.sp,
+                                fontWeight = FontWeight.Medium,
                                 color = TextPrimary,
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis
@@ -1106,32 +1112,32 @@ fun DayInspectionCard(
                         Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                             Box(
                                 modifier = Modifier
-                                    .size(26.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .background(ObsidianSurfaceHigh)
-                                    .clickable { showNoteDialog = true },
+                                    .bouncyClickable { showNoteDialog = true },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Edit,
                                     contentDescription = "Modifica nota",
                                     tint = TextSecondary,
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                             Box(
                                 modifier = Modifier
-                                    .size(26.dp)
+                                    .size(28.dp)
                                     .clip(CircleShape)
                                     .background(Color(0xFFEF4444).copy(alpha = 0.18f))
-                                    .clickable { ShiftRepository.setDayNotes(date, "") },
+                                    .bouncyClickable { ShiftRepository.setDayNotes(date, "") },
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
                                     imageVector = Icons.Default.Delete,
                                     contentDescription = "Elimina nota",
                                     tint = Color(0xFFEF4444),
-                                    modifier = Modifier.size(13.dp)
+                                    modifier = Modifier.size(14.dp)
                                 )
                             }
                         }
@@ -1140,22 +1146,22 @@ fun DayInspectionCard(
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .clickable { showNoteDialog = true }
-                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                            .bouncyClickable { showNoteDialog = true }
+                            .padding(horizontal = 12.dp, vertical = 10.dp),
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
                             imageVector = Icons.Default.AddComment,
                             contentDescription = null,
-                            tint = TextMuted,
-                            modifier = Modifier.size(15.dp)
+                            tint = Color(0xFF38BDF8).copy(alpha = 0.7f),
+                            modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
-                            text = "+ Aggiungi nota per questo giorno",
+                            text = "+ Note o tag del giorno (Formazione, Condotta...)",
                             fontSize = 12.sp,
-                            fontWeight = FontWeight.Medium,
-                            color = TextMuted
+                            fontWeight = FontWeight.SemiBold,
+                            color = TextSecondary
                         )
                     }
                 }
@@ -1163,156 +1169,106 @@ fun DayInspectionCard(
 
             Spacer(modifier = Modifier.height(10.dp))
 
-            // RIGA 3: REPERIBILITÀ GIORNALIERA (Campanella vibrante) + TASTI AZIONE GRANDI E COMODI
+            // RIGA 5: TASTI AZIONE PRINCIPALI: Cambia Turno / + Altro Turno
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 14.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
                 verticalAlignment = Alignment.CenterVertically
             ) {
-                // Toggle Reperibilità GIORNALIERA con campanella che vibra e oscilla
-                Surface(
-                    shape = RoundedCornerShape(12.dp),
-                    color = if (isOnCall) Color(0xFFF59E0B).copy(alpha = 0.25f) else ObsidianSurfaceHigh,
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.dp,
-                        if (isOnCall) Color(0xFFF59E0B) else ObsidianBorderSubtle
-                    ),
-                    modifier = Modifier
-                        .height(40.dp)
-                        .bouncyClickable {
-                            coroutineScope.launch {
-                                bellRotation.snapTo(0f)
-                                bellRotation.animateTo(-24f, tween(40, easing = LinearEasing))
-                                bellRotation.animateTo(22f, tween(45, easing = LinearEasing))
-                                bellRotation.animateTo(-16f, tween(45, easing = LinearEasing))
-                                bellRotation.animateTo(14f, tween(45, easing = LinearEasing))
-                                bellRotation.animateTo(-8f, tween(45, easing = LinearEasing))
-                                bellRotation.animateTo(6f, tween(45, easing = LinearEasing))
-                                bellRotation.animateTo(0f, tween(60, easing = FastOutSlowInEasing))
-                            }
-                            val currentManual = dayExtra.isOnCallManual
-                            val newManual = if (currentManual == null) !isOnCall else !currentManual
-                            ShiftRepository.setDayOnCallManual(date, newManual)
-                        }
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 12.dp),
-                        verticalAlignment = Alignment.CenterVertically
+                if (shifts.isEmpty()) {
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = ObsidianPrimary.copy(alpha = 0.22f),
+                        border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(42.dp)
+                            .bouncyClickable(onClick = onOpenEdit)
                     ) {
-                        Icon(
-                            Icons.Default.NotificationsActive,
-                            contentDescription = null,
-                            tint = if (isOnCall) Color(0xFFFBBF24) else TextMuted,
-                            modifier = Modifier
-                                .size(16.dp)
-                                .graphicsLayer {
-                                    rotationZ = bellRotation.value
-                                    transformOrigin = TransformOrigin(0.5f, 0.1f)
-                                }
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (isOnCall) "Reperibile" else "Reperibilità",
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isOnCall) Color(0xFFFBBF24) else TextSecondary
-                        )
+                        Row(
+                            modifier = Modifier.padding(horizontal = 14.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = null,
+                                tint = ObsidianPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Aggiungi Turno",
+                                fontSize = 13.5.sp,
+                                fontWeight = FontWeight.ExtraBold,
+                                color = ObsidianPrimary
+                            )
+                        }
                     }
-                }
-
-                // Tasti Azione: Cambia / + Aggiungi Turno (Ergonomici con altezza 40dp e icone nitide)
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    if (shifts.isEmpty()) {
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianPrimary.copy(alpha = 0.22f),
-                            border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .height(40.dp)
-                                .bouncyClickable(onClick = onOpenEdit)
+                } else {
+                    // Tasto Cambia Turno (Sostituisci)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = ObsidianPrimary.copy(alpha = 0.22f),
+                        border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .bouncyClickable(onClick = onOpenEdit)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 14.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = ObsidianPrimary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Aggiungi Turno",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ObsidianPrimary
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.SwapHoriz,
+                                contentDescription = null,
+                                tint = ObsidianPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Cambia Turno",
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ObsidianPrimary,
+                                maxLines = 1
+                            )
                         }
-                    } else {
-                        // Tasto Cambia Turno (Sostituisci)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianPrimary.copy(alpha = 0.22f),
-                            border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
-                            modifier = Modifier
-                                .height(40.dp)
-                                .bouncyClickable(onClick = onOpenEdit)
-                        ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 12.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.SwapHoriz,
-                                    contentDescription = null,
-                                    tint = ObsidianPrimary,
-                                    modifier = Modifier.size(16.dp)
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                                Text(
-                                    text = "Cambia",
-                                    fontSize = 12.5.sp,
-                                    fontWeight = FontWeight.Bold,
-                                    color = ObsidianPrimary
-                                )
-                            }
-                        }
+                    }
 
-                        // Tasto + Aggiungi Turno (Aggiunge un altro turno in parallelo sul giorno)
-                        Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = ObsidianSurfaceHigh,
-                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                            modifier = Modifier
-                                .height(40.dp)
-                                .bouncyClickable(onClick = effectiveAddShift)
+                    // Tasto Aggiungi Altro Turno (Aggiunge un altro turno in parallelo allo stesso giorno)
+                    Surface(
+                        shape = RoundedCornerShape(12.dp),
+                        color = ObsidianSurfaceHigh,
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                        modifier = Modifier
+                            .weight(1f)
+                            .height(42.dp)
+                            .bouncyClickable(onClick = effectiveAddShift)
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.Center
                         ) {
-                            Row(
-                                modifier = Modifier.padding(horizontal = 10.dp),
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = Icons.Default.Add,
-                                    contentDescription = null,
-                                    tint = TextPrimary,
-                                    modifier = Modifier.size(15.dp)
-                                )
-                                Spacer(modifier = Modifier.width(4.dp))
-                                Text(
-                                    text = "Aggiungi",
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = TextPrimary,
-                                    maxLines = 1
-                                )
-                            }
+                            Icon(
+                                imageVector = Icons.Default.AddCircleOutline,
+                                contentDescription = null,
+                                tint = TextPrimary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Altro Turno",
+                                fontSize = 12.5.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextPrimary,
+                                maxLines = 1
+                            )
                         }
                     }
                 }
@@ -1576,7 +1532,42 @@ fun ManualOvertimeDialog(
 
                 Spacer(modifier = Modifier.height(10.dp))
 
-                Text("SCORCIATOIE RAPIDE", color = TextMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Text("REGOLAZIONE RAPIDA", color = TextMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(-1.0f, -0.25f, 0.25f, 1.0f).forEach { step ->
+                        val isNeg = step < 0f
+                        val label = if (step > 0f) "+${step.toString().replace(".0", "")}h" else "${step.toString().replace(".0", "")}h"
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .weight(1f)
+                                .bouncyClickable {
+                                    val cur = textValue.toFloatOrNull() ?: 0f
+                                    val next = (cur + step).coerceAtLeast(0f)
+                                    textValue = if (next == 0f) "" else if (next % 1f == 0f) next.toInt().toString() else String.format(Locale.US, "%.2f", next).trimEnd('0').trimEnd('.')
+                                }
+                        ) {
+                            Text(
+                                text = label,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (isNeg) Color(0xFFEF4444) else ObsidianPrimary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("PRESET ORE", color = TextMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
                 Spacer(modifier = Modifier.height(6.dp))
                 Row(
                     modifier = Modifier.fillMaxWidth(),
@@ -1638,6 +1629,16 @@ fun DayNoteDialog(
     onSave: (String) -> Unit
 ) {
     var noteText by remember { mutableStateOf(initialNote) }
+    val quickTags = remember {
+        listOf(
+            "🎓 Formazione",
+            "🚆 Condotta / Guida",
+            "🏢 Visita Medica",
+            "💻 Smart Working",
+            "⚠️ Ritardo / Anomalia",
+            "🔄 Cambio Turno"
+        )
+    }
 
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1645,21 +1646,56 @@ fun DayNoteDialog(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Icon(Icons.Default.EditNote, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(22.dp))
                 Spacer(modifier = Modifier.width(8.dp))
-                Text("Nota del Giorno", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
+                Text("Nota & Tag del Giorno", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
             }
         },
         text = {
             Column(modifier = Modifier.fillMaxWidth()) {
                 Text(
-                    text = "Aggiungi un appunto o promemoria visibile su questo giorno.",
+                    text = "Aggiungi un appunto o tocca un tag rapido per inserirlo al volo:",
                     color = TextSecondary,
                     fontSize = 12.sp
                 )
+                Spacer(modifier = Modifier.height(10.dp))
+
+                // Riga di tag rapidi a 1 tocco
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    quickTags.forEach { tag ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFF38BDF8).copy(alpha = 0.5f)),
+                            modifier = Modifier.bouncyClickable {
+                                noteText = if (noteText.isBlank()) {
+                                    tag
+                                } else if (!noteText.contains(tag)) {
+                                    "$noteText • $tag"
+                                } else {
+                                    noteText
+                                }
+                            }
+                        ) {
+                            Text(
+                                text = tag,
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = Color(0xFF38BDF8),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+
                 Spacer(modifier = Modifier.height(12.dp))
                 OutlinedTextField(
                     value = noteText,
                     onValueChange = { input: String -> noteText = input.take(200) },
-                    label = { Text("Testo della nota") },
+                    label = { Text("Testo della nota o tag") },
                     maxLines = 4,
                     shape = RoundedCornerShape(12.dp),
                     modifier = Modifier.fillMaxWidth()

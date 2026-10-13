@@ -1176,6 +1176,17 @@ object ShiftRepository {
         dayExtraInfo[date] = current.copy(isTrasferta = isTrasferta)
     }
 
+    fun toggleDayTrasferta(date: LocalDate) {
+        val current = hasTrasfertaForDate(date)
+        val target = !current
+        setDayTrasferta(date, target)
+        val list = calendarShifts[date]
+        if (!list.isNullOrEmpty()) {
+            val newList = list.map { it.copy(isTrasferta = target) }.toMutableList()
+            calendarShifts[date] = newList
+        }
+    }
+
     fun setDayOnCallManual(date: LocalDate, isOnCall: Boolean?) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(isOnCallManual = isOnCall)

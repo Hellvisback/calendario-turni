@@ -64,9 +64,9 @@ data class CalendarDayInfo(
 )
 
 enum class CalendarEditMode(val label: String, val icon: ImageVector) {
-    REPLACE("Sostituisci", Icons.Default.SwapHoriz),
-    ADD("+ Turno", Icons.Default.Add),
-    RANGE("Intervallo", Icons.Default.DateRange),
+    REPLACE("Cambia", Icons.Default.SwapHoriz),
+    ADD("Più Turni", Icons.Default.AddCircleOutline),
+    RANGE("Periodo", Icons.Default.DateRange),
     ROTATION("Rotazione", Icons.Default.Loop)
 }
 
@@ -439,7 +439,7 @@ fun CalendarScreen(
                             CalendarEditMode.RANGE -> {
                                 if (rangeStartDate == null) {
                                     rangeStartDate = dayInfo.date
-                                    actionFeedback = ActionFeedback("Inizio impostato • Tocca fine", isDestructive = false)
+                                    actionFeedback = ActionFeedback("Inizio periodo impostato • Tocca fine", isDestructive = false)
                                 } else {
                                     val start = rangeStartDate ?: dayInfo.date
                                     val realStart = if (start.isBefore(dayInfo.date)) start else dayInfo.date
@@ -450,10 +450,10 @@ fun CalendarScreen(
                                             ShiftRepository.clearDayShifts(d)
                                             d = d.plusDays(1)
                                         }
-                                        actionFeedback = ActionFeedback("Turni rimossi", isDestructive = true)
+                                        actionFeedback = ActionFeedback("Turni rimossi dal periodo", isDestructive = true)
                                     } else {
                                         ShiftRepository.applyShiftRange(selectedPaintShiftId, realStart, realEnd)
-                                        actionFeedback = ActionFeedback("Intervallo inserito", isDestructive = false)
+                                        actionFeedback = ActionFeedback("Turni applicati al periodo", isDestructive = false)
                                     }
                                     rangeStartDate = null
                                 }
@@ -685,7 +685,7 @@ fun CalendarScreen(
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = "Seleziona la fine",
+                                text = if (isRange) "Tocca fine periodo" else "Seleziona la fine",
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 13.5.sp
@@ -1083,7 +1083,7 @@ fun DayCellView(
     val dayExtra = ShiftRepository.getDayExtraInfo(dayInfo.date)
 
     val cellBackground = when {
-        isCycleStart -> Color(0xFF0284C7)
+        isCycleStart -> Color(0xFF0C243B)
         isSelected && isDayOnCall -> Color(0xFF3B2507)
         isSelected -> ObsidianSurfaceHighest
         isToday && isDayOnCall -> Color(0xFF2E200C)
@@ -1118,7 +1118,7 @@ fun DayCellView(
         isCycleStart -> Color(0xFF38BDF8)
         isSelected -> ObsidianBorderActive
         isDayOnCall -> Color(0xFFF59E0B).copy(alpha = 0.92f)
-        isCoveredByCycle -> Color(0xFF0284C7).copy(alpha = 0.55f)
+        isCoveredByCycle -> Color(0xFF0284C7).copy(alpha = 0.65f)
         isToday -> ObsidianPrimary.copy(alpha = 0.6f)
         !dayInfo.isCurrentMonth -> Color(0x12FFFFFF)
         shifts.isEmpty() -> ObsidianBorderSubtle
@@ -1173,14 +1173,14 @@ fun DayCellView(
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(5.dp))
-                                .background(Color.White)
+                                .background(Color(0xFF0284C7))
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
                                 text = dayInfo.date.dayOfMonth.toString(),
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color(0xFF0284C7)
+                                color = Color.White
                             )
                         }
                     } else if (isSelected) {
@@ -1211,7 +1211,7 @@ fun DayCellView(
                     }
 
                     // Badge del ciclo di rotazione (2, 3, 4...) visibile e leggibile
-                    if (cycleMultiplierText != null && dayInfo.isCurrentMonth) {
+                    if (cycleMultiplierText != null && dayInfo.isCurrentMonth && !isCycleStart) {
                         Surface(
                             shape = RoundedCornerShape(3.dp),
                             color = Color(0xFF0284C7),
@@ -1233,21 +1233,23 @@ fun DayCellView(
                 val hasOvertime = dayExtra.overtimeHours > 0f && dayInfo.isCurrentMonth
                 val hasNotes = dayExtra.notes.isNotBlank() && dayInfo.isCurrentMonth
 
-                // Indicatori compatti di Reperibilità, Straordinari, Trasferta e Note (sempre su riga singola senza wrap)
+                // Indicatori compatti di Reperibilità, Straordinari, Trasferta e Note (sempre allineati senza scombinare la larghezza)
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(1.5.dp)
+                    horizontalArrangement = Arrangement.spacedBy(1.dp),
+                    modifier = Modifier.weight(1f, fill = false)
                 ) {
                     if (hasOvertime) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(2.5.dp))
                                 .background(ObsidianPrimary.copy(alpha = 0.25f))
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
                         ) {
+                            val otText = if (dayExtra.overtimeHours % 1f == 0f) "${dayExtra.overtimeHours.toInt()}h" else "${String.format(java.util.Locale.US, "%.1f", dayExtra.overtimeHours)}h"
                             Text(
-                                text = "+${if (dayExtra.overtimeHours % 1f == 0f) dayExtra.overtimeHours.toInt().toString() else String.format(java.util.Locale.US, "%.1f", dayExtra.overtimeHours)}h",
-                                fontSize = 6.sp,
+                                text = "+$otText",
+                                fontSize = 5.8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ObsidianPrimary,
                                 maxLines = 1,
@@ -1259,14 +1261,14 @@ fun DayCellView(
                     if (hasReperibilita) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(2.5.dp))
                                 .background(Color(0xFFF59E0B))
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
                         ) {
                             Text(
-                                text = "REP",
-                                fontSize = 6.2.sp,
-                                fontWeight = FontWeight.ExtraBold,
+                                text = "R",
+                                fontSize = 5.8.sp,
+                                fontWeight = FontWeight.Black,
                                 color = Color(0xFF1E1300),
                                 maxLines = 1,
                                 softWrap = false
@@ -1277,13 +1279,13 @@ fun DayCellView(
                     if (hasTrasferta) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(3.dp))
+                                .clip(RoundedCornerShape(2.5.dp))
                                 .background(Color(0xFF10B981).copy(alpha = 0.25f))
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
+                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
                         ) {
                             Text(
                                 text = "TR",
-                                fontSize = 6.2.sp,
+                                fontSize = 5.8.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = Color(0xFF34D399),
                                 maxLines = 1,
@@ -1295,7 +1297,7 @@ fun DayCellView(
                     if (hasNotes) {
                         Box(
                             modifier = Modifier
-                                .size(4.dp)
+                                .size(3.5.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFF38BDF8))
                         )
@@ -1305,8 +1307,45 @@ fun DayCellView(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // RENDERING UNIFORME DI TUTTI I TURNI DEL GIORNO (fino a 3 visibili contemporaneamente)
-            if (shifts.isNotEmpty()) {
+            // ANTEPRIMA ROTAZIONE ATTIVA (HA LA PRECEDENZA PER MOSTRARE IL PROSPETTO ESATTO DEL CICLO!)
+            val isRotationPreviewActive = (isCycleStart || isCoveredByCycle) && activeRotation != null && activeRotation.daySequence.isNotEmpty()
+
+            if (isRotationPreviewActive) {
+                val previewSeqIdx = (daysBetween % activeRotation!!.daySequence.size.coerceAtLeast(1)).toInt()
+                val previewDefId = activeRotation.daySequence.getOrNull(previewSeqIdx)
+                val previewDef = previewDefId?.let { ShiftRepository.getShiftDefinition(it) }
+                if (previewDef != null) {
+                    if (isCycleStart) {
+                        // Giorno 1 d'inizio rotazione: BADGE COMPLETO E VIVIDO!
+                        ShiftCellBadge(
+                            def = previewDef,
+                            isModified = false,
+                            customStartTime = null,
+                            compactMode = false
+                        )
+                    } else {
+                        // Giorni successivi del ciclo: anteprima chiara e ad alto contrasto
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth(0.94f)
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(previewDef.color.copy(alpha = 0.35f))
+                                .border(1.dp, previewDef.color.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                                .padding(vertical = 1.2.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = getCompactShiftCode(previewDef.id, previewDef.shortCode),
+                                fontSize = 8.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+                }
+            } else if (shifts.isNotEmpty()) {
                 val displayCount = if (shifts.size <= 3) shifts.size else 3
                 val displayShifts = shifts.take(displayCount)
                 val isMulti = shifts.size >= 2
@@ -1366,29 +1405,6 @@ fun DayCellView(
                                 color = Color.White
                             )
                         }
-                    }
-                }
-            } else if ((isCycleStart || isCoveredByCycle) && activeRotation != null && activeRotation.daySequence.isNotEmpty()) {
-                // Anteprima visiva del turno programmato dal ciclo
-                val previewSeqIdx = (daysBetween % activeRotation.daySequence.size.coerceAtLeast(1)).toInt()
-                val previewDefId = activeRotation.daySequence.getOrNull(previewSeqIdx)
-                val previewDef = previewDefId?.let { ShiftRepository.getShiftDefinition(it) }
-                if (previewDef != null) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(0.92f)
-                            .clip(RoundedCornerShape(4.dp))
-                            .background(previewDef.color.copy(alpha = 0.20f))
-                            .border(0.6.dp, previewDef.color.copy(alpha = 0.45f), RoundedCornerShape(4.dp))
-                            .padding(vertical = 1.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = getCompactShiftCode(previewDef.id, previewDef.shortCode),
-                            fontSize = 7.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = previewDef.color.copy(alpha = 0.85f)
-                        )
                     }
                 }
             }
@@ -1879,8 +1895,8 @@ fun PaintShiftPaletteBar(
                     val isCurrentMode = editMode == mode
                     val shortLabel = when (mode) {
                         CalendarEditMode.REPLACE -> "Cambia"
-                        CalendarEditMode.ADD -> "+ Turno"
-                        CalendarEditMode.RANGE -> "Intervallo"
+                        CalendarEditMode.ADD -> "Più Turni"
+                        CalendarEditMode.RANGE -> "Periodo"
                         CalendarEditMode.ROTATION -> "Rotazione"
                     }
                     Surface(
