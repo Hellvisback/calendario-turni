@@ -130,3 +130,15 @@ Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\
 - Codice, classi, metodi, variabili e commenti nel codice in **inglese**.
 - Non rimuovere mai o rompere funzionalità esistenti: applicare modifiche chirurgiche con `replace_file_content`.
 - Mantenere sempre aggiornato l'APK sul percorso cloud accessibile all'utente.
+
+---
+
+## 6. Storico Recente e Milestones
+
+### Milestone `c528cf3` - Overhaul Importazione Turni (Excel, CSV, PDF, Testo)
+- **Sanitizzazione & Parser Universale (`NgeniaTurniParser.kt`)**: Introdotta classe `TextImportSanitizer` per ripulire caratteri binari/nulli e decomprimere stream zlib (`Inflater`) da PDF FlateDecode, oltre a parser resiliente per schemi generici.
+- **UI Unificata a Monte (`ImportShiftsScreen.kt`)**: Rimozione definitiva di "Carica esempio", raggruppamento in un'unica box di selezione file, testo modificabile e ricerca nominativo a monte per evidenziare e selezionare direttamente i turni del lavoratore.
+- **Stellina Predefinito Toggleabile & Micro-animazione**: Stellina a 2 stati (click = predefinito, ri-click = revoca neutra), eliminazione etichetta testuale ridondante e micro-animazione elastica spring sull'icona.
+- **Azioni & Salvaguardia Dati**: Sostituzione azioni con "Salva nel catalogo" e "Modifica", con nota informativa e dialog modale di avviso prima di abbandonare la schermata (*"Stai per uscire da questa schermata per passare a quella di modifica, perderai queste informazioni"*).
+- **Test & Validazione**: 31/31 unit test superati al 100%, compilazione `assembleDebug` verde, verificata dal vivo su Realme 8 Pro (`cb08bc57`) e APK rilasciato su OneDrive.
+
