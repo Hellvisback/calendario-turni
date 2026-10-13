@@ -1,0 +1,1770 @@
+package com.turni.calendario.ui.components
+
+import androidx.compose.animation.*
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.*
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.composed
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.TransformOrigin
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.vector.ImageVector
+import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.turni.calendario.model.ShiftDefinition
+import com.turni.calendario.repository.ShiftRepository
+import com.turni.calendario.ui.theme.*
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
+import java.time.Duration
+import java.time.LocalDate
+import java.time.LocalTime
+import java.time.format.TextStyle
+import java.util.Locale
+
+/**
+ * Pennello di Rifrazione Cromatica e Dispersione Prismatica
+ * Simula la dispersione fisica della luce nel cristallo satinato:
+ * ingresso ciano brillante, cresta speculare bianca, dispersione violetto e uscita magenta.
+ */
+fun prismaticRefractionBrush(
+    highlightColor: Color = Color(0xFF38BDF8),
+    dispersionExit: Color = Color(0xFFEC4899)
+): Brush {
+    return Brush.linearGradient(
+        listOf(
+            highlightColor.copy(alpha = 0.95f),
+            Color(0xEEFFFFFF),
+            Color(0x80818CF8),
+            Color(0x25FFFFFF),
+            dispersionExit.copy(alpha = 0.65f)
+        ),
+        start = androidx.compose.ui.geometry.Offset(0f, 0f),
+        end = androidx.compose.ui.geometry.Offset(1000f, 500f)
+    )
+}
+
+/**
+ * Versione memorizzata del pennello di rifrazione per evitare riallocazioni
+ */
+@Composable
+fun rememberPrismaticRefractionBrush(
+    highlightColor: Color = Color(0xFF38BDF8),
+    dispersionExit: Color = Color(0xFFEC4899)
+): Brush {
+    return remember(highlightColor, dispersionExit) {
+        prismaticRefractionBrush(highlightColor, dispersionExit)
+    }
+}
+
+/**
+ * Modificatore di Feedback Tattile Elastico
+ * Combina micro-compressione elastica (0.92f), vibrazione aptica istantanea
+ * e rimbalzo morbido progressivo ad alte prestazioni.
+ */
+fun Modifier.bouncyClickable(
+    enabled: Boolean = true,
+    onClick: () -> Unit
+): Modifier = composed {
+    val haptic = androidx.compose.ui.platform.LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.92f else 1.0f,
+        animationSpec = remember {
+            spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        }
+    )
+
+    this
+        .scale(scale)
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = enabled,
+            onClick = {
+                try {
+                    haptic.performHapticFeedback(androidx.compose.ui.hapticfeedback.HapticFeedbackType.TextHandleMove)
+                } catch (_: Exception) {}
+                onClick()
+            }
+        )
+}
+
+/**
+ * Contenitore Fluid Glass con Rifrazione Ottica
+ * Include:
+ * - Bordo prismatico a rifrazione cromatica multi-strato
+ * - Corpo in cristallo traslucido calibrato per OLED scuro
+ * - Caustiche interne di diffusione e cresta speculare ultralucida
+ * - Shader e gradienti memorizzati per azzerare il carico di ricomposizione
+ */
+@Composable
+fun FluidGlassContainer(
+    modifier: Modifier = Modifier,
+    shape: androidx.compose.ui.graphics.Shape = RoundedCornerShape(22.dp),
+    shadowElevation: androidx.compose.ui.unit.Dp = 18.dp,
+    highlightColor: Color = Color(0xFF38BDF8),
+    content: @Composable BoxScope.() -> Unit
+) {
+    val refractionBrush = rememberPrismaticRefractionBrush(highlightColor)
+    val bodyGradient = remember {
+        Brush.verticalGradient(
+            listOf(
+                Color(0xF6111B2C), // Cristallo satinato opaco scuro
+                Color(0xFA0A0E18)  // Fondo ossidiana profondo
+            )
+        )
+    }
+    val causticGradient = remember(highlightColor) {
+        Brush.radialGradient(
+            listOf(
+                highlightColor.copy(alpha = 0.22f),
+                Color.Transparent
+            ),
+            radius = 360f
+        )
+    }
+    val specularGradient = remember(highlightColor) {
+        Brush.horizontalGradient(
+            listOf(
+                Color.Transparent,
+                highlightColor.copy(alpha = 0.90f),
+                Color(0xF5FFFFFF),
+                Color(0xFFEC4899).copy(alpha = 0.80f),
+                Color.Transparent
+            )
+        )
+    }
+
+    Surface(
+        modifier = modifier
+            .shadow(
+                elevation = shadowElevation,
+                shape = shape,
+                spotColor = highlightColor.copy(alpha = 0.40f),
+                ambientColor = Color(0xFFEC4899).copy(alpha = 0.18f)
+            )
+            .clip(shape)
+            .border(
+                width = 1.3.dp,
+                brush = refractionBrush,
+                shape = shape
+            ),
+        color = Color.Transparent
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(bodyGradient)
+        ) {
+            // Caustica interna di diffusione luce
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+                    .background(causticGradient)
+            )
+
+            // Velo di dispersione cromatica diagonale
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(
+                        Brush.linearGradient(
+                            listOf(
+                                Color(0x14FFFFFF),
+                                Color.Transparent,
+                                highlightColor.copy(alpha = 0.08f),
+                                Color.Transparent
+                            ),
+                            start = androidx.compose.ui.geometry.Offset(0f, 0f),
+                            end = androidx.compose.ui.geometry.Offset(600f, 400f)
+                        )
+                    )
+            )
+
+            // Cresta speculare orizzontale in cima
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(1.3.dp)
+                    .background(specularGradient)
+            )
+
+            content()
+        }
+    }
+}
+
+/**
+ * Modello e HUD per Feedback Azioni Utente
+ */
+data class ActionFeedback(
+    val message: String,
+    val isDestructive: Boolean = false,
+    val timestamp: Long = System.currentTimeMillis()
+)
+
+private data class Particle(
+    val angle: Double,
+    val distance: Float,
+    val size: Float,
+    val color: Color
+)
+
+@Composable
+fun ParticleBurstEffect(
+    triggerKey: Long,
+    isDestructive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    val animProgress = remember(triggerKey) { androidx.compose.animation.core.Animatable(0f) }
+
+    val particles = remember(triggerKey) {
+        val random = java.util.Random(triggerKey)
+        val palette = if (isDestructive) {
+            listOf(
+                Color(0xFFEF4444),
+                Color(0xFFF43F5E),
+                Color(0xFFFB923C),
+                Color(0xFFFCA5A5),
+                Color.White
+            )
+        } else {
+            listOf(
+                Color(0xFF10B981),
+                Color(0xFF38BDF8),
+                Color(0xFFFBBF24),
+                Color(0xFF34D399),
+                Color(0xFFEC4899),
+                Color.White
+            )
+        }
+        List(28) {
+            val angle = random.nextDouble() * 2 * Math.PI
+            val distance = (15f + random.nextFloat() * 45f)
+            val size = (2.2f + random.nextFloat() * 3.0f)
+            val color = palette[random.nextInt(palette.size)]
+            Particle(angle, distance, size, color)
+        }
+    }
+
+    LaunchedEffect(triggerKey) {
+        animProgress.snapTo(0f)
+        animProgress.animateTo(
+            targetValue = 1f,
+            animationSpec = androidx.compose.animation.core.tween(
+                durationMillis = 650,
+                easing = androidx.compose.animation.core.FastOutSlowInEasing
+            )
+        )
+    }
+
+    val progress = animProgress.value
+    if (progress in 0.001f..0.999f) {
+        androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
+            val center = this.center
+            val alpha = (1f - progress).coerceIn(0f, 1f)
+            particles.forEach { p ->
+                val dist = p.distance * progress * density
+                val px = center.x + (Math.cos(p.angle) * dist).toFloat()
+                val py = center.y + (Math.sin(p.angle) * dist).toFloat()
+                val radius = (p.size * (1f - progress * 0.40f) * density).coerceAtLeast(1f)
+
+                drawCircle(
+                    color = p.color.copy(alpha = alpha),
+                    radius = radius,
+                    center = androidx.compose.ui.geometry.Offset(px, py)
+                )
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@Composable
+fun MagicalActionFeedbackHUD(
+    feedback: ActionFeedback?,
+    onDismiss: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    LaunchedEffect(feedback?.timestamp) {
+        if (feedback != null) {
+            kotlinx.coroutines.delay(2800)
+            onDismiss()
+        }
+    }
+
+    AnimatedVisibility(
+        visible = feedback != null,
+        enter = slideInVertically(
+            initialOffsetY = { -it - 80 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        ) + scaleIn(
+            initialScale = 0.85f,
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioMediumBouncy,
+                stiffness = Spring.StiffnessMediumLow
+            )
+        ) + fadeIn(animationSpec = tween(180)),
+        exit = slideOutVertically(
+            targetOffsetY = { -it - 80 },
+            animationSpec = spring(
+                dampingRatio = Spring.DampingRatioNoBouncy,
+                stiffness = Spring.StiffnessMedium
+            )
+        ) + scaleOut(
+            targetScale = 0.85f,
+            animationSpec = tween(220)
+        ) + fadeOut(animationSpec = tween(200)),
+        modifier = modifier
+    ) {
+        if (feedback != null) {
+            val isDestructive = feedback.isDestructive
+            val primaryGlow = if (isDestructive) Color(0xFFEF4444) else Color(0xFF10B981)
+            val secondaryGlow = if (isDestructive) Color(0xFFF43F5E) else Color(0xFF38BDF8)
+            val containerBg = if (isDestructive) Color(0xF22A0A10) else Color(0xF2062418)
+
+            val shakeAnim = remember(feedback.timestamp) { androidx.compose.animation.core.Animatable(0f) }
+
+            LaunchedEffect(feedback.timestamp) {
+                if (isDestructive) {
+                    shakeAnim.snapTo(0f)
+                    shakeAnim.animateTo(
+                        targetValue = 1f,
+                        animationSpec = androidx.compose.animation.core.keyframes {
+                            durationMillis = 350
+                            0.0f at 0
+                            -9.0f at 50
+                            8.0f at 100
+                            -5.0f at 160
+                            4.0f at 220
+                            -2.0f at 280
+                            0.0f at 350
+                        }
+                    )
+                }
+            }
+
+            val shakeOffset = if (isDestructive) shakeAnim.value else 0f
+
+            Box(
+                modifier = Modifier
+                    .offset(x = shakeOffset.dp)
+                    .padding(horizontal = 16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                // Pillola compatta ed elegante: definisce la dimensione naturale stabile
+                Surface(
+                    shape = RoundedCornerShape(24.dp),
+                    color = containerBg,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.2.dp,
+                        Brush.horizontalGradient(
+                            listOf(primaryGlow, Color.White.copy(alpha = 0.85f), secondaryGlow)
+                        )
+                    ),
+                    shadowElevation = 14.dp
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(CircleShape)
+                                .background(primaryGlow.copy(alpha = 0.28f))
+                                .border(1.dp, primaryGlow.copy(alpha = 0.85f), CircleShape),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Icon(
+                                imageVector = if (isDestructive) Icons.Default.DeleteForever else Icons.Default.Check,
+                                contentDescription = null,
+                                tint = if (isDestructive) Color(0xFFFCA5A5) else Color(0xFFA7F3D0),
+                                modifier = Modifier.size(14.dp)
+                            )
+                        }
+
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        Text(
+                            text = feedback.message,
+                            color = Color.White,
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+                }
+
+                // Coriandoli / Particelle scintillanti in overlay centrato: NON alterano mai la posizione né l'altezza
+                ParticleBurstEffect(
+                    triggerKey = feedback.timestamp,
+                    isDestructive = isDestructive,
+                    modifier = Modifier.matchParentSize()
+                )
+            }
+        }
+    }
+}
+
+/**
+ * Pulsante Trasferta con animazione di decollo dell'aereo confinata all'interno del controllo
+ */
+@Composable
+fun ShiftPlaneFlightButton(
+    isTrasferta: Boolean,
+    onToggle: () -> Unit
+) {
+    val planeOffsetX = remember { Animatable(0f) }
+    val planeOffsetY = remember { Animatable(0f) }
+    val planeScale = remember { Animatable(1f) }
+    val planeAlpha = remember { Animatable(1f) }
+    val coroutineScope = rememberCoroutineScope()
+
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (isTrasferta) Color(0xFF10B981).copy(alpha = 0.25f) else ObsidianSurfaceHigh,
+        border = androidx.compose.foundation.BorderStroke(
+            0.8.dp,
+            if (isTrasferta) Color(0xFF10B981) else ObsidianBorderSubtle
+        ),
+        modifier = Modifier.bouncyClickable {
+            coroutineScope.launch {
+                launch {
+                    planeOffsetX.animateTo(22f, tween(140, easing = FastOutLinearInEasing))
+                    planeOffsetX.snapTo(-14f)
+                    planeOffsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                }
+                launch {
+                    planeOffsetY.animateTo(-16f, tween(140, easing = FastOutLinearInEasing))
+                    planeOffsetY.snapTo(10f)
+                    planeOffsetY.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                }
+                launch {
+                    planeScale.animateTo(1.2f, tween(70))
+                    planeScale.animateTo(0.3f, tween(70))
+                    planeScale.snapTo(0.6f)
+                    planeScale.animateTo(1.0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                }
+                launch {
+                    planeAlpha.animateTo(0f, tween(130))
+                    planeAlpha.snapTo(0f)
+                    planeAlpha.animateTo(1f, tween(120))
+                }
+            }
+            onToggle()
+        }
+    ) {
+        Box(
+            modifier = Modifier.size(34.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Icon(
+                Icons.Default.FlightTakeoff,
+                contentDescription = "Trasferta",
+                tint = if (isTrasferta) Color(0xFF34D399) else TextMuted,
+                modifier = Modifier
+                    .size(16.dp)
+                    .graphicsLayer {
+                        translationX = planeOffsetX.value
+                        translationY = planeOffsetY.value
+                        scaleX = planeScale.value
+                        scaleY = planeScale.value
+                        alpha = planeAlpha.value
+                    }
+            )
+        }
+    }
+}
+
+/**
+ * Scheda fluida e dinamica di ispezione del giorno selezionato (Breccia Ergonomics + Material 3 Expressive).
+ * Supporta turni multipli con visualizzazione uniforme, trasferta indipendente per ciascun turno,
+ * reperibilità giornaliera e accesso compatto a orari, riposo contrattuale e straordinari.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DayInspectionCard(
+    date: LocalDate,
+    onPreviousDay: () -> Unit,
+    onNextDay: () -> Unit,
+    onOpenEdit: () -> Unit,
+    onDeleteShift: ((String) -> Unit)? = null,
+    onAddShift: (() -> Unit)? = null,
+    onAddSecondary: (() -> Unit)? = onAddShift,
+    onClose: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val shifts = ShiftRepository.getShiftsForDate(date)
+    val planned = ShiftRepository.getPlannedRotationShift(date)
+    val primaryShift = shifts.firstOrNull()
+    val primaryDef = primaryShift?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) } ?: planned
+
+    val prevDate = remember(date) { date.minusDays(1) }
+    val prevShifts = ShiftRepository.getShiftsForDate(prevDate)
+    val prevShiftDef = prevShifts.firstOrNull()?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
+        ?: ShiftRepository.getPlannedRotationShift(prevDate)
+
+    val restInfo = remember(date, shifts, prevShifts) {
+        calculateRestHours(prevDate, prevShiftDef, date, primaryDef)
+    }
+
+    val dayExtra = ShiftRepository.getDayExtraInfo(date)
+    val isOnCall = ShiftRepository.isOnCall(date)
+
+    val bellRotation = remember { Animatable(0f) }
+    val coroutineScope = rememberCoroutineScope()
+    var showActualEndTimeDialog by remember { mutableStateOf(false) }
+    var showManualOvertimeDialog by remember { mutableStateOf(false) }
+    var showNoteDialog by remember { mutableStateOf(false) }
+
+    val updateOvertime: (Float) -> Unit = { newHours ->
+        ShiftRepository.setDayOvertime(date, newHours)
+        if (shifts.isNotEmpty()) {
+            ShiftRepository.setShiftOvertime(date, shifts.first().id, newHours)
+        }
+    }
+
+    val effectiveAddShift = onAddShift ?: onAddSecondary ?: onOpenEdit
+
+    FluidGlassContainer(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() },
+                indication = null
+            ) {},
+        shape = RoundedCornerShape(22.dp),
+        shadowElevation = 20.dp,
+        highlightColor = primaryDef?.color ?: ObsidianPrimary
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 12.dp)
+        ) {
+            // RIGA 1: HEADER ARIOSO (Data + Giorno + Badge CCNL + Tasti Navigazione/Chiudi Grandi)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    Surface(
+                        onClick = onPreviousDay,
+                        shape = CircleShape,
+                        color = ObsidianSurfaceHigh.copy(alpha = 0.85f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.ChevronLeft,
+                                contentDescription = "Giorno precedente",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+
+                    val dayName = remember(date) { date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase() }
+                    val isToday = remember(date) { date == LocalDate.now() }
+                    Text(
+                        text = "${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase()} • $dayName",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = TextPrimary
+                    )
+
+                    if (isToday) {
+                        Surface(
+                            shape = RoundedCornerShape(6.dp),
+                            color = ObsidianPrimary
+                        ) {
+                            Text(
+                                text = "OGGI",
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = ObsidianBackground,
+                                modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
+                            )
+                        }
+                    }
+
+                    Surface(
+                        onClick = onNextDay,
+                        shape = CircleShape,
+                        color = ObsidianSurfaceHigh.copy(alpha = 0.85f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                        modifier = Modifier.size(36.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.ChevronRight,
+                                contentDescription = "Giorno successivo",
+                                tint = TextPrimary,
+                                modifier = Modifier.size(20.dp)
+                            )
+                        }
+                    }
+                }
+
+                // Lato Destro: Chip CCNL + Tasto Chiudi
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (restInfo != null) {
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = restInfo.containerColor,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, restInfo.borderColor)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = restInfo.icon,
+                                    contentDescription = null,
+                                    tint = restInfo.textColor,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = restInfo.hoursFormatted,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = restInfo.textColor
+                                )
+                            }
+                        }
+                    }
+
+                    Surface(
+                        onClick = onClose,
+                        shape = CircleShape,
+                        color = ObsidianSurfaceHigh.copy(alpha = 0.85f),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                        modifier = Modifier.size(34.dp)
+                    ) {
+                        Box(contentAlignment = Alignment.Center) {
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Chiudi",
+                                tint = TextSecondary,
+                                modifier = Modifier.size(18.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // RIGA 2: CONTENUTO TURNI
+            // Ciascun turno possiede il proprio indicatore di Straordinario (+/-), Trasferta (aereo) e Cestino!
+            if (shifts.isNotEmpty()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    shifts.forEach { shift ->
+                        val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
+                        if (def != null) {
+                            val badgeCode = when {
+                                def.shortCode.isNotBlank() && def.shortCode.length <= 4 -> def.shortCode.uppercase()
+                                else -> def.name.take(3).uppercase()
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .background(ObsidianSurfaceContainer.copy(alpha = 0.65f))
+                                    .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp))
+                                    .padding(horizontal = 10.dp, vertical = 8.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Box(
+                                        modifier = Modifier
+                                            .size(36.dp)
+                                            .clip(RoundedCornerShape(9.dp))
+                                            .background(def.color),
+                                        contentAlignment = Alignment.Center
+                                    ) {
+                                        Text(
+                                            text = badgeCode,
+                                            color = Color.White,
+                                            fontWeight = FontWeight.Black,
+                                            fontSize = 12.sp
+                                        )
+                                    }
+
+                                    Spacer(modifier = Modifier.width(10.dp))
+
+                                    Column(modifier = Modifier.weight(1f, fill = false)) {
+                                        Text(
+                                            text = def.name,
+                                            fontSize = 14.sp,
+                                            fontWeight = FontWeight.ExtraBold,
+                                            color = TextPrimary,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                        val timeText = if (def.isAllDay) "Tutto il giorno" else "${def.timeRangeFormatted} • ${def.durationFormatted}"
+                                        Text(
+                                            text = timeText,
+                                            fontSize = 11.sp,
+                                            color = TextSecondary,
+                                            maxLines = 1,
+                                            overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis
+                                        )
+                                    }
+                                }
+
+                                // Lato Destro: Trasferta per turno + Cestino elimina turno
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                ) {
+                                    // Tasto Trasferta per questo turno
+                                    ShiftPlaneFlightButton(
+                                        isTrasferta = shift.isTrasferta,
+                                        onToggle = {
+                                            ShiftRepository.toggleShiftTrasferta(date, shift.id)
+                                        }
+                                    )
+
+                                    if (onDeleteShift != null) {
+                                        Surface(
+                                            shape = RoundedCornerShape(8.dp),
+                                            color = Color(0xFFEF4444).copy(alpha = 0.18f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f)),
+                                            modifier = Modifier.bouncyClickable { onDeleteShift(shift.id) }
+                                        ) {
+                                            Box(
+                                                modifier = Modifier.size(34.dp),
+                                                contentAlignment = Alignment.Center
+                                            ) {
+                                                Icon(
+                                                    Icons.Default.Delete,
+                                                    contentDescription = "Rimuovi questo turno",
+                                                    tint = Color(0xFFEF4444),
+                                                    modifier = Modifier.size(16.dp)
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            } else if (planned != null) {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    shape = RoundedCornerShape(14.dp),
+                    color = ObsidianSurfaceContainer.copy(alpha = 0.7f),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(32.dp)
+                                    .clip(RoundedCornerShape(8.dp))
+                                    .background(planned.color.copy(alpha = 0.85f)),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = planned.shortCode,
+                                    color = Color.White,
+                                    fontWeight = FontWeight.Bold,
+                                    fontSize = 11.sp
+                                )
+                            }
+                            Spacer(modifier = Modifier.width(10.dp))
+                            Text(
+                                text = "Ciclo programmato: ${planned.name} (${planned.timeRangeFormatted})",
+                                fontSize = 12.5.sp,
+                                color = TextSecondary
+                            )
+                        }
+
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = ObsidianPrimary.copy(alpha = 0.22f),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianPrimary.copy(alpha = 0.45f)),
+                            modifier = Modifier.bouncyClickable(onClick = onOpenEdit)
+                        ) {
+                            Text(
+                                text = "Assegna",
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ObsidianPrimary,
+                                modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp)
+                            )
+                        }
+                    }
+                }
+            } else {
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 14.dp),
+                    shape = RoundedCornerShape(12.dp),
+                    color = ObsidianSurfaceContainer.copy(alpha = 0.5f)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.Info,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(16.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Nessun turno inserito per oggi",
+                            fontSize = 13.sp,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+
+            // Indicatore / Tasto Ex-Turno in grigio discreto
+            val origShiftId = primaryShift?.originalShiftDefId ?: if (planned != null && primaryDef?.id != planned.id) planned.id else null
+            val hasExShift = origShiftId != null && origShiftId != primaryDef?.id
+            val exDef = if (hasExShift) ShiftRepository.getShiftDefinition(origShiftId!!) else null
+            if (exDef != null && !dayExtra.hideExShift && ShiftRepository.appPreferences.showExShifts) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.End
+                ) {
+                    Surface(
+                        shape = RoundedCornerShape(8.dp),
+                        color = Color(0xFF1E2638),
+                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF334155)),
+                        modifier = Modifier.bouncyClickable {
+                            ShiftRepository.setDayHideExShift(date, true)
+                        }
+                    ) {
+                        Row(
+                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Ex turno: ${exDef.name}",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFF94A3B8)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Icon(
+                                Icons.Default.Close,
+                                contentDescription = "Nascondi etichetta",
+                                tint = Color(0xFF94A3B8),
+                                modifier = Modifier.size(12.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(8.dp))
+
+            // SEZIONE STRAORDINARI DEDICATA (Breccia Ergonomics: controlli grandi a portata di pollice)
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                shape = RoundedCornerShape(14.dp),
+                color = ObsidianSurfaceContainer.copy(alpha = 0.75f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (dayExtra.overtimeHours > 0f) ObsidianPrimary.copy(alpha = 0.5f) else ObsidianBorderSubtle
+                )
+            ) {
+                Column(modifier = Modifier.padding(10.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextSecondary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text(
+                                text = "Straordinario",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = TextPrimary
+                            )
+                        }
+
+                        // Badge Ore Straordinario cliccabile per digitazione manuale con tastiera
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = if (dayExtra.overtimeHours > 0f) ObsidianPrimary.copy(alpha = 0.22f) else ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(
+                                1.dp,
+                                if (dayExtra.overtimeHours > 0f) ObsidianPrimary else ObsidianBorderSubtle
+                            ),
+                            modifier = Modifier.bouncyClickable {
+                                showManualOvertimeDialog = true
+                            }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 9.dp, vertical = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Text(
+                                    text = if (dayExtra.overtimeHours > 0f) "+${String.format(Locale.US, "%.2f", dayExtra.overtimeHours).trimEnd('0').trimEnd('.')}h" else "0.0h",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextMuted
+                                )
+                                Spacer(modifier = Modifier.width(5.dp))
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Digita a mano",
+                                    tint = if (dayExtra.overtimeHours > 0f) ObsidianPrimary else TextMuted,
+                                    modifier = Modifier.size(11.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    // Stepper con step rapidi ±1h e ±0.25h (15 min) + Tasto Calcola da Timbratura
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        OvertimeStepButton(text = "-1h", enabled = dayExtra.overtimeHours >= 1f) {
+                            val next = (dayExtra.overtimeHours - 1.0f).coerceAtLeast(0f)
+                            updateOvertime(next)
+                        }
+                        OvertimeStepButton(text = "-0.25h", enabled = dayExtra.overtimeHours > 0f) {
+                            val next = (dayExtra.overtimeHours - 0.25f).coerceAtLeast(0f)
+                            updateOvertime(next)
+                        }
+                        OvertimeStepButton(text = "+0.25h", enabled = true) {
+                            val next = dayExtra.overtimeHours + 0.25f
+                            updateOvertime(next)
+                        }
+                        OvertimeStepButton(text = "+1h", enabled = true) {
+                            val next = dayExtra.overtimeHours + 1.0f
+                            updateOvertime(next)
+                        }
+
+                        // Tasto Calcola da orario fine effettivo
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .weight(1.35f)
+                                .height(32.dp)
+                                .bouncyClickable {
+                                    if (primaryDef != null && !primaryDef.isAllDay) {
+                                        showActualEndTimeDialog = true
+                                    } else {
+                                        showManualOvertimeDialog = true
+                                    }
+                                }
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 4.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Timer,
+                                    contentDescription = null,
+                                    tint = ObsidianPrimary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                                Spacer(modifier = Modifier.width(3.dp))
+                                Text(
+                                    text = "Calcola",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextPrimary,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(7.dp))
+
+            // SEZIONE NOTE DEL GIORNO
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                shape = RoundedCornerShape(12.dp),
+                color = ObsidianSurfaceContainer.copy(alpha = 0.55f),
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (dayExtra.notes.isNotBlank()) Color(0xFF38BDF8).copy(alpha = 0.45f) else ObsidianBorderSubtle
+                )
+            ) {
+                if (dayExtra.notes.isNotBlank()) {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 11.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.EditNote,
+                                contentDescription = null,
+                                tint = Color(0xFF38BDF8),
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(modifier = Modifier.width(8.dp))
+                            Text(
+                                text = dayExtra.notes,
+                                fontSize = 12.sp,
+                                color = TextPrimary,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis
+                            )
+                        }
+                        Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(ObsidianSurfaceHigh)
+                                    .clickable { showNoteDialog = true },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Edit,
+                                    contentDescription = "Modifica nota",
+                                    tint = TextSecondary,
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .size(26.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(0xFFEF4444).copy(alpha = 0.18f))
+                                    .clickable { ShiftRepository.setDayNotes(date, "") },
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Delete,
+                                    contentDescription = "Elimina nota",
+                                    tint = Color(0xFFEF4444),
+                                    modifier = Modifier.size(13.dp)
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable { showNoteDialog = true }
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AddComment,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier.size(15.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "+ Aggiungi nota per questo giorno",
+                            fontSize = 12.sp,
+                            fontWeight = FontWeight.Medium,
+                            color = TextMuted
+                        )
+                    }
+                }
+            }
+
+            Spacer(modifier = Modifier.height(10.dp))
+
+            // RIGA 3: REPERIBILITÀ GIORNALIERA (Campanella vibrante) + TASTI AZIONE GRANDI E COMODI
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 14.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                // Toggle Reperibilità GIORNALIERA con campanella che vibra e oscilla
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (isOnCall) Color(0xFFF59E0B).copy(alpha = 0.25f) else ObsidianSurfaceHigh,
+                    border = androidx.compose.foundation.BorderStroke(
+                        1.dp,
+                        if (isOnCall) Color(0xFFF59E0B) else ObsidianBorderSubtle
+                    ),
+                    modifier = Modifier
+                        .height(40.dp)
+                        .bouncyClickable {
+                            coroutineScope.launch {
+                                bellRotation.snapTo(0f)
+                                bellRotation.animateTo(-24f, tween(40, easing = LinearEasing))
+                                bellRotation.animateTo(22f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(-16f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(14f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(-8f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(6f, tween(45, easing = LinearEasing))
+                                bellRotation.animateTo(0f, tween(60, easing = FastOutSlowInEasing))
+                            }
+                            val currentManual = dayExtra.isOnCallManual
+                            val newManual = if (currentManual == null) !isOnCall else !currentManual
+                            ShiftRepository.setDayOnCallManual(date, newManual)
+                        }
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 12.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            Icons.Default.NotificationsActive,
+                            contentDescription = null,
+                            tint = if (isOnCall) Color(0xFFFBBF24) else TextMuted,
+                            modifier = Modifier
+                                .size(16.dp)
+                                .graphicsLayer {
+                                    rotationZ = bellRotation.value
+                                    transformOrigin = TransformOrigin(0.5f, 0.1f)
+                                }
+                        )
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text(
+                            text = if (isOnCall) "Reperibile" else "Reperibilità",
+                            fontSize = 12.5.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isOnCall) Color(0xFFFBBF24) else TextSecondary
+                        )
+                    }
+                }
+
+                // Tasti Azione: Cambia / + Aggiungi Turno (Ergonomici con altezza 40dp e icone nitide)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    if (shifts.isEmpty()) {
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = ObsidianPrimary.copy(alpha = 0.22f),
+                            border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .bouncyClickable(onClick = onOpenEdit)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 14.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = ObsidianPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Aggiungi Turno",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ObsidianPrimary
+                                )
+                            }
+                        }
+                    } else {
+                        // Tasto Cambia Turno (Sostituisci)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = ObsidianPrimary.copy(alpha = 0.22f),
+                            border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary.copy(alpha = 0.5f)),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .bouncyClickable(onClick = onOpenEdit)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 12.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.SwapHoriz,
+                                    contentDescription = null,
+                                    tint = ObsidianPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text(
+                                    text = "Cambia",
+                                    fontSize = 12.5.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ObsidianPrimary
+                                )
+                            }
+                        }
+
+                        // Tasto + Aggiungi Turno (Aggiunge un altro turno in parallelo sul giorno)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .height(40.dp)
+                                .bouncyClickable(onClick = effectiveAddShift)
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Icon(
+                                    imageVector = Icons.Default.Add,
+                                    contentDescription = null,
+                                    tint = TextPrimary,
+                                    modifier = Modifier.size(15.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = "Aggiungi",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = TextPrimary,
+                                    maxLines = 1
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Dialog Inserimento Orario Effettivo Fine Turno
+    if (showActualEndTimeDialog && primaryDef != null && !primaryDef.isAllDay) {
+        ActualEndTimeDialog(
+            date = date,
+            shiftDef = primaryDef,
+            currentActualEndTime = ShiftRepository.getDayExtraInfo(date).actualEndTime,
+            onDismiss = { showActualEndTimeDialog = false },
+            onConfirm = { newEnd, newOvertime ->
+                ShiftRepository.setDayActualEndTime(date, newEnd, newOvertime)
+                if (shifts.isNotEmpty()) {
+                    ShiftRepository.setShiftOvertime(date, shifts.first().id, newOvertime)
+                }
+                showActualEndTimeDialog = false
+            }
+        )
+    }
+
+    // Dialog Inserimento Manuale Ore Straordinario
+    if (showManualOvertimeDialog) {
+        ManualOvertimeDialog(
+            initialHours = dayExtra.overtimeHours,
+            onDismiss = { showManualOvertimeDialog = false },
+            onConfirm = { newHours ->
+                updateOvertime(newHours)
+                showManualOvertimeDialog = false
+            }
+        )
+    }
+
+    // Dialog Note del Giorno
+    if (showNoteDialog) {
+        DayNoteDialog(
+            initialNote = dayExtra.notes,
+            onDismiss = { showNoteDialog = false },
+            onSave = { newNote ->
+                ShiftRepository.setDayNotes(date, newNote)
+                showNoteDialog = false
+            }
+        )
+    }
+}
+
+/**
+ * Dialog di inserimento orario finale effettivo con calcolo automatico dello straordinario
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ActualEndTimeDialog(
+    date: LocalDate,
+    shiftDef: ShiftDefinition,
+    currentActualEndTime: String?,
+    onDismiss: () -> Unit,
+    onConfirm: (String?, Float) -> Unit
+) {
+    val initialTime = currentActualEndTime ?: shiftDef.endTime
+    var inputTime by remember { mutableStateOf(initialTime) }
+
+    val calculatedOvertime = remember(inputTime, shiftDef.endTime) {
+        ShiftRepository.calculateOvertimeFromEndTime(shiftDef.endTime, inputTime)
+    }
+    val diffMinutes = remember(calculatedOvertime) {
+        (calculatedOvertime * 60).roundToInt()
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.AccessTime, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Orario Fine Effettivo", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Turno ${shiftDef.name}: orario previsto di fine ${shiftDef.endTime}",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+
+                OutlinedTextField(
+                    value = inputTime,
+                    onValueChange = { inputTime = it.filter { c -> c.isDigit() || c == ':' }.take(5) },
+                    label = { Text("Orario Effettivo (HH:mm)") },
+                    singleLine = true,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("INCREMENTI RAPIDI RISPETTO A FINE PREVISTA", color = TextMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(15, 30, 45, 60, 90).forEach { mins ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .weight(1f)
+                                .bouncyClickable {
+                                    try {
+                                        val base = LocalTime.parse(shiftDef.endTime)
+                                        val target = base.plusMinutes(mins.toLong())
+                                        inputTime = String.format("%02d:%02d", target.hour, target.minute)
+                                    } catch (_: Exception) {}
+                                }
+                        ) {
+                            Text(
+                                text = "+${mins}m",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ObsidianPrimary,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (diffMinutes > 0) ObsidianPrimary.copy(alpha = 0.15f) else ObsidianSurfaceContainer,
+                    border = androidx.compose.foundation.BorderStroke(1.dp, if (diffMinutes > 0) ObsidianPrimary.copy(alpha = 0.4f) else ObsidianBorderSubtle),
+                    modifier = Modifier.fillMaxWidth()
+                ) {
+                    Row(
+                        modifier = Modifier.padding(10.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Text(
+                            text = if (diffMinutes > 0) "Straordinario Calcolato:" else "Nessuno straordinario",
+                            fontSize = 11.5.sp,
+                            color = if (diffMinutes > 0) TextPrimary else TextMuted
+                        )
+                        Text(
+                            text = if (diffMinutes > 0) "+$diffMinutes min (+${calculatedOvertime}h)" else "0 min",
+                            fontWeight = FontWeight.ExtraBold,
+                            fontSize = 12.sp,
+                            color = if (diffMinutes > 0) ObsidianPrimary else TextMuted
+                        )
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onConfirm(inputTime, calculatedOvertime)
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
+            ) {
+                Text("Applica", color = ObsidianBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = {
+                    onConfirm(null, 0f)
+                }
+            ) {
+                Text("Azzera", color = TextSecondary)
+            }
+        },
+        containerColor = ObsidianSurface,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+fun RowScope.OvertimeStepButton(
+    text: String,
+    enabled: Boolean,
+    onClick: () -> Unit
+) {
+    Surface(
+        shape = RoundedCornerShape(8.dp),
+        color = if (enabled) ObsidianSurfaceHigh else ObsidianSurfaceHigh.copy(alpha = 0.35f),
+        border = androidx.compose.foundation.BorderStroke(
+            0.8.dp,
+            if (enabled) ObsidianBorderSubtle else Color.Transparent
+        ),
+        modifier = Modifier
+            .weight(1f)
+            .height(32.dp)
+            .then(if (enabled) Modifier.bouncyClickable(onClick = onClick) else Modifier)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Text(
+                text = text,
+                fontSize = 11.5.sp,
+                fontWeight = FontWeight.Bold,
+                color = if (enabled) ObsidianPrimary else TextMuted
+            )
+        }
+    }
+}
+
+/**
+ * Dialog per digitazione manuale delle ore di straordinario o selezione incrementi rapidi
+ */
+@Composable
+fun ManualOvertimeDialog(
+    initialHours: Float,
+    onDismiss: () -> Unit,
+    onConfirm: (Float) -> Unit
+) {
+    var textValue by remember {
+        mutableStateOf(if (initialHours > 0f) String.format(Locale.US, "%.2f", initialHours).trimEnd('0').trimEnd('.') else "")
+    }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Inserisci Straordinario", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Scrivi a mano le ore di straordinario (es. 0.25, 0.50, 1.25, 2.0)",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(14.dp))
+                OutlinedTextField(
+                    value = textValue,
+                    onValueChange = { input ->
+                        val sanitized = input.replace(',', '.').filter { it.isDigit() || it == '.' }
+                        if (sanitized.count { it == '.' } <= 1) {
+                            textValue = sanitized.take(5)
+                        }
+                    },
+                    label = { Text("Ore Straordinario (es. 1.25)") },
+                    singleLine = true,
+                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+
+                Spacer(modifier = Modifier.height(10.dp))
+
+                Text("SCORCIATOIE RAPIDE", color = TextMuted, fontSize = 9.5.sp, fontWeight = FontWeight.Bold)
+                Spacer(modifier = Modifier.height(6.dp))
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
+                ) {
+                    listOf(0.25f, 0.5f, 1.0f, 1.5f, 2.0f).forEach { h ->
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .weight(1f)
+                                .bouncyClickable {
+                                    textValue = if (h % 1f == 0f) h.toInt().toString() else String.format(Locale.US, "%.2f", h).trimEnd('0').trimEnd('.')
+                                }
+                        ) {
+                            Text(
+                                text = "+${if (h % 1f == 0f) h.toInt().toString() else String.format(Locale.US, "%.2f", h).trimEnd('0').trimEnd('.')}h",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ObsidianPrimary,
+                                textAlign = TextAlign.Center,
+                                modifier = Modifier.padding(vertical = 5.dp)
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    val parsed = textValue.toFloatOrNull() ?: 0f
+                    onConfirm(parsed.coerceAtLeast(0f))
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
+            ) {
+                Text("Conferma", color = ObsidianBackground, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = { onConfirm(0f) }) {
+                Text("Azzera", color = TextSecondary)
+            }
+        },
+        containerColor = ObsidianSurface,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+/**
+ * Dialog per inserimento e modifica delle note del giorno
+ */
+@Composable
+fun DayNoteDialog(
+    initialNote: String,
+    onDismiss: () -> Unit,
+    onSave: (String) -> Unit
+) {
+    var noteText by remember { mutableStateOf(initialNote) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(Icons.Default.EditNote, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(22.dp))
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Nota del Giorno", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
+            }
+        },
+        text = {
+            Column(modifier = Modifier.fillMaxWidth()) {
+                Text(
+                    text = "Aggiungi un appunto o promemoria visibile su questo giorno.",
+                    color = TextSecondary,
+                    fontSize = 12.sp
+                )
+                Spacer(modifier = Modifier.height(12.dp))
+                OutlinedTextField(
+                    value = noteText,
+                    onValueChange = { input: String -> noteText = input.take(200) },
+                    label = { Text("Testo della nota") },
+                    maxLines = 4,
+                    shape = RoundedCornerShape(12.dp),
+                    modifier = Modifier.fillMaxWidth()
+                )
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = {
+                    onSave(noteText.trim())
+                },
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF38BDF8))
+            ) {
+                Text("Salva", color = Color.Black, fontWeight = FontWeight.Bold)
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Annulla", color = TextSecondary)
+            }
+        },
+        containerColor = ObsidianSurface,
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+/**
+ * Modello informativo per la verifica dei riposi
+ */
+data class RestEvaluation(
+    val label: String,
+    val hoursFormatted: String,
+    val isCompliant: Boolean,
+    val containerColor: Color,
+    val borderColor: Color,
+    val textColor: Color,
+    val icon: ImageVector
+)
+
+private fun calculateRestHours(
+    prevDate: LocalDate,
+    prev: ShiftDefinition?,
+    curDate: LocalDate,
+    current: ShiftDefinition?
+): RestEvaluation? {
+    if (prev == null || current == null) return null
+
+    if (prev.isAllDay) {
+        return RestEvaluation(
+            label = "Stacco dopo riposo / assenza",
+            hoursFormatted = "✓ Conforme",
+            isCompliant = true,
+            containerColor = Color(0xFF063326),
+            borderColor = Color(0xFF10B981).copy(alpha = 0.4f),
+            textColor = Color(0xFF34D399),
+            icon = Icons.Default.CheckCircle
+        )
+    }
+    if (current.isAllDay) return null
+
+    return try {
+        val prevStart = LocalTime.parse(prev.startTime)
+        val prevEnd = LocalTime.parse(prev.endTime)
+        val curStart = LocalTime.parse(current.startTime)
+
+        val prevEndDateTime = if (prevEnd.isBefore(prevStart)) {
+            prevDate.plusDays(1).atTime(prevEnd)
+        } else {
+            prevDate.atTime(prevEnd)
+        }
+
+        val curStartDateTime = curDate.atTime(curStart)
+        val durationMinutes = Duration.between(prevEndDateTime, curStartDateTime).toMinutes()
+        if (durationMinutes < 0) return null
+
+        val hours = durationMinutes / 60
+        val mins = durationMinutes % 60
+        val formatted = "${hours}h ${if (mins > 0) "${mins}m" else ""}".trim()
+
+        val minRequiredRest = ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts.coerceAtLeast(8)
+        val ccnlShort = ShiftRepository.activeWorkProfile.linkedCcnl.shortLabel
+
+        if (hours >= minRequiredRest) {
+            RestEvaluation(
+                label = "Stacco Conforme ($formatted >= ${minRequiredRest}h $ccnlShort)",
+                hoursFormatted = "✓ $formatted",
+                isCompliant = true,
+                containerColor = Color(0xFF063326),
+                borderColor = Color(0xFF10B981).copy(alpha = 0.4f),
+                textColor = Color(0xFF34D399),
+                icon = Icons.Default.CheckCircle
+            )
+        } else {
+            RestEvaluation(
+                label = "Attenzione: Riposo < ${minRequiredRest}h $ccnlShort",
+                hoursFormatted = "$formatted (min. ${minRequiredRest}h)",
+                isCompliant = false,
+                containerColor = Color(0xFF3B1219),
+                borderColor = Color(0xFFEF4444).copy(alpha = 0.6f),
+                textColor = Color(0xFFFCA5A5),
+                icon = Icons.Default.Warning
+            )
+        }
+    } catch (e: Exception) {
+        null
+    }
+}

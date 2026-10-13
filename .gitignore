@@ -1,0 +1,35 @@
+# Gradle
+.gradle/
+build/
+**/build/
+!gradle/wrapper/gradle-wrapper.jar
+
+# Android Studio / IntelliJ IDEA
+.idea/
+*.iml
+local.properties
+.navigation/
+captures/
+output.json
+
+# Build Outputs (use GitHub Releases for distributing APKs)
+*.apk
+*.ap_
+*.aab
+*.dex
+
+# OS & Temp files
+.DS_Store
+Thumbs.db
+*.tmp
+*.bak
+*.zip
+
+# Local test screenshots & scrap files in root
+*.png
+*.jpg
+*.html
+test_*.ps1
+find_coords.ps1
+project_*.json
+!esApp/**
