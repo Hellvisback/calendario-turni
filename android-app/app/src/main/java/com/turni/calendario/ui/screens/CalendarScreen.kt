@@ -83,7 +83,7 @@ fun CalendarScreen(
     var isPaintModeActive by remember { mutableStateOf(false) }
     var editMode by remember { mutableStateOf(CalendarEditMode.REPLACE) }
     var selectedPaintShiftId by remember { mutableStateOf("pomeriggio") }
-    var selectedRotationId by remember { mutableStateOf(ShiftRepository.defaultRotationId) }
+    var selectedRotationId by remember { mutableStateOf(ShiftRepository.defaultRotationId.ifEmpty { ShiftRepository.activeRotationId }) }
     var rotationStartDate by remember { mutableStateOf<LocalDate?>(null) }
     var rangeStartDate by remember { mutableStateOf<LocalDate?>(null) }
     var showSelectEndDialog by remember { mutableStateOf(false) }

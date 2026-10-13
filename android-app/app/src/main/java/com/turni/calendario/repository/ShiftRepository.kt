@@ -125,10 +125,24 @@ object ShiftRepository {
 
     fun setDefaultRotation(rotationId: String) {
         defaultRotationId = rotationId
-        activeRotationId = rotationId
+        if (rotationId.isNotEmpty()) {
+            activeRotationId = rotationId
+        }
+    }
+
+    fun toggleDefaultRotation(rotationId: String): Boolean {
+        return if (defaultRotationId == rotationId) {
+            defaultRotationId = ""
+            false
+        } else {
+            defaultRotationId = rotationId
+            activeRotationId = rotationId
+            true
+        }
     }
 
     fun getRotationsSortedByDefault(): List<ShiftRotation> {
+        if (defaultRotationId.isEmpty()) return rotations.toList()
         return rotations.sortedByDescending { it.id == defaultRotationId }
     }
 

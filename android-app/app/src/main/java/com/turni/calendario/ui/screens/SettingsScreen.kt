@@ -42,7 +42,8 @@ enum class SettingsSubScreen {
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onSubScreenActiveChanged: (Boolean) -> Unit = {}
+    onSubScreenActiveChanged: (Boolean) -> Unit = {},
+    onNavigateToTurni: () -> Unit = {}
 ) {
     val context = LocalContext.current
     var activeSubScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
@@ -78,7 +79,13 @@ fun SettingsScreen(
             return
         }
         SettingsSubScreen.IMPORT_SHIFTS -> {
-            ImportShiftsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            ImportShiftsScreen(
+                onDismiss = { activeSubScreen = SettingsSubScreen.NONE },
+                onNavigateToEdit = {
+                    activeSubScreen = SettingsSubScreen.NONE
+                    onNavigateToTurni()
+                }
+            )
             return
         }
         SettingsSubScreen.REPERIBILITA -> {

@@ -5,6 +5,10 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,6 +25,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
@@ -30,6 +35,7 @@ import com.turni.calendario.importer.NgeniaParseResult
 import com.turni.calendario.importer.NgeniaTurniParser
 import com.turni.calendario.importer.ParsedEmployee
 import com.turni.calendario.importer.ParsedTeamRotation
+import com.turni.calendario.importer.TextImportSanitizer
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
@@ -122,53 +128,74 @@ P P RGLS N N M RISE RGLS N N RISE M P MD M M P P P RGLS N N RISE M M RGLS N RISE
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportShiftsScreen(
-    onDismiss: () -> Unit
+    onDismiss: () -> Unit,
+    onNavigateToEdit: (() -> Unit)? = null
 ) {
     val context = LocalContext.current
     var rawText by remember { mutableStateOf("") }
     var parseResult by remember { mutableStateOf<NgeniaParseResult?>(null) }
     var selectedTeam by remember { mutableStateOf<ParsedTeamRotation?>(null) }
+    var workerNameFilter by remember { mutableStateOf("") }
     var employeeSearchQuery by remember { mutableStateOf("") }
     var selectedEmployee by remember { mutableStateOf<ParsedEmployee?>(null) }
     var feedbackMessage by remember { mutableStateOf<String?>(null) }
     var popupType by remember { mutableStateOf(PopupType.SUCCESS) }
     var isProcessing by remember { mutableStateOf(false) }
+    var showAllEmployees by remember { mutableStateOf(false) }
     var overwriteCalendar by remember { mutableStateOf(true) }
     var setOnCallCalendar by remember { mutableStateOf(true) }
+    var showExitToEditDialog by remember { mutableStateOf(false) }
 
-    // File picker launcher per PDF, CSV, TXT, Excel
+    // Esegue il parsing completo del testo con auto-selezione turnista a monte
+    fun executeParsing(text: String) {
+        if (text.isBlank()) return
+        isProcessing = true
+        val sanitized = TextImportSanitizer.sanitize(text)
+        val result = NgeniaTurniParser.parseDocumentText(sanitized)
+        parseResult = result
+
+        // Auto-filtro e pre-selezione a monte del lavoratore se indicato
+        val query = workerNameFilter.trim().ifBlank { employeeSearchQuery.trim() }
+        if (query.isNotBlank()) {
+            val match = result.employees.find { NgeniaTurniParser.matchesEmployeeQuery(it, query) }
+            if (match != null) {
+                selectedEmployee = match
+                selectedTeam = result.teams.find { it.teamName.equals(match.teamName, ignoreCase = true) }
+            } else {
+                selectedEmployee = null
+                selectedTeam = result.teams.find { it.rotationId == ShiftRepository.defaultRotationId } ?: result.teams.firstOrNull()
+            }
+        } else {
+            selectedTeam = result.teams.find { it.rotationId == ShiftRepository.defaultRotationId } ?: result.teams.firstOrNull()
+        }
+
+        isProcessing = false
+        popupType = PopupType.SUCCESS
+        feedbackMessage = "Analisi completata: rilevate ${result.teams.size} squadre e ${result.employees.size} turnisti!"
+    }
+
+    // File picker launcher per PDF, CSV, TXT, Excel con pulizia automatica di byte/binari
     val filePickerLauncher = rememberLauncherForActivityResult(
         contract = ActivityResultContracts.GetContent()
     ) { uri: Uri? ->
         if (uri != null) {
             try {
                 context.contentResolver.openInputStream(uri)?.use { inputStream ->
-                    val reader = BufferedReader(InputStreamReader(inputStream))
-                    val content = reader.readText()
-                    rawText = content
-                    val res = NgeniaTurniParser.parseDocumentText(content)
-                    parseResult = res
-                    selectedTeam = res.teams.firstOrNull()
-                    popupType = PopupType.SUCCESS
-                    feedbackMessage = "File caricato! Rilevate ${res.teams.size} squadre e ${res.employees.size} turnisti."
+                    val bytes = inputStream.readBytes()
+                    val cleaned = TextImportSanitizer.extractAndCleanBytes(bytes)
+                    if (cleaned.isNotBlank()) {
+                        rawText = cleaned
+                        executeParsing(cleaned)
+                    } else {
+                        popupType = PopupType.WARNING
+                        feedbackMessage = "Nessun testo leggibile trovato nel file. Incolla il testo direttamente o verifica il formato."
+                    }
                 }
             } catch (e: Exception) {
                 popupType = PopupType.ERROR
                 feedbackMessage = "Errore durante la lettura del file: ${e.localizedMessage}"
             }
         }
-    }
-
-    // Auto-parse all'inizio se il testo cambia
-    fun executeParsing(text: String) {
-        if (text.isBlank()) return
-        isProcessing = true
-        val result = NgeniaTurniParser.parseDocumentText(text)
-        parseResult = result
-        selectedTeam = result.teams.find { it.rotationId == ShiftRepository.defaultRotationId } ?: result.teams.firstOrNull()
-        isProcessing = false
-        popupType = PopupType.SUCCESS
-        feedbackMessage = "Analisi completata: trovate ${result.teams.size} squadre nel tabellone!"
     }
 
     BackHandler(onBack = onDismiss)
@@ -185,7 +212,7 @@ fun ImportShiftsScreen(
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 16.dp, vertical = 12.dp)
     ) {
-        // Top Bar
+        // Top Bar (Singolo pulsante indietro in alto a sinistra)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -225,127 +252,179 @@ fun ImportShiftsScreen(
 
         Spacer(modifier = Modifier.height(14.dp))
 
-        // Banner informativo & Quick Start
+        // PANNELLO UNIFICATO: Sfoglia file, inserimento/modifica manuale del testo e selezione turnista a monte
         Card(
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
+            shape = RoundedCornerShape(20.dp),
             colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
             border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Icon(Icons.Default.AutoFixHigh, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(22.dp))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Algoritmo Intelligente Tabellone",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 14.5.sp
+                    Icon(
+                        Icons.Default.AutoFixHigh,
+                        contentDescription = null,
+                        tint = ObsidianPrimary,
+                        modifier = Modifier.size(22.dp)
                     )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Column {
+                        Text(
+                            text = "Caricamento e Analisi Turni",
+                            color = TextPrimary,
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 15.sp
+                        )
+                        Text(
+                            text = "Sfoglia file o incolla testo, indicando il lavoratore da filtrare",
+                            color = TextSecondary,
+                            fontSize = 11.5.sp
+                        )
+                    }
                 }
-                Spacer(modifier = Modifier.height(6.dp))
-                Text(
-                    text = "Invia o incolla il PDF di 'ngeniaTurni o il tabellone Mod. P.R. RFI. L'algoritmo rileva le squadre, gli orari, le pause e crea le rotazioni in automatico per tutti i turnisti.",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 16.5.sp
-                )
 
                 Spacer(modifier = Modifier.height(14.dp))
 
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                ) {
-                    // Pulsante Sfoglia File
-                    Button(
-                        onClick = { filePickerLauncher.launch("*/*") },
-                        shape = RoundedCornerShape(12.dp),
-                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
-                        modifier = Modifier.weight(1f).height(40.dp)
-                    ) {
-                        Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Sfoglia File", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                    }
-
-                    // Pulsante Carica Esempio RFI
-                    OutlinedButton(
-                        onClick = {
-                            rawText = RFI_EXAMPLE_TABELLONE
-                            executeParsing(RFI_EXAMPLE_TABELLONE)
-                        },
-                        shape = RoundedCornerShape(12.dp),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f)),
-                        modifier = Modifier.weight(1.3f).height(40.dp)
-                    ) {
-                        Icon(Icons.Default.Description, contentDescription = null, tint = Color(0xFFFBBF24), modifier = Modifier.size(16.dp))
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text("Carica Esempio RFI", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = Color(0xFFFBBF24))
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Campo Input Testo / OCR
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-        ) {
-            Column(modifier = Modifier.padding(14.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        text = "Contenuto o Testo Estratto dal PDF",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp
-                    )
-                    if (rawText.isNotEmpty()) {
-                        TextButton(onClick = { rawText = ""; parseResult = null }) {
-                            Text("Cancella", color = Color(0xFFEF4444), fontSize = 11.5.sp)
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(6.dp))
-
+                // Campo a monte: Nome del lavoratore/dipendente da cercare nel file
+                Text(
+                    text = "Nome da cercare nel file",
+                    fontSize = 12.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextPrimary
+                )
+                Spacer(modifier = Modifier.height(5.dp))
                 OutlinedTextField(
-                    value = rawText,
-                    onValueChange = {
-                        rawText = it
+                    value = workerNameFilter,
+                    onValueChange = { query ->
+                        workerNameFilter = query
+                        employeeSearchQuery = query
+                        parseResult?.let { res ->
+                            if (query.isNotBlank()) {
+                                val match = res.employees.find { NgeniaTurniParser.matchesEmployeeQuery(it, query) }
+                                if (match != null) {
+                                    selectedEmployee = match
+                                    selectedTeam = res.teams.find { it.teamName.equals(match.teamName, ignoreCase = true) }
+                                } else {
+                                    selectedEmployee = null
+                                }
+                            }
+                        }
                     },
-                    placeholder = { Text("Incolla qui il testo del PDF o tabellone turni...", fontSize = 12.sp, color = TextMuted) },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(100.dp),
-                    maxLines = 4,
+                    placeholder = { Text("Es. Marcozzi, Raglione, Luca, Eros, Tardivo...", fontSize = 12.sp, color = TextMuted) },
+                    leadingIcon = {
+                        Icon(
+                            Icons.Default.PersonSearch,
+                            contentDescription = null,
+                            tint = ObsidianPrimary,
+                            modifier = Modifier.size(20.dp)
+                        )
+                    },
+                    trailingIcon = {
+                        if (workerNameFilter.isNotEmpty()) {
+                            IconButton(onClick = {
+                                workerNameFilter = ""
+                                employeeSearchQuery = ""
+                            }) {
+                                Icon(Icons.Default.Clear, contentDescription = "Pulisci", tint = TextMuted, modifier = Modifier.size(18.dp))
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxWidth(),
+                    singleLine = true,
                     colors = TextFieldDefaults.outlinedTextFieldColors(
                         focusedBorderColor = ObsidianPrimary,
                         unfocusedBorderColor = ObsidianBorderSubtle
                     )
                 )
 
-                Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(12.dp))
 
+                // Selezione file ("Sfoglia File")
                 Button(
-                    onClick = { executeParsing(rawText) },
+                    onClick = { filePickerLauncher.launch("*/*") },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(42.dp),
+                        .height(42.dp)
+                ) {
+                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text("Sfoglia File (PDF, Excel, CSV, TXT)", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                }
+
+                Spacer(modifier = Modifier.height(14.dp))
+
+                // Area di testo modificabile per correzioni in tempo reale
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = "Testo estratto o inserimento manuale:",
+                        color = TextPrimary,
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 12.sp
+                    )
+                    if (rawText.isNotEmpty()) {
+                        TextButton(
+                            onClick = {
+                                rawText = ""
+                                parseResult = null
+                                selectedEmployee = null
+                                selectedTeam = null
+                            },
+                            contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
+                        ) {
+                            Text("Cancella", color = Color(0xFFEF4444), fontSize = 11.sp)
+                        }
+                    }
+                }
+
+                Spacer(modifier = Modifier.height(4.dp))
+
+                OutlinedTextField(
+                    value = rawText,
+                    onValueChange = {
+                        rawText = it
+                    },
+                    placeholder = { Text("Il testo decodificato apparirà qui. Puoi correggerlo ed eseguire nuovamente l'analisi...", fontSize = 11.5.sp, color = TextMuted) },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(115.dp),
+                    maxLines = 6,
+                    colors = TextFieldDefaults.outlinedTextFieldColors(
+                        focusedBorderColor = ObsidianPrimary,
+                        unfocusedBorderColor = ObsidianBorderSubtle
+                    )
+                )
+
+                Spacer(modifier = Modifier.height(12.dp))
+
+                // Pulsante Analizza
+                Button(
+                    onClick = { executeParsing(rawText) },
+                    enabled = !isProcessing,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(44.dp),
                     shape = RoundedCornerShape(12.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                 ) {
-                    Icon(Icons.Default.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Analizza Tabellone Turni", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    if (isProcessing) {
+                        CircularProgressIndicator(
+                            color = Color.White,
+                            strokeWidth = 2.dp,
+                            modifier = Modifier.size(18.dp)
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text("Analisi in corso...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    } else {
+                        Icon(Icons.Default.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Spacer(modifier = Modifier.width(6.dp))
+                        Text("Analizza Tabellone Turni", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                    }
                 }
             }
         }
@@ -437,10 +516,17 @@ fun ImportShiftsScreen(
             Spacer(modifier = Modifier.height(18.dp))
 
             // ==========================================
-            // STEP 1: TROVA IL TUO NOME NEL TABELLONE
+            // STEP 1: TURNISTA PRE-SELEZIONATO A MONTE
             // ==========================================
+            val activeQuery = workerNameFilter.trim()
+            val filteredEmployees = if (activeQuery.isBlank()) {
+                if (showAllEmployees) result.employees else result.employees.take(5)
+            } else {
+                result.employees.filter { NgeniaTurniParser.matchesEmployeeQuery(it, activeQuery) }
+            }
+
             Text(
-                text = "1. CHI SEI NEL TABELLONE? (TROVA LA TUA FILA)",
+                text = "1. TURNISTA PRE-SELEZIONATO A MONTE (${result.employees.size} RILEVATI)",
                 fontSize = 11.5.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = ObsidianPrimary,
@@ -455,46 +541,41 @@ fun ImportShiftsScreen(
                 border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
-                    Text(
-                        text = "Digita il tuo cognome o nome per caricare la tua riga di turni:",
-                        fontSize = 11.5.sp,
-                        color = TextSecondary
-                    )
-
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    OutlinedTextField(
-                        value = employeeSearchQuery,
-                        onValueChange = { employeeSearchQuery = it },
-                        placeholder = { Text("Es. Marcozzi, Raglione, Luca, Eros, Tardivo...", fontSize = 12.sp, color = TextMuted) },
-                        leadingIcon = { Icon(Icons.Default.PersonSearch, contentDescription = null, tint = ObsidianPrimary) },
-                        trailingIcon = {
-                            if (employeeSearchQuery.isNotEmpty()) {
-                                IconButton(onClick = { employeeSearchQuery = "" }) {
-                                    Icon(Icons.Default.Clear, contentDescription = "Pulisci", tint = TextMuted, modifier = Modifier.size(18.dp))
+                    if (activeQuery.isNotBlank()) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.padding(bottom = 8.dp)
+                        ) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = ObsidianPrimary.copy(alpha = 0.15f),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianPrimary.copy(alpha = 0.4f))
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(Icons.Default.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+                                    Spacer(modifier = Modifier.width(5.dp))
+                                    Text(
+                                        text = "Filtro impostato a monte: \"$activeQuery\"",
+                                        fontSize = 11.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = ObsidianPrimary
+                                    )
                                 }
                             }
-                        },
-                        modifier = Modifier.fillMaxWidth(),
-                        singleLine = true,
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
-                            focusedBorderColor = ObsidianPrimary,
-                            unfocusedBorderColor = ObsidianBorderSubtle
-                        )
-                    )
-
-                    val filteredEmployees = if (employeeSearchQuery.isBlank()) {
-                        result.employees.take(4)
-                    } else {
-                        result.employees.filter {
-                            it.name.contains(employeeSearchQuery, ignoreCase = true) ||
-                            it.teamName.contains(employeeSearchQuery, ignoreCase = true) ||
-                            it.phone.contains(employeeSearchQuery)
                         }
+                    } else {
+                        Text(
+                            text = "Nessun filtro a monte impostato. Seleziona il tuo nominativo tra quelli rilevati:",
+                            fontSize = 11.5.sp,
+                            color = TextSecondary
+                        )
                     }
 
                     if (filteredEmployees.isNotEmpty()) {
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
                         filteredEmployees.forEach { emp ->
                             val isChosen = selectedEmployee?.name == emp.name
                             Surface(
@@ -543,6 +624,41 @@ fun ImportShiftsScreen(
                                         }
                                     }
                                 }
+                            }
+                        }
+                    } else if (activeQuery.isNotBlank()) {
+                        Spacer(modifier = Modifier.height(8.dp))
+                        Text(
+                            text = "Nessun turnista trovato per \"$activeQuery\". Prova con cognome, nome o matricola.",
+                            fontSize = 12.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.padding(vertical = 4.dp)
+                        )
+                    }
+
+                    if (activeQuery.isBlank() && result.employees.size > 5) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.Center
+                        ) {
+                            TextButton(
+                                onClick = { showAllEmployees = !showAllEmployees },
+                                contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
+                            ) {
+                                Icon(
+                                    imageVector = if (showAllEmployees) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    contentDescription = null,
+                                    tint = ObsidianPrimary,
+                                    modifier = Modifier.size(16.dp)
+                                )
+                                Spacer(modifier = Modifier.width(4.dp))
+                                Text(
+                                    text = if (showAllEmployees) "Mostra meno" else "Mostra tutti i ${result.employees.size} turnisti...",
+                                    color = ObsidianPrimary,
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold
+                                )
                             }
                         }
                     }
@@ -784,22 +900,6 @@ fun ImportShiftsScreen(
                                             fontSize = 15.sp,
                                             color = if (isSelected) ObsidianPrimary else TextPrimary
                                         )
-                                        if (isDefault) {
-                                            Spacer(modifier = Modifier.width(8.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(6.dp),
-                                                color = Color(0xFFF59E0B).copy(alpha = 0.2f),
-                                                border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
-                                            ) {
-                                                Text(
-                                                    text = "⭐ PREDEFINITO",
-                                                    fontSize = 8.5.sp,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = Color(0xFFFBBF24),
-                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
                                     }
                                     Text(
                                         text = "${team.totalDays} giorni • ${team.members.size} turnisti assegnati",
@@ -809,26 +909,19 @@ fun ImportShiftsScreen(
                                 }
                             }
 
-                            // Tasto rapido Stella Predefinito (compare per primo in modifica/rotazione)
-                            Surface(
-                                onClick = {
-                                    ShiftRepository.setDefaultRotation(team.rotationId)
-                                    feedbackMessage = "'${team.teamName}' impostata come turno predefinito!"
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                color = if (isDefault) Color(0xFFF59E0B).copy(alpha = 0.2f) else ObsidianSurfaceContainer,
-                                border = androidx.compose.foundation.BorderStroke(0.8.dp, if (isDefault) Color(0xFFF59E0B) else ObsidianBorderSubtle),
-                                modifier = Modifier.size(36.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Icon(
-                                        if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
-                                        contentDescription = "Imposta Predefinito",
-                                        tint = if (isDefault) Color(0xFFFBBF24) else TextSecondary,
-                                        modifier = Modifier.size(18.dp)
-                                    )
+                            // Tasto Stella Predefinito commutabile con micro-animazione elastica spring
+                            ElasticStarButton(
+                                isDefault = isDefault,
+                                onToggle = {
+                                    val isNowDefault = ShiftRepository.toggleDefaultRotation(team.rotationId)
+                                    popupType = PopupType.INFO
+                                    feedbackMessage = if (isNowDefault) {
+                                        "'${team.teamName}' impostata come turno predefinito!"
+                                    } else {
+                                        "Turno predefinito revocato per '${team.teamName}' (stato neutro)"
+                                    }
                                 }
-                            }
+                            )
                         }
 
                         Spacer(modifier = Modifier.height(10.dp))
@@ -863,60 +956,269 @@ fun ImportShiftsScreen(
 
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Azioni rapide per la squadra
+                        // Azioni distinte: "Salva nel Catalogo" e "Modifica"
                         Row(
                             modifier = Modifier.fillMaxWidth(),
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
-                            OutlinedButton(
-                                onClick = {
-                                    val msg = ShiftRepository.importNgeniaTurniResult(
-                                        result = result,
-                                        selectedTeamName = team.teamName,
-                                        makeDefault = true,
-                                        applyToCalendar = false
-                                    )
-                                    feedbackMessage = msg
-                                },
-                                shape = RoundedCornerShape(10.dp),
-                                modifier = Modifier.weight(1f).height(38.dp),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                            ) {
-                                Text("Salva nel Catalogo", fontSize = 11.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                            }
-
                             Button(
                                 onClick = {
-                                    val msg = ShiftRepository.importNgeniaTurniResult(
-                                        result = result,
-                                        selectedTeamName = team.teamName,
-                                        makeDefault = true,
-                                        applyToCalendar = true
+                                    ShiftRepository.ensureShiftDefinitionsFromParsedHours(result.detectedHours)
+                                    val rot = com.turni.calendario.model.ShiftRotation(
+                                        id = team.rotationId,
+                                        name = team.teamName,
+                                        totalDays = team.totalDays,
+                                        daySequence = team.dayShiftDefIds,
+                                        description = "Rotazione ${team.teamName} da importazione"
                                     )
-                                    feedbackMessage = msg
+                                    ShiftRepository.saveRotation(rot)
+                                    popupType = PopupType.SUCCESS
+                                    feedbackMessage = "Rotazione '${team.teamName}' e definizioni turni salvate nel catalogo!"
                                 },
                                 shape = RoundedCornerShape(10.dp),
                                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
-                                modifier = Modifier.weight(1.2f).height(38.dp)
+                                modifier = Modifier.weight(1.3f).height(40.dp)
                             ) {
-                                Icon(Icons.Default.CalendarMonth, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Applica Ciclo Squadra", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Salva nel catalogo", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            }
+
+                            OutlinedButton(
+                                onClick = {
+                                    showExitToEditDialog = true
+                                },
+                                shape = RoundedCornerShape(10.dp),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                                modifier = Modifier.weight(1f).height(40.dp)
+                            ) {
+                                Icon(Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
+                                Spacer(modifier = Modifier.width(6.dp))
+                                Text("Modifica", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                             }
                         }
                     }
                 }
             }
 
+            // Nota visiva esplicativa per la rifinitura dei turni nel catalogo
+            Card(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(vertical = 10.dp),
+                shape = RoundedCornerShape(14.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+            ) {
+                Row(
+                    modifier = Modifier.padding(14.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        Icons.Default.Info,
+                        contentDescription = null,
+                        tint = ObsidianPrimary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(modifier = Modifier.width(10.dp))
+                    Text(
+                        text = "I turni salvati nel catalogo potranno essere rifiniti in qualsiasi momento nell'apposita sezione dell'app.",
+                        fontSize = 11.5.sp,
+                        color = TextSecondary,
+                        lineHeight = 16.5.sp
+                    )
+                }
+            }
+
+            Spacer(modifier = Modifier.height(6.dp))
+
+            // Azioni finali di chiusura e salvaguardia dati
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(18.dp),
+                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "Azioni di Salvataggio e Chiusura",
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 14.sp
+                    )
+                    Text(
+                        text = "Salva l'intera turnazione nel catalogo oppure passa alla schermata di modifica.",
+                        color = TextSecondary,
+                        fontSize = 11.5.sp
+                    )
+
+                    Spacer(modifier = Modifier.height(14.dp))
+
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(10.dp)
+                    ) {
+                        Button(
+                            onClick = {
+                                ShiftRepository.ensureShiftDefinitionsFromParsedHours(result.detectedHours)
+                                for (team in result.teams) {
+                                    val rot = com.turni.calendario.model.ShiftRotation(
+                                        id = team.rotationId,
+                                        name = team.teamName,
+                                        totalDays = team.totalDays,
+                                        daySequence = team.dayShiftDefIds,
+                                        description = "Rotazione ${team.teamName} da importazione"
+                                    )
+                                    ShiftRepository.saveRotation(rot)
+                                }
+                                popupType = PopupType.SUCCESS
+                                feedbackMessage = "Tutte le ${result.teams.size} squadre e definizioni orarie salvate con successo nel catalogo!"
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
+                            modifier = Modifier
+                                .weight(1.3f)
+                                .height(44.dp)
+                        ) {
+                            Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Salva nel catalogo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        }
+
+                        OutlinedButton(
+                            onClick = {
+                                showExitToEditDialog = true
+                            },
+                            shape = RoundedCornerShape(12.dp),
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(44.dp)
+                        ) {
+                            Icon(Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                            Spacer(modifier = Modifier.width(6.dp))
+                            Text("Modifica", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                        }
+                    }
+                }
+            }
         }
 
         Spacer(modifier = Modifier.height(100.dp))
     }
 
+    // Dialog modale di avviso prima di passare alla schermata di modifica
+    if (showExitToEditDialog) {
+        AlertDialog(
+            onDismissRequest = { showExitToEditDialog = false },
+            title = {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Icon(
+                        Icons.Default.WarningAmber,
+                        contentDescription = null,
+                        tint = Color(0xFFF59E0B),
+                        modifier = Modifier.size(22.dp)
+                    )
+                    Spacer(modifier = Modifier.width(8.dp))
+                    Text(
+                        text = "Passa a Modifica",
+                        fontWeight = FontWeight.Bold,
+                        color = TextPrimary,
+                        fontSize = 16.sp
+                    )
+                }
+            },
+            text = {
+                Text(
+                    text = "Stai per uscire da questa schermata per passare a quella di modifica, perderai queste informazioni",
+                    color = TextSecondary,
+                    fontSize = 13.5.sp,
+                    lineHeight = 19.sp
+                )
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        showExitToEditDialog = false
+                        if (onNavigateToEdit != null) {
+                            onNavigateToEdit()
+                        } else {
+                            onDismiss()
+                        }
+                    },
+                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    shape = RoundedCornerShape(10.dp)
+                ) {
+                    Text("Conferma", color = Color.White, fontWeight = FontWeight.Bold)
+                }
+            },
+            dismissButton = {
+                OutlinedButton(
+                    onClick = { showExitToEditDialog = false },
+                    shape = RoundedCornerShape(10.dp),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                ) {
+                    Text("Annulla", color = TextPrimary)
+                }
+            },
+            containerColor = ObsidianSurface,
+            shape = RoundedCornerShape(20.dp)
+        )
+    }
+
     AnimatedStatusPopup(
         message = feedbackMessage,
         type = popupType,
-        onDismiss = { feedbackMessage = null }
+        onDismiss = { feedbackMessage = null },
+        modifier = Modifier
+            .align(Alignment.BottomCenter)
+            .navigationBarsPadding()
+            .padding(bottom = 16.dp)
     )
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun ElasticStarButton(
+    isDefault: Boolean,
+    onToggle: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val coroutineScope = rememberCoroutineScope()
+    val scale = remember { androidx.compose.animation.core.Animatable(1f) }
+
+    Surface(
+        onClick = {
+            coroutineScope.launch {
+                scale.snapTo(0.72f)
+                scale.animateTo(
+                    targetValue = 1f,
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                        stiffness = Spring.StiffnessLow
+                    )
+                )
+            }
+            onToggle()
+        },
+        shape = RoundedCornerShape(10.dp),
+        color = if (isDefault) Color(0xFFF59E0B).copy(alpha = 0.2f) else ObsidianSurfaceContainer,
+        border = androidx.compose.foundation.BorderStroke(
+            0.8.dp,
+            if (isDefault) Color(0xFFF59E0B) else ObsidianBorderSubtle
+        ),
+        modifier = modifier.size(38.dp)
+    ) {
+        Box(contentAlignment = Alignment.Center) {
+            Icon(
+                imageVector = if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
+                contentDescription = if (isDefault) "Revoca predefinito" else "Imposta come predefinito",
+                tint = if (isDefault) Color(0xFFFBBF24) else TextSecondary,
+                modifier = Modifier
+                    .size(20.dp)
+                    .scale(scale.value)
+            )
+        }
     }
 }

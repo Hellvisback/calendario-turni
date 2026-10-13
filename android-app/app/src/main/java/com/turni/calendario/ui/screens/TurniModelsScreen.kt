@@ -961,8 +961,12 @@ fun TurniModelsScreen(
                                     Surface(
                                         onClick = {
                                             starTrigger = true
-                                            ShiftRepository.setDefaultRotation(rot.id)
-                                            actionFeedback = ActionFeedback("Rotazione '${rot.name}' impostata come predefinita!", isDestructive = false)
+                                            val isNowDefault = ShiftRepository.toggleDefaultRotation(rot.id)
+                                            actionFeedback = if (isNowDefault) {
+                                                ActionFeedback("Rotazione '${rot.name}' impostata come predefinita!", isDestructive = false)
+                                            } else {
+                                                ActionFeedback("Rotazione predefinita revocata per '${rot.name}'", isDestructive = false)
+                                            }
                                         },
                                         shape = CircleShape,
                                         color = if (isDefault) Color(0xFFF59E0B).copy(alpha = 0.22f) else ObsidianSurfaceContainer,

@@ -115,7 +115,13 @@ fun MainScreen() {
                     )
                     NavItem.Report -> ReportScreen()
                     NavItem.Turni -> TurniModelsScreen(onEditorActiveChanged = { isSubScreenActive = it })
-                    NavItem.Altro -> SettingsScreen(onSubScreenActiveChanged = { isSubScreenActive = it })
+                    NavItem.Altro -> SettingsScreen(
+                        onSubScreenActiveChanged = { isSubScreenActive = it },
+                        onNavigateToTurni = {
+                            selectedItem = NavItem.Turni
+                            isSubScreenActive = false
+                        }
+                    )
                 }
             }
         }
