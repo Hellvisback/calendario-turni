@@ -651,7 +651,7 @@ fun CalendarScreen(
             }
         }
 
-        // Pillola Flottante Guida Intervallo / Rotazione (Stile identico agli screenshot di riferimento)
+        // Pillola Flottante Guida Periodo / Rotazione (Stile Riccardo Breccia Thumb Zone)
         val currentGuideStart = rangeStartDate ?: rotationStartDate
         AnimatedVisibility(
             visible = isPaintModeActive && currentGuideStart != null,
@@ -662,42 +662,59 @@ fun CalendarScreen(
                 .padding(bottom = 190.dp)
         ) {
             val isRange = rangeStartDate != null
+            val isEraser = selectedPaintShiftId == "eraser"
+            val targetShift = ShiftRepository.getShiftDefinition(selectedPaintShiftId)
+            val targetShiftName = targetShift?.name ?: "Turno"
             val safeStart = rangeStartDate ?: rotationStartDate
             if (safeStart != null) {
+                val startDayText = "${safeStart.dayOfMonth} ${safeStart.month.getDisplayName(java.time.format.TextStyle.SHORT, java.util.Locale.ITALIAN)}"
+                val guideLabel = when {
+                    isRange && isEraser -> "🧹 Da $startDayText • Tocca prima o dopo per cancellare"
+                    isRange -> "📍 Da $startDayText • Tocca prima o dopo per $targetShiftName"
+                    else -> "🔄 Da $startDayText • Tocca fine rotazione"
+                }
+                val guideColor = when {
+                    isRange && isEraser -> Color(0xFFDC2626)
+                    isRange -> Color(0xFF0284C7)
+                    else -> Color(0xFF0284C7)
+                }
+
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    modifier = Modifier.padding(horizontal = 16.dp)
                 ) {
                     Surface(
                         modifier = Modifier
-                            .shadow(elevation = 14.dp, shape = RoundedCornerShape(22.dp), spotColor = Color(0xFF0284C7).copy(alpha = 0.5f))
+                            .shadow(elevation = 14.dp, shape = RoundedCornerShape(22.dp), spotColor = guideColor.copy(alpha = 0.5f))
                             .bouncyClickable {
-                                if (isRange) {
-                                    rangeStartDate = null
-                                } else {
+                                if (!isRange) {
                                     showSelectEndDialog = true
                                 }
                             },
                         shape = RoundedCornerShape(22.dp),
-                        color = Color(0xFF0284C7)
+                        color = guideColor
                     ) {
                         Row(
-                            modifier = Modifier.padding(horizontal = 20.dp, vertical = 9.dp),
+                            modifier = Modifier.padding(horizontal = 16.dp, vertical = 9.dp),
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(8.dp)
                         ) {
                             Text(
-                                text = if (isRange) "Tocca fine periodo" else "Seleziona la fine",
+                                text = guideLabel,
                                 color = Color.White,
                                 fontWeight = FontWeight.ExtraBold,
-                                fontSize = 13.5.sp
+                                fontSize = 12.5.sp,
+                                maxLines = 1
                             )
-                            Icon(
-                                imageVector = Icons.Default.SwapHoriz,
-                                contentDescription = null,
-                                tint = Color.White,
-                                modifier = Modifier.size(19.dp)
-                            )
+                            if (!isRange) {
+                                Icon(
+                                    imageVector = Icons.Default.Tune,
+                                    contentDescription = "Imposta cicli",
+                                    tint = Color.White,
+                                    modifier = Modifier.size(17.dp)
+                                )
+                            }
                         }
                     }
 
@@ -715,7 +732,7 @@ fun CalendarScreen(
                         Box(contentAlignment = Alignment.Center) {
                             Icon(
                                 imageVector = Icons.Default.Close,
-                                contentDescription = "Annulla",
+                                contentDescription = "Annulla selezione",
                                 tint = Color(0xFF0F172A),
                                 modifier = Modifier.size(18.dp)
                             )
@@ -1043,6 +1060,10 @@ fun MonthGridView(
                             shifts = shifts,
                             plannedShift = planned,
                             rotationStartDate = if (isPaintModeActive && editMode == CalendarEditMode.ROTATION) rotationStartDate else null,
+                            rangeStartDate = if (isPaintModeActive && editMode == CalendarEditMode.RANGE) rangeStartDate else null,
+                            isPaintModeActive = isPaintModeActive,
+                            editMode = editMode,
+                            paintShiftId = selectedPaintShiftId,
                             activeRotation = if (isPaintModeActive && editMode == CalendarEditMode.ROTATION) currentSelectedRot else null,
                             modifier = Modifier.weight(1f),
                             onClick = { onDayClick(dayInfo) }
@@ -1071,10 +1092,16 @@ fun DayCellView(
     shifts: List<AssignedShift>,
     plannedShift: ShiftDefinition?,
     rotationStartDate: LocalDate? = null,
+    rangeStartDate: LocalDate? = null,
+    isPaintModeActive: Boolean = false,
+    editMode: CalendarEditMode = CalendarEditMode.REPLACE,
+    paintShiftId: String = "",
     activeRotation: ShiftRotation? = null,
     modifier: Modifier = Modifier,
     onClick: () -> Unit
 ) {
+    val isEraser = paintShiftId == "eraser"
+    val isRangeStart = isPaintModeActive && editMode == CalendarEditMode.RANGE && rangeStartDate != null && dayInfo.date == rangeStartDate
     val cycleLengthDays = (activeRotation?.totalDays ?: 28).coerceAtLeast(1)
     val isCycleStart = rotationStartDate != null && dayInfo.date == rotationStartDate
     val isCoveredByCycle = rotationStartDate != null && dayInfo.date.isAfter(rotationStartDate)
@@ -1085,6 +1112,8 @@ fun DayCellView(
     val dayExtra = ShiftRepository.getDayExtraInfo(dayInfo.date)
 
     val cellBackground = when {
+        isRangeStart && isEraser -> Color(0xFF3B1212)
+        isRangeStart -> Color(0xFF0C2A4D)
         isCycleStart -> Color(0xFF0C243B)
         isSelected && isDayOnCall -> Color(0xFF3B2507)
         isSelected -> ObsidianSurfaceHighest
@@ -1110,13 +1139,16 @@ fun DayCellView(
     }
 
     val cellBorderWidth = when {
-        isCycleStart || isSelected -> 2.dp
+        isRangeStart || isCycleStart -> 2.5.dp
+        isSelected -> 2.dp
         isDayOnCall -> 1.5.dp
         isCoveredByCycle -> 1.dp
         else -> 0.8.dp
     }
 
     val cellBorderColor = when {
+        isRangeStart && isEraser -> Color(0xFFEF4444)
+        isRangeStart -> Color(0xFF38BDF8)
         isCycleStart -> Color(0xFF38BDF8)
         isSelected -> ObsidianBorderActive
         isDayOnCall -> Color(0xFFF59E0B).copy(alpha = 0.92f)
@@ -1157,7 +1189,21 @@ fun DayCellView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
-                    if (isToday) {
+                    if (isRangeStart) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(4.dp))
+                                .background(if (isEraser) Color(0xFFEF4444) else Color(0xFF0284C7))
+                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        ) {
+                            Text(
+                                text = "${dayInfo.date.dayOfMonth} ${if (isEraser) "🧹" else "📍"}",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.White
+                            )
+                        }
+                    } else if (isToday) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(5.dp))
@@ -1179,8 +1225,8 @@ fun DayCellView(
                                 .padding(horizontal = 4.dp, vertical = 1.dp)
                         ) {
                             Text(
-                                text = dayInfo.date.dayOfMonth.toString(),
-                                fontSize = 11.sp,
+                                text = "${dayInfo.date.dayOfMonth} 🔄1",
+                                fontSize = 10.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White
                             )
@@ -1309,10 +1355,41 @@ fun DayCellView(
 
             Spacer(modifier = Modifier.height(2.dp))
 
-            // ANTEPRIMA ROTAZIONE ATTIVA (HA LA PRECEDENZA PER MOSTRARE IL PROSPETTO ESATTO DEL CICLO!)
+            // ANTEPRIMA ROTAZIONE O PERIODO ATTIVO (HA LA PRECEDENZA PER MOSTRARE IL PROSPETTO ESATTO!)
             val isRotationPreviewActive = (isCycleStart || isCoveredByCycle) && activeRotation != null && activeRotation.daySequence.isNotEmpty()
+            val paintDef = if (isRangeStart && !isEraser && paintShiftId.isNotEmpty()) {
+                ShiftRepository.getShiftDefinition(paintShiftId)
+            } else null
 
-            if (isRotationPreviewActive) {
+            if (isRangeStart && isEraser) {
+                // Indicatore visivo chiaro per cancellazione periodo sul giorno iniziale
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth(0.94f)
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(Color(0xFFEF4444).copy(alpha = 0.25f))
+                        .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                        .padding(vertical = 1.2.dp),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Text(
+                        text = "🧹 CANCELLA",
+                        fontSize = 7.2.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color.White,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            } else if (paintDef != null) {
+                // Anteprima immediata del turno selezionato sul giorno iniziale della selezione periodo!
+                ShiftCellBadge(
+                    def = paintDef,
+                    isModified = false,
+                    customStartTime = null,
+                    compactMode = false
+                )
+            } else if (isRotationPreviewActive) {
                 val previewSeqIdx = (daysBetween % activeRotation!!.daySequence.size.coerceAtLeast(1)).toInt()
                 val previewDefId = activeRotation.daySequence.getOrNull(previewSeqIdx)
                 val previewDef = previewDefId?.let { ShiftRepository.getShiftDefinition(it) }
@@ -1419,27 +1496,57 @@ fun DayCellView(
                 origDef?.let { getCompactShiftCode(it.id, it.shortCode) }
             } else null
 
-            // Mostra il turno sostituito in grigio discreto se abilitato dalle preferenze e non nascosto dall'utente (anche fino a 2 turni contemporanei)
-            val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift && shifts.size <= 2
+            // Mostra il turno sostituito in grigio discreto se abilitato dalle preferenze e non nascosto dall'utente (badge completo per <=2 turni, pillola con dot per 3+ turni)
+            val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift
             if (showExBadge && origDefName != null) {
-                Spacer(modifier = Modifier.height(1.5.dp))
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 1.dp)
-                        .clip(RoundedCornerShape(3.dp))
-                        .background(Color(0xFF1E2638))
-                        .padding(vertical = 0.8.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = origDefName,
-                        fontSize = 6.8.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color(0xFF94A3B8),
-                        maxLines = 1,
-                        softWrap = false
-                    )
+                Spacer(modifier = Modifier.height(1.dp))
+                if (shifts.size <= 2) {
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 1.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xFF1E2638))
+                            .padding(vertical = 0.8.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = origDefName,
+                            fontSize = 6.8.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 1.dp)
+                            .clip(RoundedCornerShape(2.5.dp))
+                            .background(Color(0xFF1E2638).copy(alpha = 0.9f))
+                            .border(0.5.dp, Color(0xFF475569).copy(alpha = 0.7f), RoundedCornerShape(2.5.dp))
+                            .padding(horizontal = 2.dp, vertical = 0.5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.Center
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(3.5.dp)
+                                .clip(CircleShape)
+                                .background(Color(0xFF94A3B8))
+                        )
+                        Spacer(modifier = Modifier.width(2.dp))
+                        Text(
+                            text = "ex $origDefName",
+                            fontSize = 6.sp,
+                            fontWeight = FontWeight.Bold,
+                            color = Color(0xFF94A3B8),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
         }

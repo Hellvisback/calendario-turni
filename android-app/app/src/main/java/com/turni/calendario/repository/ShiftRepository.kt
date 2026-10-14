@@ -668,6 +668,11 @@ object ShiftRepository {
         val end = if (startDate.isBefore(endDate)) endDate else startDate
         var curr = start
         while (!curr.isAfter(end)) {
+            if (shiftDefId == "eraser" || shiftDefId == "empty") {
+                clearDayShifts(curr)
+                curr = curr.plusDays(1)
+                continue
+            }
             val prev = calendarShifts[curr]?.firstOrNull()
             val isFromRotationOrigin = prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)
             val newList = mutableStateListOf<AssignedShift>()
@@ -870,7 +875,14 @@ object ShiftRepository {
         saveSnapshot()
         calendarShifts[date] = mutableStateListOf()
         val extra = getDayExtraInfo(date)
-        dayExtraInfo[date] = extra.copy(isTrasferta = false)
+        dayExtraInfo[date] = extra.copy(
+            overtimeHours = 0f,
+            isTrasferta = false,
+            actualEndTime = null,
+            notes = "",
+            isOnCallManual = null,
+            hideExShift = true
+        )
     }
 
     fun applyRotation(rotationId: String, startDate: LocalDate, daysCount: Int = 90) {
@@ -1181,7 +1193,7 @@ object ShiftRepository {
             } else {
                 (1440 - pMins) + aMins
             }
-            if (diffMinutes in 1..720) {
+            if (diffMinutes in 1..960) {
                 Math.round((diffMinutes / 60f) * 100) / 100f
             } else 0f
         } catch (_: Exception) {
