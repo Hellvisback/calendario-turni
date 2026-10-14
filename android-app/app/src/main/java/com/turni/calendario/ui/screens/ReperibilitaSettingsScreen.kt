@@ -18,7 +18,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.layout.Layout
+import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.ReperibilitaMode
@@ -210,54 +213,72 @@ fun ReperibilitaSettingsScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Icon(Icons.Default.Schedule, contentDescription = null, tint = Color(0xFFF59E0B))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Seleziona il Turno di Reperibilità", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
+                            Text("Seleziona i Turni di Reperibilità", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                         }
                         Spacer(modifier = Modifier.height(8.dp))
                         Text(
-                            "Tutti i giorni in cui lavori questo turno avranno automaticamente la reperibilità attiva.",
+                            "Tutti i giorni in cui lavori uno dei turni selezionati sotto avranno automaticamente la reperibilità attiva nel calendario.",
                             color = TextSecondary,
                             fontSize = 12.sp
                         )
                         Spacer(modifier = Modifier.height(12.dp))
 
-                        // Chips turni disponibili
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(8.dp)
-                        ) {
-                            val availableShifts = ShiftRepository.shiftDefinitions.filter { it.category == com.turni.calendario.model.ShiftCategory.LAVORO }
-                            availableShifts.forEach { shiftDef ->
-                                val isChosen = shiftDef.id in config.shiftSpecificIds
-                                Surface(
-                                    onClick = {
-                                        val newIds = if (isChosen) config.shiftSpecificIds - shiftDef.id else config.shiftSpecificIds + shiftDef.id
-                                        config = config.copy(shiftSpecificIds = if (newIds.isEmpty()) listOf("pomeriggio") else newIds)
-                                        ShiftRepository.reperibilitaConfig = config
-                                    },
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = if (isChosen) shiftDef.color.copy(alpha = 0.25f) else ObsidianSurfaceHigh,
-                                    border = androidx.compose.foundation.BorderStroke(
-                                        width = 1.dp,
-                                        color = if (isChosen) shiftDef.color else ObsidianBorderSubtle
-                                    )
+                        val availableShifts = ShiftRepository.shiftDefinitions.toList()
+                        if (availableShifts.isEmpty()) {
+                            Surface(
+                                shape = RoundedCornerShape(12.dp),
+                                color = ObsidianSurfaceContainer,
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Row(
+                                    modifier = Modifier.padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Row(
-                                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                                        verticalAlignment = Alignment.CenterVertically
+                                    Icon(Icons.Default.Info, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    Spacer(modifier = Modifier.width(8.dp))
+                                    Text("Nessun turno configurato. Crea prima i tuoi turni personalizzati nella sezione Turni.", color = TextMuted, fontSize = 12.sp)
+                                }
+                            }
+                        } else {
+                            // SimpleFlowRow elastico che racchiude TUTTI i turni dell'utente senza tagli
+                            SimpleFlowRow(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalSpacing = 8.dp,
+                                verticalSpacing = 8.dp
+                            ) {
+                                availableShifts.forEach { shiftDef ->
+                                    val isChosen = shiftDef.id in config.shiftSpecificIds
+                                    Surface(
+                                        onClick = {
+                                            val newIds = if (isChosen) config.shiftSpecificIds - shiftDef.id else config.shiftSpecificIds + shiftDef.id
+                                            config = config.copy(shiftSpecificIds = newIds)
+                                            ShiftRepository.reperibilitaConfig = config
+                                        },
+                                        shape = RoundedCornerShape(10.dp),
+                                        color = if (isChosen) shiftDef.color.copy(alpha = 0.25f) else ObsidianSurfaceHigh,
+                                        border = androidx.compose.foundation.BorderStroke(
+                                            width = 1.dp,
+                                            color = if (isChosen) shiftDef.color else ObsidianBorderSubtle
+                                        )
                                     ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(8.dp)
-                                                .clip(CircleShape)
-                                                .background(shiftDef.color)
-                                        )
-                                        Spacer(modifier = Modifier.width(6.dp))
-                                        Text(
-                                            text = shiftDef.name,
-                                            fontSize = 12.sp,
-                                            fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Normal,
-                                            color = if (isChosen) Color.White else TextSecondary
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(8.dp)
+                                                    .clip(CircleShape)
+                                                    .background(shiftDef.color)
+                                            )
+                                            Spacer(modifier = Modifier.width(6.dp))
+                                            Text(
+                                                text = "${shiftDef.shortCode} • ${shiftDef.name}",
+                                                fontSize = 12.sp,
+                                                fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Normal,
+                                                color = if (isChosen) Color.White else TextSecondary
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -400,12 +421,13 @@ fun ReperibilitaSettingsScreen(
                             Text("Turni in reperibilità d'inverno:", fontSize = 11.5.sp, color = TextMuted, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.height(6.dp))
 
-                            // Chip turni per inverno
-                            Row(
+                            // Chip turni per inverno con SimpleFlowRow elastico
+                            SimpleFlowRow(
                                 modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(6.dp)
+                                horizontalSpacing = 6.dp,
+                                verticalSpacing = 6.dp
                             ) {
-                                val availableShifts = ShiftRepository.shiftDefinitions.filter { it.category == com.turni.calendario.model.ShiftCategory.LAVORO }
+                                val availableShifts = ShiftRepository.shiftDefinitions.toList()
                                 availableShifts.forEach { sDef ->
                                     val isWinterActive = sDef.id in seasonal.winterShiftIds
                                     Surface(
@@ -414,17 +436,28 @@ fun ReperibilitaSettingsScreen(
                                         border = androidx.compose.foundation.BorderStroke(1.dp, if (isWinterActive) sDef.color else ObsidianBorderSubtle),
                                         modifier = Modifier.bouncyClickable {
                                             val newShiftIds = if (isWinterActive) seasonal.winterShiftIds - sDef.id else seasonal.winterShiftIds + sDef.id
-                                            config = config.copy(seasonal = seasonal.copy(winterShiftIds = if (newShiftIds.isEmpty()) listOf("pomeriggio") else newShiftIds))
+                                            config = config.copy(seasonal = seasonal.copy(winterShiftIds = newShiftIds))
                                             ShiftRepository.reperibilitaConfig = config
                                         }
                                     ) {
-                                        Text(
-                                            text = sDef.shortCode,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = if (isWinterActive) Color.White else TextSecondary,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp)
-                                        )
+                                        Row(
+                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Box(
+                                                modifier = Modifier
+                                                    .size(7.dp)
+                                                    .clip(CircleShape)
+                                                    .background(sDef.color)
+                                            )
+                                            Spacer(modifier = Modifier.width(5.dp))
+                                            Text(
+                                                text = "${sDef.shortCode} • ${sDef.name}",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Bold,
+                                                color = if (isWinterActive) Color.White else TextSecondary
+                                            )
+                                        }
                                     }
                                 }
                             }
@@ -615,3 +648,61 @@ fun ReperibilitaSettingsScreen(
     )
     }
 }
+
+@Composable
+fun SimpleFlowRow(
+    modifier: Modifier = Modifier,
+    horizontalSpacing: Dp = 8.dp,
+    verticalSpacing: Dp = 8.dp,
+    content: @Composable () -> Unit
+) {
+    Layout(
+        modifier = modifier,
+        content = content
+    ) { measurables, constraints ->
+        val hSpacingPx = horizontalSpacing.roundToPx()
+        val vSpacingPx = verticalSpacing.roundToPx()
+
+        val rows = mutableListOf<List<Placeable>>()
+        val rowHeights = mutableListOf<Int>()
+        var currentRow = mutableListOf<Placeable>()
+        var currentLineWidth = 0
+        var currentLineHeight = 0
+
+        for (measurable in measurables) {
+            val placeable = measurable.measure(constraints.copy(minWidth = 0, minHeight = 0))
+            if (currentLineWidth + placeable.width + (if (currentRow.isNotEmpty()) hSpacingPx else 0) > constraints.maxWidth && currentRow.isNotEmpty()) {
+                rows.add(currentRow)
+                rowHeights.add(currentLineHeight)
+                currentRow = mutableListOf(placeable)
+                currentLineWidth = placeable.width
+                currentLineHeight = placeable.height
+            } else {
+                if (currentRow.isNotEmpty()) currentLineWidth += hSpacingPx
+                currentRow.add(placeable)
+                currentLineWidth += placeable.width
+                currentLineHeight = maxOf(currentLineHeight, placeable.height)
+            }
+        }
+        if (currentRow.isNotEmpty()) {
+            rows.add(currentRow)
+            rowHeights.add(currentLineHeight)
+        }
+
+        val totalHeight = rowHeights.sum() + (if (rows.size > 1) (rows.size - 1) * vSpacingPx else 0)
+
+        layout(constraints.maxWidth, totalHeight.coerceAtLeast(0)) {
+            var currentY = 0
+            for (i in rows.indices) {
+                val row = rows[i]
+                var currentX = 0
+                for (placeable in row) {
+                    placeable.placeRelative(currentX, currentY)
+                    currentX += placeable.width + hSpacingPx
+                }
+                currentY += rowHeights[i] + vSpacingPx
+            }
+        }
+    }
+}
+

@@ -436,7 +436,8 @@ data class GoogleAccountProfile(
 enum class PdfExportMode(val label: String) {
     ELENCO("Elenco"),
     MESE("Mese"),
-    ANNO("Anno")
+    ANNO("Anno"),
+    PERSONALIZZATO("Periodo")
 }
 
 data class PdfExportOptions(

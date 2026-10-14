@@ -28,6 +28,8 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.turni.calendario.alarm.ShiftAlarmScheduler
+import com.turni.calendario.alarm.UpcomingAlarmInfo
 import com.turni.calendario.model.ShiftAlarmRule
 import com.turni.calendario.model.SmartAlarmsConfig
 import com.turni.calendario.repository.ShiftRepository
@@ -39,6 +41,7 @@ import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,6 +53,9 @@ fun SmartAlarmsSettingsScreen(
     var syncFeedbackMessage by remember { mutableStateOf<String?>(null) }
     var popupType by remember { mutableStateOf(PopupType.SUCCESS) }
     var lastSyncDate by remember { mutableStateOf<String?>(null) }
+    var upcomingAlarm by remember(config) {
+        mutableStateOf(ShiftAlarmScheduler.getNextUpcomingAlarm(context))
+    }
 
     BackHandler {
         onDismiss()
@@ -57,87 +63,49 @@ fun SmartAlarmsSettingsScreen(
 
     // Calcola l'orario effettivo di sveglia per una regola
     fun getResolvedAlarmTime(rule: ShiftAlarmRule): Pair<Int, Int>? {
-        if (!rule.customTime.isNullOrBlank()) {
-            val parts = rule.customTime.split(":")
-            if (parts.size == 2) {
-                val h = parts[0].trim().toIntOrNull()
-                val m = parts[1].trim().toIntOrNull()
-                if (h != null && m != null && h in 0..23 && m in 0..59) {
-                    return Pair(h, m)
-                }
-            }
-        }
-        val def = ShiftRepository.getShiftDefinition(rule.shiftDefId) ?: return null
-        return try {
-            val startTime = LocalTime.parse(def.startTime)
-            val alarmTime = startTime.minusMinutes(rule.minutesBefore.toLong())
-            Pair(alarmTime.hour, alarmTime.minute)
-        } catch (_: Exception) {
-            null
-        }
+        val t = ShiftAlarmScheduler.getResolvedAlarmTime(rule) ?: return null
+        return Pair(t.hour, t.minute)
     }
 
-    // Funzione di sincronizzazione automatica batch per tutte le date del mese
-    fun syncAllMonthAlarms() {
+    // Funzione per aggiornare e programmare la prossima sveglia precisa con AlarmManager
+    fun syncAndScheduleSmartAlarm() {
         if (!config.isGlobalEnabled) {
-            syncFeedbackMessage = "Le sveglie automatiche sono disattivate globalmente."
+            ShiftAlarmScheduler.cancelScheduledAlarm(context)
+            upcomingAlarm = null
+            popupType = PopupType.WARNING
+            syncFeedbackMessage = "Le sveglie automatiche sono disattivate."
             return
         }
 
-        var count = 0
-        val startDate = LocalDate.now()
-        val endDate = startDate.plusDays(30)
-
-        val repRule = config.rules.firstOrNull { it.shiftDefId == "reperibilita" }
-        val morningRule = config.rules.firstOrNull { it.shiftDefId == "mattina" }
-        val afternoonRule = config.rules.firstOrNull { it.shiftDefId == "pomeriggio" }
-        val nightRule = config.rules.firstOrNull { it.shiftDefId == "notte" }
-
-        var curr = startDate
-        while (!curr.isAfter(endDate)) {
-            // 1. REPERIBILITÀ: Avviso la sera del giorno prima
-            val nextDay = curr.plusDays(1)
-            val isNextDayOnCall = ShiftRepository.isOnCall(nextDay)
-            if (isNextDayOnCall && repRule != null && repRule.isEnabled) {
-                count++
-            }
-
-            // 2. TURNI DELLA GIORNATA
-            val dayShifts = ShiftRepository.getShiftsForDate(curr)
-            val planned = ShiftRepository.getPlannedRotationShift(curr)
-            val targetShiftIds = (dayShifts.map { it.shiftDefId } + listOfNotNull(planned?.id)).distinct()
-
-            if (morningRule != null && morningRule.isEnabled && targetShiftIds.contains("mattina")) {
-                count++
-            }
-            if (afternoonRule != null && afternoonRule.isEnabled && targetShiftIds.contains("pomeriggio")) {
-                count++
-            }
-            if (nightRule != null && nightRule.isEnabled && targetShiftIds.contains("notte")) {
-                count++
-            }
-
-            curr = curr.plusDays(1)
-        }
-
+        val scheduled = ShiftAlarmScheduler.scheduleNextAlarm(context)
+        upcomingAlarm = scheduled
         val nowFormatted = LocalDateTime.now().format(DateTimeFormatter.ofPattern("HH:mm"))
         lastSyncDate = "Oggi alle $nowFormatted"
-        syncFeedbackMessage = "Sincronizzazione completata con successo: $count turni/avvisi programmati per i prossimi 30 giorni!"
-        Toast.makeText(context, "$count sveglie automatiche pianificate!", Toast.LENGTH_SHORT).show()
+
+        if (scheduled != null) {
+            val dateStr = scheduled.triggerDateTime.format(DateTimeFormatter.ofPattern("EEE d MMM 'alle' HH:mm", Locale.ITALIAN))
+            popupType = PopupType.SUCCESS
+            syncFeedbackMessage = "Sveglia programmata con successo per $dateStr (${scheduled.shiftName})!"
+            Toast.makeText(context, "Sveglia turni programmata: $dateStr", Toast.LENGTH_SHORT).show()
+        } else {
+            popupType = PopupType.INFO
+            syncFeedbackMessage = "Nessun turno o reperibilità programmata nei prossimi 30 giorni."
+            Toast.makeText(context, "Nessun turno in programma", Toast.LENGTH_SHORT).show()
+        }
     }
 
-    // Imposta una sveglia singola nativa tramite l'orologio di sistema
+    // Imposta una sveglia singola di test tramite l'orologio di sistema o notifica immediata
     fun setSingleSystemAlarm(hour: Int, minute: Int, label: String) {
         try {
             val intent = Intent(AlarmClock.ACTION_SET_ALARM).apply {
                 putExtra(AlarmClock.EXTRA_HOUR, hour)
                 putExtra(AlarmClock.EXTRA_MINUTES, minute)
                 putExtra(AlarmClock.EXTRA_MESSAGE, label)
-                putExtra(AlarmClock.EXTRA_SKIP_UI, true)
+                putExtra(AlarmClock.EXTRA_SKIP_UI, false)
                 flags = Intent.FLAG_ACTIVITY_NEW_TASK
             }
             context.startActivity(intent)
-            Toast.makeText(context, "Sveglia impostata alle ${String.format("%02d:%02d", hour, minute)}: $label", Toast.LENGTH_SHORT).show()
+            Toast.makeText(context, "Sveglia di test: ${String.format("%02d:%02d", hour, minute)} ($label)", Toast.LENGTH_SHORT).show()
         } catch (_: Exception) {
             Toast.makeText(context, "Impossibile aprire l'app Orologio di sistema", Toast.LENGTH_SHORT).show()
         }
@@ -257,66 +225,151 @@ fun SmartAlarmsSettingsScreen(
                         onCheckedChange = {
                             config = config.copy(isGlobalEnabled = it)
                             ShiftRepository.smartAlarmsConfig = config
+                            syncAndScheduleSmartAlarm()
                         },
                         colors = SwitchDefaults.colors(
                             checkedThumbColor = Color.White,
                             checkedTrackColor = ObsidianPrimaryContainer,
-                            uncheckedTrackColor = ObsidianSurfaceHigh
+                            uncheckedThumbColor = Color(0xFF94A3B8),
+                            uncheckedTrackColor = Color(0xFF1E293B),
+                            uncheckedBorderColor = Color(0xFF475569)
                         )
                     )
                 }
             }
 
-            // Banner Azione: Sincronizzazione Batch Automatica
-            if (config.isGlobalEnabled) {
-                Surface(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(16.dp),
-                    color = ObsidianSurfaceContainer,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianPrimary.copy(alpha = 0.35f))
-                ) {
-                    Column(modifier = Modifier.padding(14.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Bolt, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(8.dp))
+            // Card Stato / Prossima Sveglia Programmata
+            Surface(
+                modifier = Modifier.fillMaxWidth(),
+                shape = RoundedCornerShape(16.dp),
+                color = ObsidianSurfaceContainer,
+                border = androidx.compose.foundation.BorderStroke(
+                    1.dp,
+                    if (upcomingAlarm != null && config.isGlobalEnabled) Color(0xFF0284C7).copy(alpha = 0.5f)
+                    else ObsidianBorderSubtle
+                )
+            ) {
+                Column(modifier = Modifier.padding(14.dp)) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Icon(
+                                imageVector = if (upcomingAlarm != null && config.isGlobalEnabled) Icons.Default.AlarmOn else Icons.Default.AlarmOff,
+                                contentDescription = null,
+                                tint = if (upcomingAlarm != null && config.isGlobalEnabled) ObsidianPrimary else TextMuted,
+                                modifier = Modifier.size(19.dp)
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
                             Text(
-                                text = "Automazione Mensile Senza Clic Giornalieri",
+                                text = "PROSSIMA SVEGLIA PROGRAMMATA",
                                 fontWeight = FontWeight.Bold,
-                                fontSize = 13.5.sp,
-                                color = TextPrimary
+                                fontSize = 11.5.sp,
+                                maxLines = 1,
+                                color = if (upcomingAlarm != null && config.isGlobalEnabled) ObsidianPrimary else TextMuted,
+                                letterSpacing = 0.4.sp
                             )
                         }
-                        Spacer(modifier = Modifier.height(4.dp))
+                        Spacer(modifier = Modifier.width(8.dp))
+
+                        if (upcomingAlarm != null && config.isGlobalEnabled) {
+                            Surface(
+                                shape = RoundedCornerShape(8.dp),
+                                color = Color(0xFF0284C7).copy(alpha = 0.2f),
+                                border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFF0284C7))
+                            ) {
+                                Text(
+                                    text = "ATTIVA",
+                                    fontSize = 10.sp,
+                                    maxLines = 1,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF38BDF8),
+                                    modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
+                                )
+                            }
+                        }
+                    }
+
+                    Spacer(modifier = Modifier.height(8.dp))
+
+                    if (!config.isGlobalEnabled) {
                         Text(
-                            text = "L'app calcola e mantiene aggiornate tutte le sveglie future del mese in base alla tua turnazione reale.",
-                            fontSize = 11.5.sp,
+                            text = "Le sveglie automatiche sono disattivate. Attiva il selettore sopra per consentire all'app di pianificare automaticamente gli orari.",
+                            fontSize = 12.sp,
                             color = TextSecondary
                         )
-                        if (lastSyncDate != null) {
-                            Spacer(modifier = Modifier.height(4.dp))
+                    } else if (upcomingAlarm != null) {
+                        val alarm = upcomingAlarm!!
+                        val formattedDate = alarm.triggerDateTime.format(
+                            DateTimeFormatter.ofPattern("EEEE d MMMM 'alle' HH:mm", Locale.ITALIAN)
+                        ).replaceFirstChar { it.uppercase() }
+
+                        Text(
+                            text = formattedDate,
+                            fontSize = 16.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextPrimary
+                        )
+                        Spacer(modifier = Modifier.height(2.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Box(
+                                modifier = Modifier
+                                    .size(8.dp)
+                                    .clip(CircleShape)
+                                    .background(Color(alarm.shiftColorHex))
+                            )
+                            Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = "Ultima sincronizzazione: $lastSyncDate",
-                                fontSize = 11.sp,
-                                color = Color(0xFF34D399),
-                                fontWeight = FontWeight.SemiBold
+                                text = alarm.message,
+                                fontSize = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = TextSecondary
                             )
                         }
-                        Spacer(modifier = Modifier.height(10.dp))
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "L'app programma sempre e solo la prossima sveglia utile, senza intasare il tuo orologio di sistema con decine di sveglie duplicate.",
+                            fontSize = 11.sp,
+                            color = TextMuted
+                        )
+                    } else {
+                        Text(
+                            text = "Nessun turno o reperibilità programmata nei prossimi 30 giorni con regole sveglia attive.",
+                            fontSize = 12.sp,
+                            color = TextSecondary
+                        )
+                    }
 
+                    if (lastSyncDate != null) {
+                        Spacer(modifier = Modifier.height(6.dp))
+                        Text(
+                            text = "Ultimo aggiornamento: $lastSyncDate",
+                            fontSize = 10.5.sp,
+                            color = Color(0xFF34D399),
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    }
+
+                    if (config.isGlobalEnabled) {
+                        Spacer(modifier = Modifier.height(10.dp))
                         Button(
-                            onClick = { syncAllMonthAlarms() },
+                            onClick = { syncAndScheduleSmartAlarm() },
                             modifier = Modifier.fillMaxWidth().height(42.dp),
                             shape = RoundedCornerShape(12.dp),
                             colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                         ) {
                             Icon(Icons.Default.Sync, contentDescription = null, tint = ObsidianBackground, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(8.dp))
-                            Text("Sincronizza Tutte le Sveglie del Mese", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = ObsidianBackground)
+                            Text("Aggiorna Programmazione Sveglia", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = ObsidianBackground)
                         }
                     }
                 }
             }
-
 
             Text(
                 text = "CONFIGURAZIONE REGOLE TURNI",
@@ -332,7 +385,7 @@ fun SmartAlarmsSettingsScreen(
                 ?: ShiftAlarmRule("reperibilita", isEnabled = true, customTime = "20:00")
             AlarmRuleCard(
                 title = "Giorno di Reperibilità",
-                subtitle = "Suona la sera del giorno prima per accendere il telefono",
+                subtitle = "Suonerà la sera del giorno prima per avvertirti che l'indomani sei reperibile",
                 icon = Icons.Default.PhoneCallback,
                 iconTint = Color(0xFFFBBF24),
                 iconBg = Color(0xFFF59E0B).copy(alpha = 0.22f),
@@ -343,6 +396,7 @@ fun SmartAlarmsSettingsScreen(
                     val newRules = config.rules.filter { it.shiftDefId != "reperibilita" } + updated
                     config = config.copy(rules = newRules)
                     ShiftRepository.smartAlarmsConfig = config
+                    syncAndScheduleSmartAlarm()
                 },
                 timeValue = repRule.customTime ?: "20:00",
                 onTimeChange = { newTime ->
@@ -375,6 +429,7 @@ fun SmartAlarmsSettingsScreen(
                     val newRules = config.rules.filter { it.shiftDefId != "mattina" } + updated
                     config = config.copy(rules = newRules)
                     ShiftRepository.smartAlarmsConfig = config
+                    syncAndScheduleSmartAlarm()
                 },
                 timeValue = matRule.customTime ?: "05:00",
                 onTimeChange = { newTime ->
@@ -407,6 +462,7 @@ fun SmartAlarmsSettingsScreen(
                     val newRules = config.rules.filter { it.shiftDefId != "pomeriggio" } + updated
                     config = config.copy(rules = newRules)
                     ShiftRepository.smartAlarmsConfig = config
+                    syncAndScheduleSmartAlarm()
                 },
                 timeValue = pomRule.customTime ?: "12:30",
                 onTimeChange = { newTime ->
@@ -439,6 +495,7 @@ fun SmartAlarmsSettingsScreen(
                     val newRules = config.rules.filter { it.shiftDefId != "notte" } + updated
                     config = config.copy(rules = newRules)
                     ShiftRepository.smartAlarmsConfig = config
+                    syncAndScheduleSmartAlarm()
                 },
                 timeValue = notRule.customTime ?: "20:30",
                 onTimeChange = { newTime ->
@@ -524,7 +581,9 @@ private fun AlarmRuleCard(
                     colors = SwitchDefaults.colors(
                         checkedThumbColor = Color.White,
                         checkedTrackColor = ObsidianPrimaryContainer,
-                        uncheckedTrackColor = ObsidianSurfaceHigh
+                        uncheckedThumbColor = Color(0xFF94A3B8),
+                        uncheckedTrackColor = Color(0xFF1E293B),
+                        uncheckedBorderColor = Color(0xFF475569)
                     )
                 )
             }
