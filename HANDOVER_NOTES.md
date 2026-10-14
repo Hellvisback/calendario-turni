@@ -142,3 +142,13 @@ Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\
 - **Azioni & Salvaguardia Dati**: Sostituzione azioni con "Salva nel catalogo" e "Modifica", con nota informativa e dialog modale di avviso prima di abbandonare la schermata (*"Stai per uscire da questa schermata per passare a quella di modifica, perderai queste informazioni"*).
 - **Test & Validazione**: 31/31 unit test superati al 100%, compilazione `assembleDebug` verde, verificata dal vivo su Realme 8 Pro (`cb08bc57`) e APK rilasciato su OneDrive.
 
+### Milestone `ecd9ba7` - Universalizzazione Profili Lavoro & Allegato CCNL Reale in PDF
+- **Universalizzazione Completa**: Rimossi tutti i riferimenti fissi "RFI", rendendo l'app universale per qualsiasi settore (sanità, vigilanza, trasporti, industria, commercio).
+- **Nuovo Editor Profilo Lavoro a Doppia Modalità (`WorkProfileEditorScreen.kt`)**:
+  - *Modalità Semplice (default)*: inserimento rapido nome lavoro, reparto/sede, selezione icona/colore personalizzati e switch attivazione.
+  - *Modalità Avanzata (opzionale)*: switch esplicito "Calcolo Avanzato Straordinari" per configurare orario settimanale medio contrattuale, riposo minimo tra turni e maggiorazioni percentuali (notturno, festivo, straordinario).
+- **Scheda CCNL con PDF Personale**: Sostituiti i mockup finti con caricatore reale di documenti PDF; memorizzazione sicura nello storage interno dell'app e apertura immediata con visualizzatore di sistema tramite `FileProvider` (`ACTION_VIEW`).
+- **Pulizia UI**: Rimossa icona `Tune` non funzionante in `TurniModelsScreen.kt`.
+- **Deploy & Test**: APK testato e verificato su Realme 8 Pro (`cb08bc57`), rilasciato su OneDrive (`C:\Users\marco\OneDrive\app-release-latest.apk`).
+
+
