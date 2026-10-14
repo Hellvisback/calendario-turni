@@ -351,15 +351,17 @@ fun CalendarScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
+                            val activeProfile = ShiftRepository.activeWorkProfile
+                            val rotName = ShiftRepository.activeRotation?.name ?: "Turni"
                             Icon(
-                                Icons.Default.DirectionsTransit,
+                                Icons.Default.WorkOutline,
                                 contentDescription = null,
                                 tint = ObsidianPrimary,
                                 modifier = Modifier.size(13.dp)
                             )
                             Spacer(modifier = Modifier.width(5.dp))
                             Text(
-                                text = "RFI • Turno A",
+                                text = "${activeProfile.name} • $rotName",
                                 color = TextPrimary,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold

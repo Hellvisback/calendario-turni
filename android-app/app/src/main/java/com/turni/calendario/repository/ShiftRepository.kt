@@ -21,31 +21,32 @@ val sequenceTurnoA = listOf(
 object ShiftRepository {
 
     // ID del profilo di lavoro attivo
-    var activeWorkProfileId by mutableStateOf("rfi")
+    var activeWorkProfileId by mutableStateOf("principale")
 
     // Lista profili di lavoro
     val workProfiles = mutableStateListOf<WorkProfile>(
         WorkProfile(
-            id = "rfi",
-            name = "RFI",
-            companyOrDepartment = "Circolazione & Manovra",
-            ccnlCode = "CCNL_MOBILITA_AF",
-            ccnlName = "CCNL Mobilità / Attività Ferroviarie",
+            id = "principale",
+            name = "Lavoro Principale",
+            companyOrDepartment = "",
             weeklyHours = 38,
-            minRestHoursBetweenShifts = 14,
+            minRestHoursBetweenShifts = 11,
             nightSurchargePercent = 35,
             holidaySurchargePercent = 50,
             nightHolidaySurchargePercent = 65,
             overtimeDaySurchargePercent = 25,
             overtimeNightSurchargePercent = 40,
             colorHex = 0xFF0284C7,
-            iconKey = "transit",
-            isDefault = true
+            iconKey = "work",
+            isDefault = true,
+            enableAdvancedCalc = false
         )
     )
 
     val activeWorkProfile: WorkProfile
-        get() = workProfiles.find { it.id == activeWorkProfileId } ?: workProfiles.firstOrNull() ?: WorkProfile("rfi", "RFI", isDefault = true)
+        get() = workProfiles.find { it.id == activeWorkProfileId || (activeWorkProfileId == "rfi" && it.id == "principale") }
+            ?: workProfiles.firstOrNull()
+            ?: WorkProfile("principale", "Lavoro Principale", isDefault = true)
 
     fun setActiveWorkProfile(profileId: String) {
         if (workProfiles.none { it.id == profileId }) return
@@ -119,6 +120,9 @@ object ShiftRepository {
 
     // Rotazione attiva corrente (inizializzata PRIMA di init)
     var activeRotationId: String = "turno_a"
+
+    val activeRotation: ShiftRotation?
+        get() = rotations.firstOrNull { it.id == activeRotationId } ?: rotations.firstOrNull()
 
     // Rotazione / Turno Predefinito dell'utente (appare per primo ovunque)
     var defaultRotationId by mutableStateOf("turno_a")
@@ -360,7 +364,7 @@ object ShiftRepository {
                 name = "Turno A",
                 totalDays = 28,
                 daySequence = sequenceTurnoA,
-                description = "Ciclo 28 giorni RFI (Mattina, Pomeriggio, Notte, Smonto, Riposo, Mat Dom)"
+                description = "Ciclo 28 giorni (Mattina, Pomeriggio, Notte, Smonto, Riposo, Mat Dom)"
             )
         )
         rotations.add(
@@ -369,7 +373,7 @@ object ShiftRepository {
                 name = "Turno B",
                 totalDays = 28,
                 daySequence = sequenceTurnoA.drop(7) + sequenceTurnoA.take(7),
-                description = "Ciclo sfasato di 28 giorni RFI"
+                description = "Ciclo sfasato di 28 giorni"
             )
         )
     }

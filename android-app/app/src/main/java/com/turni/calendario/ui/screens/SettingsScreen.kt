@@ -155,7 +155,7 @@ fun SettingsScreen(
                                 border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFF10B981).copy(alpha = 0.4f))
                             ) {
                                 Text(
-                                    text = "RFI PRO",
+                                    text = "PRO",
                                     fontSize = 9.sp,
                                     fontWeight = FontWeight.ExtraBold,
                                     color = Color(0xFF34D399),
@@ -165,7 +165,7 @@ fun SettingsScreen(
                         }
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = "Gestione turni personalizzata e sincronizzata • CCNL Mobilità",
+                            text = "Gestione turni personalizzata e sincronizzata",
                             fontSize = 12.sp,
                             color = TextSecondary
                         )
@@ -369,7 +369,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Versione 2.0.0 Pro • Progettato per turnisti italiani con supporto RFI",
+            text = "Versione 2.0.0 Pro • Progettato per turnisti e lavoratori su turni",
             color = TextMuted,
             fontSize = 11.5.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
@@ -427,7 +427,7 @@ fun SettingsScreen(
                             Spacer(modifier = Modifier.width(8.dp))
                             Column {
                                 Text("Lunedì", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                                Text("Standard europeo e CCNL Ferroviario", color = TextSecondary, fontSize = 11.5.sp)
+                                Text("Standard europeo e contratti di lavoro", color = TextSecondary, fontSize = 11.5.sp)
                             }
                         }
                     }

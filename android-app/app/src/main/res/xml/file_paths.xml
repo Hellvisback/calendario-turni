@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <paths>
     <cache-path name="shared_pdf" path="." />
+    <files-path name="shared_internal" path="." />
     <external-files-path name="shared_docs" path="." />
 </paths>

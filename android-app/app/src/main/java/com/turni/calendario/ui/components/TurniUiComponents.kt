@@ -1847,11 +1847,10 @@ private fun calculateRestHours(
         val formatted = "${hours}h ${if (mins > 0) "${mins}m" else ""}".trim()
 
         val minRequiredRest = ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts.coerceAtLeast(8)
-        val ccnlShort = ShiftRepository.activeWorkProfile.linkedCcnl.shortLabel
 
         if (hours >= minRequiredRest) {
             RestEvaluation(
-                label = "Stacco Conforme ($formatted >= ${minRequiredRest}h $ccnlShort)",
+                label = "Stacco Conforme ($formatted >= ${minRequiredRest}h)",
                 hoursFormatted = "✓ $formatted",
                 isCompliant = true,
                 containerColor = Color(0xFF063326),
@@ -1861,7 +1860,7 @@ private fun calculateRestHours(
             )
         } else {
             RestEvaluation(
-                label = "Attenzione: Riposo < ${minRequiredRest}h $ccnlShort",
+                label = "Attenzione: Riposo < ${minRequiredRest}h",
                 hoursFormatted = "$formatted (min. ${minRequiredRest}h)",
                 isCompliant = false,
                 containerColor = Color(0xFF3B1219),

@@ -28,7 +28,7 @@ data class ShiftDefinition(
     val colorHex: Long = 0xFF0EA5E9,
     val iconKey: String = "sunny",
     val category: ShiftCategory = ShiftCategory.LAVORO,
-    val workProfileId: String = "rfi",
+    val workProfileId: String = "principale",
     val hourlyRate: Double = 0.0,
     val allowance: Double = 0.0 // Indennità turno
 ) {
@@ -190,8 +190,8 @@ object CcnlCatalog {
     val presets: List<CcnlDefinition> = listOf(
         CcnlDefinition(
             code = "CCNL_MOBILITA_AF",
-            name = "CCNL Mobilità / Attività Ferroviarie",
-            shortLabel = "Mobilità/AF (RFI)",
+            name = "CCNL Mobilità & Trasporti",
+            shortLabel = "Mobilità / Ferrovie",
             sector = "Ferrovie, Circolazione, Movimento & Infrastruttura",
             standardWeeklyHours = 38,
             minRestHoursBetweenShifts = 14,
@@ -315,17 +315,20 @@ data class WorkProfile(
     val name: String,
     val companyOrDepartment: String = "",
     val ccnlCode: String = "CCNL_MOBILITA_AF",
-    val ccnlName: String = "CCNL Mobilità / Attività Ferroviarie",
+    val ccnlName: String = "CCNL Mobilità & Trasporti",
     val weeklyHours: Int = 38,
-    val minRestHoursBetweenShifts: Int = 14,
+    val minRestHoursBetweenShifts: Int = 11,
     val nightSurchargePercent: Int = 35,
     val holidaySurchargePercent: Int = 50,
     val nightHolidaySurchargePercent: Int = 65,
     val overtimeDaySurchargePercent: Int = 25,
     val overtimeNightSurchargePercent: Int = 40,
     val colorHex: Long = 0xFF0284C7,
-    val iconKey: String = "transit",
-    val isDefault: Boolean = true
+    val iconKey: String = "work",
+    val isDefault: Boolean = true,
+    val enableAdvancedCalc: Boolean = false,
+    val ccnlDocumentName: String? = null,
+    val ccnlDocumentUri: String? = null
 ) {
     val linkedCcnl: CcnlDefinition
         get() = CcnlCatalog.findByCode(ccnlCode)

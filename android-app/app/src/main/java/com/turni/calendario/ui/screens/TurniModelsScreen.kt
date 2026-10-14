@@ -1,12 +1,22 @@
 package com.turni.calendario.ui.screens
 
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.provider.OpenableColumns
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
+import androidx.compose.ui.platform.LocalContext
+import androidx.core.content.FileProvider
+import java.io.File
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
@@ -67,9 +77,41 @@ fun TurniModelsScreen(
         }
     }
     var showRotationApplyDialog by remember { mutableStateOf<ShiftRotation?>(null) }
-    var viewingCcnl by remember { mutableStateOf<CcnlDefinition?>(null) }
-    var editingWorkProfile by remember { mutableStateOf<Pair<WorkProfile, Boolean>?>(null) }
+    val context = LocalContext.current
     var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
+    var profileForDocAttachment by remember { mutableStateOf<WorkProfile?>(null) }
+    val generalDocPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        val targetProfile = profileForDocAttachment
+        if (uri != null && targetProfile != null) {
+            try {
+                var fileName = "Documento_CCNL.pdf"
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+                val destFile = File(context.filesDir, "ccnl_${targetProfile.id}.pdf")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                val updated = targetProfile.copy(
+                    ccnlDocumentName = fileName,
+                    ccnlDocumentUri = destFile.absolutePath
+                )
+                ShiftRepository.updateWorkProfile(updated)
+                actionFeedback = ActionFeedback("CCNL '$fileName' allegato a ${targetProfile.name}!", isDestructive = false)
+            } catch (e: Exception) {
+                Toast.makeText(context, "Errore caricamento: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+        profileForDocAttachment = null
+    }
+    var editingWorkProfile by remember { mutableStateOf<Pair<WorkProfile, Boolean>?>(null) }
 
     LaunchedEffect(actionFeedback) {
         if (actionFeedback != null) {
@@ -170,9 +212,6 @@ fun TurniModelsScreen(
                 }
                 editingWorkProfile = null
                 onEditorActiveChanged?.invoke(false)
-            },
-            onConsultCcnl = { ccnl ->
-                viewingCcnl = ccnl
             }
         )
         return
@@ -189,41 +228,22 @@ fun TurniModelsScreen(
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
         // Top Header: "Modelli & Turni"
-        Row(
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
+                .padding(vertical = 8.dp)
         ) {
-            Column {
-                Text(
-                    text = "Modelli & Turni",
-                    fontSize = 24.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Configura orari, lavoro e rotazioni cicliche",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
-            Box(
-                modifier = Modifier
-                    .size(42.dp)
-                    .clip(RoundedCornerShape(14.dp))
-                    .background(ObsidianSurfaceContainer)
-                    .border(1.dp, ObsidianBorder, RoundedCornerShape(14.dp)),
-                contentAlignment = Alignment.Center
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Tune,
-                    contentDescription = "Configura",
-                    tint = ObsidianPrimary,
-                    modifier = Modifier.size(20.dp)
-                )
-            }
+            Text(
+                text = "Modelli & Turni",
+                fontSize = 24.sp,
+                fontWeight = FontWeight.ExtraBold,
+                color = TextPrimary
+            )
+            Text(
+                text = "Configura orari, lavoro e rotazioni cicliche",
+                fontSize = 12.sp,
+                color = TextSecondary
+            )
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -586,8 +606,8 @@ fun TurniModelsScreen(
                                         }
                                         Text(
                                             text = if (profile.companyOrDepartment.isNotBlank())
-                                                "${profile.companyOrDepartment} • ${profile.linkedCcnl.shortLabel}"
-                                            else profile.linkedCcnl.shortLabel,
+                                                profile.companyOrDepartment
+                                            else "Profilo Lavoro",
                                             color = TextSecondary,
                                             fontSize = 12.sp
                                         )
@@ -612,15 +632,28 @@ fun TurniModelsScreen(
 
                                 Spacer(modifier = Modifier.height(14.dp))
 
-                                // Banner Scheda CCNL (Apri e clicchi!)
+                                val ccnlFile = File(context.filesDir, "ccnl_${profile.id}.pdf")
+                                val hasPdf = (ccnlFile.exists() && ccnlFile.length() > 0) || !profile.ccnlDocumentName.isNullOrBlank()
+
+                                // Banner Scheda CCNL (Apri o allega PDF!)
                                 Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
                                         .clip(RoundedCornerShape(12.dp))
-                                        .clickable { viewingCcnl = profile.linkedCcnl },
+                                        .bouncyClickable {
+                                            if (hasPdf) {
+                                                openWorkProfilePdf(context, profile)
+                                            } else {
+                                                profileForDocAttachment = profile
+                                                generalDocPickerLauncher.launch(arrayOf("application/pdf", "*/*"))
+                                            }
+                                        },
                                     shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianPrimary.copy(alpha = 0.10f),
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianPrimary.copy(alpha = 0.25f))
+                                    color = if (hasPdf) Color(0xFF10B981).copy(alpha = 0.12f) else ObsidianPrimary.copy(alpha = 0.10f),
+                                    border = androidx.compose.foundation.BorderStroke(
+                                        1.dp,
+                                        if (hasPdf) Color(0xFF10B981).copy(alpha = 0.35f) else ObsidianPrimary.copy(alpha = 0.25f)
+                                    )
                                 ) {
                                     Row(
                                         modifier = Modifier
@@ -634,122 +667,150 @@ fun TurniModelsScreen(
                                             modifier = Modifier.weight(1f)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Description,
+                                                imageVector = if (hasPdf) Icons.Default.PictureAsPdf else Icons.Default.NoteAdd,
                                                 contentDescription = null,
-                                                tint = ObsidianPrimary,
-                                                modifier = Modifier.size(16.dp)
+                                                tint = if (hasPdf) Color(0xFF34D399) else ObsidianPrimary,
+                                                modifier = Modifier.size(20.dp)
                                             )
-                                            Spacer(modifier = Modifier.width(8.dp))
+                                            Spacer(modifier = Modifier.width(10.dp))
                                             Column {
                                                 Text(
-                                                    text = profile.ccnlName,
-                                                    fontSize = 11.5.sp,
+                                                    text = if (hasPdf) (profile.ccnlDocumentName ?: "CCNL ${profile.name}.pdf") else "Documento CCNL",
+                                                    fontSize = 12.sp,
                                                     fontWeight = FontWeight.Bold,
                                                     color = TextPrimary
                                                 )
                                                 Text(
-                                                    text = "Tocca per aprire al volo la scheda CCNL",
-                                                    fontSize = 10.sp,
-                                                    color = ObsidianPrimary
+                                                    text = if (hasPdf) "Tocca per aprire il file PDF al volo" else "Nessun PDF allegato. Tocca per importarlo",
+                                                    fontSize = 10.5.sp,
+                                                    color = if (hasPdf) Color(0xFF34D399) else ObsidianPrimary
                                                 )
                                             }
                                         }
                                         Icon(
-                                            Icons.Default.ChevronRight,
+                                            imageVector = if (hasPdf) Icons.Default.OpenInNew else Icons.Default.UploadFile,
                                             contentDescription = null,
-                                            tint = ObsidianPrimary,
-                                            modifier = Modifier.size(16.dp)
+                                            tint = if (hasPdf) Color(0xFF34D399) else ObsidianPrimary,
+                                            modifier = Modifier.size(18.dp)
                                         )
                                     }
                                 }
 
-                                Spacer(modifier = Modifier.height(12.dp))
-                                Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
-                                Spacer(modifier = Modifier.height(12.dp))
+                                if (profile.enableAdvancedCalc) {
+                                    Spacer(modifier = Modifier.height(12.dp))
+                                    Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
+                                    Spacer(modifier = Modifier.height(12.dp))
 
-                                // Metriche sintetiche estrapolate dal CCNL / Profilo (Griglia 2x2 + Riposo)
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = ObsidianSurfaceContainer,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                    // Metriche calcolo automatico (Orario, Stacco, Notturno, Festivo)
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                            Text("Orario Base", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text("${profile.weeklyHours}h / sett.", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Surface(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = ObsidianSurfaceContainer,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                                Text("Orario Base", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text("${profile.weeklyHours}h / sett.", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            }
+                                        }
+                                        Surface(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = ObsidianSurfaceContainer,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                                Text("Riposo Min. Stacco", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text("${profile.minRestHoursBetweenShifts}h minimo", color = Color(0xFF34D399), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            }
                                         }
                                     }
-                                    Surface(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = ObsidianSurfaceContainer,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Row(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp)
                                     ) {
-                                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                            Text("Riposo Min. Stacco", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text("${profile.minRestHoursBetweenShifts}h minimo", color = Color(0xFF34D399), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                        Surface(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = ObsidianSurfaceContainer,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                                Text("Notturno (22-06)", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text("+${profile.nightSurchargePercent}%", color = ObsidianPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            }
+                                        }
+                                        Surface(
+                                            modifier = Modifier.weight(1f),
+                                            shape = RoundedCornerShape(12.dp),
+                                            color = ObsidianSurfaceContainer,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
+                                                Text("Festivo / Notte+Fest", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
+                                                Spacer(modifier = Modifier.height(2.dp))
+                                                Text("+${profile.holidaySurchargePercent}% / +${profile.nightHolidaySurchargePercent}%", color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                            }
                                         }
                                     }
-                                }
-                                Spacer(modifier = Modifier.height(8.dp))
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Surface(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = ObsidianSurfaceContainer,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                    ) {
-                                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                            Text("Notturno (22-06)", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text("+${profile.nightSurchargePercent}% CCNL", color = ObsidianPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        }
-                                    }
-                                    Surface(
-                                        modifier = Modifier.weight(1f),
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = ObsidianSurfaceContainer,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                    ) {
-                                        Column(modifier = Modifier.padding(horizontal = 10.dp, vertical = 8.dp)) {
-                                            Text("Festivo / Notte+Fest", color = TextMuted, fontSize = 11.sp, fontWeight = FontWeight.Medium)
-                                            Spacer(modifier = Modifier.height(2.dp))
-                                            Text("+${profile.holidaySurchargePercent}% / +${profile.nightHolidaySurchargePercent}%", color = Color(0xFFF59E0B), fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                        }
-                                    }
+                                } else {
+                                    Spacer(modifier = Modifier.height(8.dp))
+                                    Text(
+                                        text = "Modalità Semplice (calcolo automatico straordinari disattivato)",
+                                        color = TextMuted,
+                                        fontSize = 11.sp
+                                    )
                                 }
 
                                 Spacer(modifier = Modifier.height(14.dp))
                                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
                                 Spacer(modifier = Modifier.height(12.dp))
 
-                                // Azioni Lavoro: "Scheda CCNL", "Modifica", "Elimina"
+                                // Azioni Lavoro: "Apri CCNL / Allega", "Modifica", "Elimina"
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Button(
-                                        onClick = { viewingCcnl = profile.linkedCcnl },
+                                        onClick = {
+                                            if (hasPdf) {
+                                                openWorkProfilePdf(context, profile)
+                                            } else {
+                                                profileForDocAttachment = profile
+                                                generalDocPickerLauncher.launch(arrayOf("application/pdf", "*/*"))
+                                            }
+                                        },
                                         modifier = Modifier
                                             .weight(1.2f)
                                             .height(42.dp),
                                         shape = RoundedCornerShape(12.dp),
                                         contentPadding = PaddingValues(horizontal = 8.dp),
-                                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer)
+                                        colors = ButtonDefaults.buttonColors(
+                                            containerColor = if (hasPdf) Color(0xFF065F46) else ObsidianPrimaryContainer
+                                        )
                                     ) {
-                                        Icon(Icons.Default.MenuBook, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                        Icon(
+                                            imageVector = if (hasPdf) Icons.Default.PictureAsPdf else Icons.Default.UploadFile,
+                                            contentDescription = null,
+                                            tint = Color.White,
+                                            modifier = Modifier.size(15.dp)
+                                        )
                                         Spacer(modifier = Modifier.width(6.dp))
-                                        Text("Scheda CCNL", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                                        Text(
+                                            text = if (hasPdf) "Apri CCNL" else "Allega CCNL",
+                                            color = Color.White,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Bold
+                                        )
                                     }
 
                                     OutlinedButton(
@@ -800,16 +861,17 @@ fun TurniModelsScreen(
                                     id = "job_${System.currentTimeMillis()}",
                                     name = "",
                                     companyOrDepartment = "",
-                                    ccnlCode = "CCNL_SANITA",
-                                    ccnlName = "CCNL Sanità Pubblica & Privata",
-                                    weeklyHours = 36,
+                                    weeklyHours = 38,
                                     minRestHoursBetweenShifts = 11,
-                                    nightSurchargePercent = 25,
-                                    holidaySurchargePercent = 30,
+                                    nightSurchargePercent = 30,
+                                    holidaySurchargePercent = 40,
                                     nightHolidaySurchargePercent = 50,
+                                    overtimeDaySurchargePercent = 20,
+                                    overtimeNightSurchargePercent = 35,
                                     colorHex = 0xFF10B981,
-                                    iconKey = "hospital",
-                                    isDefault = false
+                                    iconKey = "work",
+                                    isDefault = false,
+                                    enableAdvancedCalc = false
                                 )
                                 editingWorkProfile = newProfile to true
                             },
@@ -836,7 +898,7 @@ fun TurniModelsScreen(
                             Spacer(modifier = Modifier.width(14.dp))
                             Column(modifier = Modifier.weight(1f)) {
                                 Text("Aggiungi Secondo Lavoro", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 14.5.sp)
-                                Text("Collega un CCNL con parametri orari e riposo minimo", color = TextSecondary, fontSize = 11.5.sp)
+                                Text("Configura un'altra occupazione o secondo turno", color = TextSecondary, fontSize = 11.5.sp)
                             }
                             Box(
                                 modifier = Modifier
@@ -1185,13 +1247,6 @@ fun TurniModelsScreen(
         )
     }
 
-    // Dialog Scheda CCNL ("Apri e clicchi!")
-    if (viewingCcnl != null) {
-        CcnlDetailsDialog(
-            ccnl = viewingCcnl!!,
-            onDismiss = { viewingCcnl = null }
-        )
-    }
 
     // Dialog Applica Rotazione
     if (showRotationApplyDialog != null) {
@@ -2971,10 +3026,38 @@ fun RotationMatrixEditorScreen(
 }
 
 /**
+ * Apre il file PDF del CCNL associato al profilo lavorativo tramite il visualizzatore predefinito di Android.
+ */
+fun openWorkProfilePdf(context: Context, profile: WorkProfile) {
+    val file = File(context.filesDir, "ccnl_${profile.id}.pdf")
+    val hasValidFile = file.exists() && file.length() > 0
+    if (hasValidFile) {
+        try {
+            val uri = FileProvider.getUriForFile(
+                context,
+                "${context.packageName}.fileprovider",
+                file
+            )
+            val intent = Intent(Intent.ACTION_VIEW).apply {
+                setDataAndType(uri, "application/pdf")
+                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+                addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            }
+            context.startActivity(Intent.createChooser(intent, "CCNL - ${profile.name}"))
+        } catch (e: Exception) {
+            Toast.makeText(context, "Nessun lettore PDF trovato sul dispositivo", Toast.LENGTH_LONG).show()
+        }
+    } else {
+        Toast.makeText(context, "Nessun file PDF allegato per ${profile.name}", Toast.LENGTH_SHORT).show()
+    }
+}
+
+/**
  * Risolve l'icona appropriata in base al settore lavorativo / profilo.
  */
 fun getWorkProfileIcon(iconKey: String): ImageVector {
     return when (iconKey) {
+        "work" -> Icons.Default.WorkOutline
         "transit" -> Icons.Default.DirectionsTransit
         "hospital" -> Icons.Default.LocalHospital
         "factory" -> Icons.Default.PrecisionManufacturing
@@ -3262,14 +3345,17 @@ fun WorkProfileEditorScreen(
     isNew: Boolean,
     onDismiss: () -> Unit,
     onSave: (WorkProfile) -> Unit,
-    onDelete: ((String) -> Unit)? = null,
-    onConsultCcnl: (CcnlDefinition) -> Unit
+    onDelete: ((String) -> Unit)? = null
 ) {
     BackHandler { onDismiss() }
 
+    val context = LocalContext.current
     var name by remember { mutableStateOf(profile.name) }
     var department by remember { mutableStateOf(profile.companyOrDepartment) }
-    var selectedCcnlCode by remember { mutableStateOf(profile.ccnlCode) }
+    var enableAdvancedCalc by remember { mutableStateOf(profile.enableAdvancedCalc) }
+    var ccnlDocumentName by remember { mutableStateOf(profile.ccnlDocumentName) }
+    var ccnlDocumentUri by remember { mutableStateOf(profile.ccnlDocumentUri) }
+
     var weeklyHours by remember { mutableStateOf(profile.weeklyHours) }
     var minRestHours by remember { mutableStateOf(profile.minRestHoursBetweenShifts) }
     var nightSurcharge by remember { mutableStateOf(profile.nightSurchargePercent) }
@@ -3277,31 +3363,65 @@ fun WorkProfileEditorScreen(
     var nightHolidaySurcharge by remember { mutableStateOf(profile.nightHolidaySurchargePercent) }
     var overtimeDaySurcharge by remember { mutableStateOf(profile.overtimeDaySurchargePercent) }
     var overtimeNightSurcharge by remember { mutableStateOf(profile.overtimeNightSurchargePercent) }
+
     var isDefault by remember { mutableStateOf(profile.isDefault) }
     var selectedIconKey by remember { mutableStateOf(profile.iconKey) }
     var selectedColorHex by remember { mutableStateOf(profile.colorHex) }
     var showDeleteConfirmDialog by remember { mutableStateOf(false) }
 
-    val currentCcnl = remember(selectedCcnlCode) { CcnlCatalog.findByCode(selectedCcnlCode) }
     val currentColor = Color(selectedColorHex)
 
     val iconsList = listOf(
-        "transit" to "Ferrovia",
+        "work" to "Generico",
         "hospital" to "Sanità",
         "factory" to "Industria",
         "security" to "Sicurezza",
         "shipping" to "Logistica",
         "store" to "Commercio",
-        "business" to "Ufficio"
+        "business" to "Ufficio",
+        "transit" to "Trasporti"
     )
 
+    val docPickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            try {
+                var fileName = "CCNL_${if (name.isNotBlank()) name.trim() else "Lavoro"}.pdf"
+                context.contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (nameIndex != -1 && cursor.moveToFirst()) {
+                        fileName = cursor.getString(nameIndex)
+                    }
+                }
+                val destFile = File(context.filesDir, "ccnl_${profile.id}.pdf")
+                context.contentResolver.openInputStream(uri)?.use { input ->
+                    destFile.outputStream().use { output ->
+                        input.copyTo(output)
+                    }
+                }
+                ccnlDocumentName = fileName
+                ccnlDocumentUri = destFile.absolutePath
+                Toast.makeText(context, "CCNL '$fileName' allegato con successo!", Toast.LENGTH_SHORT).show()
+            } catch (e: Exception) {
+                Toast.makeText(context, "Errore caricamento PDF: ${e.message}", Toast.LENGTH_SHORT).show()
+            }
+        }
+    }
+
+    val hasPdf = remember(ccnlDocumentUri) {
+        val destFile = File(context.filesDir, "ccnl_${profile.id}.pdf")
+        (ccnlDocumentUri != null && destFile.exists() && destFile.length() > 0)
+    }
+
     fun doSave() {
-        val finalName = if (name.isBlank()) currentCcnl.shortLabel else name.trim()
+        val finalName = if (name.isBlank()) (if (isNew) "Nuovo Lavoro" else profile.name) else name.trim()
         val updated = profile.copy(
             name = finalName,
             companyOrDepartment = department.trim(),
-            ccnlCode = selectedCcnlCode,
-            ccnlName = currentCcnl.name,
+            enableAdvancedCalc = enableAdvancedCalc,
+            ccnlDocumentName = ccnlDocumentName,
+            ccnlDocumentUri = ccnlDocumentUri,
             weeklyHours = weeklyHours,
             minRestHoursBetweenShifts = minRestHours,
             nightSurchargePercent = nightSurcharge,
@@ -3327,7 +3447,7 @@ fun WorkProfileEditorScreen(
                 .statusBarsPadding()
                 .navigationBarsPadding()
         ) {
-            // Top App Bar a Schermo Intero
+            // TOP BAR
             Surface(
                 color = ObsidianSurface.copy(alpha = 0.95f),
                 border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
@@ -3353,13 +3473,13 @@ fun WorkProfileEditorScreen(
 
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
-                            text = if (isNew) "Aggiungi Secondo Lavoro" else "Modifica Profilo Lavoro",
+                            text = if (isNew) "Aggiungi Lavoro" else "Modifica Profilo Lavoro",
                             fontWeight = FontWeight.Black,
                             color = TextPrimary,
                             fontSize = 17.5.sp
                         )
                         Text(
-                            text = "Regole contrattuali, CCNL e riposo minimo",
+                            text = if (enableAdvancedCalc) "Profilo Avanzato • Calcolo Straordinari & CCNL" else "Profilo Semplice • Gestione e CCNL",
                             color = TextSecondary,
                             fontSize = 11.5.sp
                         )
@@ -3378,7 +3498,7 @@ fun WorkProfileEditorScreen(
                 }
             }
 
-            // Corpo Scrollabile e Centrato Reattivamente
+            // CORPO SCROLLABILE
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -3396,9 +3516,7 @@ fun WorkProfileEditorScreen(
                     // HERO PREVIEW CARD
                     Card(
                         shape = RoundedCornerShape(22.dp),
-                        colors = CardDefaults.cardColors(
-                            containerColor = ObsidianSurfaceContainer
-                        ),
+                        colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
                         border = androidx.compose.foundation.BorderStroke(1.5.dp, currentColor.copy(alpha = 0.55f)),
                         modifier = Modifier.fillMaxWidth()
                     ) {
@@ -3446,7 +3564,7 @@ fun WorkProfileEditorScreen(
                                             fontSize = 20.sp
                                         )
                                         Text(
-                                            text = department.ifBlank { "Reparto / Settore aziendale" },
+                                            text = department.ifBlank { "Reparto / Settore (opzionale)" },
                                             color = TextSecondary,
                                             fontSize = 13.sp
                                         )
@@ -3469,7 +3587,7 @@ fun WorkProfileEditorScreen(
                                     }
                                 }
 
-                                // Badges riassuntivi a scorrimento orizzontale (nessun restringimento o testo verticale)
+                                // Badges di stato compatti
                                 Row(
                                     modifier = Modifier
                                         .fillMaxWidth()
@@ -3477,59 +3595,78 @@ fun WorkProfileEditorScreen(
                                     horizontalArrangement = Arrangement.spacedBy(8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = ObsidianSurface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                    ) {
-                                        Text(
-                                            text = currentCcnl.shortLabel,
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Bold,
-                                            color = ObsidianPrimary,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                    if (hasPdf) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = Color(0xFF10B981).copy(alpha = 0.15f),
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.4f))
+                                        ) {
+                                            Row(
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
+                                                verticalAlignment = Alignment.CenterVertically
+                                            ) {
+                                                Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(13.dp))
+                                                Spacer(modifier = Modifier.width(5.dp))
+                                                Text(
+                                                    text = ccnlDocumentName ?: "CCNL Allegato",
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    color = Color(0xFF34D399),
+                                                    maxLines = 1
+                                                )
+                                            }
+                                        }
                                     }
 
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = ObsidianSurface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                    ) {
-                                        Text(
-                                            text = "$weeklyHours h/settimana",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = TextSecondary,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
-                                    }
+                                    if (enableAdvancedCalc) {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = ObsidianSurface,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Text(
+                                                text = "$weeklyHours h/sett.",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
 
-                                    Surface(
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = ObsidianSurface,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                    ) {
-                                        Text(
-                                            text = "Stacco: $minRestHours h",
-                                            fontSize = 11.sp,
-                                            fontWeight = FontWeight.Medium,
-                                            color = TextSecondary,
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
-                                            maxLines = 1,
-                                            softWrap = false
-                                        )
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = ObsidianSurface,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Text(
+                                                text = "Stacco: $minRestHours h",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = TextSecondary,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
+                                    } else {
+                                        Surface(
+                                            shape = RoundedCornerShape(10.dp),
+                                            color = ObsidianSurface,
+                                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
+                                        ) {
+                                            Text(
+                                                text = "Modalità Semplice",
+                                                fontSize = 11.sp,
+                                                fontWeight = FontWeight.Medium,
+                                                color = TextMuted,
+                                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                                            )
+                                        }
                                     }
                                 }
                             }
                         }
                     }
 
-                    // CARD 1: DATI AZIENDA / REPARTO
+                    // CARD 1: DATI GENERALI (VERSIONE SEMPLICE)
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
@@ -3541,7 +3678,7 @@ fun WorkProfileEditorScreen(
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Text(
-                                text = "DATI GENERALI",
+                                text = "DATI DEL LAVORO",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextMuted,
@@ -3551,7 +3688,8 @@ fun WorkProfileEditorScreen(
                             OutlinedTextField(
                                 value = name,
                                 onValueChange = { name = it },
-                                label = { Text("Nome Lavoro / Azienda (es. RFI, Ospedale, Poste)", color = TextSecondary) },
+                                label = { Text("Nome Lavoro / Azienda", color = TextSecondary) },
+                                placeholder = { Text("es. Ospedale, Azienda, Fabbrica, Studio", color = TextMuted) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(14.dp),
                                 singleLine = true
@@ -3560,7 +3698,8 @@ fun WorkProfileEditorScreen(
                             OutlinedTextField(
                                 value = department,
                                 onValueChange = { department = it },
-                                label = { Text("Settore / Reparto (es. Circolazione, Pronto Soccorso)", color = TextSecondary) },
+                                label = { Text("Settore / Reparto (opzionale)", color = TextSecondary) },
+                                placeholder = { Text("es. Reparto Emergenza, Produzione, Sicurezza", color = TextMuted) },
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(14.dp),
                                 singleLine = true
@@ -3568,7 +3707,7 @@ fun WorkProfileEditorScreen(
                         }
                     }
 
-                    // CARD 2: CCNL DI RIFERIMENTO
+                    // CARD 2: SCHEDA CCNL (DOCUMENTO PDF PERSONALE)
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
@@ -3579,200 +3718,329 @@ fun WorkProfileEditorScreen(
                             modifier = Modifier.padding(16.dp),
                             verticalArrangement = Arrangement.spacedBy(12.dp)
                         ) {
-                            Text(
-                                text = "CCNL DI RIFERIMENTO (PRESET UFFICIALI)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextMuted,
-                                letterSpacing = 1.sp
-                            )
-
                             Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .horizontalScroll(rememberScrollState()),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.SpaceBetween
                             ) {
-                                CcnlCatalog.presets.forEach { ccnl ->
-                                    val isSelected = ccnl.code == selectedCcnlCode
+                                Text(
+                                    text = "SCHEDA CCNL PERSONALE (PDF)",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = TextMuted,
+                                    letterSpacing = 1.sp
+                                )
+                                if (hasPdf) {
                                     Surface(
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .bouncyClickable {
-                                                selectedCcnlCode = ccnl.code
-                                                weeklyHours = ccnl.standardWeeklyHours
-                                                minRestHours = ccnl.minRestHoursBetweenShifts
-                                                nightSurcharge = ccnl.nightSurchargePercent
-                                                holidaySurcharge = ccnl.holidaySurchargePercent
-                                                nightHolidaySurcharge = ccnl.nightHolidaySurchargePercent
-                                                overtimeDaySurcharge = ccnl.overtimeDaySurchargePercent
-                                                overtimeNightSurcharge = ccnl.overtimeNightSurchargePercent
-                                                if (name.isBlank() && isNew) {
-                                                    name = ccnl.shortLabel
-                                                }
-                                            },
-                                        shape = RoundedCornerShape(12.dp),
-                                        color = if (isSelected) ObsidianPrimary.copy(alpha = 0.22f) else ObsidianSurface,
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            if (isSelected) 1.5.dp else 1.dp,
-                                            if (isSelected) ObsidianPrimary else ObsidianBorderSubtle
-                                        )
+                                        shape = RoundedCornerShape(8.dp),
+                                        color = Color(0xFF10B981).copy(alpha = 0.15f)
                                     ) {
                                         Text(
-                                            text = ccnl.shortLabel,
-                                            fontSize = 12.sp,
-                                            fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                                            color = if (isSelected) ObsidianPrimary else TextSecondary,
-                                            modifier = Modifier.padding(horizontal = 14.dp, vertical = 9.dp)
+                                            "ALLEGATO",
+                                            fontSize = 10.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            color = Color(0xFF34D399),
+                                            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                                         )
                                     }
                                 }
                             }
 
-                            // Tasto Scheda CCNL
-                            Surface(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(14.dp))
-                                    .bouncyClickable { onConsultCcnl(currentCcnl) },
-                                shape = RoundedCornerShape(14.dp),
-                                color = ObsidianPrimary.copy(alpha = 0.12f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianPrimary.copy(alpha = 0.35f))
-                            ) {
-                                Row(
+                            Text(
+                                text = "Allega il file PDF del tuo CCNL o contratto di lavoro: resterà salvato nell'app e potrai aprirlo e consultarlo al volo in qualsiasi momento dalla scheda del lavoro.",
+                                fontSize = 12.sp,
+                                color = TextSecondary,
+                                lineHeight = 16.sp
+                            )
+
+                            if (hasPdf) {
+                                Surface(
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = Color(0xFF10B981).copy(alpha = 0.10f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.35f)),
+                                    modifier = Modifier.fillMaxWidth()
+                                ) {
+                                    Column(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(14.dp),
+                                        verticalArrangement = Arrangement.spacedBy(10.dp)
+                                    ) {
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Icon(
+                                                imageVector = Icons.Default.PictureAsPdf,
+                                                contentDescription = null,
+                                                tint = Color(0xFF34D399),
+                                                modifier = Modifier.size(24.dp)
+                                            )
+                                            Spacer(modifier = Modifier.width(10.dp))
+                                            Column(modifier = Modifier.weight(1f)) {
+                                                Text(
+                                                    text = ccnlDocumentName ?: "Documento_CCNL.pdf",
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 13.sp,
+                                                    color = TextPrimary,
+                                                    maxLines = 1
+                                                )
+                                                Text(
+                                                    text = "Tocca 'Apri PDF' per leggerlo con il visualizzatore Android",
+                                                    fontSize = 11.sp,
+                                                    color = Color(0xFF34D399)
+                                                )
+                                            }
+                                        }
+
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth(),
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                            verticalAlignment = Alignment.CenterVertically
+                                        ) {
+                                            Button(
+                                                onClick = {
+                                                    openWorkProfilePdf(
+                                                        context,
+                                                        profile.copy(
+                                                            name = name.ifBlank { profile.name },
+                                                            ccnlDocumentName = ccnlDocumentName,
+                                                            ccnlDocumentUri = ccnlDocumentUri
+                                                        )
+                                                    )
+                                                },
+                                                modifier = Modifier
+                                                    .weight(1.3f)
+                                                    .height(40.dp),
+                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF065F46)),
+                                                shape = RoundedCornerShape(12.dp)
+                                            ) {
+                                                Icon(Icons.Default.OpenInNew, contentDescription = null, tint = Color.White, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(6.dp))
+                                                Text("Apri PDF", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 12.sp)
+                                            }
+
+                                            OutlinedButton(
+                                                onClick = { docPickerLauncher.launch(arrayOf("application/pdf", "*/*")) },
+                                                modifier = Modifier
+                                                    .weight(1.1f)
+                                                    .height(40.dp),
+                                                shape = RoundedCornerShape(12.dp),
+                                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
+                                            ) {
+                                                Icon(Icons.Default.Refresh, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(15.dp))
+                                                Spacer(modifier = Modifier.width(4.dp))
+                                                Text("Sostituisci", color = TextPrimary, fontSize = 12.sp)
+                                            }
+
+                                            IconButton(
+                                                onClick = {
+                                                    try {
+                                                        File(context.filesDir, "ccnl_${profile.id}.pdf").delete()
+                                                    } catch (_: Exception) {}
+                                                    ccnlDocumentName = null
+                                                    ccnlDocumentUri = null
+                                                    Toast.makeText(context, "Documento rimosso", Toast.LENGTH_SHORT).show()
+                                                },
+                                                modifier = Modifier
+                                                    .size(40.dp)
+                                                    .clip(RoundedCornerShape(12.dp))
+                                                    .background(Color(0xFFEF4444).copy(alpha = 0.15f))
+                                                    .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.3f), RoundedCornerShape(12.dp))
+                                            ) {
+                                                Icon(Icons.Default.DeleteOutline, contentDescription = "Rimuovi PDF", tint = Color(0xFFEF4444), modifier = Modifier.size(18.dp))
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                Surface(
                                     modifier = Modifier
                                         .fillMaxWidth()
-                                        .padding(horizontal = 14.dp, vertical = 11.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.SpaceBetween
+                                        .clip(RoundedCornerShape(14.dp))
+                                        .bouncyClickable { docPickerLauncher.launch(arrayOf("application/pdf", "*/*")) },
+                                    shape = RoundedCornerShape(14.dp),
+                                    color = ObsidianPrimary.copy(alpha = 0.10f),
+                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianPrimary.copy(alpha = 0.35f))
                                 ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.weight(1f)) {
-                                        Icon(
-                                            Icons.Default.MenuBook,
-                                            contentDescription = null,
-                                            tint = ObsidianPrimary,
-                                            modifier = Modifier.size(18.dp)
-                                        )
-                                        Spacer(modifier = Modifier.width(10.dp))
-                                        Column {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 14.dp),
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Box(
+                                            modifier = Modifier
+                                                .size(44.dp)
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(ObsidianPrimary.copy(alpha = 0.2f)),
+                                            contentAlignment = Alignment.Center
+                                        ) {
+                                            Icon(Icons.Default.UploadFile, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(24.dp))
+                                        }
+                                        Spacer(modifier = Modifier.width(14.dp))
+                                        Column(modifier = Modifier.weight(1f)) {
                                             Text(
-                                                "Scheda: ${currentCcnl.name}",
-                                                fontSize = 12.5.sp,
+                                                text = "Allega il tuo CCNL in PDF",
+                                                fontSize = 13.5.sp,
                                                 fontWeight = FontWeight.Bold,
                                                 color = TextPrimary
                                             )
                                             Text(
-                                                "Tocca per consultare tutti i dettagli normativi e regole",
-                                                fontSize = 10.5.sp,
+                                                text = "Tocca qui per sfogliare e selezionare il file",
+                                                fontSize = 11.5.sp,
                                                 color = ObsidianPrimary
                                             )
                                         }
+                                        Icon(Icons.Default.ChevronRight, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
                                     }
-                                    Icon(
-                                        Icons.Default.ChevronRight,
-                                        contentDescription = null,
-                                        tint = ObsidianPrimary,
-                                        modifier = Modifier.size(18.dp)
+                                }
+                            }
+                        }
+                    }
+
+                    // CARD 3: CALCOLO AUTOMATICO STRAORDINARI E MAGGIORAZIONI (SEZIONE AVANZATA OPZIONALE)
+                    Card(
+                        shape = RoundedCornerShape(18.dp),
+                        colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
+                        border = androidx.compose.foundation.BorderStroke(
+                            1.dp,
+                            if (enableAdvancedCalc) ObsidianPrimary.copy(alpha = 0.45f) else ObsidianBorderSubtle
+                        ),
+                        modifier = Modifier.fillMaxWidth()
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(16.dp),
+                            verticalArrangement = Arrangement.spacedBy(14.dp)
+                        ) {
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable { enableAdvancedCalc = !enableAdvancedCalc },
+                                horizontalArrangement = Arrangement.SpaceBetween,
+                                verticalAlignment = Alignment.CenterVertically
+                            ) {
+                                Column(modifier = Modifier.weight(1f)) {
+                                    Text(
+                                        text = "CALCOLO AVANZATO STRAORDINARI",
+                                        fontSize = 11.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = if (enableAdvancedCalc) ObsidianPrimary else TextMuted,
+                                        letterSpacing = 1.sp
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Vuoi calcolare in automatico straordinari, maggiorazioni e riposo minimo?",
+                                        fontSize = 13.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextPrimary
+                                    )
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Text(
+                                        text = "Se disattivato, il lavoro resta in modalità semplice senza conteggi complessi",
+                                        fontSize = 11.5.sp,
+                                        color = TextSecondary
+                                    )
+                                }
+                                Spacer(modifier = Modifier.width(12.dp))
+                                Switch(
+                                    checked = enableAdvancedCalc,
+                                    onCheckedChange = { enableAdvancedCalc = it },
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = ObsidianPrimary
+                                    )
+                                )
+                            }
+
+                            AnimatedVisibility(
+                                visible = enableAdvancedCalc,
+                                enter = fadeIn() + expandVertically(),
+                                exit = fadeOut() + shrinkVertically()
+                            ) {
+                                Column(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(top = 8.dp),
+                                    verticalArrangement = Arrangement.spacedBy(14.dp)
+                                ) {
+                                    Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
+
+                                    Text(
+                                        "ORARIO SETTIMANALE & RIPOSO MINIMO",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextMuted,
+                                        letterSpacing = 0.8.sp
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Orario Medio Settimanale",
+                                        valueText = "$weeklyHours ore",
+                                        onMinus = { if (weeklyHours > 20) weeklyHours -= 1 },
+                                        onPlus = { if (weeklyHours < 48) weeklyHours += 1 },
+                                        note = "Orario contrattuale di riferimento per il calcolo delle ore extra"
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Riposo Minimo Obbligatorio tra Turni",
+                                        valueText = "$minRestHours ore",
+                                        onMinus = { if (minRestHours > 8) minRestHours -= 1 },
+                                        onPlus = { if (minRestHours < 24) minRestHours += 1 },
+                                        note = "Verifica la conformità dello stacco (riposo minimo garantito) sul calendario"
+                                    )
+
+                                    Spacer(modifier = Modifier.height(2.dp))
+                                    Divider(color = ObsidianBorderSubtle, thickness = 1.dp)
+
+                                    Text(
+                                        "PERCENTUALI DI MAGGIORAZIONE (%)",
+                                        fontSize = 10.5.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        color = TextMuted,
+                                        letterSpacing = 0.8.sp
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Maggiorazione Notturna (22-06)",
+                                        valueText = "+$nightSurcharge%",
+                                        onMinus = { if (nightSurcharge > 0) nightSurcharge -= 5 },
+                                        onPlus = { if (nightSurcharge < 100) nightSurcharge += 5 }
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Maggiorazione Festivo",
+                                        valueText = "+$holidaySurcharge%",
+                                        onMinus = { if (holidaySurcharge > 0) holidaySurcharge -= 5 },
+                                        onPlus = { if (holidaySurcharge < 120) holidaySurcharge += 5 }
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Notte + Festivo",
+                                        valueText = "+$nightHolidaySurcharge%",
+                                        onMinus = { if (nightHolidaySurcharge > 0) nightHolidaySurcharge -= 5 },
+                                        onPlus = { if (nightHolidaySurcharge < 150) nightHolidaySurcharge += 5 }
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Straordinario Diurno",
+                                        valueText = "+$overtimeDaySurcharge%",
+                                        onMinus = { if (overtimeDaySurcharge > 0) overtimeDaySurcharge -= 5 },
+                                        onPlus = { if (overtimeDaySurcharge < 100) overtimeDaySurcharge += 5 }
+                                    )
+
+                                    NumberStepperRow(
+                                        label = "Straordinario Notturno / Festivo",
+                                        valueText = "+$overtimeNightSurcharge%",
+                                        onMinus = { if (overtimeNightSurcharge > 0) overtimeNightSurcharge -= 5 },
+                                        onPlus = { if (overtimeNightSurcharge < 120) overtimeNightSurcharge += 5 }
                                     )
                                 }
                             }
                         }
                     }
 
-                    // CARD 3: ORARIO SETTIMANALE & RIPOSO MINIMO
-                    Card(
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "ORARIO SETTIMANALE & RIPOSO MINIMO",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextMuted,
-                                letterSpacing = 1.sp
-                            )
-
-                            NumberStepperRow(
-                                label = "Orario Medio Settimanale",
-                                valueText = "$weeklyHours ore",
-                                onMinus = { if (weeklyHours > 20) weeklyHours -= 1 },
-                                onPlus = { if (weeklyHours < 48) weeklyHours += 1 },
-                                note = "Standard contrattuale CCNL: ${currentCcnl.standardWeeklyHours}h"
-                            )
-
-                            NumberStepperRow(
-                                label = "Riposo Minimo Obbligatorio tra Turni",
-                                valueText = "$minRestHours ore",
-                                onMinus = { if (minRestHours > 8) minRestHours -= 1 },
-                                onPlus = { if (minRestHours < 24) minRestHours += 1 },
-                                note = "Raccomandato dal CCNL: ${currentCcnl.minRestHoursBetweenShifts}h. Verifica la conformità dello stacco sul calendario."
-                            )
-                        }
-                    }
-
-                    // CARD 4: MAGGIORAZIONI CONTRATTUALI (%)
-                    Card(
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                        modifier = Modifier.fillMaxWidth()
-                    ) {
-                        Column(
-                            modifier = Modifier.padding(16.dp),
-                            verticalArrangement = Arrangement.spacedBy(10.dp)
-                        ) {
-                            Text(
-                                "MAGGIORAZIONI CONTRATTUALI (%)",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = TextMuted,
-                                letterSpacing = 1.sp
-                            )
-
-                            NumberStepperRow(
-                                label = "Maggiorazione Notturna (22-06)",
-                                valueText = "+$nightSurcharge%",
-                                onMinus = { if (nightSurcharge > 0) nightSurcharge -= 5 },
-                                onPlus = { if (nightSurcharge < 100) nightSurcharge += 5 }
-                            )
-
-                            NumberStepperRow(
-                                label = "Maggiorazione Festivo",
-                                valueText = "+$holidaySurcharge%",
-                                onMinus = { if (holidaySurcharge > 0) holidaySurcharge -= 5 },
-                                onPlus = { if (holidaySurcharge < 120) holidaySurcharge += 5 }
-                            )
-
-                            NumberStepperRow(
-                                label = "Notte + Festivo",
-                                valueText = "+$nightHolidaySurcharge%",
-                                onMinus = { if (nightHolidaySurcharge > 0) nightHolidaySurcharge -= 5 },
-                                onPlus = { if (nightHolidaySurcharge < 150) nightHolidaySurcharge += 5 }
-                            )
-
-                            NumberStepperRow(
-                                label = "Straordinario Diurno",
-                                valueText = "+$overtimeDaySurcharge%",
-                                onMinus = { if (overtimeDaySurcharge > 0) overtimeDaySurcharge -= 5 },
-                                onPlus = { if (overtimeDaySurcharge < 100) overtimeDaySurcharge += 5 }
-                            )
-
-                            NumberStepperRow(
-                                label = "Straordinario Notturno",
-                                valueText = "+$overtimeNightSurcharge%",
-                                onMinus = { if (overtimeNightSurcharge > 0) overtimeNightSurcharge -= 5 },
-                                onPlus = { if (overtimeNightSurcharge < 120) overtimeNightSurcharge += 5 }
-                            )
-                        }
-                    }
-
-                    // CARD 5: ICONA & COLORE DISTINTIVO (CON COLOR PICKER PERSONALIZZATO!)
+                    // CARD 4: ICONA & COLORE DISTINTIVO
                     Card(
                         shape = RoundedCornerShape(18.dp),
                         colors = CardDefaults.cardColors(containerColor = ObsidianSurfaceContainer),
@@ -3784,7 +4052,7 @@ fun WorkProfileEditorScreen(
                             verticalArrangement = Arrangement.spacedBy(14.dp)
                         ) {
                             Text(
-                                "ICONA DEL PROFILO",
+                                "ICONA DEL LAVORO",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextMuted,
@@ -3835,14 +4103,13 @@ fun WorkProfileEditorScreen(
                             Spacer(modifier = Modifier.height(4.dp))
 
                             Text(
-                                "COLORE IDENTIFICATIVO (TAVOLOZZA & PERSONALIZZATO)",
+                                "COLORE IDENTIFICATIVO",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = TextMuted,
                                 letterSpacing = 1.sp
                             )
 
-                            // Universal Color Picker Row con l'ultimo badge a destra Personalizzato!
                             UniversalColorPickerRow(
                                 selectedColorHex = selectedColorHex,
                                 onColorSelected = { selectedColorHex = it }
@@ -3850,7 +4117,7 @@ fun WorkProfileEditorScreen(
                         }
                     }
 
-                    // CARD 6: STATO LAVORO ATTIVO
+                    // CARD 5: STATO LAVORO ATTIVO
                     Surface(
                         modifier = Modifier.fillMaxWidth(),
                         shape = RoundedCornerShape(18.dp),
@@ -3860,6 +4127,7 @@ fun WorkProfileEditorScreen(
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
+                                .clickable { isDefault = !isDefault }
                                 .padding(16.dp),
                             horizontalArrangement = Arrangement.SpaceBetween,
                             verticalAlignment = Alignment.CenterVertically
@@ -3873,7 +4141,7 @@ fun WorkProfileEditorScreen(
                                 )
                                 Spacer(modifier = Modifier.height(2.dp))
                                 Text(
-                                    "Usa le regole CCNL e il riposo minimo di questo lavoro sul calendario",
+                                    "I turni assegnati e il calendario utilizzeranno le regole di questo lavoro",
                                     fontSize = 11.5.sp,
                                     color = TextMuted
                                 )

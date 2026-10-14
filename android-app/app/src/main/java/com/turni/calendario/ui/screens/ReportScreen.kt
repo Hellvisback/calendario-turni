@@ -95,7 +95,7 @@ fun ReportScreen() {
                     color = TextPrimary
                 )
                 Text(
-                    text = "Analisi turni, indennità e presenze RFI",
+                    text = "Analisi turni, straordinari e presenze",
                     fontSize = 12.sp,
                     color = TextSecondary
                 )
@@ -284,10 +284,10 @@ fun ReportScreen() {
                             modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp),
                             verticalAlignment = Alignment.CenterVertically
                         ) {
-                            Icon(Icons.Default.DirectionsTransit, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Default.WorkOutline, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(4.dp))
                             Text(
-                                text = "RFI CCNL",
+                                text = ShiftRepository.activeWorkProfile.name,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ObsidianPrimary,

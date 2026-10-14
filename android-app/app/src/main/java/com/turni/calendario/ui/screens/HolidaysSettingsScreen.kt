@@ -176,7 +176,7 @@ fun HolidaysSettingsScreen(
             )
 
             HolidaySectionView(
-                title = "EX-FESTIVITÀ CCNL MOBILITÀ & FERROVIARIO",
+                title = "EX-FESTIVITÀ CCNL E GIORNI SPECIALI",
                 holidays = ccnlHolidays,
                 enabledIds = enabledIds,
                 onToggle = { ShiftRepository.toggleHoliday(it) }
