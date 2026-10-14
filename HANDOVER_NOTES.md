@@ -119,8 +119,8 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"
 # 4. Acquisire uno screenshot di verifica
 cmd.exe /c "`"C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe`" -s cb08bc57 exec-out screencap -p > screen.png"
 
-# 5. Copiare l'APK aggiornato sul Cloud (OneDrive/Google Drive)
-Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-debug.apk" "C:\Users\marco\OneDrive\app-release-latest.apk" -Force
+# 5. Rilasciare l'APK aggiornato su GitHub Releases (MAI su OneDrive!)
+gh release upload v1.0.0 "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-debug.apk#app-release-latest.apk" --clobber
 ```
 
 ---
@@ -129,7 +129,7 @@ Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\
 - Rispondere **SEMPRE in lingua italiana** con spiegazioni chiare ed esaustive.
 - Codice, classi, metodi, variabili e commenti nel codice in **inglese**.
 - Non rimuovere mai o rompere funzionalità esistenti: applicare modifiche chirurgiche con `replace_file_content`.
-- Mantenere sempre aggiornato l'APK sul percorso cloud accessibile all'utente.
+- Mantenere sempre aggiornato l'APK unicamente su **GitHub Releases** tramite `gh release upload`. MAI su OneDrive.
 
 ---
 

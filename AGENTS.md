@@ -14,5 +14,5 @@
 - Java Home: `$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"`
 - Compilazione: `.\gradlew.bat assembleDebug` in `android-app/`
 - Device test ADB: Realme 8 Pro (`cb08bc57`)
-- APK Cloud per l'utente: `C:\Users\marco\OneDrive\app-release-latest.apk`
+- Rilascio APK su GitHub: aggiornare l'asset su GitHub Releases (`gh release upload v1.0.0 "android-app/app/build/outputs/apk/debug/app-debug.apk#app-release-latest.apk" --clobber`). MAI aggiornare o copiare l'APK su OneDrive!
 - Consulta `HANDOVER_NOTES.md` per i dettagli completi su repository, logiche di calcolo turni e sincronizzazione Google Calendar.
