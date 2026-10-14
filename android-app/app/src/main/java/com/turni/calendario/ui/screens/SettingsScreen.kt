@@ -43,7 +43,7 @@ enum class SettingsSubScreen {
 @Composable
 fun SettingsScreen(
     onSubScreenActiveChanged: (Boolean) -> Unit = {},
-    onNavigateToTurni: () -> Unit = {}
+    onNavigateToTurni: (com.turni.calendario.model.ShiftRotation?) -> Unit = {}
 ) {
     val context = LocalContext.current
     var activeSubScreen by remember { mutableStateOf(SettingsSubScreen.NONE) }
@@ -81,9 +81,9 @@ fun SettingsScreen(
         SettingsSubScreen.IMPORT_SHIFTS -> {
             ImportShiftsScreen(
                 onDismiss = { activeSubScreen = SettingsSubScreen.NONE },
-                onNavigateToEdit = {
+                onNavigateToEdit = { rotation ->
                     activeSubScreen = SettingsSubScreen.NONE
-                    onNavigateToTurni()
+                    onNavigateToTurni(rotation)
                 }
             )
             return

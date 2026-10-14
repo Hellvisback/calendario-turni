@@ -47,6 +47,7 @@ fun MainScreen() {
     var selectedItem by remember { mutableStateOf<NavItem>(NavItem.Calendario) }
     var isSubScreenActive by remember { mutableStateOf(false) }
     var isCalendarEditModeActive by remember { mutableStateOf(false) }
+    var targetRotationToEdit by remember { mutableStateOf<com.turni.calendario.model.ShiftRotation?>(null) }
 
     // Intercetta il tasto indietro di sistema: se siamo in un altro tab, torna a Calendario
     BackHandler(enabled = selectedItem != NavItem.Calendario && !isSubScreenActive && !isCalendarEditModeActive) {
@@ -114,10 +115,16 @@ fun MainScreen() {
                         onEditModeActiveChanged = { isCalendarEditModeActive = it }
                     )
                     NavItem.Report -> ReportScreen()
-                    NavItem.Turni -> TurniModelsScreen(onEditorActiveChanged = { isSubScreenActive = it })
+                    NavItem.Turni -> TurniModelsScreen(
+                        onEditorActiveChanged = { isSubScreenActive = it },
+                        initialTab = if (targetRotationToEdit != null) 2 else 0,
+                        initialEditingRotation = targetRotationToEdit,
+                        onClearInitialRotation = { targetRotationToEdit = null }
+                    )
                     NavItem.Altro -> SettingsScreen(
                         onSubScreenActiveChanged = { isSubScreenActive = it },
-                        onNavigateToTurni = {
+                        onNavigateToTurni = { rotation ->
+                            targetRotationToEdit = rotation
                             selectedItem = NavItem.Turni
                             isSubScreenActive = false
                         }

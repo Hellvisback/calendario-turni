@@ -47,7 +47,7 @@ fun CloudBackupScreen(
     onDismiss: () -> Unit
 ) {
     val context = LocalContext.current
-    var autoBackupEnabled by remember { mutableStateOf(true) }
+    val autoBackupEnabled = ShiftRepository.appPreferences.autoBackupDaily
     var lastBackupTime by remember { mutableStateOf(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))) }
     var statusMessage by remember { mutableStateOf<String?>(null) }
     var popupType by remember { mutableStateOf(PopupType.SUCCESS) }
@@ -397,7 +397,20 @@ fun CloudBackupScreen(
                 }
                 Switch(
                     checked = autoBackupEnabled,
-                    onCheckedChange = { autoBackupEnabled = it },
+                    onCheckedChange = { isChecked ->
+                        ShiftRepository.appPreferences = ShiftRepository.appPreferences.copy(autoBackupDaily = isChecked)
+                        if (isChecked) {
+                            val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
+                            if (ok) {
+                                lastBackupTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+                                popupType = PopupType.SUCCESS
+                                statusMessage = "Backup automatico attivato e sincronizzato su Google Drive!"
+                            }
+                        } else {
+                            popupType = PopupType.INFO
+                            statusMessage = "Backup automatico disattivato."
+                        }
+                    },
                     colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
                 )
             }

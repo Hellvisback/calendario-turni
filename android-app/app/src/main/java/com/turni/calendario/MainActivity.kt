@@ -9,6 +9,9 @@ import com.turni.calendario.ui.theme.CalendarioTurniTheme
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        if (com.turni.calendario.repository.ShiftRepository.appPreferences.autoBackupDaily) {
+            com.turni.calendario.sync.GoogleDriveBackupHelper.saveCloudBackupDirect(applicationContext)
+        }
         setContent {
             CalendarioTurniTheme {
                 MainScreen()

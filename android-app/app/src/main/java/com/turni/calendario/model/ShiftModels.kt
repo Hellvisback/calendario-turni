@@ -161,7 +161,8 @@ data class AppPreferences(
     val showExShifts: Boolean = true,
     val weekStartMonday: Boolean = true,
     val timeFormat24h: Boolean = true,
-    val showHolidays: Boolean = true
+    val showHolidays: Boolean = true,
+    val autoBackupDaily: Boolean = true
 )
 
 /**

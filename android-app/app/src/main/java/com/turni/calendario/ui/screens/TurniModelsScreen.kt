@@ -50,11 +50,22 @@ import java.util.UUID
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
 fun TurniModelsScreen(
-    onEditorActiveChanged: ((Boolean) -> Unit)? = null
+    onEditorActiveChanged: ((Boolean) -> Unit)? = null,
+    initialTab: Int = 0,
+    initialEditingRotation: ShiftRotation? = null,
+    onClearInitialRotation: (() -> Unit)? = null
 ) {
-    var selectedTab by remember { mutableStateOf(0) } // 0: Turni, 1: Lavori, 2: Rotazioni
+    var selectedTab by remember { mutableStateOf(initialTab) } // 0: Turni, 1: Lavori, 2: Rotazioni
     var editingShift by remember { mutableStateOf<ShiftDefinition?>(null) }
-    var editingRotation by remember { mutableStateOf<ShiftRotation?>(null) }
+    var editingRotation by remember { mutableStateOf<ShiftRotation?>(initialEditingRotation) }
+
+    LaunchedEffect(initialTab, initialEditingRotation) {
+        if (initialEditingRotation != null) {
+            selectedTab = 2
+            editingRotation = initialEditingRotation
+            onClearInitialRotation?.invoke()
+        }
+    }
     var showRotationApplyDialog by remember { mutableStateOf<ShiftRotation?>(null) }
     var viewingCcnl by remember { mutableStateOf<CcnlDefinition?>(null) }
     var editingWorkProfile by remember { mutableStateOf<Pair<WorkProfile, Boolean>?>(null) }

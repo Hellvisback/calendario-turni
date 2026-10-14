@@ -129,7 +129,7 @@ P P RGLS N N M RISE RGLS N N RISE M P MD M M P P P RGLS N N RISE M M RGLS N RISE
 @Composable
 fun ImportShiftsScreen(
     onDismiss: () -> Unit,
-    onNavigateToEdit: (() -> Unit)? = null
+    onNavigateToEdit: ((com.turni.calendario.model.ShiftRotation?) -> Unit)? = null
 ) {
     val context = LocalContext.current
     var rawText by remember { mutableStateOf("") }
@@ -145,6 +145,7 @@ fun ImportShiftsScreen(
     var overwriteCalendar by remember { mutableStateOf(true) }
     var setOnCallCalendar by remember { mutableStateOf(true) }
     var showExitToEditDialog by remember { mutableStateOf(false) }
+    var rotationToEditOnExit by remember { mutableStateOf<com.turni.calendario.model.ShiftRotation?>(null) }
 
     // Esegue il parsing completo del testo con auto-selezione turnista a monte
     fun executeParsing(text: String) {
@@ -986,6 +987,14 @@ fun ImportShiftsScreen(
 
                             OutlinedButton(
                                 onClick = {
+                                    val rot = com.turni.calendario.model.ShiftRotation(
+                                        id = team.rotationId,
+                                        name = team.teamName,
+                                        totalDays = team.totalDays,
+                                        daySequence = team.dayShiftDefIds,
+                                        description = "Rotazione ${team.teamName} da importazione"
+                                    )
+                                    rotationToEditOnExit = rot
                                     showExitToEditDialog = true
                                 },
                                 shape = RoundedCornerShape(10.dp),
@@ -1087,6 +1096,16 @@ fun ImportShiftsScreen(
 
                         OutlinedButton(
                             onClick = {
+                                val rot = selectedTeam?.let { team ->
+                                    com.turni.calendario.model.ShiftRotation(
+                                        id = team.rotationId,
+                                        name = team.teamName,
+                                        totalDays = team.totalDays,
+                                        daySequence = team.dayShiftDefIds,
+                                        description = "Rotazione ${team.teamName} da importazione"
+                                    )
+                                }
+                                rotationToEditOnExit = rot
                                 showExitToEditDialog = true
                             },
                             shape = RoundedCornerShape(12.dp),
@@ -1139,9 +1158,26 @@ fun ImportShiftsScreen(
             confirmButton = {
                 Button(
                     onClick = {
+                        val targetRot = rotationToEditOnExit ?: selectedTeam?.let { team ->
+                            com.turni.calendario.model.ShiftRotation(
+                                id = team.rotationId,
+                                name = team.teamName,
+                                totalDays = team.totalDays,
+                                daySequence = team.dayShiftDefIds,
+                                description = "Rotazione ${team.teamName} da importazione"
+                            )
+                        }
+                        // 1. Assicura orari e definizioni turni singoli (M, P, N, MD, etc.) nel catalogo
+                        parseResult?.let { res ->
+                            ShiftRepository.ensureShiftDefinitionsFromParsedHours(res.detectedHours)
+                        }
+                        // 2. Salva la rotazione nel catalogo
+                        if (targetRot != null) {
+                            ShiftRepository.saveRotation(targetRot)
+                        }
                         showExitToEditDialog = false
                         if (onNavigateToEdit != null) {
-                            onNavigateToEdit()
+                            onNavigateToEdit(targetRot)
                         } else {
                             onDismiss()
                         }

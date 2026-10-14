@@ -113,6 +113,7 @@ object GoogleDriveBackupHelper {
             put("weekStartMonday", ShiftRepository.appPreferences.weekStartMonday)
             put("timeFormat24h", ShiftRepository.appPreferences.timeFormat24h)
             put("showHolidays", ShiftRepository.appPreferences.showHolidays)
+            put("autoBackupDaily", ShiftRepository.appPreferences.autoBackupDaily)
         }
         root.put("appPreferences", prefObj)
 
@@ -322,6 +323,18 @@ object GoogleDriveBackupHelper {
                     )
                     ShiftRepository.dayExtraInfo[date] = extra
                 }
+            }
+
+            // 5. Preferenze
+            if (root.has("appPreferences")) {
+                val p = root.getJSONObject("appPreferences")
+                ShiftRepository.appPreferences = ShiftRepository.appPreferences.copy(
+                    showExShifts = p.optBoolean("showExShifts", ShiftRepository.appPreferences.showExShifts),
+                    weekStartMonday = p.optBoolean("weekStartMonday", ShiftRepository.appPreferences.weekStartMonday),
+                    timeFormat24h = p.optBoolean("timeFormat24h", ShiftRepository.appPreferences.timeFormat24h),
+                    showHolidays = p.optBoolean("showHolidays", ShiftRepository.appPreferences.showHolidays),
+                    autoBackupDaily = p.optBoolean("autoBackupDaily", ShiftRepository.appPreferences.autoBackupDaily)
+                )
             }
 
             RestoreResult(
