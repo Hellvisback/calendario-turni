@@ -45,86 +45,6 @@ import java.io.BufferedReader
 import java.io.InputStreamReader
 import java.time.format.DateTimeFormatter
 
-const val RFI_EXAMPLE_TABELLONE = """MOD. P.R.
-Turno Valido dal 21/09/2026 al 18/10/2026
-• F Ferie • C Congedo • PS Permesso studio • CF Corso Formativo • TGF Turno giornaliero formazione • T Trasferta
-Orari:
-M 06:00-13:36
-P 14:00-21:36
-N 22:00-05:36
-MD 08:36-16:12
-Reperibilità dalle 0:00 alle 24:00 chi fa il turno P. La Domenica Reperibile chi fa il turno MD.
-U.T. Pescara, UMIS 3 DOIT ANCONA
-
-Squadra B
-21/9 22/9 23/9 24/9 25/9 26/9 27/9 28/9 29/9 30/9 1/10 2/10 3/10 4/10 5/10 6/10 7/10 8/10 9/10 10/10 11/10 12/10 13/10 14/10 15/10 16/10 17/10 18/10
-Marcozzi Loris Man. Sì X 8024724 P P Rc N N M Ri Rc N N TGF Rc Ri TGF M M Ri Rc TGF Ri
-Roscini Giordano Man. Sì X X 8807551 TGF TGF TGF TGF TGF Rc Ri TGF Rc Ri TGF TGF TGF Rc Ri Rc TGF Ri
-Iezzi Valerio OP.IS Si 8027562 Rc Ri Rc Ri Rc Ri Rc TGF Ri
-Tomassini Andrea OP.IS No 8052223 Rc Ri Rc F F Ri Rc Ri Rc TGF Ri
-Raglione Luca Capo Tecn. Si X 8024725 N Ri M M Rc N MD P MD M M Ri Rc N M M TGF Rc Ri Rc TGF Ri
-Marcucci Roberto Man. Sì X 8004855 Rc Ri TGF Rc Ri Rc Ri Rc TGF Ri
-Carestia Stefano Man. Sì 8024721 Rc Ri Rc Ri Rc Ri Rc TGF Ri
-Di_Camillo Gianluca Capo Tecn. Si X X 8043762 Rc Ri Rc Ri TGF Rc Ri Rc TGF Ri
-Di_Iulio Orazio OP.IS No 8027558 Rc Ri TGF F Rc Ri Rc Ri Rc TGF Ri
-Galli Andrea Man. Si X X 8024717 Rc Ri Rc Ri Rc F Ri Rc TGF Ri
-Antinucci Alessandro Man. Si 8027554 Rc F F Ri Rc Ri Rc Ri Rc TGF Ri
-Iacobucci Daniele OP.IS No 8027561 Rc Ri Rc Ri Rc Ri Rc TGF Ri
-Graziani Marco OP.IS No 8050253 Rc Ri Rc Ri Rc Ri Rc TGF Ri
-N N RISE M P MD M M P P P RGLS N N RISE M M RGLS N RISE P P RGLS N N M RISE
-
-Squadra C
-D'Angelo Stefano Capo Tecn. Sì X 8024458 TGF PS Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Naki Amine Man. Sì 8027565 TGF Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Genovese Marco OP.IS Sì 8050250 TGF Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Asanoski Ardit OP.IS Sì 8052222 TGF F Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Sincic Stefano Capo Tecn. Sì X X 8006501 Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Di_Loreto Alfonso Man. Sì X 8049757 Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Ferretti Gianluca Man. Sì X 8087923 Rc Ri TGF F Rc F Ri Rc Ri Rc Ri TGF
-D'Amore Donato Man. Si X 8024722 TGF TGF TGF TGF TGF Rc F TGF Ri Rc Ri TGF TGF TGF Rc Ri Rc Ri TGF
-D'Ambrosio Paolo Man. Si 8027556 Rc Ri Rc Ri Rc F Ri Rc Ri TGF
-Caputo Raffaele OP.IS No 8027555 MD TGF Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Giangiulli Giorgia OP.IS No 8050251 TGF TGF TGF TGF TGF Rc Ri Rc Ri Rc Ri Rc Ri TGF
-Gervasio Francesco OP.IS No 8027560 MD TGF Rc Ri Rc Ri Rc Ri Rc Ri TGF
-M M P P P RGLS N N RISE M M RGLS N RISE P P RGLS N N M RISE RGLS N N RISE M P MD
-
-Squadra B 1
-Mongia Andrea Tecnico No X X 8012390 Rc Ri Ri Rc Rc Ri Rc TGF Ri
-Paolucci Paolo Capo Tecn. No X X 8093141 Rc Ri M M Ri Rc TGF Rc Ri Rc Ri
-P P P RGLS RISE M M M M RISE DEL 30/9 P P P RGLS M M M M P RGLS RISE P P P RGLS M M RISE
-
-Squadra D
-Argentesi Alessandro Capo Tecn. Sì X 8088362 Ri Rc Ri Rc Ri Rc Ri Rc
-Tria Piergiorgio Man. Sì 8027569 Ri Rc Ri Rc Ri Rc Ri Rc
-Iacutone Simone OP.IS Sì 8028556 Ri Rc Ri Rc Ri Rc Ri Rc
-Leonzio Giordano Capo Tecn. Sì X X 8081569 Ri Rc Ri Rc Ri Rc Ri Rc
-Manfrè Milco Man. Sì X X 8012419 Ri Rc F Ri Rc Ri Rc Ri Rc
-De_Amicis Isaia Man. Sì X 8023742 Ri Rc Ri TGF Rc Ri Rc Ri Rc
-Michelucci Andrea Man. Sì X 8049759 TGF TGF TGF TGF TGF Ri Ri TGF Rc Rc Ri Rc TGF TGF TGF TGF TGF Rc
-Raglione Luca Capo Tecn. Si X 8024725 F Ri F F Rc F Ri Rc Ri Rc Ri Rc
-Menna Federico Man. Si X 8027564 Ri F Rc Ri TGF Rc Ri Rc Ri F F F Rc
-Stella Daniele Man. Si 8027567 TGF TGF TGF TGF TGF Ri Ri TGF Rc Rc Ri Rc TGF TGF TGF Ri Rc
-Ciccia_Romito Davide OP.IS No 8050248 Ri Rc Ri Rc Ri Rc Ri F Rc
-Marrollo Davide OP.IS No 8054100 Ri Rc Ri Rc Ri Rc Ri Rc
-Calabrese Emanuele OP.IS No 8050247 F Ri Rc Ri TGF Rc F Ri Rc Ri Rc
-N RISE M M RGLS N RISE P P RGLS N N M RISE RGLS N N RISE M P MD M M P P P RGLS N
-
-Squadra A
-Haddad Eros Capo Tecn. Sì X X 8015974 M TGF Rc Ri Rc F Ri MD TGF Rc Ri Rc Ri
-Tardivo Antonio Man. Sì X 8049761 M TGF Rc Ri Rc Ri Rc Ri TGF Rc Ri
-Ciommo Simone OP.IS Sì 8050249 M TGF Rc Ri Rc Ri F TGF Rc Ri Rc Ri
-Anselmi Mariano OP.IS No 8052221 M TGF Rc F Ri Rc Ri Rc Ri Rc Ri
-Amabile Crescenzo OP.IS No 8052220 M TGF Rc Ri Rc Ri Rc F F Ri F F Rc F Ri
-Ricci Danny Man. Sì 8024727 Rc Ri Rc Ri Rc Ri Rc Ri
-Partenza Simone Man. Sì X 8049760 Rc F Ri Rc Ri Rc Ri Rc Ri
-Tinozzi Tiziano OP.IS Si 8027568 Rc Ri Rc Ri Rc Ri Rc Ri
-Monaco Luca Capo Tecn. Si X 8020871 TGF TGF TGF TGF TGF Rc Ri TGF M M Ri P Rc F TGF TGF TGF Rc Ri TGF Rc Ri
-Di_Petta Lorenzo Man. Si X 8023743 Rc Ri Rc Ri Rc Ri Rc Ri
-Verì William OP.IS Si 8027570 Rc Ri Rc Ri Rc Ri Rc Ri
-D'Orazio Manuel OP.IS Si 8027559 Rc Ri Rc Ri F Rc F F Ri F F Rc F Ri
-Pizzoferrato Matteo OP.IS No 8050254 Rc C Ri Rc Ri TGF TGF Rc Ri Rc Ri
-P P RGLS N N M RISE RGLS N N RISE M P MD M M P P P RGLS N N RISE M M RGLS N RISE"""
-
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ImportShiftsScreen(
@@ -808,7 +728,7 @@ fun ImportShiftsScreen(
                                                 name = team.teamName,
                                                 totalDays = team.totalDays,
                                                 daySequence = team.dayShiftDefIds,
-                                                description = "Rotazione ${team.teamName} da tabellone RFI"
+                                                description = "Rotazione ${team.teamName} importata"
                                             )
                                             ShiftRepository.saveRotation(rot)
                                         }

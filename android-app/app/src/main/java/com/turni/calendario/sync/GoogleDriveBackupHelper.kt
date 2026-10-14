@@ -35,7 +35,7 @@ object GoogleDriveBackupHelper {
 
         // 1. Modelli Turno
         val modelsArray = JSONArray()
-        ShiftRepository.shiftDefinitions.forEach { def ->
+        ShiftRepository.shiftDefinitions.toList().forEach { def ->
             val obj = JSONObject().apply {
                 put("id", def.id)
                 put("name", def.name)
@@ -55,7 +55,7 @@ object GoogleDriveBackupHelper {
 
         // 2. Rotazioni
         val rotationsArray = JSONArray()
-        ShiftRepository.rotations.forEach { rot ->
+        ShiftRepository.rotations.toList().forEach { rot ->
             val obj = JSONObject().apply {
                 put("id", rot.id)
                 put("name", rot.name)
@@ -71,8 +71,8 @@ object GoogleDriveBackupHelper {
 
         // 3. Assegnazioni Calendario
         val shiftsArray = JSONArray()
-        ShiftRepository.calendarShifts.forEach { (date, list) ->
-            list.forEach { s ->
+        ShiftRepository.calendarShifts.toMap().forEach { (date, list) ->
+            list.toList().forEach { s ->
                 val obj = JSONObject().apply {
                     put("id", s.id)
                     put("date", date.toString())
@@ -95,7 +95,7 @@ object GoogleDriveBackupHelper {
 
         // 4. Extra Info per Giorno (straordinari, trasferte, note)
         val extraArray = JSONArray()
-        ShiftRepository.dayExtraInfo.forEach { (date, extra) ->
+        ShiftRepository.dayExtraInfo.toMap().forEach { (date, extra) ->
             val obj = JSONObject().apply {
                 put("date", date.toString())
                 put("overtimeHours", extra.overtimeHours.toDouble())
@@ -106,6 +106,28 @@ object GoogleDriveBackupHelper {
             extraArray.put(obj)
         }
         root.put("dayExtraInfo", extraArray)
+
+        // 5. Profili di Lavoro
+        val profilesArray = JSONArray()
+        ShiftRepository.workProfiles.toList().forEach { p ->
+            val pObj = JSONObject().apply {
+                put("id", p.id)
+                put("name", p.name)
+                put("companyOrDepartment", p.companyOrDepartment)
+                put("weeklyHours", p.weeklyHours)
+                put("minRestHoursBetweenShifts", p.minRestHoursBetweenShifts)
+                put("nightSurchargePercent", p.nightSurchargePercent)
+                put("holidaySurchargePercent", p.holidaySurchargePercent)
+                put("nightHolidaySurchargePercent", p.nightHolidaySurchargePercent)
+                put("overtimeDaySurchargePercent", p.overtimeDaySurchargePercent)
+                put("overtimeNightSurchargePercent", p.overtimeNightSurchargePercent)
+                put("colorHex", p.colorHex)
+                put("isDefault", p.isDefault)
+                put("enableAdvancedCalc", p.enableAdvancedCalc)
+            }
+            profilesArray.put(pObj)
+        }
+        root.put("workProfiles", profilesArray)
 
         // 5. Preferenze & Reperibilità
         val prefObj = JSONObject().apply {

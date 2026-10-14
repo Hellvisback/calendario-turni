@@ -35,8 +35,8 @@ import com.turni.calendario.model.AssignedShift
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.DeviceCalendarInfo
 import com.turni.calendario.sync.GoogleCalendarSyncHelper
-import com.turni.calendario.ui.components.AnimatedStatusPopup
-import com.turni.calendario.ui.components.PopupType
+import com.turni.calendario.ui.components.ActionFeedback
+import com.turni.calendario.ui.components.MagicalActionFeedbackHUD
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -94,9 +94,8 @@ fun GoogleCalendarSyncScreen(
     var setReminderOneHourBefore by remember { mutableStateOf(true) }
     var includeRestDays by remember { mutableStateOf(false) }
 
-    // Popup overlay state (replaces old inline green banner)
-    var popupMessage by remember { mutableStateOf<String?>(null) }
-    var popupType by remember { mutableStateOf(PopupType.SUCCESS) }
+    // Feedback animato HUD con particelle (stile Breccia e Liquid Glass)
+    var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
     var showEventListPreview by remember { mutableStateOf(false) }
 
     // Cooldown & loading states
@@ -592,14 +591,20 @@ fun GoogleCalendarSyncScreen(
                                     isSyncing = false
                                     syncCooldownUntil = System.currentTimeMillis() + 300_000L
                                     cooldownRemainingSeconds = 300L
-                                    popupType = PopupType.SUCCESS
-                                    popupMessage = "Sincronizzazione completata: $count turni inseriti su Google Calendar!"
+                                    actionFeedback = ActionFeedback(
+                                        message = "Sincronizzati con successo $count turni",
+                                        timestamp = System.currentTimeMillis(),
+                                        isDestructive = false
+                                    )
                                 }
                             } catch (e: Throwable) {
                                 withContext(Dispatchers.Main) {
                                     isSyncing = false
-                                    popupType = PopupType.ERROR
-                                    popupMessage = "Errore sincronizzazione: ${e.localizedMessage ?: "Verifica i permessi del calendario"}"
+                                    actionFeedback = ActionFeedback(
+                                        message = "Errore: ${e.localizedMessage ?: "Verifica permessi calendario"}",
+                                        timestamp = System.currentTimeMillis(),
+                                        isDestructive = true
+                                    )
                                 }
                             }
                         }
@@ -674,11 +679,14 @@ fun GoogleCalendarSyncScreen(
             Spacer(modifier = Modifier.height(80.dp))
         }
 
-        // Overlay popup from the bottom — does NOT push content
-        AnimatedStatusPopup(
-            message = popupMessage,
-            type = popupType,
-            onDismiss = { popupMessage = null }
+        // Feedback HUD dall'alto con particelle perimetrali
+        MagicalActionFeedbackHUD(
+            feedback = actionFeedback,
+            onDismiss = { actionFeedback = null },
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .statusBarsPadding()
+                .padding(top = 16.dp)
         )
 
         // Confirm Delete Dialog
@@ -714,19 +722,28 @@ fun GoogleCalendarSyncScreen(
                                         isDeleting = false
                                         syncCooldownUntil = System.currentTimeMillis() + 300_000L
                                         cooldownRemainingSeconds = 300L
-                                        if (removed > 0) {
-                                            popupType = PopupType.SUCCESS
-                                            popupMessage = "Rimossi $removed turni dal calendario Google!"
+                                        actionFeedback = if (removed > 0) {
+                                            ActionFeedback(
+                                                message = "Rimossi $removed eventi sincronizzati",
+                                                timestamp = System.currentTimeMillis(),
+                                                isDestructive = true
+                                            )
                                         } else {
-                                            popupType = PopupType.INFO
-                                            popupMessage = "Nessun evento dell'app presente nel calendario selezionato."
+                                            ActionFeedback(
+                                                message = "Nessun evento da rimuovere",
+                                                timestamp = System.currentTimeMillis(),
+                                                isDestructive = false
+                                            )
                                         }
                                     }
                                 } catch (e: Throwable) {
                                     withContext(Dispatchers.Main) {
                                         isDeleting = false
-                                        popupType = PopupType.ERROR
-                                        popupMessage = "Errore durante la rimozione: ${e.localizedMessage ?: "Errore di accesso al calendario"}"
+                                        actionFeedback = ActionFeedback(
+                                            message = "Errore durante la rimozione",
+                                            timestamp = System.currentTimeMillis(),
+                                            isDestructive = true
+                                        )
                                     }
                                 }
                             }

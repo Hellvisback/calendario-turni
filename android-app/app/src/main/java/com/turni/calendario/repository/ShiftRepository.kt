@@ -44,7 +44,7 @@ object ShiftRepository {
     )
 
     val activeWorkProfile: WorkProfile
-        get() = workProfiles.find { it.id == activeWorkProfileId || (activeWorkProfileId == "rfi" && it.id == "principale") }
+        get() = workProfiles.find { it.id == activeWorkProfileId }
             ?: workProfiles.firstOrNull()
             ?: WorkProfile("principale", "Lavoro Principale", isDefault = true)
 
@@ -217,7 +217,7 @@ object ShiftRepository {
     // Opzioni correnti per Esportazione PDF & Stampa
     var pdfExportOptions by mutableStateOf(PdfExportOptions())
 
-    // Data di inizio del ciclo di 28 giorni RFI (Lunedì 28 Settembre 2026 inizia con Mattina)
+    // Data di inizio del ciclo continuo di 28 giorni (Lunedì 28 Settembre 2026 inizia con Mattina)
     val cycleReferenceDate: LocalDate = LocalDate.of(2026, 9, 28)
 
     init {
@@ -248,7 +248,7 @@ object ShiftRepository {
                     startTime = "06:00",
                     endTime = "13:36",
                     isAllDay = false,
-                    colorHex = 0xFF0284C7, // Azzurro RFI
+                    colorHex = 0xFF0284C7, // Azzurro Avio
                     iconKey = "wb_twilight",
                     category = ShiftCategory.LAVORO
                 ),
@@ -1076,7 +1076,7 @@ object ShiftRepository {
     }
 
     /**
-     * Importa ed applica le squadre e le rotazioni estratte da 'ngeniaTurni / RFI.
+     * Importa ed applica le squadre e le rotazioni estratte da file o tabella importata.
      */
     fun importNgeniaTurniResult(
         result: com.turni.calendario.importer.NgeniaParseResult,

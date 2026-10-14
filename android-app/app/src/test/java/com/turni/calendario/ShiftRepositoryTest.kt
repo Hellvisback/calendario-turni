@@ -202,10 +202,10 @@ class ShiftRepositoryTest {
 
     @Test
     fun testWorkProfileCrudAndActiveSwitch() {
-        // Profilo iniziale predefinito RFI
+        // Profilo iniziale predefinito
         val initialActive = ShiftRepository.activeWorkProfile
-        assertEquals("rfi", initialActive.id)
-        assertEquals(14, initialActive.minRestHoursBetweenShifts)
+        assertEquals("principale", initialActive.id)
+        assertEquals(11, initialActive.minRestHoursBetweenShifts)
         assertEquals(38, initialActive.weeklyHours)
 
         // Aggiunta secondo lavoro (es. Sanità Ospedale)
@@ -236,10 +236,10 @@ class ShiftRepositoryTest {
         ShiftRepository.updateWorkProfile(updatedSanita)
         assertEquals(35, ShiftRepository.activeWorkProfile.weeklyHours)
 
-        // Ripristino RFI come attivo
-        ShiftRepository.setActiveWorkProfile("rfi")
-        assertEquals("rfi", ShiftRepository.activeWorkProfile.id)
-        assertEquals(14, ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts)
+        // Ripristino profilo principale come attivo
+        ShiftRepository.setActiveWorkProfile("principale")
+        assertEquals("principale", ShiftRepository.activeWorkProfile.id)
+        assertEquals(11, ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts)
 
         // Eliminazione secondo lavoro
         val deleted = ShiftRepository.deleteWorkProfile("sanita_job")

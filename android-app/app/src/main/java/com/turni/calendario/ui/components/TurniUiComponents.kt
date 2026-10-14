@@ -275,33 +275,34 @@ fun ParticleBurstEffect(
             )
         }
 
-        List(48) { index ->
+        List(64) { index ->
             val edge = when {
-                index < 16 -> 0  // Top edge
-                index < 32 -> 1  // Bottom edge
-                index < 38 -> 2  // Left edge
-                index < 44 -> 3  // Right edge
-                else -> 4 + (index - 44) // 4 Corners
+                index < 22 -> 0  // Bordo superiore (top)
+                index < 44 -> 1  // Bordo inferiore (bottom)
+                index < 50 -> 2  // Bordo sinistro (left)
+                index < 56 -> 3  // Bordo destro (right)
+                else -> 4 + (index - 56) // 8 angoli / splay diagonali
             }
             val edgeRatio = random.nextFloat()
-            val spreadX = (random.nextFloat() - 0.5f) * 30f
-            val spreadY = (random.nextFloat() - 0.5f) * 30f
+            val spreadX = (random.nextFloat() - 0.5f) * 36f
+            val spreadY = (random.nextFloat() - 0.5f) * 36f
 
+            // Vettori di velocità strettamente diretti all'ESTERNO della card (nessuna particella verso il centro)
             val (dx, dy) = when (edge) {
-                0 -> Pair(spreadX, -(25f + random.nextFloat() * 45f))       // Top: burst upwards
-                1 -> Pair(spreadX, +(25f + random.nextFloat() * 45f))       // Bottom: burst downwards
-                2 -> Pair(-(30f + random.nextFloat() * 50f), spreadY)       // Left: burst leftwards
-                3 -> Pair(+(30f + random.nextFloat() * 50f), spreadY)       // Right: burst rightwards
-                4 -> Pair(-(25f + random.nextFloat() * 35f), -(25f + random.nextFloat() * 35f)) // Top-Left
-                5 -> Pair(+(25f + random.nextFloat() * 35f), -(25f + random.nextFloat() * 35f)) // Top-Right
-                6 -> Pair(-(25f + random.nextFloat() * 35f), +(25f + random.nextFloat() * 35f)) // Bottom-Left
-                else -> Pair(+(25f + random.nextFloat() * 35f), +(25f + random.nextFloat() * 35f)) // Bottom-Right
+                0 -> Pair(spreadX, -(35f + random.nextFloat() * 65f))       // Top: eruzione verso l'alto
+                1 -> Pair(spreadX, +(35f + random.nextFloat() * 65f))       // Bottom: eruzione verso il basso
+                2 -> Pair(-(40f + random.nextFloat() * 70f), spreadY)       // Left: eruzione verso sinistra
+                3 -> Pair(+(40f + random.nextFloat() * 70f), spreadY)       // Right: eruzione verso destra
+                4, 5 -> Pair(-(35f + random.nextFloat() * 45f), -(35f + random.nextFloat() * 45f)) // Angolo Top-Left
+                6, 7 -> Pair(+(35f + random.nextFloat() * 45f), -(35f + random.nextFloat() * 45f)) // Angolo Top-Right
+                8, 9 -> Pair(-(35f + random.nextFloat() * 45f), +(35f + random.nextFloat() * 45f)) // Angolo Bottom-Left
+                else -> Pair(+(35f + random.nextFloat() * 45f), +(35f + random.nextFloat() * 45f)) // Angolo Bottom-Right
             }
 
-            val size = 2.4f + random.nextFloat() * 3.8f
+            val size = 2.6f + random.nextFloat() * 4.2f
             val color = palette[random.nextInt(palette.size)]
             val isDiamond = random.nextBoolean()
-            val rotSpeed = (random.nextFloat() - 0.5f) * 540f
+            val rotSpeed = (random.nextFloat() - 0.5f) * 620f
 
             PerimeterParticle(
                 edge = edge,
@@ -318,10 +319,12 @@ fun ParticleBurstEffect(
 
     LaunchedEffect(triggerKey) {
         animProgress.snapTo(0f)
+        // Ritardo di assestamento: attende che il pop-up scenda dall'alto prima di far eruttare le particelle
+        kotlinx.coroutines.delay(240L)
         animProgress.animateTo(
             targetValue = 1f,
             animationSpec = androidx.compose.animation.core.tween(
-                durationMillis = 850,
+                durationMillis = 950,
                 easing = androidx.compose.animation.core.FastOutSlowInEasing
             )
         )
@@ -339,25 +342,30 @@ fun ParticleBurstEffect(
                     0, 1 -> p.edgeRatio * w
                     2 -> 0f
                     3 -> w
-                    4, 6 -> 0f
-                    5, 7 -> w
-                    else -> w / 2f
+                    4, 5, 8, 9 -> 0f
+                    else -> w
                 }
                 val startY = when (p.edge) {
                     0 -> 0f
                     1 -> h
                     2, 3 -> p.edgeRatio * h
-                    4, 5 -> 0f
-                    6, 7 -> h
-                    else -> h / 2f
+                    4, 5, 6, 7 -> 0f
+                    else -> h
                 }
 
                 val currentX = startX + (p.burstDx * progress * density)
                 val currentY = startY + (p.burstDy * progress * density)
                 val particleRadius = (p.sizeDp * (1f - progress * 0.35f) * density).coerceAtLeast(1.2f)
 
+                // Glow halo morbido attorno a ciascuna particella per brillantezza visiva
+                drawCircle(
+                    color = p.color.copy(alpha = alpha * 0.35f),
+                    radius = particleRadius * 2.2f,
+                    center = androidx.compose.ui.geometry.Offset(currentX, currentY)
+                )
+
                 if (p.isDiamond) {
-                    // Sparkling diamond / rotated square
+                    // Sparkling diamond / stella rotante
                     val half = particleRadius
                     val diamondPath = androidx.compose.ui.graphics.Path().apply {
                         moveTo(currentX, currentY - half)
@@ -368,7 +376,7 @@ fun ParticleBurstEffect(
                     }
                     drawPath(path = diamondPath, color = p.color.copy(alpha = alpha))
                 } else {
-                    // Glowing soft circular spark
+                    // Favilla circolare splendente
                     drawCircle(
                         color = p.color.copy(alpha = alpha),
                         radius = particleRadius,
@@ -384,7 +392,7 @@ fun ParticleBurstEffect(
 @Composable
 fun MagicalActionFeedbackHUD(
     feedback: ActionFeedback?,
-    onDismiss: () -> Unit,
+    onDismiss: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
     LaunchedEffect(feedback?.timestamp) {

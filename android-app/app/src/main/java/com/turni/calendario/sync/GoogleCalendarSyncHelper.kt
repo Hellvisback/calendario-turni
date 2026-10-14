@@ -72,37 +72,39 @@ object GoogleCalendarSyncHelper {
             )
 
             cursor?.let {
-                val idCol = it.getColumnIndexOrThrow(CalendarContract.Calendars._ID)
-                val nameCol = it.getColumnIndexOrThrow(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
-                val accountCol = it.getColumnIndexOrThrow(CalendarContract.Calendars.ACCOUNT_NAME)
+                val idCol = it.getColumnIndex(CalendarContract.Calendars._ID)
+                val nameCol = it.getColumnIndex(CalendarContract.Calendars.CALENDAR_DISPLAY_NAME)
+                val accountCol = it.getColumnIndex(CalendarContract.Calendars.ACCOUNT_NAME)
                 val typeCol = it.getColumnIndex(CalendarContract.Calendars.ACCOUNT_TYPE)
-                val ownerCol = it.getColumnIndexOrThrow(CalendarContract.Calendars.OWNER_ACCOUNT)
+                val ownerCol = it.getColumnIndex(CalendarContract.Calendars.OWNER_ACCOUNT)
                 val primaryCol = it.getColumnIndex(CalendarContract.Calendars.IS_PRIMARY)
 
-                while (it.moveToNext()) {
-                    val id = it.getLong(idCol)
-                    val name = it.getString(nameCol) ?: "Calendario"
-                    val account = it.getString(accountCol) ?: ""
-                    val type = if (typeCol >= 0) it.getString(typeCol) ?: "" else ""
-                    val owner = it.getString(ownerCol) ?: ""
-                    val isPrimary = if (primaryCol >= 0) it.getInt(primaryCol) == 1 else false
+                if (idCol >= 0) {
+                    while (it.moveToNext()) {
+                        val id = it.getLong(idCol)
+                        val name = if (nameCol >= 0) it.getString(nameCol) ?: "Calendario" else "Calendario"
+                        val account = if (accountCol >= 0) it.getString(accountCol) ?: "" else ""
+                        val type = if (typeCol >= 0) it.getString(typeCol) ?: "" else ""
+                        val owner = if (ownerCol >= 0) it.getString(ownerCol) ?: "" else ""
+                        val isPrimary = if (primaryCol >= 0) it.getInt(primaryCol) == 1 else false
 
-                    list.add(
-                        DeviceCalendarInfo(
-                            id = id,
-                            displayName = name,
-                            accountName = account,
-                            accountType = type,
-                            ownerAccount = owner,
-                            isPrimary = isPrimary
+                        list.add(
+                            DeviceCalendarInfo(
+                                id = id,
+                                displayName = name,
+                                accountName = account,
+                                accountType = type,
+                                ownerAccount = owner,
+                                isPrimary = isPrimary
+                            )
                         )
-                    )
+                    }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
         } finally {
-            cursor?.close()
+            try { cursor?.close() } catch (_: Throwable) {}
         }
         return list
     }
@@ -210,21 +212,31 @@ object GoogleCalendarSyncHelper {
                     put(CalendarContract.Events.HAS_ALARM, if (reminderMinutesBefore != null) 1 else 0)
                 }
 
-                val eventUri = contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+                val eventUri = try {
+                    contentResolver.insert(CalendarContract.Events.CONTENT_URI, values)
+                } catch (t: Throwable) {
+                    t.printStackTrace()
+                    null
+                }
+
                 if (eventUri != null) {
                     insertedCount++
-                    // Inserimento promemoria
+                    // Inserimento promemoria (protetto da fallimenti)
                     if (reminderMinutesBefore != null && reminderMinutesBefore > 0) {
-                        val eventId = ContentUris.parseId(eventUri)
-                        val reminderValues = ContentValues().apply {
-                            put(CalendarContract.Reminders.EVENT_ID, eventId)
-                            put(CalendarContract.Reminders.MINUTES, reminderMinutesBefore)
-                            put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                        try {
+                            val eventId = ContentUris.parseId(eventUri)
+                            val reminderValues = ContentValues().apply {
+                                put(CalendarContract.Reminders.EVENT_ID, eventId)
+                                put(CalendarContract.Reminders.MINUTES, reminderMinutesBefore)
+                                put(CalendarContract.Reminders.METHOD, CalendarContract.Reminders.METHOD_ALERT)
+                            }
+                            contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
+                        } catch (t: Throwable) {
+                            // Ignora se il provider locale non supporta o blocca i promemoria
                         }
-                        contentResolver.insert(CalendarContract.Reminders.CONTENT_URI, reminderValues)
                     }
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
             }
         }
@@ -259,22 +271,24 @@ object GoogleCalendarSyncHelper {
                 null
             )
             cursor?.let {
-                val idCol = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
-                while (it.moveToNext()) {
-                    eventIds.add(it.getLong(idCol))
+                val idCol = it.getColumnIndex(CalendarContract.Events._ID)
+                if (idCol >= 0) {
+                    while (it.moveToNext()) {
+                        eventIds.add(it.getLong(idCol))
+                    }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
         } finally {
-            cursor?.close()
+            try { cursor?.close() } catch (_: Throwable) {}
         }
 
         for (id in eventIds) {
             try {
                 val deleteUri = ContentUris.withAppendedId(CalendarContract.Events.CONTENT_URI, id)
                 contentResolver.delete(deleteUri, null, null)
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
             }
         }
@@ -303,15 +317,17 @@ object GoogleCalendarSyncHelper {
                 null
             )
             cursor?.let {
-                val idCol = it.getColumnIndexOrThrow(CalendarContract.Events._ID)
-                while (it.moveToNext()) {
-                    eventIds.add(it.getLong(idCol))
+                val idCol = it.getColumnIndex(CalendarContract.Events._ID)
+                if (idCol >= 0) {
+                    while (it.moveToNext()) {
+                        eventIds.add(it.getLong(idCol))
+                    }
                 }
             }
-        } catch (e: Exception) {
+        } catch (e: Throwable) {
             e.printStackTrace()
         } finally {
-            cursor?.close()
+            try { cursor?.close() } catch (_: Throwable) {}
         }
 
         var deletedCount = 0
@@ -322,7 +338,7 @@ object GoogleCalendarSyncHelper {
                 if (rows > 0) {
                     deletedCount += rows
                 }
-            } catch (e: Exception) {
+            } catch (e: Throwable) {
                 e.printStackTrace()
             }
         }

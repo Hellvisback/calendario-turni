@@ -29,8 +29,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.GoogleDriveBackupHelper
-import com.turni.calendario.ui.components.AnimatedStatusPopup
-import com.turni.calendario.ui.components.PopupType
+import com.turni.calendario.ui.components.ActionFeedback
+import com.turni.calendario.ui.components.MagicalActionFeedbackHUD
 import com.turni.calendario.ui.theme.*
 import java.time.LocalDate
 import java.time.LocalDateTime
@@ -49,8 +49,7 @@ fun CloudBackupScreen(
     val context = LocalContext.current
     val autoBackupEnabled = ShiftRepository.appPreferences.autoBackupDaily
     var lastBackupTime by remember { mutableStateOf(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))) }
-    var statusMessage by remember { mutableStateOf<String?>(null) }
-    var popupType by remember { mutableStateOf(PopupType.SUCCESS) }
+    var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
 
     val totalShifts = ShiftRepository.calendarShifts.values.sumOf { it.size }
     val totalRotations = ShiftRepository.rotations.size
@@ -65,11 +64,17 @@ fun CloudBackupScreen(
             if (ok) {
                 val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                 lastBackupTime = now
-                statusMessage = "Backup salvato con successo su Google Drive / File!"
-                Toast.makeText(context, "Backup salvato con successo!", Toast.LENGTH_SHORT).show()
+                actionFeedback = ActionFeedback(
+                    message = "Backup salvato su Google Drive",
+                    timestamp = System.currentTimeMillis(),
+                    isDestructive = false
+                )
             } else {
-                statusMessage = "Errore durante il salvataggio del backup su Google Drive."
-                Toast.makeText(context, "Errore salvataggio file", Toast.LENGTH_SHORT).show()
+                actionFeedback = ActionFeedback(
+                    message = "Errore salvataggio backup su Google Drive",
+                    timestamp = System.currentTimeMillis(),
+                    isDestructive = true
+                )
             }
         }
     }
@@ -81,11 +86,17 @@ fun CloudBackupScreen(
         if (uri != null) {
             val result = GoogleDriveBackupHelper.restoreDatabaseFromUri(context, uri)
             if (result.success) {
-                statusMessage = "Ripristino completato! ${result.shiftsCount} turni, ${result.modelsCount} modelli e ${result.rotationsCount} rotazioni recuperati."
-                Toast.makeText(context, "Database ripristinato con successo!", Toast.LENGTH_LONG).show()
+                actionFeedback = ActionFeedback(
+                    message = "Ripristino completato con successo",
+                    timestamp = System.currentTimeMillis(),
+                    isDestructive = false
+                )
             } else {
-                statusMessage = result.message
-                Toast.makeText(context, result.message, Toast.LENGTH_LONG).show()
+                actionFeedback = ActionFeedback(
+                    message = result.message,
+                    timestamp = System.currentTimeMillis(),
+                    isDestructive = true
+                )
             }
         }
     }
@@ -210,7 +221,11 @@ fun CloudBackupScreen(
                         TextButton(
                             onClick = {
                                 ShiftRepository.disconnectGoogleAccount()
-                                statusMessage = "Account Google disconnesso."
+                                actionFeedback = ActionFeedback(
+                                    message = "Account Google disconnesso",
+                                    timestamp = System.currentTimeMillis(),
+                                    isDestructive = true
+                                )
                             }
                         ) {
                             Text("Disconnetti", color = Color(0xFFEF4444), fontSize = 13.sp)
@@ -270,7 +285,11 @@ fun CloudBackupScreen(
                                     .fillMaxWidth()
                                     .clickable {
                                         ShiftRepository.setGoogleAccount(acc.email, acc.displayName)
-                                        statusMessage = "Connesso all'account Google reale: ${acc.email}"
+                                        actionFeedback = ActionFeedback(
+                                            message = "Connesso all'account Google: ${acc.email}",
+                                            timestamp = System.currentTimeMillis(),
+                                            isDestructive = false
+                                        )
                                         showAccountPicker = false
                                     }
                             ) {
@@ -314,7 +333,11 @@ fun CloudBackupScreen(
                         onClick = {
                             if (customEmailInput.isNotBlank() && customEmailInput.contains("@")) {
                                 ShiftRepository.setGoogleAccount(customEmailInput.trim(), "Marco Graziani")
-                                statusMessage = "Connesso all'account Google: ${customEmailInput.trim()}"
+                                actionFeedback = ActionFeedback(
+                                    message = "Connesso all'account Google: ${customEmailInput.trim()}",
+                                    timestamp = System.currentTimeMillis(),
+                                    isDestructive = false
+                                )
                                 showAccountPicker = false
                             }
                         },
@@ -403,12 +426,18 @@ fun CloudBackupScreen(
                             val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
                             if (ok) {
                                 lastBackupTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                                popupType = PopupType.SUCCESS
-                                statusMessage = "Backup automatico attivato e sincronizzato su Google Drive!"
+                                actionFeedback = ActionFeedback(
+                                    message = "Backup automatico attivato su Drive",
+                                    timestamp = System.currentTimeMillis(),
+                                    isDestructive = false
+                                )
                             }
                         } else {
-                            popupType = PopupType.INFO
-                            statusMessage = "Backup automatico disattivato."
+                            actionFeedback = ActionFeedback(
+                                message = "Backup automatico disattivato",
+                                timestamp = System.currentTimeMillis(),
+                                isDestructive = false
+                            )
                         }
                     },
                     colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
@@ -429,16 +458,24 @@ fun CloudBackupScreen(
                     if (ok) {
                         val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                         lastBackupTime = now
-                        val accName = currentAccount?.displayName ?: "Google Drive"
-                        popupType = PopupType.SUCCESS
-                        statusMessage = "Backup salvato con successo nel Cloud ($accName)!"
+                        actionFeedback = ActionFeedback(
+                            message = "Backup salvato su Google Drive",
+                            timestamp = System.currentTimeMillis(),
+                            isDestructive = false
+                        )
                     } else {
-                        popupType = PopupType.ERROR
-                        statusMessage = "Errore durante il salvataggio del backup nel Cloud."
+                        actionFeedback = ActionFeedback(
+                            message = "Errore durante il salvataggio nel Cloud",
+                            timestamp = System.currentTimeMillis(),
+                            isDestructive = true
+                        )
                     }
                 } catch (e: Throwable) {
-                    popupType = PopupType.ERROR
-                    statusMessage = "Errore: ${e.localizedMessage ?: "Impossibile salvare il backup"}"
+                    actionFeedback = ActionFeedback(
+                        message = "Errore: ${e.localizedMessage ?: "Impossibile salvare il backup"}",
+                        timestamp = System.currentTimeMillis(),
+                        isDestructive = true
+                    )
                 }
             },
             modifier = Modifier.fillMaxWidth().height(52.dp),
@@ -521,15 +558,24 @@ fun CloudBackupScreen(
                             try {
                                 val res = GoogleDriveBackupHelper.restoreCloudBackupDirect(context)
                                 if (res.success) {
-                                    popupType = PopupType.SUCCESS
-                                    statusMessage = "Ripristino completato! ${res.shiftsCount} turni recuperati dal Cloud."
+                                    actionFeedback = ActionFeedback(
+                                        message = "Ripristino completato con successo (${res.shiftsCount} turni)",
+                                        timestamp = System.currentTimeMillis(),
+                                        isDestructive = false
+                                    )
                                 } else {
-                                    popupType = PopupType.ERROR
-                                    statusMessage = res.message
+                                    actionFeedback = ActionFeedback(
+                                        message = res.message,
+                                        timestamp = System.currentTimeMillis(),
+                                        isDestructive = true
+                                    )
                                 }
                             } catch (e: Throwable) {
-                                popupType = PopupType.ERROR
-                                statusMessage = "Errore durante il ripristino: ${e.localizedMessage ?: "Errore sconosciuto"}"
+                                actionFeedback = ActionFeedback(
+                                    message = "Errore durante il ripristino: ${e.localizedMessage ?: "Errore"}",
+                                    timestamp = System.currentTimeMillis(),
+                                    isDestructive = true
+                                )
                             }
                         },
                         colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
@@ -550,10 +596,13 @@ fun CloudBackupScreen(
         Spacer(modifier = Modifier.height(80.dp))
     }
 
-    AnimatedStatusPopup(
-        message = statusMessage,
-        type = popupType,
-        onDismiss = { statusMessage = null }
+    MagicalActionFeedbackHUD(
+        feedback = actionFeedback,
+        onDismiss = { actionFeedback = null },
+        modifier = Modifier
+            .align(Alignment.TopCenter)
+            .statusBarsPadding()
+            .padding(top = 16.dp)
     )
     }
 }

@@ -61,48 +61,40 @@ fun SettingsScreen(
         activeSubScreen = SettingsSubScreen.NONE
     }
 
-    when (activeSubScreen) {
-        SettingsSubScreen.PDF_EXPORT -> {
-            PdfExportScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
+    if (activeSubScreen != SettingsSubScreen.NONE) {
+        when (activeSubScreen) {
+            SettingsSubScreen.PDF_EXPORT -> {
+                PdfExportScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.HOLIDAYS -> {
+                HolidaysSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.CLOUD_BACKUP -> {
+                CloudBackupScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.GOOGLE_CALENDAR_SYNC -> {
+                GoogleCalendarSyncScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.IMPORT_SHIFTS -> {
+                ImportShiftsScreen(
+                    onDismiss = { activeSubScreen = SettingsSubScreen.NONE },
+                    onNavigateToEdit = { rotation ->
+                        activeSubScreen = SettingsSubScreen.NONE
+                        onNavigateToTurni(rotation)
+                    }
+                )
+            }
+            SettingsSubScreen.REPERIBILITA -> {
+                ReperibilitaSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.SMART_ALARMS -> {
+                SmartAlarmsSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
+            }
+            SettingsSubScreen.NONE -> {}
         }
-        SettingsSubScreen.HOLIDAYS -> {
-            HolidaysSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
-        }
-        SettingsSubScreen.CLOUD_BACKUP -> {
-            CloudBackupScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
-        }
-        SettingsSubScreen.GOOGLE_CALENDAR_SYNC -> {
-            GoogleCalendarSyncScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
-        }
-        SettingsSubScreen.IMPORT_SHIFTS -> {
-            ImportShiftsScreen(
-                onDismiss = { activeSubScreen = SettingsSubScreen.NONE },
-                onNavigateToEdit = { rotation ->
-                    activeSubScreen = SettingsSubScreen.NONE
-                    onNavigateToTurni(rotation)
-                }
-            )
-            return
-        }
-        SettingsSubScreen.REPERIBILITA -> {
-            ReperibilitaSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
-        }
-        SettingsSubScreen.SMART_ALARMS -> {
-            SmartAlarmsSettingsScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
-            return
-        }
-        SettingsSubScreen.NONE -> {
-            // Mostra menu principale impostazioni
-        }
-    }
-
-    Box(modifier = Modifier.fillMaxSize()) {
-    Column(
+    } else {
+        Box(modifier = Modifier.fillMaxSize()) {
+        Column(
         modifier = Modifier
             .fillMaxSize()
             .background(ObsidianBackground)
@@ -573,11 +565,12 @@ fun SettingsScreen(
         )
     }
 
-    AnimatedStatusPopup(
-        message = importStatusMessage,
-        type = PopupType.SUCCESS,
-        onDismiss = { importStatusMessage = null }
-    )
+        AnimatedStatusPopup(
+            message = importStatusMessage,
+            type = PopupType.SUCCESS,
+            onDismiss = { importStatusMessage = null }
+        )
+        }
     }
 }
 
