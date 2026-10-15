@@ -479,7 +479,7 @@ object ShiftRepository {
     }
 
     // CRUD per Modelli Turno
-    fun saveShiftDefinition(def: ShiftDefinition) {
+    fun saveShiftDefinition(def: ShiftDefinition) = synchronized(this) {
         val existingIndex = shiftDefinitions.indexOfFirst { it.id == def.id }
         if (existingIndex >= 0) {
             shiftDefinitions[existingIndex] = def
@@ -488,11 +488,11 @@ object ShiftRepository {
         }
     }
 
-    fun deleteShiftDefinition(id: String) {
+    fun deleteShiftDefinition(id: String) = synchronized(this) {
         shiftDefinitions.removeAll { it.id == id }
     }
 
-    fun getShiftDefinition(id: String): ShiftDefinition? {
+    fun getShiftDefinition(id: String): ShiftDefinition? = synchronized(this) {
         return shiftDefinitions.firstOrNull { it.id == id }
     }
 
@@ -783,7 +783,7 @@ object ShiftRepository {
         calendarShifts[date] = newList
     }
 
-    fun saveRotation(updated: ShiftRotation) {
+    fun saveRotation(updated: ShiftRotation) = synchronized(this) {
         val normalized = updated.copy(totalDays = updated.daySequence.size)
         val idx = rotations.indexOfFirst { it.id == normalized.id }
         if (idx >= 0) {
@@ -793,7 +793,7 @@ object ShiftRepository {
         }
     }
 
-    fun deleteRotation(id: String) {
+    fun deleteRotation(id: String) = synchronized(this) {
         if (rotations.size > 1) {
             rotations.removeAll { it.id == id }
             if (activeRotationId == id) {

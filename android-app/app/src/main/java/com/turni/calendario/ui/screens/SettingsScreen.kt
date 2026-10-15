@@ -76,9 +76,9 @@ fun SettingsScreen(
                 GoogleCalendarSyncScreen(onDismiss = { activeSubScreen = SettingsSubScreen.NONE })
             }
             SettingsSubScreen.IMPORT_SHIFTS -> {
-                ImportShiftsScreen(
+                GeminiShiftImportScreen(
                     onDismiss = { activeSubScreen = SettingsSubScreen.NONE },
-                    onNavigateToEdit = { rotation ->
+                    onNavigateToTurni = { rotation ->
                         activeSubScreen = SettingsSubScreen.NONE
                         onNavigateToTurni(rotation)
                     }
@@ -253,9 +253,9 @@ fun SettingsScreen(
         ) {
             Column {
                 SettingsRow(
-                    icon = Icons.Default.UploadFile,
-                    title = "Importazione Turni (Excel / CSV)",
-                    subtitle = "Carica o incolla turni da file o tabella",
+                    icon = Icons.Default.AutoAwesome,
+                    title = "Importazione Turni Intelligente (Gemini AI / PDF)",
+                    subtitle = "Carica prospetto, screenshot o PDF con Gemini Flash",
                     onClick = { activeSubScreen = SettingsSubScreen.IMPORT_SHIFTS }
                 )
                 Divider(color = ObsidianBorderSubtle, thickness = 1.dp)

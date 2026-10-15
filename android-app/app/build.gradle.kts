@@ -63,4 +63,5 @@ dependencies {
     debugImplementation("androidx.compose.ui:ui-test-manifest:1.2.0")
 
     testImplementation("junit:junit:4.13.2")
+    testImplementation("org.json:json:20231013")
 }

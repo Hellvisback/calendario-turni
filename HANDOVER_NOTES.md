@@ -120,7 +120,8 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"
 cmd.exe /c "`"C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe`" -s cb08bc57 exec-out screencap -p > screen.png"
 
 # 5. Rilasciare l'APK aggiornato su GitHub Releases (MAI su OneDrive!)
-gh release upload v1.0.0 "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-debug.apk#app-release-latest.apk" --clobber
+Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-debug.apk" "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-release-latest.apk"
+gh release upload v1.0.0 "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-release-latest.apk" --clobber
 ```
 
 ---

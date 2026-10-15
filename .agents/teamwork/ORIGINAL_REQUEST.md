@@ -53,3 +53,65 @@ Integrity mode: demo
 ### Build e Verifica Operativa
 - [ ] Il progetto compila con successo via Gradle (`assembleDebug`) senza errori.
 - [ ] L'interfaccia rispetta la navigazione con un unico pulsante indietro e corretta gestione del back button.
+
+
+## 2026-10-14T15:39:24Z
+
+Integrazione completa del sistema intelligente di importazione turni basato sul modello multimodale Google Gemini Flash Vision tramite API Key. L'applicazione consente il caricamento di immagini, screenshot o documenti PDF (renderizzati automaticamente in bitmap tramite PdfRenderer nativo di Android), li invia a Gemini Flash ed estrae in formato JSON strutturato le rotazioni cicliche di tutte le squadre, la legenda completa degli orari di inizio/fine turno e le condizioni di reperibilità. Inserendo a monte il proprio nominativo, la squadra dell'utente viene automaticamente individuata e pre-selezionata come predefinita, registrando i singoli turni nel catalogo per un setup iniziale immediato a zero frizione.
+
+Working directory: c:\Users\marco\Antigravity Progetti\Calediario Turni
+Integrity mode: development
+
+## Requirements
+
+### R1. Configurazione Google Gemini API Key & Client Multimodale Flash
+- Consentire l'inserimento dell'API Key Google Gemini direttamente nella schermata di importazione al primo utilizzo, con salvataggio persistente e sicuro (SharedPreferences crittografate o master state), mascheramento caratteri e possibilità di modifica rapida.
+- Implementare il client REST multimodale verso Google Gemini (`gemini-1.5-flash` o `gemini-2.0-flash`) con payload Base64 e structured output (`response_mime_type: "application/json"` con `response_schema`).
+- Gestione trasparente di timeout, assenza di rete, errori HTTP (es. quota esaurita 429, chiave non valida 400/403) con messaggi informativi chiari in lingua italiana.
+
+### R2. Gestione Flessibile Documenti (Screenshot, Foto & Conversione PDF Automatica)
+- Supportare il caricamento da galleria di immagini (JPEG, PNG, WEBP) e screenshot di prospetti turni.
+- Per i file PDF (come il modello MOD. P.R. aziendale), implementare la conversione automatica delle pagine in Bitmap ad alta risoluzione tramite `android.graphics.pdf.PdfRenderer` nativo prima dell'invio all'API, senza richiedere passaggi manuali all'utente.
+- Mostrare una miniatura di anteprima dell'immagine elaborata direttamente nella schermata prima o durante l'analisi.
+
+### R3. Estrazione Dati Strutturata da Visione Multimodale
+- Il prompt visivo specializzato deve guidare Gemini Flash nell'analisi del prospetto tabellare estraendo:
+  1. **Squadre e Rotazioni**: tutte le squadre individuate (es. Squadra A, B, C, D, B1) e la sequenza cronologica o rotativa dei codici turno giorno per giorno.
+  2. **Catalogo & Orari Turni**: tabella oraria con codici turno, descrizione, orario di inizio e orario di fine (es. `M = 06:00 - 13:36`, `P = 14:00 - 21:36`, `N = 22:00 - 05:36`, `MD = 08:36 - 16:12`).
+  3. **Regole di Reperibilità**: condizioni annotate nel prospetto (es. reperibilità attiva sui pomeriggi `P` o domenicale su `MD`).
+  4. **Elenco Turnisti**: tabella con i nominativi dei lavoratori associati a ciascuna squadra (es. "Graziani Marco" in "Squadra B").
+
+### R4. Pre-selezione Automatica e Setup Guidato Utente
+- In presenza del campo nominativo compilato a monte dall'utente (es. "Marco Graziani" o "Graziani Marco"), l'app seleziona automaticamente la squadra di appartenenza come predefinita (stellina attiva).
+- Pulsante di conferma rapida che:
+  - Crea o aggiorna automaticamente i singoli turni mancanti nel catalogo (`ShiftRepository.shiftDefinitions`) con orari e colori appropriati.
+  - Salva la rotazione della squadra selezionata (o di tutte le squadre) nel catalogo delle rotazioni.
+  - Offre l'opzione di applicare subito il ciclo al calendario a partire dalla data di inizio validità del prospetto.
+
+### R5. Interfaccia Obsidian Liquid Glass & Ergonomia Riccardo Breccia
+- Interfaccia coerente con lo stile Obsidian Liquid Glass e l'ergonomia Riccardo Breccia: input unificato a monte (file + nome + campo API Key), stato di caricamento con indicatore di progresso elastico e card di anteprima risultati.
+- Nessun banner o card statica che sposta il layout: notifiche gestite tramite `AnimatedStatusPopup` dal basso.
+- Dialog di conferma e navigazione fluida con un solo pulsante indietro in alto a sinistra.
+
+## Acceptance Criteria
+
+### API Key & Networking Multimodale
+- [ ] L'utente può inserire, salvare e modificare la propria API Key di Google Gemini direttamente nella schermata di importazione.
+- [ ] La richiesta multimodale a Gemini Flash viene eseguita correttamente con payload immagine Base64 e riceve un JSON strutturato valido.
+- [ ] In caso di errore (chiave errata, assenza di rete), viene mostrato un popup informativo elegante senza crash dell'applicazione.
+
+### Conversione File & Parsing
+- [ ] I PDF caricati vengono convertiti automaticamente in Bitmap tramite `PdfRenderer` e analizzati visivamente dal modello.
+- [ ] Le immagini e gli screenshot caricati vengono ridimensionati se necessario e codificati in Base64 per l'invio all'API.
+- [ ] Il parser decodifica il JSON di Gemini popolando correttamente l'elenco delle squadre, i turni giornalieri e gli orari.
+
+### Integrazione Repository & Automazione
+- [ ] Se il nome inserito dall'utente è presente nel documento, la rispettiva squadra viene evidenziata e contrassegnata come predefinita.
+- [ ] Gli orari dei turni identificati (es. M 06:00-13:36, P 14:00-21:36, N 22:00-05:36) vengono creati/aggiornati automaticamente in `ShiftRepository.shiftDefinitions`.
+- [ ] Il salvataggio registra la rotazione nel catalogo dell'app senza alterare i dati esistenti non correlati.
+
+### Qualità del Codice & Rilascio
+- [ ] Nuovi test unitari scritti per validare la decodifica del JSON multimodale e l'estrazione delle squadre (`.\gradlew.bat test` verde al 100%).
+- [ ] Compilazione Gradle con esito `BUILD SUCCESSFUL` (`.\gradlew.bat assembleDebug`).
+- [ ] Installazione e verifica visiva dal vivo sul dispositivo fisico Realme 8 Pro (`cb08bc57`).
+- [ ] Aggiornamento dell'asset su GitHub Releases (`gh release upload v1.0.0 ... --clobber`) e nessun rilascio su OneDrive.
