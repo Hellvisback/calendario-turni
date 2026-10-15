@@ -1,3 +1,7 @@
 <resources>
     <string name="app_name">TurniSync</string>
+    <string name="widget_weeks_panorama_desc">Panorama Turni (2 settimane con orari e indicatori)</string>
+    <string name="widget_today_tomorrow_desc">Turno Oggi e Domani (Card orologio e dettaglio turno)</string>
+    <string name="widget_week_row_desc">Striscia Settimanale (I 7 giorni con focus su oggi)</string>
+    <string name="widget_month_grid_desc">Mini Calendario Mensile (Griglia mensile e statistiche)</string>
 </resources>

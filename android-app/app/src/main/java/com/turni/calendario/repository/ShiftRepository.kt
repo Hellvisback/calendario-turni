@@ -127,6 +127,18 @@ object ShiftRepository {
     // Rotazione / Turno Predefinito dell'utente (appare per primo ovunque)
     var defaultRotationId by mutableStateOf("turno_a")
 
+    // Giorno selezionato proveniente dal tocco su un Widget Android
+    var selectedDateFromWidget by mutableStateOf<LocalDate?>(null)
+
+    // Listener per aggiornamento istantaneo widget e observer
+    var onDataChangedListener: (() -> Unit)? = null
+
+    fun notifyDataChanged() {
+        try {
+            onDataChangedListener?.invoke()
+        } catch (_: Exception) {}
+    }
+
     fun setDefaultRotation(rotationId: String) {
         defaultRotationId = rotationId
         if (rotationId.isNotEmpty()) {
@@ -581,6 +593,7 @@ object ShiftRepository {
         )
         newList.add(newEntry)
         calendarShifts[date] = newList
+        notifyDataChanged()
     }
 
     /**
@@ -601,6 +614,7 @@ object ShiftRepository {
         )
         newList.add(newEntry)
         calendarShifts[date] = newList
+        notifyDataChanged()
     }
 
     /**
@@ -657,6 +671,7 @@ object ShiftRepository {
             )
         }
         calendarShifts[date] = newList
+        notifyDataChanged()
     }
 
     /**
@@ -803,6 +818,7 @@ object ShiftRepository {
         val anyTrasferta = newList.any { it.isTrasferta }
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(isTrasferta = anyTrasferta)
+        notifyDataChanged()
     }
 
     fun toggleShiftTrasferta(date: LocalDate, assignedShiftId: String) {
@@ -927,6 +943,7 @@ object ShiftRepository {
         saveSnapshot()
         calendarShifts.clear()
         dayExtraInfo.clear()
+        notifyDataChanged()
     }
 
     fun clearShiftsForMonth(yearMonth: YearMonth) {
@@ -939,6 +956,7 @@ object ShiftRepository {
             dayExtraInfo.remove(curr)
             curr = curr.plusDays(1)
         }
+        notifyDataChanged()
     }
 
     fun applyRotationBetween(rotationId: String, startDate: LocalDate, endDate: LocalDate) {
@@ -1185,6 +1203,7 @@ object ShiftRepository {
     fun setDayOvertime(date: LocalDate, hours: Float) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(overtimeHours = hours.coerceAtLeast(0f))
+        notifyDataChanged()
     }
 
     fun setDayActualEndTime(date: LocalDate, endTime: String?, calculatedOvertime: Float? = null) {
@@ -1194,6 +1213,7 @@ object ShiftRepository {
             actualEndTime = endTime,
             overtimeHours = newOvertime.coerceAtLeast(0f)
         )
+        notifyDataChanged()
     }
 
     fun calculateOvertimeFromEndTime(shiftEndTime: String, actualEndTime: String): Float {
@@ -1218,6 +1238,7 @@ object ShiftRepository {
     fun setDayTrasferta(date: LocalDate, isTrasferta: Boolean) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(isTrasferta = isTrasferta)
+        notifyDataChanged()
     }
 
     fun toggleDayTrasferta(date: LocalDate) {
@@ -1229,21 +1250,25 @@ object ShiftRepository {
             val newList = list.map { it.copy(isTrasferta = target) }.toMutableList()
             calendarShifts[date] = newList
         }
+        notifyDataChanged()
     }
 
     fun setDayOnCallManual(date: LocalDate, isOnCall: Boolean?) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(isOnCallManual = isOnCall)
+        notifyDataChanged()
     }
 
     fun setDayHideExShift(date: LocalDate, hide: Boolean) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(hideExShift = hide)
+        notifyDataChanged()
     }
 
     fun setDayNotes(date: LocalDate, notes: String) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(notes = notes)
+        notifyDataChanged()
     }
 
     // Gestione Reperibilità Software Intelligente

@@ -95,6 +95,14 @@ fun CalendarScreen(
         onEditModeActiveChanged(isPaintModeActive || newShiftToEdit != null)
     }
 
+    LaunchedEffect(ShiftRepository.selectedDateFromWidget) {
+        ShiftRepository.selectedDateFromWidget?.let { widgetDate ->
+            selectedDate = widgetDate
+            currentMonth = YearMonth.from(widgetDate)
+            ShiftRepository.selectedDateFromWidget = null
+        }
+    }
+
     // Dialog aggiunta/cambio turno per giorno specifico
     var showAddShiftDialogForDate by remember { mutableStateOf<LocalDate?>(null) }
     var isSecondaryShiftModal by remember { mutableStateOf(false) }
