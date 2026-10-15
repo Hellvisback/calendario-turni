@@ -90,7 +90,13 @@ class MonthGridWidgetProvider : AppWidgetProvider() {
                         views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
                     } else {
                         views.setInt(cellIds[i], "setBackgroundColor", Color.TRANSPARENT)
-                        views.setTextColor(numIds[i], Color.parseColor("#E2E8F0"))
+                        if (i % 7 == 6) { // Domenica
+                            views.setTextColor(numIds[i], Color.parseColor("#FCA5A5"))
+                        } else if (i % 7 == 5) { // Sabato
+                            views.setTextColor(numIds[i], Color.parseColor("#94A3B8"))
+                        } else {
+                            views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
+                        }
                     }
 
                     val pi = WidgetUpdateManager.createDayPendingIntent(

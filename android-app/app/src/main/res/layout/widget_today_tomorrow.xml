@@ -7,7 +7,7 @@
     android:orientation="vertical"
     android:padding="12dp">
 
-    <!-- Top Header: Logo / Data Odierna -->
+    <!-- Top Header: Data Odierna & Badge OGGI -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -17,29 +17,14 @@
 
         <TextView
             android:id="@+id/widget_tt_header_date"
-            android:layout_width="0dp"
+            android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
             android:ellipsize="end"
-            android:fontFamily="sans-serif-medium"
+            android:fontFamily="sans-serif-bold"
             android:maxLines="1"
-            android:text="Oggi, 15 Ottobre"
+            android:text="Gio 15 Ottobre"
             android:textColor="#38BDF8"
-            android:textSize="13sp" />
-
-        <TextView
-            android:id="@+id/widget_tt_header_badge"
-            android:layout_width="wrap_content"
-            android:layout_height="wrap_content"
-            android:background="@drawable/bg_widget_badge"
-            android:paddingStart="6dp"
-            android:paddingTop="2dp"
-            android:paddingEnd="6dp"
-            android:paddingBottom="2dp"
-            android:text="OGGI"
-            android:textColor="#FFFFFF"
-            android:textSize="9sp"
-            android:textStyle="bold" />
+            android:textSize="13.5sp" />
     </LinearLayout>
 
     <!-- Main Card: Turno di Oggi -->
@@ -51,9 +36,9 @@
         android:background="@drawable/bg_widget_card"
         android:gravity="center_vertical"
         android:orientation="vertical"
-        android:paddingStart="10dp"
+        android:paddingStart="12dp"
         android:paddingTop="8dp"
-        android:paddingEnd="10dp"
+        android:paddingEnd="12dp"
         android:paddingBottom="8dp">
 
         <LinearLayout
@@ -72,16 +57,16 @@
                 android:maxLines="1"
                 android:text="POMERIGGIO"
                 android:textColor="#F8FAFC"
-                android:textSize="17sp" />
+                android:textSize="18sp" />
 
             <TextView
                 android:id="@+id/widget_tt_code_pill"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:background="@drawable/bg_widget_badge"
-                android:paddingStart="7dp"
+                android:paddingStart="8dp"
                 android:paddingTop="3dp"
-                android:paddingEnd="7dp"
+                android:paddingEnd="8dp"
                 android:paddingBottom="3dp"
                 android:text="POM"
                 android:textColor="#FFFFFF"
@@ -93,13 +78,13 @@
             android:id="@+id/widget_tt_shift_hours"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
-            android:fontFamily="sans-serif"
+            android:layout_marginTop="3dp"
+            android:fontFamily="sans-serif-medium"
             android:text="14:00 - 21:36"
             android:textColor="#94A3B8"
-            android:textSize="12sp" />
+            android:textSize="13sp" />
 
-        <!-- Indicators Row: Straordinario, Reperibilità, Note -->
+        <!-- Indicators Row: Straordinario, Reperibilità, Trasferta -->
         <LinearLayout
             android:id="@+id/widget_tt_extra_row"
             android:layout_width="match_parent"
@@ -112,44 +97,47 @@
                 android:id="@+id/widget_tt_overtime_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="5dp"
-                android:background="#2B2111"
-                android:paddingStart="5dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_badge_amber"
+                android:paddingStart="6dp"
                 android:paddingTop="2dp"
-                android:paddingEnd="5dp"
+                android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
                 android:text="+2h Straord."
-                android:textColor="#FBBF24"
+                android:textColor="#FFFFFF"
                 android:textSize="10sp"
+                android:textStyle="bold"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/widget_tt_oncall_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:layout_marginEnd="5dp"
-                android:background="#24143D"
-                android:paddingStart="5dp"
+                android:layout_marginEnd="6dp"
+                android:background="@drawable/bg_badge_purple"
+                android:paddingStart="6dp"
                 android:paddingTop="2dp"
-                android:paddingEnd="5dp"
+                android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
                 android:text="Reperibile"
-                android:textColor="#C084FC"
+                android:textColor="#FFFFFF"
                 android:textSize="10sp"
+                android:textStyle="bold"
                 android:visibility="gone" />
 
             <TextView
                 android:id="@+id/widget_tt_trasferta_badge"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:background="#082A3A"
-                android:paddingStart="5dp"
+                android:background="@drawable/bg_badge_cyan"
+                android:paddingStart="6dp"
                 android:paddingTop="2dp"
-                android:paddingEnd="5dp"
+                android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
                 android:text="Trasferta"
-                android:textColor="#38BDF8"
+                android:textColor="#FFFFFF"
                 android:textSize="10sp"
+                android:textStyle="bold"
                 android:visibility="gone" />
         </LinearLayout>
     </LinearLayout>
@@ -163,30 +151,47 @@
         android:background="@drawable/bg_widget_card"
         android:gravity="center_vertical"
         android:orientation="horizontal"
-        android:paddingStart="10dp"
-        android:paddingTop="6dp"
-        android:paddingEnd="10dp"
-        android:paddingBottom="6dp">
+        android:paddingStart="8dp"
+        android:paddingTop="5dp"
+        android:paddingEnd="8dp"
+        android:paddingBottom="5dp">
 
         <TextView
+            android:id="@+id/widget_tt_tomorrow_label"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:fontFamily="sans-serif-medium"
-            android:text="Domani: "
+            android:fontFamily="sans-serif-bold"
+            android:text="DOMANI"
             android:textColor="#64748B"
-            android:textSize="11sp" />
+            android:textSize="9.5sp" />
+
+        <TextView
+            android:id="@+id/widget_tt_tomorrow_badge"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
+            android:background="@drawable/bg_badge_purple"
+            android:paddingStart="4.5dp"
+            android:paddingTop="1dp"
+            android:paddingEnd="4.5dp"
+            android:paddingBottom="1dp"
+            android:text="NOT"
+            android:textColor="#FFFFFF"
+            android:textSize="8.5sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/widget_tt_tomorrow_shift"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
+            android:layout_marginStart="5dp"
             android:layout_weight="1"
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
             android:maxLines="1"
-            android:text="Notte (22:00 - 05:36)"
+            android:text="22:00 - 05:36"
             android:textColor="#E2E8F0"
-            android:textSize="11sp" />
+            android:textSize="10sp" />
     </LinearLayout>
 
 </LinearLayout>

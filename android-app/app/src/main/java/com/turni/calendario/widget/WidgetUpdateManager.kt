@@ -56,7 +56,7 @@ object WidgetUpdateManager {
             dayNumber = date.dayOfMonth,
             isToday = (date == today),
             shiftDef = shiftDef,
-            shortCode = shiftDef?.shortCode ?: "-",
+            shortCode = shiftDef?.shortCode ?: "RIP",
             shiftName = shiftDef?.name ?: "Riposo",
             timeRange = shiftDef?.timeRangeFormatted ?: "",
             overtimeHours = extra.overtimeHours,

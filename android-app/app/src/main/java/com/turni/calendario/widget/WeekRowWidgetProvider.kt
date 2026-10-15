@@ -59,10 +59,20 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
                 // Today highlight
                 if (summary.isToday) {
                     views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
+                    views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
                     views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
                 } else {
                     views.setInt(cellIds[i], "setBackgroundColor", Color.TRANSPARENT)
-                    views.setTextColor(numIds[i], Color.parseColor("#94A3B8"))
+                    if (i == 6) { // Domenica
+                        views.setTextColor(nameIds[i], Color.parseColor("#F87171"))
+                        views.setTextColor(numIds[i], Color.parseColor("#FCA5A5"))
+                    } else if (i == 5) { // Sabato
+                        views.setTextColor(nameIds[i], Color.parseColor("#94A3B8"))
+                        views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
+                    } else {
+                        views.setTextColor(nameIds[i], Color.parseColor("#64748B"))
+                        views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
+                    }
                 }
 
                 // Click action

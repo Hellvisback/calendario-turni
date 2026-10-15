@@ -24,7 +24,7 @@
             android:layout_height="wrap_content"
             android:text="L"
             android:textColor="#64748B"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -32,22 +32,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="12"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_0"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="MAT"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -67,7 +68,7 @@
             android:layout_height="wrap_content"
             android:text="M"
             android:textColor="#64748B"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -75,22 +76,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="13"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_1"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="MAT"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -110,7 +112,7 @@
             android:layout_height="wrap_content"
             android:text="M"
             android:textColor="#64748B"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -118,22 +120,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="14"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_2"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="POM"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -153,7 +156,7 @@
             android:layout_height="wrap_content"
             android:text="G"
             android:textColor="#64748B"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -161,22 +164,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="15"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_3"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="POM"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -196,7 +200,7 @@
             android:layout_height="wrap_content"
             android:text="V"
             android:textColor="#64748B"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -204,22 +208,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="16"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_4"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="NOT"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -239,7 +244,7 @@
             android:layout_height="wrap_content"
             android:text="S"
             android:textColor="#94A3B8"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -247,22 +252,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="17"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#F1F5F9"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_5"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="SMO"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 
@@ -282,7 +288,7 @@
             android:layout_height="wrap_content"
             android:text="D"
             android:textColor="#F87171"
-            android:textSize="9sp"
+            android:textSize="10sp"
             android:textStyle="bold" />
 
         <TextView
@@ -290,22 +296,23 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:text="18"
-            android:textColor="#94A3B8"
-            android:textSize="11sp" />
+            android:textColor="#FCA5A5"
+            android:textSize="13sp"
+            android:textStyle="bold" />
 
         <TextView
             android:id="@+id/wr_shift_code_6"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginTop="2dp"
+            android:layout_marginTop="3dp"
             android:background="@drawable/bg_widget_badge"
-            android:paddingStart="3dp"
-            android:paddingTop="1dp"
-            android:paddingEnd="3dp"
-            android:paddingBottom="1dp"
+            android:paddingStart="4dp"
+            android:paddingTop="2dp"
+            android:paddingEnd="4dp"
+            android:paddingBottom="2dp"
             android:text="RIP"
             android:textColor="#FFFFFF"
-            android:textSize="8sp"
+            android:textSize="9sp"
             android:textStyle="bold" />
     </LinearLayout>
 

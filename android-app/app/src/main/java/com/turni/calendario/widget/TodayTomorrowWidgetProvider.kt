@@ -24,14 +24,15 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
         val todaySummary = WidgetUpdateManager.getDaySummary(today, today)
         val tomorrowSummary = WidgetUpdateManager.getDaySummary(tomorrow, today)
 
-        val dateFmt = DateTimeFormatter.ofPattern("EEEE, d MMMM", Locale.ITALIAN)
+        // Formato compatto elegante anti-troncamento: "Gio 15 Ottobre"
+        val dateFmt = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.ITALIAN)
         val formattedDate = today.format(dateFmt).replaceFirstChar { it.uppercase() }
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_today_tomorrow)
 
             // Header date
-            views.setTextViewText(R.id.widget_tt_header_date, "Oggi, $formattedDate")
+            views.setTextViewText(R.id.widget_tt_header_date, formattedDate)
 
             // Today Shift
             views.setTextViewText(R.id.widget_tt_shift_name, todaySummary.shiftName.uppercase())
@@ -76,12 +77,20 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_tt_trasferta_badge, View.GONE)
             }
 
-            // Tomorrow preview
-            val tomorrowTime = if (tomorrowSummary.timeRange.isNotBlank()) " (${tomorrowSummary.timeRange})" else ""
-            views.setTextViewText(
-                R.id.widget_tt_tomorrow_shift,
-                "${tomorrowSummary.shortCode} - ${tomorrowSummary.shiftName}$tomorrowTime"
+            // Tomorrow preview with dedicated colored badge
+            views.setTextViewText(R.id.widget_tt_tomorrow_badge, tomorrowSummary.shortCode)
+            views.setInt(
+                R.id.widget_tt_tomorrow_badge,
+                "setBackgroundResource",
+                WidgetUpdateManager.getBadgeDrawableRes(tomorrowSummary.shiftDef)
             )
+
+            val tomorrowDetail = if (tomorrowSummary.timeRange.isNotBlank()) {
+                tomorrowSummary.timeRange
+            } else {
+                tomorrowSummary.shiftName
+            }
+            views.setTextViewText(R.id.widget_tt_tomorrow_shift, tomorrowDetail)
 
             // Deep link on click
             val pi = WidgetUpdateManager.createDayPendingIntent(context, today, appWidgetId)
