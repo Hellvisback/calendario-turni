@@ -440,4 +440,163 @@ object GeminiShiftMapper {
 
         return 0
     }
+
+    // ==========================================
+    // External AI Prompt Generator & Text Parser
+    // ==========================================
+
+    /**
+     * Generates a ready-to-use multimodal prompt for external AI chatbots (ChatGPT, Claude, Gemini Web, DeepSeek).
+     * Includes instructions for structured JSON output matching the app's internal domain schema,
+     * along with dynamic employee assignment targeting if a user name is specified.
+     *
+     * @param targetUserName Optional name of the user to automatically match with their assigned team.
+     * @return Formatted multi-line prompt string.
+     */
+    fun generateExternalAiPrompt(targetUserName: String? = null): String {
+        val cleanUser = targetUserName?.trim()
+        val userInstruction = if (!cleanUser.isNullOrBlank()) {
+            "\nIMPORTANTE PER L'ASSEGNAZIONE DEL LAVORATORE:\n" +
+            "Il lavoratore per cui configurare l'applicazione si chiama: \"$cleanUser\".\n" +
+            "Cerca questo nominativo (o la combinazione Cognome Nome / Nome Cognome) all'interno del prospetto " +
+            "e assicurati di inserirlo nella lista \"employees\" della squadra a cui è effettivamente assegnato.\n"
+        } else {
+            ""
+        }
+
+        return """
+Sei un assistente esperto nell'analisi di prospetti turni ferroviari, ospedalieri e industriali (come il MOD. P.R. o prospetti tabellari di servizio).
+Analizza con estrema precisione l'immagine o documento allegato ed estrai TUTTI i dati dei turni nel formato JSON strutturato indicato di seguito.
+$userInstruction
+Rispondi ESCLUSIVAMENTE con un blocco JSON valido (senza testo introduttivo, commenti o saluti, e senza testo dopo il JSON):
+
+```json
+{
+  "shiftDefinitions": [
+    {
+      "code": "M",
+      "name": "Mattina",
+      "startTime": "06:00",
+      "endTime": "13:36",
+      "colorHex": "#38BDF8",
+      "isReperibilita": false
+    },
+    {
+      "code": "P",
+      "name": "Pomeriggio",
+      "startTime": "14:00",
+      "endTime": "21:36",
+      "colorHex": "#F59E0B",
+      "isReperibilita": false
+    },
+    {
+      "code": "N",
+      "name": "Notte",
+      "startTime": "22:00",
+      "endTime": "05:36",
+      "colorHex": "#10B981",
+      "isReperibilita": false
+    },
+    {
+      "code": "SMO",
+      "name": "Smonto Notte",
+      "startTime": "00:00",
+      "endTime": "23:59",
+      "colorHex": "#6366F1",
+      "isReperibilita": false
+    },
+    {
+      "code": "RIP",
+      "name": "Riposo",
+      "startTime": "00:00",
+      "endTime": "23:59",
+      "colorHex": "#8B5CF6",
+      "isReperibilita": false
+    }
+  ],
+  "squads": [
+    {
+      "squadName": "Squadra A",
+      "rotationDays": ["M", "P", "N", "SMO", "RIP"],
+      "cycleDays": 5,
+      "employees": ["Cognome Nome 1", "Cognome Nome 2"]
+    }
+  ],
+  "validityStart": "2026-01-01",
+  "validityEnd": "2026-12-31",
+  "notes": "Note eventuali su reperibilità o particolarità"
 }
+```
+
+REGOLE ESSENZIALI:
+1. In 'shiftDefinitions' includi tutti i codici orari trovati nella legenda del foglio con i rispettivi orari di inizio e fine nel formato HH:mm a 24 ore (es. 06:00, 13:36, 14:00, 21:36, 22:00, 05:36).
+2. Se un turno è di riposo, smonto o assenza (es. RIP, SMO, FER), usa 00:00 e 23:59 se non ci sono orari specifici.
+3. In 'squads' inserisci tutte le squadre/linee individuate, con la sequenza completa e ordinata dei codici turno ('rotationDays') e i nomi di tutti i colleghi appartenenti ('employees').
+4. Se il prospetto indica che certi turni hanno la reperibilità (es. sui pomeriggi 'P' o domeniche 'MD'), imposta 'isReperibilita': true.
+5. NON aggiungere alcun testo di contorno prima o dopo il codice JSON.
+        """.trimIndent()
+    }
+
+    /**
+     * Resiliently extracts the JSON payload from text pasted by the user.
+     * Handles markdown code block fences (```json ... ``` or ``` ... ```),
+     * conversational text wrappers ("Ecco il JSON: { ... }"), and raw JSON.
+     *
+     * @param pastedText Raw text pasted from external AI output.
+     * @return Cleaned JSON substring ready for parsing.
+     */
+    fun extractJsonPayload(pastedText: String): String {
+        val trimmed = pastedText.trim()
+        if (trimmed.isEmpty()) return ""
+
+        // 1. Check for markdown code fences with ```json ... ```
+        val jsonFenceRegex = Regex("```(?:json)?\\s*([\\s\\S]*?)\\s*```", RegexOption.IGNORE_CASE)
+        val match = jsonFenceRegex.find(trimmed)
+        if (match != null) {
+            val insideFence = match.groupValues[1].trim()
+            if (insideFence.startsWith("{") && insideFence.endsWith("}")) {
+                return insideFence
+            }
+        }
+
+        // 2. Fallback to locating outermost curly brackets { ... }
+        val firstBrace = trimmed.indexOf('{')
+        val lastBrace = trimmed.lastIndexOf('}')
+        if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+            return trimmed.substring(firstBrace, lastBrace + 1).trim()
+        }
+
+        return trimmed
+    }
+
+    /**
+     * Parses shifts and squads from text pasted from an external AI chatbot.
+     *
+     * @param rawText Text copied from ChatGPT, Claude, Gemini or other AI.
+     * @return Result containing [GeminiShiftData] or descriptive error.
+     */
+    fun parseFromExternalAiText(rawText: String): Result<GeminiShiftData> = runCatching {
+        if (rawText.isBlank()) {
+            throw IllegalArgumentException("Il testo inserito è vuoto. Incolla prima la risposta ottenuta dall'AI.")
+        }
+
+        val jsonPayload = extractJsonPayload(rawText)
+        if (jsonPayload.isBlank() || !jsonPayload.startsWith("{") || !jsonPayload.endsWith("}")) {
+            throw IllegalArgumentException(
+                "Nessun blocco JSON valido individuato nel testo incollato. " +
+                "Assicurati di aver copiato la risposta completa dell'AI."
+            )
+        }
+
+        val data = GeminiApiClient.parseGeminiResponse(jsonPayload)
+        if (data.shiftDefinitions.isEmpty() && data.squads.isEmpty()) {
+            throw IllegalArgumentException(
+                "Il JSON incollato non contiene definizioni di turni o squadre. " +
+                "Verifica che l'AI abbia seguito il formato richiesto."
+            )
+        }
+
+        data
+    }
+}
+
