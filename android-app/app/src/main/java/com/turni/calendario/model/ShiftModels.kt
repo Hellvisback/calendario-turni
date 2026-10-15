@@ -82,6 +82,7 @@ data class AssignedShift(
     val isFromRotation: Boolean = false,
     val customStartTime: String? = null,
     val customEndTime: String? = null,
+    val actualEndTime: String? = null,
     val notes: String = "",
     val tags: List<String> = emptyList(),
     val isOvertime: Boolean = false,

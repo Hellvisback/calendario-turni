@@ -41,6 +41,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import kotlinx.coroutines.launch
 import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.ShiftRotation
@@ -997,41 +998,30 @@ fun TurniModelsScreen(
                                 Column(modifier = Modifier.weight(1f)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Text(rot.name, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.5.sp)
-                                        if (isDefault) {
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Surface(
-                                                shape = RoundedCornerShape(8.dp),
-                                                color = Color(0xFFF59E0B).copy(alpha = 0.2f),
-                                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
-                                            ) {
-                                                Text(
-                                                    text = "⭐ PREDEFINITO",
-                                                    fontSize = 8.5.sp,
-                                                    fontWeight = FontWeight.ExtraBold,
-                                                    color = Color(0xFFFBBF24),
-                                                    modifier = Modifier.padding(horizontal = 5.dp, vertical = 2.dp)
-                                                )
-                                            }
-                                        }
                                     }
                                     Text("${rot.daySequence.size} giorni • Ciclo $totalWeeks sett.", color = TextSecondary, fontSize = 11.5.sp)
                                 }
 
-                                // Azioni in alto a destra: Stellina preferito con animazione elastica + Matita modifica
+                                // Azioni in alto a destra: Stellina preferito con micro-animazione elastica fluida + Matita modifica
                                 Row(
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp)
                                 ) {
-                                    var starTrigger by remember { mutableStateOf(false) }
-                                    val starScale by animateFloatAsState(
-                                        targetValue = if (starTrigger) 1.30f else 1.0f,
-                                        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow),
-                                        finishedListener = { starTrigger = false }
-                                    )
+                                    val starScale = remember { androidx.compose.animation.core.Animatable(1f) }
+                                    val starScope = rememberCoroutineScope()
 
                                     Surface(
                                         onClick = {
-                                            starTrigger = true
+                                            starScope.launch {
+                                                starScale.snapTo(0.82f)
+                                                starScale.animateTo(
+                                                    targetValue = 1f,
+                                                    animationSpec = spring(
+                                                        dampingRatio = Spring.DampingRatioMediumBouncy,
+                                                        stiffness = Spring.StiffnessLow
+                                                    )
+                                                )
+                                            }
                                             val isNowDefault = ShiftRepository.toggleDefaultRotation(rot.id)
                                             actionFeedback = if (isNowDefault) {
                                                 ActionFeedback("Rotazione '${rot.name}' impostata come predefinita!", isDestructive = false)
@@ -1044,7 +1034,7 @@ fun TurniModelsScreen(
                                         border = androidx.compose.foundation.BorderStroke(1.dp, if (isDefault) Color(0xFFF59E0B) else ObsidianBorderSubtle),
                                         modifier = Modifier
                                             .size(36.dp)
-                                            .scale(starScale)
+                                            .scale(starScale.value)
                                     ) {
                                         Box(contentAlignment = Alignment.Center) {
                                             Icon(

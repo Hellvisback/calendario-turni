@@ -714,7 +714,7 @@ object ShiftRepository {
     fun toggleShiftOnDate(date: LocalDate, shiftDefId: String) {
         saveSnapshot()
         if (shiftDefId == "eraser" || shiftDefId == "empty") {
-            calendarShifts[date] = mutableStateListOf()
+            clearDayShifts(date)
             return
         }
         val currentList = calendarShifts[date]?.toList() ?: emptyList()
@@ -724,19 +724,9 @@ object ShiftRepository {
         if (existingIndex >= 0) {
             val filtered = currentList.filterIndexed { index, _ -> index != existingIndex }
             newList.addAll(filtered)
-            // Se la lista è rimasta vuota e c'era un turno originario di rotazione, ripristinalo
-            val removed = currentList[existingIndex]
-            if (newList.isEmpty() && removed.isModifiedFromRotation && removed.originalShiftDefId != null) {
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = date,
-                        shiftDefId = removed.originalShiftDefId,
-                        isFromRotation = true,
-                        isModifiedFromRotation = false,
-                        originalShiftDefId = null
-                    )
-                )
+            if (newList.isEmpty()) {
+                clearDayShifts(date)
+                return
             }
         } else {
             val prev = currentList.firstOrNull()
@@ -865,6 +855,30 @@ object ShiftRepository {
         val totalOvertime = newList.sumOf { it.overtimeHours.toDouble() }.toFloat()
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(overtimeHours = totalOvertime)
+    }
+
+    fun setShiftActualEndTime(date: LocalDate, assignedShiftId: String, actualEndTime: String?, overtimeHours: Float) {
+        saveSnapshot()
+        val current = calendarShifts[date]?.toList() ?: return
+        val newList = mutableStateListOf<AssignedShift>()
+        val clampedHours = overtimeHours.coerceAtLeast(0f)
+        current.forEach { shift ->
+            if (shift.id == assignedShiftId) {
+                newList.add(
+                    shift.copy(
+                        actualEndTime = actualEndTime,
+                        isOvertime = clampedHours > 0f,
+                        overtimeHours = clampedHours
+                    )
+                )
+            } else {
+                newList.add(shift)
+            }
+        }
+        calendarShifts[date] = newList
+        val totalOvertime = newList.sumOf { it.overtimeHours.toDouble() }.toFloat()
+        val extra = getDayExtraInfo(date)
+        dayExtraInfo[date] = extra.copy(overtimeHours = totalOvertime, actualEndTime = actualEndTime)
     }
 
     fun hasTrasfertaForDate(date: LocalDate): Boolean {

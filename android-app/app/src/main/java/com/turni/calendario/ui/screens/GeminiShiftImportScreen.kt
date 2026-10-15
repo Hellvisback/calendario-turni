@@ -1618,7 +1618,7 @@ private fun ElasticStarButton(
     Surface(
         onClick = {
             coroutineScope.launch {
-                scale.snapTo(0.72f)
+                scale.snapTo(0.84f)
                 scale.animateTo(
                     targetValue = 1f,
                     animationSpec = spring(

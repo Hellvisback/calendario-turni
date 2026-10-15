@@ -33,20 +33,35 @@ import java.time.YearMonth
 import java.time.format.TextStyle
 import java.util.Locale
 
+enum class ReportPeriodMode {
+    MESE,
+    ANNO,
+    PERSONALIZZATO
+}
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ReportScreen() {
-    var isYearMode by remember { mutableStateOf(false) } // false: Mese, true: Anno
-    var selectedMonth by remember { mutableStateOf(YearMonth.of(2026, 10)) }
-    var selectedYear by remember { mutableStateOf(2026) }
+    val context = androidx.compose.ui.platform.LocalContext.current
+    var periodMode by remember { mutableStateOf(ReportPeriodMode.MESE) }
+    var selectedMonth by remember { mutableStateOf(YearMonth.now()) }
+    var selectedYear by remember { mutableStateOf(LocalDate.now().year) }
+    var customStartDate by remember { mutableStateOf(LocalDate.now().minusDays(30)) }
+    var customEndDate by remember { mutableStateOf(LocalDate.now()) }
 
-    val startDate = remember(isYearMode, selectedMonth, selectedYear) {
-        if (isYearMode) LocalDate.of(selectedYear, 1, 1)
-        else selectedMonth.atDay(1)
+    val startDate = remember(periodMode, selectedMonth, selectedYear, customStartDate) {
+        when (periodMode) {
+            ReportPeriodMode.MESE -> selectedMonth.atDay(1)
+            ReportPeriodMode.ANNO -> LocalDate.of(selectedYear, 1, 1)
+            ReportPeriodMode.PERSONALIZZATO -> customStartDate
+        }
     }
-    val endDate = remember(isYearMode, selectedMonth, selectedYear) {
-        if (isYearMode) LocalDate.of(selectedYear, 12, 31)
-        else selectedMonth.atEndOfMonth()
+    val endDate = remember(periodMode, selectedMonth, selectedYear, customEndDate) {
+        when (periodMode) {
+            ReportPeriodMode.MESE -> selectedMonth.atEndOfMonth()
+            ReportPeriodMode.ANNO -> LocalDate.of(selectedYear, 12, 31)
+            ReportPeriodMode.PERSONALIZZATO -> customEndDate
+        }
     }
 
     // Statistiche Complete Report Avanzate (con ore reali, straordinari, trasferte e regola CCNL ferie su riposo/smonto)
@@ -79,7 +94,7 @@ fun ReportScreen() {
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {
-        // 1. Header Superiore: Titolo + Pill Periodo (Mese vs Anno)
+        // 1. Header Superiore: Titolo + Pill Periodo (Mese vs Anno vs Personalizzato)
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -87,23 +102,23 @@ fun ReportScreen() {
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
-            Column {
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = "Report & Ore",
-                    fontSize = 26.sp,
+                    fontSize = 24.sp,
                     fontWeight = FontWeight.ExtraBold,
                     color = TextPrimary
                 )
                 Text(
                     text = "Analisi turni, straordinari e presenze",
-                    fontSize = 12.sp,
+                    fontSize = 11.5.sp,
                     color = TextSecondary
                 )
             }
 
-            // Segmented pill: [ Mese ] [ Anno ]
+            // Segmented pill: [ Mese ] [ Anno ] [ Personalizzato ]
             Surface(
-                shape = RoundedCornerShape(16.dp),
+                shape = RoundedCornerShape(14.dp),
                 border = androidx.compose.foundation.BorderStroke(
                     1.2.dp,
                     prismaticRefractionBrush(ObsidianPrimary)
@@ -117,33 +132,46 @@ fun ReportScreen() {
                                 listOf(Color(0xDE182236), Color(0xF50D131F))
                             )
                         )
-                        .padding(3.dp)
+                        .padding(2.5.dp)
                 ) {
-                    Row {
+                    Row(horizontalArrangement = Arrangement.spacedBy(2.dp)) {
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (!isYearMode) ObsidianPrimary else Color.Transparent,
-                            modifier = Modifier.bouncyClickable { isYearMode = false }
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (periodMode == ReportPeriodMode.MESE) ObsidianPrimary else Color.Transparent,
+                            modifier = Modifier.bouncyClickable { periodMode = ReportPeriodMode.MESE }
                         ) {
                             Text(
                                 text = "Mese",
-                                fontSize = 11.5.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (!isYearMode) ObsidianBackground else TextSecondary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                color = if (periodMode == ReportPeriodMode.MESE) ObsidianBackground else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.5.dp)
                             )
                         }
                         Surface(
-                            shape = RoundedCornerShape(12.dp),
-                            color = if (isYearMode) ObsidianPrimary else Color.Transparent,
-                            modifier = Modifier.bouncyClickable { isYearMode = true }
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (periodMode == ReportPeriodMode.ANNO) ObsidianPrimary else Color.Transparent,
+                            modifier = Modifier.bouncyClickable { periodMode = ReportPeriodMode.ANNO }
                         ) {
                             Text(
                                 text = "Anno",
-                                fontSize = 11.5.sp,
+                                fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (isYearMode) ObsidianBackground else TextSecondary,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
+                                color = if (periodMode == ReportPeriodMode.ANNO) ObsidianBackground else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.5.dp)
+                            )
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(10.dp),
+                            color = if (periodMode == ReportPeriodMode.PERSONALIZZATO) ObsidianPrimary else Color.Transparent,
+                            modifier = Modifier.bouncyClickable { periodMode = ReportPeriodMode.PERSONALIZZATO }
+                        ) {
+                            Text(
+                                text = "Personalizzato",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = if (periodMode == ReportPeriodMode.PERSONALIZZATO) ObsidianBackground else TextSecondary,
+                                modifier = Modifier.padding(horizontal = 7.dp, vertical = 4.5.dp)
                             )
                         }
                     }
@@ -151,7 +179,7 @@ fun ReportScreen() {
             }
         }
 
-        // Selettore Data
+        // Selettore Data / Intervallo
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
@@ -172,43 +200,131 @@ fun ReportScreen() {
                         )
                     )
             ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 8.dp, vertical = 6.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = {
-                        if (isYearMode) selectedYear--
-                        else selectedMonth = selectedMonth.minusMonths(1)
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.ChevronLeft, contentDescription = "Precedente", tint = TextPrimary)
-                }
+                if (periodMode == ReportPeriodMode.PERSONALIZZATO) {
+                    // Controlli per Intervallo Date Personalizzato (Da Data A Data)
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 10.dp, vertical = 8.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        // Data Inizio
+                        Surface(
+                            onClick = {
+                                val dp = android.app.DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        val newStart = LocalDate.of(year, month + 1, dayOfMonth)
+                                        customStartDate = newStart
+                                        if (customEndDate.isBefore(newStart)) {
+                                            customEndDate = newStart
+                                        }
+                                    },
+                                    customStartDate.year,
+                                    customStartDate.monthValue - 1,
+                                    customStartDate.dayOfMonth
+                                )
+                                dp.show()
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                Text("DA:", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                                Text(
+                                    text = "${customStartDate.dayOfMonth} ${customStartDate.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase()} ${customStartDate.year}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ObsidianPrimary
+                                )
+                            }
+                        }
 
-                Text(
-                    text = if (isYearMode) "Anno Intero $selectedYear"
-                    else "${selectedMonth.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.titlecase(Locale.ITALIAN) }} ${selectedMonth.year}",
-                    fontSize = 15.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary
-                )
+                        Icon(
+                            imageVector = Icons.Default.ArrowForward,
+                            contentDescription = null,
+                            tint = TextMuted,
+                            modifier = Modifier
+                                .padding(horizontal = 8.dp)
+                                .size(16.dp)
+                        )
 
-                IconButton(
-                    onClick = {
-                        if (isYearMode) selectedYear++
-                        else selectedMonth = selectedMonth.plusMonths(1)
-                    },
-                    modifier = Modifier.size(36.dp)
-                ) {
-                    Icon(Icons.Default.ChevronRight, contentDescription = "Successivo", tint = TextPrimary)
+                        // Data Fine
+                        Surface(
+                            onClick = {
+                                val dp = android.app.DatePickerDialog(
+                                    context,
+                                    { _, year, month, dayOfMonth ->
+                                        val newEnd = LocalDate.of(year, month + 1, dayOfMonth)
+                                        customEndDate = newEnd
+                                        if (customStartDate.isAfter(newEnd)) {
+                                            customStartDate = newEnd
+                                        }
+                                    },
+                                    customEndDate.year,
+                                    customEndDate.monthValue - 1,
+                                    customEndDate.dayOfMonth
+                                )
+                                dp.show()
+                            },
+                            shape = RoundedCornerShape(10.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
+                            modifier = Modifier.weight(1f)
+                        ) {
+                            Column(modifier = Modifier.padding(horizontal = 8.dp, vertical = 6.dp)) {
+                                Text("A:", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextMuted)
+                                Text(
+                                    text = "${customEndDate.dayOfMonth} ${customEndDate.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase()} ${customEndDate.year}",
+                                    fontSize = 12.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ObsidianPrimary
+                                )
+                            }
+                        }
+                    }
+                } else {
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        IconButton(
+                            onClick = {
+                                if (periodMode == ReportPeriodMode.ANNO) selectedYear--
+                                else selectedMonth = selectedMonth.minusMonths(1)
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.ChevronLeft, contentDescription = "Precedente", tint = TextPrimary)
+                        }
+
+                        Text(
+                            text = if (periodMode == ReportPeriodMode.ANNO) "Anno Intero $selectedYear"
+                            else "${selectedMonth.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.titlecase(Locale.ITALIAN) }} ${selectedMonth.year}",
+                            fontSize = 15.sp,
+                            fontWeight = FontWeight.ExtraBold,
+                            color = TextPrimary
+                        )
+
+                        IconButton(
+                            onClick = {
+                                if (periodMode == ReportPeriodMode.ANNO) selectedYear++
+                                else selectedMonth = selectedMonth.plusMonths(1)
+                            },
+                            modifier = Modifier.size(36.dp)
+                        ) {
+                            Icon(Icons.Default.ChevronRight, contentDescription = "Successivo", tint = TextPrimary)
+                        }
+                    }
                 }
             }
         }
-    }
 
         Spacer(modifier = Modifier.height(10.dp))
 

@@ -75,7 +75,7 @@ enum class CalendarEditMode(val label: String, val icon: ImageVector) {
 fun CalendarScreen(
     onEditModeActiveChanged: (Boolean) -> Unit = {}
 ) {
-    var currentMonth by remember { mutableStateOf(YearMonth.of(2026, 10)) }
+    var currentMonth by remember { mutableStateOf(YearMonth.now()) }
     var selectedDate by remember { mutableStateOf<LocalDate?>(null) }
     var monthTransitionDirection by remember { mutableStateOf(1) }
 
@@ -778,6 +778,10 @@ fun CalendarScreen(
                     onSelectShift = { selectedPaintShiftId = it },
                     selectedRotationId = selectedRotationId,
                     onSelectRotation = { selectedRotationId = it },
+                    rangeStartDate = rangeStartDate,
+                    onCancelRange = { rangeStartDate = null },
+                    rotationStartDate = rotationStartDate,
+                    onCancelRotation = { rotationStartDate = null },
                     onAddNewShift = {
                         newShiftToEdit = ShiftDefinition(
                             id = java.util.UUID.randomUUID().toString(),
@@ -1046,7 +1050,7 @@ fun MonthGridView(
             ) {
                 weekDays.forEach { dayInfo ->
                     key(dayInfo.date) {
-                        val isToday = dayInfo.date == LocalDate.of(2026, 10, 7)
+                        val isToday = dayInfo.date == LocalDate.now()
                         val isSelected = selectedDate == dayInfo.date
                         val isHoliday = ShiftRepository.isHoliday(dayInfo.date) != null
                         val shifts = ShiftRepository.getShiftsForDate(dayInfo.date)
@@ -1425,7 +1429,17 @@ fun DayCellView(
                     }
                 }
             } else if (shifts.isNotEmpty()) {
-                val displayCount = if (shifts.size <= 3) shifts.size else 3
+                // Calcola in anticipo se c'è un ex-turno di rotazione da visualizzare
+                val primaryShift = shifts.firstOrNull()
+                val origShiftId = primaryShift?.originalShiftDefId
+                val origDefName = if (primaryShift != null && primaryShift.isModifiedFromRotation && origShiftId != null && origShiftId != primaryShift.shiftDefId) {
+                    val origDef = ShiftRepository.getShiftDefinition(origShiftId)
+                    origDef?.let { getCompactShiftCode(it.id, it.shortCode) }
+                } else null
+                val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift && origDefName != null
+
+                // Se c'è un ex-turno, mostra massimo 2 badge di turno interi e usa pallini compatti per i rimanenti, per garantire che l'ex-turno sia sempre visibile
+                val displayCount = if (showExBadge) minOf(shifts.size, 2) else minOf(shifts.size, 3)
                 val displayShifts = shifts.take(displayCount)
                 val isMulti = shifts.size >= 2
                 displayShifts.forEachIndexed { idx, shift ->
@@ -1486,61 +1500,31 @@ fun DayCellView(
                         }
                     }
                 }
-            }
 
-            // L'indicatore ex-turno compare SOLO se il turno precedente derivava da una rotazione ciclica ed è stato sovrascritto
-            val primaryShift = shifts.firstOrNull()
-            val origShiftId = primaryShift?.originalShiftDefId
-            val origDefName = if (primaryShift != null && primaryShift.isModifiedFromRotation && origShiftId != null && origShiftId != primaryShift.shiftDefId) {
-                val origDef = ShiftRepository.getShiftDefinition(origShiftId)
-                origDef?.let { getCompactShiftCode(it.id, it.shortCode) }
-            } else null
-
-            // Mostra il turno sostituito in grigio discreto se abilitato dalle preferenze e non nascosto dall'utente (badge completo per <=2 turni, pillola con dot per 3+ turni)
-            val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift
-            if (showExBadge && origDefName != null) {
-                Spacer(modifier = Modifier.height(1.dp))
-                if (shifts.size <= 2) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 1.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(Color(0xFF1E2638))
-                            .padding(vertical = 0.8.dp),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Text(
-                            text = origDefName,
-                            fontSize = 6.8.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8),
-                            maxLines = 1,
-                            softWrap = false
-                        )
-                    }
-                } else {
+                // Indicatore ex-turno sempre garantito nella cella (con pallino discreto e codice turno)
+                if (showExBadge && origDefName != null) {
+                    Spacer(modifier = Modifier.height(1.dp))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
                             .padding(horizontal = 1.dp)
-                            .clip(RoundedCornerShape(2.5.dp))
-                            .background(Color(0xFF1E2638).copy(alpha = 0.9f))
-                            .border(0.5.dp, Color(0xFF475569).copy(alpha = 0.7f), RoundedCornerShape(2.5.dp))
-                            .padding(horizontal = 2.dp, vertical = 0.5.dp),
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xFF1E2638).copy(alpha = 0.95f))
+                            .border(0.5.dp, Color(0xFF475569).copy(alpha = 0.7f), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 2.dp, vertical = 0.6.dp),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.Center
                     ) {
                         Box(
                             modifier = Modifier
-                                .size(3.5.dp)
+                                .size(4.dp)
                                 .clip(CircleShape)
                                 .background(Color(0xFF94A3B8))
                         )
-                        Spacer(modifier = Modifier.width(2.dp))
+                        Spacer(modifier = Modifier.width(2.5.dp))
                         Text(
                             text = "ex $origDefName",
-                            fontSize = 6.sp,
+                            fontSize = 6.2.sp,
                             fontWeight = FontWeight.Bold,
                             color = Color(0xFF94A3B8),
                             maxLines = 1,
@@ -1894,6 +1878,10 @@ fun PaintShiftPaletteBar(
     onSelectShift: (String) -> Unit,
     selectedRotationId: String,
     onSelectRotation: (String) -> Unit,
+    rangeStartDate: LocalDate? = null,
+    onCancelRange: () -> Unit = {},
+    rotationStartDate: LocalDate? = null,
+    onCancelRotation: () -> Unit = {},
     onAddNewShift: () -> Unit,
     onAddNewRotation: () -> Unit,
     onUndo: () -> Unit,
@@ -1984,6 +1972,124 @@ fun PaintShiftPaletteBar(
                                 fontSize = 12.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = TextPrimary
+                            )
+                        }
+                    }
+                }
+            }
+
+            // BANNER GUIDATO INTERATTIVO SELEZIONE INIZIO PERIODO
+            if (editMode == CalendarEditMode.RANGE && rangeStartDate != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = if (selectedShiftId == "eraser") Color(0xFFEF4444).copy(alpha = 0.18f) else ObsidianPrimary.copy(alpha = 0.18f),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, if (selectedShiftId == "eraser") Color(0xFFEF4444) else ObsidianPrimary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.DateRange,
+                                contentDescription = null,
+                                tint = if (selectedShiftId == "eraser") Color(0xFFEF4444) else ObsidianPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Column {
+                                Text(
+                                    text = "INIZIO: ${rangeStartDate.dayOfMonth} ${rangeStartDate.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase()}",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.5.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = if (selectedShiftId == "eraser") "Tocca il giorno finale per CANCELLARE" else "Tocca il giorno finale per applicare",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier.bouncyClickable(onClick = onCancelRange)
+                        ) {
+                            Text(
+                                text = "Annulla",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
+                            )
+                        }
+                    }
+                }
+            }
+
+            // BANNER GUIDATO INTERATTIVO SELEZIONE INIZIO ROTAZIONE
+            if (editMode == CalendarEditMode.ROTATION && rotationStartDate != null) {
+                Spacer(modifier = Modifier.height(6.dp))
+                Surface(
+                    shape = RoundedCornerShape(12.dp),
+                    color = ObsidianPrimary.copy(alpha = 0.18f),
+                    border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 10.dp)
+                ) {
+                    Row(
+                        modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween
+                    ) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier.weight(1f, fill = false)
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Autorenew,
+                                contentDescription = null,
+                                tint = ObsidianPrimary,
+                                modifier = Modifier.size(17.dp)
+                            )
+                            Spacer(modifier = Modifier.width(7.dp))
+                            Column {
+                                Text(
+                                    text = "INIZIO: ${rotationStartDate.dayOfMonth} ${rotationStartDate.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase()}",
+                                    fontWeight = FontWeight.ExtraBold,
+                                    fontSize = 11.5.sp,
+                                    color = Color.White
+                                )
+                                Text(
+                                    text = "Tocca il giorno finale del ciclo",
+                                    fontSize = 10.sp,
+                                    color = TextSecondary
+                                )
+                            }
+                        }
+                        Surface(
+                            shape = RoundedCornerShape(8.dp),
+                            color = ObsidianSurfaceHigh,
+                            border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
+                            modifier = Modifier.bouncyClickable(onClick = onCancelRotation)
+                        ) {
+                            Text(
+                                text = "Annulla",
+                                fontSize = 11.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = Color(0xFFEF4444),
+                                modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                             )
                         }
                     }
