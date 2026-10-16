@@ -246,4 +246,95 @@ class ShiftRepositoryTest {
         assertTrue("Eliminazione secondo lavoro deve avere successo", deleted)
         assertEquals(1, ShiftRepository.workProfiles.size)
     }
+
+    @Test
+    fun testRotationDirectReplacementShowsExShift() {
+        val testDate = LocalDate.of(2026, 10, 1)
+        ShiftRepository.applyRotation("turno_a", testDate, 7)
+
+        val initialShifts = ShiftRepository.getShiftsForDate(testDate)
+        assertEquals(1, initialShifts.size)
+        val initialShift = initialShifts.first()
+        assertEquals("mattina", initialShift.shiftDefId)
+        assertTrue(initialShift.isFromRotation)
+        assertFalse(initialShift.isModifiedFromRotation)
+        assertNull(initialShift.originalShiftDefId)
+
+        // Sostituzione diretta del turno di rotazione
+        ShiftRepository.replaceShift(testDate, "notte")
+        val updatedShifts = ShiftRepository.getShiftsForDate(testDate)
+        assertEquals(1, updatedShifts.size)
+        val updatedShift = updatedShifts.first()
+        assertEquals("notte", updatedShift.shiftDefId)
+        assertFalse(updatedShift.isFromRotation)
+        assertTrue("Deve risultare modificato rispetto alla rotazione", updatedShift.isModifiedFromRotation)
+        assertEquals("mattina", updatedShift.originalShiftDefId)
+    }
+
+    @Test
+    fun testRotationClearedWithEraserThenNewShiftDoesNotShowExShift() {
+        val testDate = LocalDate.of(2026, 10, 2)
+        ShiftRepository.applyRotation("turno_a", testDate, 7)
+
+        // Giorno ha il turno di rotazione
+        assertEquals(1, ShiftRepository.getShiftsForDate(testDate).size)
+
+        // 1. Cancellazione con la gomma / clearDayShifts
+        ShiftRepository.clearDayShifts(testDate)
+        assertTrue(ShiftRepository.getShiftsForDate(testDate).isEmpty())
+        assertTrue("Il giorno deve risultare cancellato dalla rotazione", ShiftRepository.isRotationCleared(testDate))
+
+        // 2. Inserimento successivo di un turno qualsiasi sul giorno cancellato
+        ShiftRepository.replaceShift(testDate, "pomeriggio")
+        val afterAddShifts = ShiftRepository.getShiftsForDate(testDate)
+        assertEquals(1, afterAddShifts.size)
+        val afterAdd = afterAddShifts.first()
+        assertEquals("pomeriggio", afterAdd.shiftDefId)
+        assertFalse("NON deve essere marcato come modificato da rotazione", afterAdd.isModifiedFromRotation)
+        assertNull("originalShiftDefId DEVE essere null (nessun ex-turno visibile)", afterAdd.originalShiftDefId)
+    }
+
+    @Test
+    fun testRotationRemovedWithTrashIconThenNewShiftDoesNotShowExShift() {
+        val testDate = LocalDate.of(2026, 10, 3)
+        ShiftRepository.applyRotation("turno_a", testDate, 7)
+
+        val shift = ShiftRepository.getShiftsForDate(testDate).first()
+
+        // 1. Eliminazione con cestino (removeAssignedShift)
+        ShiftRepository.removeAssignedShift(testDate, shift.id)
+        assertTrue(ShiftRepository.getShiftsForDate(testDate).isEmpty())
+        assertTrue(ShiftRepository.isRotationCleared(testDate))
+
+        // 2. Assegnazione successiva con replaceShift
+        ShiftRepository.replaceShift(testDate, "notte")
+        val newShift = ShiftRepository.getShiftsForDate(testDate).first()
+        assertEquals("notte", newShift.shiftDefId)
+        assertFalse(newShift.isModifiedFromRotation)
+        assertNull("Ex-turno non deve apparire se era stato cancellato", newShift.originalShiftDefId)
+    }
+
+    @Test
+    fun testReapplyingRotationResetsClearedStateAndAllowsExShiftAgain() {
+        val testDate = LocalDate.of(2026, 10, 4)
+        ShiftRepository.applyRotation("turno_a", testDate, 7)
+
+        // Cancella
+        ShiftRepository.clearDayShifts(testDate)
+        assertTrue(ShiftRepository.isRotationCleared(testDate))
+
+        // Riapplica la rotazione
+        ShiftRepository.applyRotation("turno_a", testDate, 7)
+        assertFalse("Riapplicare la rotazione deve resettare lo stato cleared", ShiftRepository.isRotationCleared(testDate))
+        val rotShift = ShiftRepository.getShiftsForDate(testDate).first()
+        assertTrue(rotShift.isFromRotation)
+        assertFalse(rotShift.isModifiedFromRotation)
+
+        // Ora una sostituzione diretta deve nuovamente mostrare l'ex-turno
+        ShiftRepository.replaceShift(testDate, "riposo")
+        val replaced = ShiftRepository.getShiftsForDate(testDate).first()
+        assertEquals("riposo", replaced.shiftDefId)
+        assertTrue(replaced.isModifiedFromRotation)
+        assertEquals("mattina", replaced.originalShiftDefId)
+    }
 }

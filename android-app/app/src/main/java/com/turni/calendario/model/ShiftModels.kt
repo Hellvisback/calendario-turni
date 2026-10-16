@@ -101,6 +101,7 @@ data class DayExtraInfo(
     val isTrasferta: Boolean = false,
     val isOnCallManual: Boolean? = null,
     val hideExShift: Boolean = false,
+    val rotationCleared: Boolean = false,
     val notes: String = "",
     val actualEndTime: String? = null
 )

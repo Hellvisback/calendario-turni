@@ -101,6 +101,7 @@ object GoogleDriveBackupHelper {
                 put("overtimeHours", extra.overtimeHours.toDouble())
                 put("isTrasferta", extra.isTrasferta)
                 put("hideExShift", extra.hideExShift)
+                put("rotationCleared", extra.rotationCleared)
                 put("notes", extra.notes)
             }
             extraArray.put(obj)
@@ -341,6 +342,7 @@ object GoogleDriveBackupHelper {
                         overtimeHours = obj.optDouble("overtimeHours", 0.0).toFloat(),
                         isTrasferta = obj.optBoolean("isTrasferta", false),
                         hideExShift = obj.optBoolean("hideExShift", false),
+                        rotationCleared = obj.optBoolean("rotationCleared", false),
                         notes = obj.optString("notes", "")
                     )
                     ShiftRepository.dayExtraInfo[date] = extra
