@@ -163,8 +163,8 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                     views.setTextColor(extraIds[i], Color.parseColor("#FBBF24"))
                     views.setViewVisibility(extraIds[i], View.VISIBLE)
                 } else if (summary.isOnCall) {
-                    views.setTextViewText(extraIds[i], "REP")
-                    views.setTextColor(extraIds[i], Color.parseColor("#C084FC"))
+                    views.setTextViewText(extraIds[i], "• R •")
+                    views.setTextColor(extraIds[i], Color.parseColor("#FBBF24"))
                     views.setViewVisibility(extraIds[i], View.VISIBLE)
                 } else {
                     views.setViewVisibility(extraIds[i], View.GONE)

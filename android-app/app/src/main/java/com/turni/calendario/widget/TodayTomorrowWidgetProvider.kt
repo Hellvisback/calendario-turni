@@ -150,7 +150,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
             )
 
             val tomorrowDetail = if (tomorrowSummary.timeRange.isNotBlank()) {
-                tomorrowSummary.timeRange
+                tomorrowSummary.timeRange.replace(" ", "")
             } else {
                 tomorrowSummary.shiftName
             }

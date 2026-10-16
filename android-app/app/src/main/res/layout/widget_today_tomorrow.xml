@@ -57,7 +57,7 @@
                 android:maxLines="1"
                 android:text="POMERIGGIO"
                 android:textColor="#F8FAFC"
-                android:textSize="18sp" />
+                android:textSize="15.5sp" />
 
             <TextView
                 android:id="@+id/widget_tt_code_pill"
@@ -163,13 +163,13 @@
             android:fontFamily="sans-serif-bold"
             android:text="DOMANI"
             android:textColor="#64748B"
-            android:textSize="9.5sp" />
+            android:textSize="8.5sp" />
 
         <TextView
             android:id="@+id/widget_tt_tomorrow_badge"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_badge_green"
             android:paddingStart="4.5dp"
             android:paddingTop="1dp"
@@ -184,41 +184,38 @@
             android:id="@+id/widget_tt_tomorrow_shift"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
-            android:layout_marginStart="5dp"
+            android:layout_marginStart="4dp"
             android:layout_weight="1"
             android:ellipsize="end"
             android:fontFamily="sans-serif-medium"
+            android:includeFontPadding="false"
             android:maxLines="1"
             android:text="22:00 - 05:36"
             android:textColor="#E2E8F0"
-            android:textSize="10sp" />
+            android:textSize="8.5sp" />
 
         <!-- Navigation arrows in bottom right -->
-        <TextView
+        <ImageView
             android:id="@+id/btn_tt_prev"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
             android:layout_marginStart="4dp"
-            android:layout_marginEnd="2dp"
+            android:layout_marginEnd="3dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:gravity="center"
-            android:text="‹"
-            android:textColor="#38BDF8"
-            android:textSize="12sp"
-            android:textStyle="bold"
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_widget_chevron_left"
             android:visibility="gone" />
 
-        <TextView
+        <ImageView
             android:id="@+id/btn_tt_next"
-            android:layout_width="18dp"
-            android:layout_height="18dp"
-            android:layout_marginStart="2dp"
+            android:layout_width="20dp"
+            android:layout_height="20dp"
+            android:layout_marginStart="3dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:gravity="center"
-            android:text="›"
-            android:textColor="#38BDF8"
-            android:textSize="12sp"
-            android:textStyle="bold" />
+            android:padding="4dp"
+            android:scaleType="centerInside"
+            android:src="@drawable/ic_widget_chevron_right" />
     </LinearLayout>
 
 </LinearLayout>
