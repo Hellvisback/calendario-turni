@@ -170,7 +170,7 @@
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
             android:layout_marginStart="5dp"
-            android:background="@drawable/bg_badge_purple"
+            android:background="@drawable/bg_badge_green"
             android:paddingStart="4.5dp"
             android:paddingTop="1dp"
             android:paddingEnd="4.5dp"
@@ -192,6 +192,33 @@
             android:text="22:00 - 05:36"
             android:textColor="#E2E8F0"
             android:textSize="10sp" />
+
+        <!-- Navigation arrows in bottom right -->
+        <TextView
+            android:id="@+id/btn_tt_prev"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="4dp"
+            android:layout_marginEnd="2dp"
+            android:background="@drawable/bg_widget_nav_btn"
+            android:gravity="center"
+            android:text="‹"
+            android:textColor="#38BDF8"
+            android:textSize="12sp"
+            android:textStyle="bold"
+            android:visibility="gone" />
+
+        <TextView
+            android:id="@+id/btn_tt_next"
+            android:layout_width="18dp"
+            android:layout_height="18dp"
+            android:layout_marginStart="2dp"
+            android:background="@drawable/bg_widget_nav_btn"
+            android:gravity="center"
+            android:text="›"
+            android:textColor="#38BDF8"
+            android:textSize="12sp"
+            android:textStyle="bold" />
     </LinearLayout>
 
 </LinearLayout>

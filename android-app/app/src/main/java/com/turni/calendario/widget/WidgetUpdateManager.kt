@@ -66,19 +66,21 @@ object WidgetUpdateManager {
     }
 
     fun getBadgeDrawableRes(shiftDef: ShiftDefinition?): Int {
-        if (shiftDef == null) return R.drawable.bg_badge_gray
+        if (shiftDef == null) return R.drawable.bg_badge_pink // Riposo programmato nell'app è Fucsia
         return when (shiftDef.id.lowercase()) {
-            "mattina", "mat" -> R.drawable.bg_badge_cyan
-            "pomeriggio", "pom" -> R.drawable.bg_badge_red
-            "notte", "not" -> R.drawable.bg_badge_purple
-            "smonto_notte", "smo", "smonto" -> R.drawable.bg_badge_slate
-            "riposo", "rip" -> R.drawable.bg_badge_gray
-            "ferie", "fer" -> R.drawable.bg_badge_amber
-            "mat_dom", "md" -> R.drawable.bg_badge_pink
+            "pomeriggio", "pom" -> R.drawable.bg_badge_red      // #EF4444 Rosso corallo
+            "mattina", "mat" -> R.drawable.bg_badge_sky          // #0284C7 Azzurro avio
+            "notte", "not" -> R.drawable.bg_badge_green         // #22C55E Verde chiaro
+            "smonto_notte", "smo", "smonto" -> R.drawable.bg_badge_cyan // #06B6D4 Ciano
+            "riposo", "rip" -> R.drawable.bg_badge_pink         // #EC4899 Fucsia
+            "mat_dom", "dom", "md" -> R.drawable.bg_badge_amber // #F59E0B Giallo ambra
+            "ferie", "fer" -> R.drawable.bg_badge_blue          // #2563EB Blu cobalto
+            "giornaliero", "gio" -> R.drawable.bg_badge_emerald // #10B981 Verde smeraldo
+            "uffici", "uff" -> R.drawable.bg_badge_gray         // #64748B Grigio ardesia
             else -> {
                 when (shiftDef.category) {
-                    ShiftCategory.RIPOSO -> R.drawable.bg_badge_gray
-                    ShiftCategory.ASSENZA -> R.drawable.bg_badge_amber
+                    ShiftCategory.RIPOSO -> R.drawable.bg_badge_pink
+                    ShiftCategory.ASSENZA -> R.drawable.bg_badge_blue
                     else -> R.drawable.bg_badge_green
                 }
             }
@@ -97,6 +99,36 @@ object WidgetUpdateManager {
             intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
+    }
+
+    const val ACTION_NAV_NEXT = "com.turni.calendario.widget.ACTION_NAV_NEXT"
+    const val ACTION_NAV_PREV = "com.turni.calendario.widget.ACTION_NAV_PREV"
+    const val ACTION_NAV_RESET = "com.turni.calendario.widget.ACTION_NAV_RESET"
+
+    fun createNavPendingIntent(context: Context, appWidgetId: Int, action: String, targetClass: Class<*>): PendingIntent {
+        val intent = Intent(context, targetClass).apply {
+            this.action = action
+            this.setPackage(context.packageName)
+            this.data = android.net.Uri.parse("widget://nav/$appWidgetId/$action")
+            putExtra(android.appwidget.AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+        }
+        val reqCode = appWidgetId * 1000 + (if (action == ACTION_NAV_NEXT) 1 else if (action == ACTION_NAV_PREV) 2 else 0)
+        return PendingIntent.getBroadcast(
+            context,
+            reqCode,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+    }
+
+    fun getWidgetOffset(context: Context, appWidgetId: Int): Int {
+        val prefs = context.getSharedPreferences("widget_state", Context.MODE_PRIVATE)
+        return prefs.getInt("offset_$appWidgetId", 0)
+    }
+
+    fun setWidgetOffset(context: Context, appWidgetId: Int, offset: Int) {
+        val prefs = context.getSharedPreferences("widget_state", Context.MODE_PRIVATE)
+        prefs.edit().putInt("offset_$appWidgetId", offset).apply()
     }
 
     fun updateAllWidgets(context: Context) {

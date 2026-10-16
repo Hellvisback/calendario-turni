@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
 import android.view.View
 import android.widget.RemoteViews
@@ -17,13 +18,48 @@ import java.util.Locale
 
 class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        var appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID
+        )
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+            val seg = intent.data?.pathSegments?.getOrNull(1)?.toIntOrNull()
+            if (seg != null) appWidgetId = seg
+        }
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            when (intent.action) {
+                WidgetUpdateManager.ACTION_NAV_NEXT -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val next = if (current >= 12) 0 else current + 1
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, next)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_PREV -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val prev = (current - 1).coerceAtLeast(0)
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, prev)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_RESET -> {
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, 0)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+            }
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
         val today = LocalDate.now()
-        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val baseMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
         val colIds = intArrayOf(
             R.id.wp_col_0, R.id.wp_col_1, R.id.wp_col_2, R.id.wp_col_3, R.id.wp_col_4, R.id.wp_col_5, R.id.wp_col_6,
@@ -47,14 +83,45 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
         )
 
         val monthFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
-        val monthLabel = today.format(monthFmt).replaceFirstChar { it.uppercase() }
         val rotationLabel = ShiftRepository.activeRotation?.name ?: "2 Settimane"
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_weeks_panorama)
+            val weekOffset = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+            val monday = baseMonday.plusWeeks(weekOffset.toLong())
+
+            // Title dinamico sul mese visualizzato
+            val middleDate = monday.plusDays(7)
+            val monthLabel = middleDate.format(monthFmt).replaceFirstChar { it.uppercase() }
 
             views.setTextViewText(R.id.widget_wp_title, monthLabel)
             views.setTextViewText(R.id.widget_wp_stats, rotationLabel)
+
+            // Setup Navigation pending intents
+            val nextPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_NEXT, WeeksPanoramaWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_wp_next, nextPi)
+
+            val prevPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_PREV, WeeksPanoramaWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_wp_prev, prevPi)
+
+            val resetPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_RESET, WeeksPanoramaWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.widget_wp_title, resetPi)
+
+            // Indicatori stato navigazione
+            if (weekOffset > 0) {
+                views.setViewVisibility(R.id.btn_wp_prev, View.VISIBLE)
+                views.setViewVisibility(R.id.wp_week_indicator, View.VISIBLE)
+                views.setTextViewText(R.id.wp_week_indicator, "+$weekOffset sett.")
+            } else {
+                views.setViewVisibility(R.id.btn_wp_prev, View.GONE)
+                views.setViewVisibility(R.id.wp_week_indicator, View.GONE)
+            }
 
             for (i in 0..13) {
                 val date = monday.plusDays(i.toLong())
@@ -70,7 +137,7 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                     WidgetUpdateManager.getBadgeDrawableRes(summary.shiftDef)
                 )
 
-                // Today highlight
+                // Today highlight (solo se nella settimana reale odierna)
                 if (summary.isToday) {
                     views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
                     views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
@@ -103,7 +170,7 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                     views.setViewVisibility(extraIds[i], View.GONE)
                 }
 
-                // Click action
+                // Click action to open MainActivity on that day
                 val pi = WidgetUpdateManager.createDayPendingIntent(
                     context,
                     date,

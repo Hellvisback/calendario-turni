@@ -4,6 +4,7 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.view.View
 import android.widget.RemoteViews
 import com.turni.calendario.R
@@ -13,23 +14,86 @@ import java.util.Locale
 
 class TodayTomorrowWidgetProvider : AppWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        var appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID
+        )
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+            val seg = intent.data?.pathSegments?.getOrNull(1)?.toIntOrNull()
+            if (seg != null) appWidgetId = seg
+        }
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            when (intent.action) {
+                WidgetUpdateManager.ACTION_NAV_NEXT -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val next = if (current >= 12) 0 else current + 1
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, next)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_PREV -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val prev = (current - 1).coerceAtLeast(0)
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, prev)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_RESET -> {
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, 0)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+            }
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
         val today = LocalDate.now()
-        val tomorrow = today.plusDays(1)
-
-        val todaySummary = WidgetUpdateManager.getDaySummary(today, today)
-        val tomorrowSummary = WidgetUpdateManager.getDaySummary(tomorrow, today)
-
-        // Formato compatto elegante anti-troncamento: "Gio 15 Ottobre"
         val dateFmt = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.ITALIAN)
-        val formattedDate = today.format(dateFmt).replaceFirstChar { it.uppercase() }
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_today_tomorrow)
+            val weekOffset = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+            val currentDay = today.plusWeeks(weekOffset.toLong())
+            val nextDay = currentDay.plusDays(1)
+
+            val todaySummary = WidgetUpdateManager.getDaySummary(currentDay, today)
+            val tomorrowSummary = WidgetUpdateManager.getDaySummary(nextDay, today)
+
+            val baseDateStr = currentDay.format(dateFmt).replaceFirstChar { it.uppercase() }
+            val formattedDate = if (weekOffset > 0) {
+                "$baseDateStr (+$weekOffset sett.)"
+            } else {
+                baseDateStr
+            }
+
+            // Navigation buttons
+            val nextPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_NEXT, TodayTomorrowWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_tt_next, nextPi)
+
+            val prevPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_PREV, TodayTomorrowWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_tt_prev, prevPi)
+
+            val resetPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_RESET, TodayTomorrowWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.widget_tt_header_date, resetPi)
+
+            if (weekOffset > 0) {
+                views.setViewVisibility(R.id.btn_tt_prev, View.VISIBLE)
+            } else {
+                views.setViewVisibility(R.id.btn_tt_prev, View.GONE)
+            }
 
             // Header date
             views.setTextViewText(R.id.widget_tt_header_date, formattedDate)

@@ -4,7 +4,9 @@ import android.appwidget.AppWidgetManager
 import android.appwidget.AppWidgetProvider
 import android.content.ComponentName
 import android.content.Context
+import android.content.Intent
 import android.graphics.Color
+import android.view.View
 import android.widget.RemoteViews
 import com.turni.calendario.R
 import java.time.DayOfWeek
@@ -13,13 +15,48 @@ import java.time.temporal.TemporalAdjusters
 
 class WeekRowWidgetProvider : AppWidgetProvider() {
 
+    override fun onReceive(context: Context, intent: Intent) {
+        super.onReceive(context, intent)
+        var appWidgetId = intent.getIntExtra(
+            AppWidgetManager.EXTRA_APPWIDGET_ID,
+            AppWidgetManager.INVALID_APPWIDGET_ID
+        )
+        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
+            val seg = intent.data?.pathSegments?.getOrNull(1)?.toIntOrNull()
+            if (seg != null) appWidgetId = seg
+        }
+        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
+            when (intent.action) {
+                WidgetUpdateManager.ACTION_NAV_NEXT -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val next = if (current >= 12) 0 else current + 1
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, next)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_PREV -> {
+                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+                    val prev = (current - 1).coerceAtLeast(0)
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, prev)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+                WidgetUpdateManager.ACTION_NAV_RESET -> {
+                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, 0)
+                    val manager = AppWidgetManager.getInstance(context)
+                    onUpdate(context, manager, intArrayOf(appWidgetId))
+                }
+            }
+        }
+    }
+
     override fun onUpdate(
         context: Context,
         appWidgetManager: AppWidgetManager,
         appWidgetIds: IntArray
     ) {
         val today = LocalDate.now()
-        val monday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
+        val baseMonday = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY))
 
         val cellIds = intArrayOf(
             R.id.cell_wr_0, R.id.cell_wr_1, R.id.cell_wr_2, R.id.cell_wr_3,
@@ -40,6 +77,24 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_week_row)
+            val weekOffset = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
+            val monday = baseMonday.plusWeeks(weekOffset.toLong())
+
+            val nextPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_NEXT, WeekRowWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_wr_next, nextPi)
+
+            val prevPi = WidgetUpdateManager.createNavPendingIntent(
+                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_PREV, WeekRowWidgetProvider::class.java
+            )
+            views.setOnClickPendingIntent(R.id.btn_wr_prev, prevPi)
+
+            if (weekOffset > 0) {
+                views.setViewVisibility(R.id.btn_wr_prev, View.VISIBLE)
+            } else {
+                views.setViewVisibility(R.id.btn_wr_prev, View.GONE)
+            }
 
             for (i in 0..6) {
                 val date = monday.plusDays(i.toLong())
