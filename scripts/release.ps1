@@ -192,15 +192,15 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
 ### Calendario Turni v$newName (Build $newCode)
 
 #### Pacchetti di Installazione Disponibili:
-- **`app-release-latest.apk`**: Pacchetto APK principale sempre aggiornato all'ultima versione.
-- **`app-release-v$newName.apk`**: Pacchetto APK specifico per questa release.
-- **`Calendario_Turni_Antigravity_Export.zip`**: Archivio completo di codice sorgente e risorse.
+- **``app-release-latest.apk``**: Pacchetto APK principale sempre aggiornato all'ultima versione.
+- **``app-release-v$newName.apk``**: Pacchetto APK specifico per questa release.
+- **``Calendario_Turni_Antigravity_Export.zip``**: Archivio completo di codice sorgente e risorse.
 
-#### Novita' Principali:
+#### Novità Principali:
 - **Suite Widget Android (Material 3 Expressive)**: 4 AppWidget per schermata home (Panorama 14 giorni, Oggi e Domani, Striscia Settimanale, Mini Griglia Mensile) con pulsanti di navigazione interattivi mese/settimana e contrasto visivo ottimizzato.
 - **Importazione Turni Multimodale con Gemini AI & Prompt Maker**: Riconoscimento istantaneo di tabelloni orari da immagini e PDF, con sanificazione avanzata del testo e assistente prompt per AI esterne.
 - **Straordinari Dettagliati per Singolo Turno**: Calcolo ore effettive di stacco e straordinario da timbratura reale e inserimento manuale con incrementi rapidi ±15min e ±1h.
-- **Sveglie Intelligenti & Reperibilita' Preventiva**: Sveglia serale il giorno precedente per i turni in reperibilita' e allarmi sincronizzati con i turni.
+- **Sveglie Intelligenti & Reperibilità Preventiva**: Sveglia serale il giorno precedente per i turni in reperibilità e allarmi sincronizzati con i turni.
 - **Gestione Lavoro Universale & Allegato CCNL in PDF**: Personalizzazione profili di lavoro semplici o avanzati, e visualizzatore integrato per il proprio contratto collettivo.
 - **Esportazione PDF ad Alta Risoluzione**: Prospetto mensile ed annuale rinnovato in stile SuperShift, esportabile e condivisibile in un tap.
 - **Sincronizzazione Google Calendar**: Gestione sicura con cooldown di sicurezza e overlay animato dal basso.
