@@ -920,6 +920,58 @@ object ShiftRepository {
         dayExtraInfo[date] = extra.copy(overtimeHours = totalOvertime, actualEndTime = actualEndTime)
     }
 
+    fun setShiftNotes(date: LocalDate, assignedShiftId: String, notes: String) {
+        saveSnapshot()
+        val current = calendarShifts[date]?.toList() ?: return
+        val newList = mutableStateListOf<AssignedShift>()
+        current.forEach { shift ->
+            if (shift.id == assignedShiftId) {
+                newList.add(shift.copy(notes = notes))
+            } else {
+                newList.add(shift)
+            }
+        }
+        calendarShifts[date] = newList
+    }
+
+    fun setShiftExtraDetails(
+        date: LocalDate,
+        assignedShiftId: String,
+        actualEndTime: String?,
+        overtimeHours: Float,
+        notes: String,
+        isTrasferta: Boolean? = null
+    ) {
+        saveSnapshot()
+        val current = calendarShifts[date]?.toList() ?: return
+        val newList = mutableStateListOf<AssignedShift>()
+        val clampedHours = overtimeHours.coerceAtLeast(0f)
+        current.forEach { shift ->
+            if (shift.id == assignedShiftId) {
+                newList.add(
+                    shift.copy(
+                        actualEndTime = actualEndTime,
+                        isOvertime = clampedHours > 0f,
+                        overtimeHours = clampedHours,
+                        notes = notes,
+                        isTrasferta = isTrasferta ?: shift.isTrasferta
+                    )
+                )
+            } else {
+                newList.add(shift)
+            }
+        }
+        calendarShifts[date] = newList
+        val totalOvertime = newList.sumOf { it.overtimeHours.toDouble() }.toFloat()
+        val anyTrasferta = newList.any { it.isTrasferta }
+        val extra = getDayExtraInfo(date)
+        dayExtraInfo[date] = extra.copy(
+            overtimeHours = totalOvertime,
+            actualEndTime = actualEndTime,
+            isTrasferta = anyTrasferta
+        )
+    }
+
     fun hasTrasfertaForDate(date: LocalDate): Boolean {
         return calendarShifts[date]?.any { it.isTrasferta } == true || dayExtraInfo[date]?.isTrasferta == true
     }

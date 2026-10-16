@@ -1171,29 +1171,32 @@ fun DayCellView(
         else -> ObsidianBorder
     }
 
+    val cellCornerRadius = 10.dp
+    val cellShape = RoundedCornerShape(cellCornerRadius)
+
     Box(
         modifier = modifier
             .fillMaxHeight()
-            .clip(RoundedCornerShape(8.dp))
+            .clip(cellShape)
             .background(cellBackground)
             .border(
                 width = cellBorderWidth,
                 color = cellBorderColor,
-                shape = RoundedCornerShape(8.dp)
+                shape = cellShape
             )
             .calendarCellClickable { onClick() }
             .then(if (!dayInfo.isCurrentMonth) Modifier.alpha(0.35f) else Modifier)
-            .padding(horizontal = 2.dp, vertical = 2.dp)
+            .padding(horizontal = 3.dp, vertical = 2.5.dp)
     ) {
         Column(
             modifier = Modifier.fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
-            // Header del giorno (numero + indicatori REP / Overtime / TR / Ciclo 2, 3...)
+            // Header del giorno (numero concentrico + indicatori REP / Overtime / TR / Ciclo 2, 3...)
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 2.dp),
+                    .padding(horizontal = 1.dp, vertical = 0.5.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically
             ) {
@@ -1201,73 +1204,93 @@ fun DayCellView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    val isSelectedToday = isToday && isSelected
                     if (isRangeStart) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(if (isEraser) Color(0xFFEF4444) else Color(0xFF0284C7))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = if (isEraser) Color(0xFFEF4444) else Color(0xFF0284C7)
                         ) {
                             Text(
                                 text = "${dayInfo.date.dayOfMonth} ${if (isEraser) "🧹" else "📍"}",
-                                fontSize = 10.sp,
+                                fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Black,
-                                color = Color.White
-                            )
-                        }
-                    } else if (isToday) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(Color.White)
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
-                        ) {
-                            Text(
-                                text = dayInfo.date.dayOfMonth.toString(),
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.ExtraBold,
-                                color = Color.Black
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
                             )
                         }
                     } else if (isCycleStart) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(5.dp))
-                                .background(Color(0xFF0284C7))
-                                .padding(horizontal = 4.dp, vertical = 1.dp)
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = Color(0xFF0284C7)
                         ) {
                             Text(
                                 text = "${dayInfo.date.dayOfMonth} 🔄1",
-                                fontSize = 10.sp,
+                                fontSize = 9.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.White
+                                color = Color.White,
+                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
                             )
                         }
-                    } else if (isSelected) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(ObsidianPrimary)
-                                .padding(horizontal = 2.5.dp, vertical = 0.5.dp)
+                    } else if (isSelectedToday) {
+                        // Oggi E Selezionato: pillola bianca con anello azzurro coordinato, nessun contatto con il bordo esterno
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = Color.White,
+                            border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary)
+                        ) {
+                            Text(
+                                text = dayInfo.date.dayOfMonth.toString(),
+                                fontSize = 10.5.sp,
+                                fontWeight = FontWeight.Black,
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                            )
+                        }
+                    } else if (isToday) {
+                        // Solo Oggi: pillola bianca pura con testo nero marcato
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = Color.White
                         ) {
                             Text(
                                 text = dayInfo.date.dayOfMonth.toString(),
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = Color.Black
+                                color = Color.Black,
+                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                            )
+                        }
+                    } else if (isSelected) {
+                        // Solo Selezionato: pillola azzurro brillante ObsidianPrimary con testo scuro nitido
+                        Surface(
+                            shape = RoundedCornerShape(percent = 50),
+                            color = ObsidianPrimary
+                        ) {
+                            Text(
+                                text = dayInfo.date.dayOfMonth.toString(),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Black,
+                                color = ObsidianBackground,
+                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
                             )
                         }
                     } else {
-                        Text(
-                            text = dayInfo.date.dayOfMonth.toString(),
-                            fontSize = 11.sp,
-                            fontWeight = if (dayInfo.isCurrentMonth) FontWeight.Bold else FontWeight.Normal,
-                            color = when {
-                                !dayInfo.isCurrentMonth -> TextMuted.copy(alpha = 0.45f)
-                                isHoliday -> Color.White
-                                else -> TextPrimary
-                            }
-                        )
+                        // Giorno Normale: allineamento e respiro ottico impeccabili
+                        Box(
+                            modifier = Modifier.padding(horizontal = 2.dp, vertical = 1.dp),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            Text(
+                                text = dayInfo.date.dayOfMonth.toString(),
+                                fontSize = 11.sp,
+                                fontWeight = if (dayInfo.isCurrentMonth) FontWeight.SemiBold else FontWeight.Normal,
+                                color = when {
+                                    !dayInfo.isCurrentMonth -> TextMuted.copy(alpha = 0.45f)
+                                    isHoliday -> Color.White
+                                    else -> TextPrimary
+                                }
+                            )
+                        }
                     }
 
                     // Badge del ciclo di rotazione (2, 3, 4...) visibile e leggibile

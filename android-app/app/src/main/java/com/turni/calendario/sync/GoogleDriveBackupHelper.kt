@@ -82,6 +82,7 @@ object GoogleDriveBackupHelper {
                     put("isFromRotation", s.isFromRotation)
                     put("customStartTime", s.customStartTime ?: "")
                     put("customEndTime", s.customEndTime ?: "")
+                    put("actualEndTime", s.actualEndTime ?: "")
                     put("notes", s.notes)
                     put("isOvertime", s.isOvertime)
                     put("overtimeHours", s.overtimeHours.toDouble())
@@ -319,6 +320,7 @@ object GoogleDriveBackupHelper {
                         isModifiedFromRotation = isMod,
                         isFromRotation = isFromRot,
                         notes = obj.optString("notes", ""),
+                        actualEndTime = obj.optString("actualEndTime").ifBlank { null },
                         isOvertime = obj.optBoolean("isOvertime", false),
                         overtimeHours = obj.optDouble("overtimeHours", 0.0).toFloat(),
                         isTrasferta = obj.optBoolean("isTrasferta", false),
