@@ -119,9 +119,11 @@ $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"
 # 4. Acquisire uno screenshot di verifica
 cmd.exe /c "`"C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe`" -s cb08bc57 exec-out screencap -p > screen.png"
 
-# 5. Rilasciare l'APK aggiornato su GitHub Releases (MAI su OneDrive!)
-Copy-Item "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-debug.apk" "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-release-latest.apk"
-gh release upload v1.0.0 "c:\Users\marco\Antigravity Progetti\Calediario Turni\android-app\app\build\outputs\apk\debug\app-release-latest.apk" --clobber
+# 5. Rilasciare una nuova versione dell'APK su GitHub Releases (MAI su OneDrive!)
+# NOTA CRITICA: MAI sovrascrivere v1.0.0 con --clobber! Android rifiuta l'aggiornamento se versionCode non aumenta
+# e GitHub non notificherà gli utenti se non viene creata una nuova release (tag progressivo es. v1.1.0).
+# Usare lo script automatico che incrementa versionCode, compila, esporta e pubblica la release:
+powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1 -VersionName "1.1.0" -VersionCode 2
 ```
 
 ---
@@ -130,7 +132,7 @@ gh release upload v1.0.0 "c:\Users\marco\Antigravity Progetti\Calediario Turni\a
 - Rispondere **SEMPRE in lingua italiana** con spiegazioni chiare ed esaustive.
 - Codice, classi, metodi, variabili e commenti nel codice in **inglese**.
 - Non rimuovere mai o rompere funzionalità esistenti: applicare modifiche chirurgiche con `replace_file_content`.
-- Mantenere sempre aggiornato l'APK unicamente su **GitHub Releases** tramite `gh release upload`. MAI su OneDrive.
+- Mantenere sempre aggiornato l'APK unicamente su **GitHub Releases** creando nuove release progressive (es. v1.1.0, v1.2.0...) tramite `scripts/release.ps1` o `gh release create`. MAI su OneDrive.
 
 ---
 

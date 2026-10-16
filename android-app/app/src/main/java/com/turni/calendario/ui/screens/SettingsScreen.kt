@@ -22,6 +22,7 @@ import android.content.Intent
 import androidx.activity.compose.BackHandler
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.turni.calendario.BuildConfig
 import com.turni.calendario.model.ReperibilitaMode
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
@@ -361,7 +362,7 @@ fun SettingsScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
         Text(
-            text = "Versione 2.0.0 Pro • Progettato per turnisti e lavoratori su turni",
+            text = "Versione ${BuildConfig.VERSION_NAME} (Build ${BuildConfig.VERSION_CODE}) • Progettato per turnisti e lavoratori su turni",
             color = TextMuted,
             fontSize = 11.5.sp,
             modifier = Modifier.align(Alignment.CenterHorizontally)
