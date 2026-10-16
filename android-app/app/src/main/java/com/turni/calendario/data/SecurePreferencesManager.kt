@@ -12,7 +12,7 @@ object SecurePreferencesManager {
     private const val PREFS_NAME = "calediario_secure_settings"
     private const val KEY_GEMINI_API_KEY = "gemini_api_key"
     private const val KEY_DEFAULT_USER_NAME = "default_user_name"
-    const val DEFAULT_USER_NAME = "Marco Graziani"
+    const val DEFAULT_USER_NAME = ""
 
     // In-memory fallback for testing or when Context is unavailable
     @Volatile
@@ -86,20 +86,20 @@ object SecurePreferencesManager {
 
     /**
      * Retrieves the preferred worker name used for automatic squad and shift pre-selection.
-     * Defaults to "Marco Graziani".
+     * Defaults to null or empty if not yet set by the user.
      */
     @JvmStatic
     @JvmOverloads
     fun getUserName(context: Context? = null): String? {
         if (context == null) {
-            return inMemoryUserName ?: DEFAULT_USER_NAME
+            return inMemoryUserName ?: DEFAULT_USER_NAME.ifBlank { null }
         }
         return try {
             val prefs = context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             val stored = prefs.getString(KEY_DEFAULT_USER_NAME, null)
-            if (!stored.isNullOrBlank()) stored else (inMemoryUserName ?: DEFAULT_USER_NAME)
+            if (!stored.isNullOrBlank()) stored else inMemoryUserName
         } catch (_: Exception) {
-            inMemoryUserName ?: DEFAULT_USER_NAME
+            inMemoryUserName
         }
     }
 

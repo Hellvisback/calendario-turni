@@ -38,7 +38,7 @@ class ExternalAiPromptTest {
         assertTrue(promptWithUser.contains("rotationDays"))
 
         val promptWithoutUser = GeminiShiftMapper.generateExternalAiPrompt(null)
-        assertFalse(promptWithoutUser.contains("IMPORTANTE PER L'ASSEGNAZIONE DEL LAVORATORE"))
+        assertFalse(promptWithoutUser.contains("INDIVIDUAZIONE E ASSEGNAZIONE LAVORATORE"))
         assertTrue(promptWithoutUser.contains("shiftDefinitions"))
     }
 

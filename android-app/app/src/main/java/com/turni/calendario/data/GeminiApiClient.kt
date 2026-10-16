@@ -296,6 +296,17 @@ open class GeminiApiClient(
         return root.toString()
     }
 
+    private fun normalizeTimeString(raw: String, default: String): String {
+        val t = raw.trim().replace('.', ':')
+        if (t.matches(Regex("^\\d{1,2}:\\d{2}$"))) {
+            val parts = t.split(":")
+            val h = parts[0].padStart(2, '0')
+            val m = parts[1]
+            return "$h:$m"
+        }
+        return if (t.isNotBlank()) t else default
+    }
+
     /**
      * Parses the JSON string from Gemini into [GeminiShiftData].
      * Resiliently handles full REST envelopes (with "candidates"), inner JSON text blocks,
@@ -339,21 +350,34 @@ open class GeminiApiClient(
             return parsedInner.copy(rawJson = jsonString)
         }
 
-        // Parse shiftDefinitions (or fallback shiftHours)
+        // Parse shiftDefinitions with extensive fallback key aliases
         val shiftDefinitionsArray = root.optJSONArray("shiftDefinitions")
+            ?: root.optJSONArray("shift_definitions")
+            ?: root.optJSONArray("shifts")
+            ?: root.optJSONArray("turni")
             ?: root.optJSONArray("shiftHours")
+            ?: root.optJSONArray("definizioniTurni")
+            ?: root.optJSONArray("definizioni_turni")
             ?: JSONArray()
 
         val shiftDefinitions = mutableListOf<GeminiShiftDefinition>()
         for (i in 0 until shiftDefinitionsArray.length()) {
             val item = shiftDefinitionsArray.getJSONObject(i)
-            val code = item.optString("code", "").trim()
+            val code = item.optString("code", item.optString("sigla", item.optString("codice", item.optString("id", "")))).trim().uppercase()
             if (code.isBlank()) continue
-            val name = item.optString("name", code).trim()
-            val startTime = item.optString("startTime", "06:00").trim()
-            val endTime = item.optString("endTime", "13:36").trim()
-            val colorHex = if (item.has("colorHex") && !item.isNull("colorHex")) item.getString("colorHex") else null
-            val isReperibilita = item.optBoolean("isReperibilita", false)
+            val name = item.optString("name", item.optString("nome", item.optString("descrizione", item.optString("description", code)))).trim()
+            val rawStartTime = item.optString("startTime", item.optString("start_time", item.optString("inizio", item.optString("orarioInizio", item.optString("start", "06:00"))))).trim()
+            val rawEndTime = item.optString("endTime", item.optString("end_time", item.optString("fine", item.optString("orarioFine", item.optString("end", "13:36"))))).trim()
+            val startTime = normalizeTimeString(rawStartTime, "06:00")
+            val endTime = normalizeTimeString(rawEndTime, "13:36")
+            val colorHex = when {
+                item.has("colorHex") && !item.isNull("colorHex") -> item.getString("colorHex")
+                item.has("color_hex") && !item.isNull("color_hex") -> item.getString("color_hex")
+                item.has("colore") && !item.isNull("colore") -> item.getString("colore")
+                item.has("color") && !item.isNull("color") -> item.getString("color")
+                else -> null
+            }
+            val isReperibilita = item.optBoolean("isReperibilita", item.optBoolean("is_reperibilita", item.optBoolean("reperibilita", item.optBoolean("reperibile", false))))
 
             shiftDefinitions.add(
                 GeminiShiftDefinition(
@@ -367,33 +391,51 @@ open class GeminiApiClient(
             )
         }
 
-        // Parse squads (or fallback teams)
+        // Parse squads with extensive fallback aliases (teams, squadre, rotazioni, rotations, gruppi)
         val squadsArray = root.optJSONArray("squads")
             ?: root.optJSONArray("teams")
+            ?: root.optJSONArray("squadre")
+            ?: root.optJSONArray("rotazioni")
+            ?: root.optJSONArray("rotations")
+            ?: root.optJSONArray("gruppi")
             ?: JSONArray()
 
         val squads = mutableListOf<GeminiSquadRotation>()
         for (i in 0 until squadsArray.length()) {
             val item = squadsArray.getJSONObject(i)
-            val squadName = item.optString("squadName", item.optString("teamName", "Squadra ${i + 1}")).trim()
+            val squadName = item.optString("squadName", item.optString("squad_name", item.optString("teamName", item.optString("team_name", item.optString("nome", item.optString("nome_squadra", "Squadra ${i + 1}")))))).trim()
 
             val rotDaysArray = item.optJSONArray("rotationDays")
+                ?: item.optJSONArray("rotation_days")
                 ?: item.optJSONArray("rotationSequence")
+                ?: item.optJSONArray("sequenza")
+                ?: item.optJSONArray("turni")
+                ?: item.optJSONArray("giorni")
                 ?: JSONArray()
             val rotationDays = mutableListOf<String>()
             for (j in 0 until rotDaysArray.length()) {
-                val dayCode = rotDaysArray.getString(j).trim()
+                val rotVal = rotDaysArray.get(j)
+                val dayCode = if (rotVal is JSONObject) {
+                    rotVal.optString("code", rotVal.optString("sigla", rotVal.optString("turno", "")))
+                } else {
+                    rotVal.toString()
+                }.trim().uppercase()
                 if (dayCode.isNotEmpty()) {
                     rotationDays.add(dayCode)
                 }
             }
 
-            val empArray = item.optJSONArray("employees") ?: JSONArray()
+            val empArray = item.optJSONArray("employees")
+                ?: item.optJSONArray("dipendenti")
+                ?: item.optJSONArray("lavoratori")
+                ?: item.optJSONArray("membri")
+                ?: item.optJSONArray("colleghi")
+                ?: JSONArray()
             val employees = mutableListOf<String>()
             for (k in 0 until empArray.length()) {
                 val empVal = empArray.get(k)
                 val empName = if (empVal is JSONObject) {
-                    empVal.optString("name", "")
+                    empVal.optString("name", empVal.optString("nome", ""))
                 } else {
                     empVal.toString()
                 }.trim()
@@ -402,10 +444,13 @@ open class GeminiApiClient(
                 }
             }
 
+            val cycleDays = item.optInt("cycleDays", item.optInt("cycle_days", item.optInt("giorni_ciclo", rotationDays.size)))
+
             squads.add(
                 GeminiSquadRotation(
                     squadName = squadName,
                     rotationDays = rotationDays,
+                    cycleDays = if (cycleDays > 0) cycleDays else rotationDays.size,
                     employees = employees
                 )
             )

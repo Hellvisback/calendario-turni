@@ -46,10 +46,10 @@ class SecurePreferencesManagerTest {
     }
 
     @Test
-    fun testDefaultUserNameIsMarcoGraziani() {
-        // Without explicit user configuration, default must be "Marco Graziani"
+    fun testDefaultUserNameIsEmptyOrNull() {
+        // Without explicit user configuration, default must be null or empty
         val defaultName = SecurePreferencesManager.getUserName()
-        assertEquals("Marco Graziani", defaultName)
+        assertNull(defaultName)
     }
 
     @Test
@@ -74,7 +74,7 @@ class SecurePreferencesManagerTest {
         assertNull(SecurePreferencesManager.getApiKey())
         assertFalse(SecurePreferencesManager.hasApiKey())
         assertEquals("", SecurePreferencesManager.getMaskedApiKey())
-        assertEquals(SecurePreferencesManager.DEFAULT_USER_NAME, SecurePreferencesManager.getUserName())
+        assertNull(SecurePreferencesManager.getUserName())
     }
 
     // ==========================================
@@ -125,9 +125,9 @@ class SecurePreferencesManagerTest {
         SecurePreferencesManager.saveUserName(null, "Alessandro Del Piero")
         assertEquals("Alessandro Del Piero", SecurePreferencesManager.getUserName())
 
-        // Blank string resets to default worker name
+        // Blank string resets to default worker name (null/empty)
         SecurePreferencesManager.saveUserName(null, "   ")
-        assertEquals(SecurePreferencesManager.DEFAULT_USER_NAME, SecurePreferencesManager.getUserName())
+        assertNull(SecurePreferencesManager.getUserName())
     }
 
     @Test

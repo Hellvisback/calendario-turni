@@ -42,8 +42,8 @@ class GeminiNetworkAndSecurityTest {
 
     @Test
     fun testSecurePreferencesManager_UserNameLifecycle() {
-        // Defaults to "Marco Graziani"
-        assertEquals("Marco Graziani", SecurePreferencesManager.getUserName(null))
+        // Defaults to null or empty
+        assertNull(SecurePreferencesManager.getUserName(null))
 
         // Change username
         SecurePreferencesManager.saveUserName(null, "Mario Rossi")
@@ -51,7 +51,7 @@ class GeminiNetworkAndSecurityTest {
 
         // Clear resets to default
         SecurePreferencesManager.clear(null)
-        assertEquals("Marco Graziani", SecurePreferencesManager.getUserName(null))
+        assertNull(SecurePreferencesManager.getUserName(null))
     }
 
     @Test

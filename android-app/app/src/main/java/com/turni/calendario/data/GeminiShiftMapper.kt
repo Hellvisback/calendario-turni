@@ -446,9 +446,10 @@ object GeminiShiftMapper {
     // ==========================================
 
     /**
-     * Generates a ready-to-use multimodal prompt for external AI chatbots (ChatGPT, Claude, Gemini Web, DeepSeek).
-     * Includes instructions for structured JSON output matching the app's internal domain schema,
-     * along with dynamic employee assignment targeting if a user name is specified.
+     * Generates a ready-to-use universal prompt for external AI chatbots (ChatGPT, Claude, Gemini Web, DeepSeek, Copilot).
+     * Works universally for ANY company and sector: railways, hospitals/healthcare, security, manufacturing,
+     * transport, logistics, and corporate shift work.
+     * Instructs the AI strictly to return clean, valid JSON with shift definitions, team rotations, and employees.
      *
      * @param targetUserName Optional name of the user to automatically match with their assigned team.
      * @return Formatted multi-line prompt string.
@@ -456,20 +457,20 @@ object GeminiShiftMapper {
     fun generateExternalAiPrompt(targetUserName: String? = null): String {
         val cleanUser = targetUserName?.trim()
         val userInstruction = if (!cleanUser.isNullOrBlank()) {
-            "\nIMPORTANTE PER L'ASSEGNAZIONE DEL LAVORATORE:\n" +
-            "Il lavoratore per cui configurare l'applicazione si chiama: \"$cleanUser\".\n" +
-            "Cerca questo nominativo (o la combinazione Cognome Nome / Nome Cognome) all'interno del prospetto " +
-            "e assicurati di inserirlo nella lista \"employees\" della squadra a cui è effettivamente assegnato.\n"
+            "\nINDIVIDUAZIONE E ASSEGNAZIONE LAVORATORE:\n" +
+            "- Il lavoratore per cui configurare l'applicazione è: \"$cleanUser\".\n" +
+            "- Cerca questo nominativo (o la combinazione Cognome Nome / Nome Cognome) all'interno del prospetto " +
+            "e inseriscilo nell'array \"employees\" della squadra o riga a cui è effettivamente assegnato.\n"
         } else {
             ""
         }
 
         return """
-Sei un assistente esperto nell'analisi di prospetti turni ferroviari, ospedalieri e industriali (come il MOD. P.R. o prospetti tabellari di servizio).
-Analizza con estrema precisione l'immagine o documento allegato ed estrai TUTTI i dati dei turni nel formato JSON strutturato indicato di seguito.
-$userInstruction
-Rispondi ESCLUSIVAMENTE con un blocco JSON valido (senza testo introduttivo, commenti o saluti, e senza testo dopo il JSON):
+Sei un assistente specializzato nell'analisi di prospetti orari, tabelloni e calendari turni di lavoro per qualsiasi settore aziendale (sanità e ospedali, ferrovie e trasporti, sicurezza e vigilanza, industria e fabbriche, logistica, servizi).
 
+Il tuo compito è analizzare con la massima attenzione l'immagine, foto, screenshot o documento allegato ed estrarre tutti i turni di lavoro e le rotazioni cicliche delle squadre nel formato JSON specificato di seguito.
+$userInstruction
+SCHEMA JSON DI RISPOSTA (restituisci ESCLUSIVAMENTE questo JSON valido):
 ```json
 {
   "shiftDefinitions": [
@@ -524,29 +525,44 @@ Rispondi ESCLUSIVAMENTE con un blocco JSON valido (senza testo introduttivo, com
   ],
   "validityStart": "2026-01-01",
   "validityEnd": "2026-12-31",
-  "notes": "Note eventuali su reperibilità o particolarità"
+  "notes": "Eventuali note su orari o reperibilità"
 }
 ```
 
-REGOLE ESSENZIALI:
-1. In 'shiftDefinitions' includi tutti i codici orari trovati nella legenda del foglio con i rispettivi orari di inizio e fine nel formato HH:mm a 24 ore (es. 06:00, 13:36, 14:00, 21:36, 22:00, 05:36).
-2. Se un turno è di riposo, smonto o assenza (es. RIP, SMO, FER), usa 00:00 e 23:59 se non ci sono orari specifici.
-3. In 'squads' inserisci tutte le squadre/linee individuate, con la sequenza completa e ordinata dei codici turno ('rotationDays') e i nomi di tutti i colleghi appartenenti ('employees').
-4. Se il prospetto indica che certi turni hanno la reperibilità (es. sui pomeriggi 'P' o domeniche 'MD'), imposta 'isReperibilita': true.
-5. NON aggiungere alcun testo di contorno prima o dopo il codice JSON.
+ISTRUZIONI OPERATIVE ESSENZIALI:
+1. TABELLA DEI TURNI ("shiftDefinitions"):
+   - Estrai ogni codice turno presente nella legenda o nel prospetto (es. M, P, N, G, T, R, 1, 2, 3, SMO, RIP, FER).
+   - "code": sigla breve del turno in MAIUSCOLO.
+   - "name": nome descrittivo (es. "Mattina", "Pomeriggio", "Notte", "Smonto Notte", "Riposo", "Ferie").
+   - "startTime" ed "endTime": orari nel formato 24 ore "HH:mm" (es. 06:00, 14:00, 22:00, 13:36, 05:36). Per riposi o smonti senza orario imposta 00:00 e 23:59.
+   - "colorHex": un codice esadecimale appropriato per il colore (es. #38BDF8 azzurro per Mattina, #F59E0B arancione per Pomeriggio, #10B981 verde scuro o smeraldo per Notte, #8B5CF6 viola per Riposo).
+   - "isReperibilita": true se il turno prevede servizio di reperibilità/guardia, altrimenti false.
+
+2. SQUADRE E ROTAZIONI CICLICHE ("squads"):
+   - Individua tutte le squadre, gruppi, linee o turnisti (es. "Squadra 1", "Squadra A", "Turno Giallo", etc.).
+   - "rotationDays": la sequenza ordinata e ciclica dei codici turno (es. ["M", "P", "N", "SMO", "RIP"]).
+   - "cycleDays": durata del ciclo in giorni.
+   - "employees": tutti i nominativi dei lavoratori/colleghi assegnati a ciascuna squadra (se indicati nel foglio).
+
+3. REGOLE RIGOROSE DI GENERAZIONE:
+   - Rispondi ESCLUSIVAMENTE con il blocco JSON.
+   - NON inserire spiegazioni, introduzioni o saluti prima o dopo il blocco JSON.
+   - NON inserire commenti (niente // o /* */) nel codice JSON.
+   - Non lasciare virgole finali prima di parentesi graffe o quadre (evita trailing commas).
+   - Restituisci JSON valido e sintatticamente perfetto.
         """.trimIndent()
     }
 
     /**
-     * Resiliently extracts the JSON payload from text pasted by the user.
-     * Handles markdown code block fences (```json ... ``` or ``` ... ```),
-     * conversational text wrappers ("Ecco il JSON: { ... }"), and raw JSON.
+     * Resiliently extracts and cleans the JSON payload from text pasted by the user.
+     * Handles markdown code fences (```json ... ```), conversational text wrappers,
+     * comments (// and /* */), trailing commas, and curly quotes.
      *
      * @param pastedText Raw text pasted from external AI output.
      * @return Cleaned JSON substring ready for parsing.
      */
     fun extractJsonPayload(pastedText: String): String {
-        val trimmed = pastedText.trim()
+        var trimmed = pastedText.trim()
         if (trimmed.isEmpty()) return ""
 
         // 1. Check for markdown code fences with ```json ... ```
@@ -555,22 +571,46 @@ REGOLE ESSENZIALI:
         if (match != null) {
             val insideFence = match.groupValues[1].trim()
             if (insideFence.startsWith("{") && insideFence.endsWith("}")) {
-                return insideFence
+                trimmed = insideFence
+            } else {
+                val f = insideFence.indexOf('{')
+                val l = insideFence.lastIndexOf('}')
+                if (f != -1 && l != -1 && l > f) {
+                    trimmed = insideFence.substring(f, l + 1).trim()
+                }
+            }
+        } else {
+            // 2. Fallback to locating outermost curly brackets { ... }
+            val firstBrace = trimmed.indexOf('{')
+            val lastBrace = trimmed.lastIndexOf('}')
+            if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
+                trimmed = trimmed.substring(firstBrace, lastBrace + 1).trim()
             }
         }
 
-        // 2. Fallback to locating outermost curly brackets { ... }
-        val firstBrace = trimmed.indexOf('{')
-        val lastBrace = trimmed.lastIndexOf('}')
-        if (firstBrace != -1 && lastBrace != -1 && lastBrace > firstBrace) {
-            return trimmed.substring(firstBrace, lastBrace + 1).trim()
-        }
+        // 3. Remove single-line comments // ...
+        trimmed = trimmed.replace(Regex("(?m)^\\s*//.*$"), "")
+        trimmed = trimmed.replace(Regex("//.*$"), "")
 
-        return trimmed
+        // 4. Remove multi-line comments /* ... */
+        trimmed = trimmed.replace(Regex("/\\*[\\s\\S]*?\\*/"), "")
+
+        // 5. Remove trailing commas before } or ]
+        trimmed = trimmed.replace(Regex(",\\s*([}\\]])"), "$1")
+
+        // 6. Normalize curly quotes to standard double quotes
+        trimmed = trimmed
+            .replace("\u201C", "\"")
+            .replace("\u201D", "\"")
+            .replace("\u2018", "'")
+            .replace("\u2019", "'")
+
+        return trimmed.trim()
     }
 
     /**
      * Parses shifts and squads from text pasted from an external AI chatbot.
+     * Highly resilient to conversational text wrappers, markdown fences, comments, and syntax quirks.
      *
      * @param rawText Text copied from ChatGPT, Claude, Gemini or other AI.
      * @return Result containing [GeminiShiftData] or descriptive error.
@@ -580,15 +620,15 @@ REGOLE ESSENZIALI:
             throw IllegalArgumentException("Il testo inserito è vuoto. Incolla prima la risposta ottenuta dall'AI.")
         }
 
-        val jsonPayload = extractJsonPayload(rawText)
-        if (jsonPayload.isBlank() || !jsonPayload.startsWith("{") || !jsonPayload.endsWith("}")) {
+        val cleaned = extractJsonPayload(rawText)
+        if (cleaned.isBlank() || !cleaned.startsWith("{") || !cleaned.endsWith("}")) {
             throw IllegalArgumentException(
                 "Nessun blocco JSON valido individuato nel testo incollato. " +
                 "Assicurati di aver copiato la risposta completa dell'AI."
             )
         }
 
-        val data = GeminiApiClient.parseGeminiResponse(jsonPayload)
+        val data = GeminiApiClient.parseGeminiResponse(cleaned)
         if (data.shiftDefinitions.isEmpty() && data.squads.isEmpty()) {
             throw IllegalArgumentException(
                 "Il JSON incollato non contiene definizioni di turni o squadre. " +

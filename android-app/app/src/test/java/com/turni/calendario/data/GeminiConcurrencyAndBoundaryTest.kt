@@ -38,7 +38,7 @@ class GeminiConcurrencyAndBoundaryTest {
         assertNull(SecurePreferencesManager.getApiKey(null))
         assertFalse(SecurePreferencesManager.hasApiKey(null))
         assertEquals("", SecurePreferencesManager.getMaskedApiKey(null))
-        assertEquals("Marco Graziani", SecurePreferencesManager.getUserName(null))
+        assertNull(SecurePreferencesManager.getUserName(null))
 
         SecurePreferencesManager.saveApiKey(null, "AIzaSyTest123456789")
         assertEquals("AIzaSyTest123456789", SecurePreferencesManager.getApiKey(null))
@@ -51,7 +51,7 @@ class GeminiConcurrencyAndBoundaryTest {
         SecurePreferencesManager.clear(null)
         assertNull(SecurePreferencesManager.getApiKey(null))
         assertFalse(SecurePreferencesManager.hasApiKey(null))
-        assertEquals("Marco Graziani", SecurePreferencesManager.getUserName(null))
+        assertNull(SecurePreferencesManager.getUserName(null))
     }
 
     // ==========================================
@@ -81,9 +81,8 @@ class GeminiConcurrencyAndBoundaryTest {
 
         // User name blank
         SecurePreferencesManager.saveUserName(null, "   ")
-        assertEquals(
-            "Blank username should fall back to default",
-            "Marco Graziani",
+        assertNull(
+            "Blank username should fall back to default null",
             SecurePreferencesManager.getUserName(null)
         )
     }
@@ -243,8 +242,9 @@ class GeminiConcurrencyAndBoundaryTest {
                         assertNotNull(masked)
 
                         val user = SecurePreferencesManager.getUserName(null)
-                        assertNotNull("Username must always fall back to default or saved", user)
-                        assertTrue(user!!.isNotEmpty())
+                        if (user != null) {
+                            assertTrue(user.startsWith("User_"))
+                        }
 
                         // Invariants: getApiKey when non-null must be a valid key
                         val currentKey = SecurePreferencesManager.getApiKey(null)
