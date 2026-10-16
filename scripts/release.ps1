@@ -208,13 +208,22 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
 }
 
 # Verifica se il tag esiste già su GitHub
-$tagExists = gh release view $tag 2>&1
+$releaseAlreadyExists = $false
+try {
+    & gh release view $tag 2>$null | Out-Null
+    if ($LASTEXITCODE -eq 0) {
+        $releaseAlreadyExists = $true
+    }
+} catch {
+    $releaseAlreadyExists = $false
+}
+
 $assetsToUpload = @($apkLatest, $apkVersioned)
 if (Test-Path $zipExport) {
     $assetsToUpload += $zipExport
 }
 
-if ($LASTEXITCODE -eq 0) {
+if ($releaseAlreadyExists) {
     Write-Host "La release per il tag $tag esiste gia'. Aggiornamento asset con --clobber..." -ForegroundColor Yellow
     foreach ($asset in $assetsToUpload) {
         gh release upload $tag $asset --clobber
