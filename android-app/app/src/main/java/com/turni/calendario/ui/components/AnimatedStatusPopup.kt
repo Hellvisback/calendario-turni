@@ -100,7 +100,7 @@ fun AnimatedStatusPopup(
         }
     }
 
-    // Pre-calculated confetti particles
+    // Pre-calculated delicate sparkle particles
     val particles = remember(message) {
         if (message != null && type == PopupType.SUCCESS) {
             val colors = listOf(
@@ -108,19 +108,18 @@ fun AnimatedStatusPopup(
                 Color(0xFF10B981), // Mint
                 Color(0xFFF59E0B), // Gold
                 Color(0xFF38BDF8), // Cyan
-                Color(0xFFA855F7), // Purple
                 Color(0xFFFFFFFF)  // White Spark
             )
             val rnd = Random(message.hashCode())
-            List(45) {
+            List(18) {
                 ConfettiParticle(
-                    initialX = rnd.nextFloat(),
-                    initialY = 0.85f + rnd.nextFloat() * 0.1f,
+                    initialX = 0.2f + rnd.nextFloat() * 0.6f,
+                    initialY = 0.88f + rnd.nextFloat() * 0.08f,
                     angleRad = (rnd.nextFloat() * Math.PI).toFloat() + Math.PI.toFloat(), // Upward burst
-                    speed = 250f + rnd.nextFloat() * 400f,
+                    speed = 120f + rnd.nextFloat() * 180f,
                     color = colors[rnd.nextInt(colors.size)],
-                    size = 6f + rnd.nextFloat() * 8f,
-                    rotationSpeed = (rnd.nextFloat() - 0.5f) * 720f
+                    size = 2.5f + rnd.nextFloat() * 2.5f,
+                    rotationSpeed = 0f
                 )
             }
         } else emptyList()
@@ -169,20 +168,23 @@ fun AnimatedStatusPopup(
 
                 particles.forEach { pt ->
                     val distance = pt.speed * p
-                    val gravity = 380f * p * p
-                    val currentX = (pt.initialX * w) + (cos(pt.angleRad) * distance * 0.7f)
+                    val gravity = 120f * p * p
+                    val currentX = (pt.initialX * w) + (cos(pt.angleRad) * distance * 0.5f)
                     val currentY = (pt.initialY * h) + (sin(pt.angleRad) * distance) + gravity
 
-                    val alpha = (1f - p).coerceIn(0f, 1f)
-                    val rot = pt.rotationSpeed * p
+                    val alpha = ((1f - p) * (1f - p)).coerceIn(0f, 1f)
+                    val r = pt.size * density
 
-                    rotate(degrees = rot, pivot = Offset(currentX, currentY)) {
-                        drawRect(
-                            color = pt.color.copy(alpha = alpha),
-                            topLeft = Offset(currentX - pt.size / 2, currentY - pt.size / 2),
-                            size = Size(pt.size, pt.size * 0.65f)
-                        )
-                    }
+                    drawCircle(
+                        color = pt.color.copy(alpha = alpha * 0.35f),
+                        radius = r * 2.2f,
+                        center = Offset(currentX, currentY)
+                    )
+                    drawCircle(
+                        color = pt.color.copy(alpha = alpha),
+                        radius = r,
+                        center = Offset(currentX, currentY)
+                    )
                 }
             }
         }

@@ -238,14 +238,12 @@ data class ActionFeedback(
 )
 
 private data class PerimeterParticle(
-    val edge: Int,           // 0: Top, 1: Bottom, 2: Left, 3: Right, 4: Top-Left, 5: Top-Right, 6: Bottom-Left, 7: Bottom-Right
-    val edgeRatio: Float,    // 0f..1f along the edge
-    val burstDx: Float,      // outward delta X in dp
-    val burstDy: Float,      // outward delta Y in dp
-    val sizeDp: Float,       // size in dp
+    val perimeterFraction: Float, // 0f..1f evenly along the oval perimeter
+    val spreadDistanceDp: Float,  // outward propagation in dp (subtle: 12f..24f)
+    val spreadAngleOffset: Float, // slight angle dispersion in radians (+/- 14 deg)
+    val sizeDp: Float,           // micro-particle size (1.8f..3.2f dp)
     val color: Color,
-    val isDiamond: Boolean,  // variety: sparkling diamond or glowing circle
-    val rotationSpeed: Float // degrees to rotate over progress
+    val isDiamond: Boolean
 )
 
 @Composable
@@ -256,6 +254,7 @@ fun ParticleBurstEffect(
 ) {
     val animProgress = remember(triggerKey) { androidx.compose.animation.core.Animatable(0f) }
 
+    // 20 particelle raffinate ed eleganti: nessuna esplosione caotica o esagerata
     val particles = remember(triggerKey) {
         val random = java.util.Random(triggerKey)
         val palette = if (isDestructive) {
@@ -263,7 +262,6 @@ fun ParticleBurstEffect(
                 Color(0xFFEF4444), // Fiery red
                 Color(0xFFF43F5E), // Rose red
                 Color(0xFFFB923C), // Flame orange
-                Color(0xFFF97316), // Vivid orange
                 Color(0xFFFDE047), // Ember gold
                 Color(0xFFFFFFFF)  // Spark white
             )
@@ -273,61 +271,40 @@ fun ParticleBurstEffect(
                 Color(0xFF34D399), // Mint green
                 Color(0xFF38BDF8), // Cyan sky
                 Color(0xFFFBBF24), // Gold amber
-                Color(0xFFA855F7), // Neon purple
                 Color(0xFFFFFFFF)  // Diamond white
             )
         }
 
-        List(64) { index ->
-            val edge = when {
-                index < 22 -> 0  // Bordo superiore (top)
-                index < 44 -> 1  // Bordo inferiore (bottom)
-                index < 50 -> 2  // Bordo sinistro (left)
-                index < 56 -> 3  // Bordo destro (right)
-                else -> 4 + (index - 56) // 8 angoli / splay diagonali
-            }
-            val edgeRatio = random.nextFloat()
-            val spreadX = (random.nextFloat() - 0.5f) * 36f
-            val spreadY = (random.nextFloat() - 0.5f) * 36f
+        List(20) { index ->
+            val baseFraction = index.toFloat() / 20f
+            val jitter = (random.nextFloat() - 0.5f) * 0.035f
+            val perimeterFraction = (baseFraction + jitter + 1f) % 1f
 
-            // Vettori di velocità strettamente diretti all'ESTERNO della card (nessuna particella verso il centro)
-            val (dx, dy) = when (edge) {
-                0 -> Pair(spreadX, -(35f + random.nextFloat() * 65f))       // Top: eruzione verso l'alto
-                1 -> Pair(spreadX, +(35f + random.nextFloat() * 65f))       // Bottom: eruzione verso il basso
-                2 -> Pair(-(40f + random.nextFloat() * 70f), spreadY)       // Left: eruzione verso sinistra
-                3 -> Pair(+(40f + random.nextFloat() * 70f), spreadY)       // Right: eruzione verso destra
-                4, 5 -> Pair(-(35f + random.nextFloat() * 45f), -(35f + random.nextFloat() * 45f)) // Angolo Top-Left
-                6, 7 -> Pair(+(35f + random.nextFloat() * 45f), -(35f + random.nextFloat() * 45f)) // Angolo Top-Right
-                8, 9 -> Pair(-(35f + random.nextFloat() * 45f), +(35f + random.nextFloat() * 45f)) // Angolo Bottom-Left
-                else -> Pair(+(35f + random.nextFloat() * 45f), +(35f + random.nextFloat() * 45f)) // Angolo Bottom-Right
-            }
-
-            val size = 2.6f + random.nextFloat() * 4.2f
+            val spreadDist = 12f + random.nextFloat() * 14f // Espansione sobria (12-26 dp)
+            val angleOffset = (random.nextFloat() - 0.5f) * 0.45f // Dispersione angolare lieve (+/- 13°)
+            val size = 2.0f + random.nextFloat() * 1.3f // Micro-favilla sottile
             val color = palette[random.nextInt(palette.size)]
             val isDiamond = random.nextBoolean()
-            val rotSpeed = (random.nextFloat() - 0.5f) * 620f
 
             PerimeterParticle(
-                edge = edge,
-                edgeRatio = edgeRatio,
-                burstDx = dx,
-                burstDy = dy,
+                perimeterFraction = perimeterFraction,
+                spreadDistanceDp = spreadDist,
+                spreadAngleOffset = angleOffset,
                 sizeDp = size,
                 color = color,
-                isDiamond = isDiamond,
-                rotationSpeed = rotSpeed
+                isDiamond = isDiamond
             )
         }
     }
 
     LaunchedEffect(triggerKey) {
         animProgress.snapTo(0f)
-        // Ritardo di assestamento: attende che il pop-up scenda dall'alto prima di far eruttare le particelle
-        kotlinx.coroutines.delay(240L)
+        // Attende che l'ovale sceso dall'alto si sia stabilizzato
+        kotlinx.coroutines.delay(180L)
         animProgress.animateTo(
             targetValue = 1f,
             animationSpec = androidx.compose.animation.core.tween(
-                durationMillis = 950,
+                durationMillis = 680,
                 easing = androidx.compose.animation.core.FastOutSlowInEasing
             )
         )
@@ -338,29 +315,61 @@ fun ParticleBurstEffect(
         androidx.compose.foundation.Canvas(modifier = modifier.fillMaxSize()) {
             val w = size.width
             val h = size.height
-            val alpha = (1f - progress).coerceIn(0f, 1f)
+            if (w <= 0f || h <= 0f) return@Canvas
+
+            // Raggio esatto della capsula / ovale: h / 2f
+            val r = (h / 2f).coerceAtMost(w / 2f)
+            val straightL = (w - 2f * r).coerceAtLeast(0f)
+            val arcL = (Math.PI.toFloat() * r)
+            val totalPerimeter = 2f * straightL + 2f * arcL
+            if (totalPerimeter <= 0f) return@Canvas
+
+            val alpha = ((1f - progress) * (1f - progress)).coerceIn(0f, 1f)
 
             particles.forEach { p ->
-                val startX = when (p.edge) {
-                    0, 1 -> p.edgeRatio * w
-                    2 -> 0f
-                    3 -> w
-                    4, 5, 8, 9 -> 0f
-                    else -> w
-                }
-                val startY = when (p.edge) {
-                    0 -> 0f
-                    1 -> h
-                    2, 3 -> p.edgeRatio * h
-                    4, 5, 6, 7 -> 0f
-                    else -> h
+                val s = p.perimeterFraction * totalPerimeter
+
+                // Calcolo esatto di punto di origine (startX, startY) e versore normale lungo il contorno dell'ovale
+                val (startX, startY, normalAngle) = when {
+                    // 1. Tratto rettilineo superiore (da r a w - r)
+                    s < straightL -> {
+                        val x = r + s
+                        val y = 0f
+                        Triple(x, y, -Math.PI.toFloat() / 2f)
+                    }
+                    // 2. Arco destro (semicerchio da -pi/2 a +pi/2)
+                    s < (straightL + arcL) -> {
+                        val arcS = s - straightL
+                        val theta = -Math.PI.toFloat() / 2f + (arcS / arcL) * Math.PI.toFloat()
+                        val x = (w - r) + r * kotlin.math.cos(theta)
+                        val y = r + r * kotlin.math.sin(theta)
+                        Triple(x, y, theta)
+                    }
+                    // 3. Tratto rettilineo inferiore (da w - r a r)
+                    s < (2f * straightL + arcL) -> {
+                        val bottomS = s - (straightL + arcL)
+                        val x = (w - r) - bottomS
+                        val y = h
+                        Triple(x, y, Math.PI.toFloat() / 2f)
+                    }
+                    // 4. Arco sinistro (semicerchio da +pi/2 a +3pi/2)
+                    else -> {
+                        val arcS = s - (2f * straightL + arcL)
+                        val theta = Math.PI.toFloat() / 2f + (arcS / arcL) * Math.PI.toFloat()
+                        val x = r + r * kotlin.math.cos(theta)
+                        val y = r + r * kotlin.math.sin(theta)
+                        Triple(x, y, theta)
+                    }
                 }
 
-                val currentX = startX + (p.burstDx * progress * density)
-                val currentY = startY + (p.burstDy * progress * density)
-                val particleRadius = (p.sizeDp * (1f - progress * 0.35f) * density).coerceAtLeast(1.2f)
+                // Espansione radiale lungo la normale curvilinea dell'ovale
+                val finalAngle = normalAngle + p.spreadAngleOffset
+                val distPx = p.spreadDistanceDp * progress * density
+                val currentX = startX + kotlin.math.cos(finalAngle) * distPx
+                val currentY = startY + kotlin.math.sin(finalAngle) * distPx
+                val particleRadius = (p.sizeDp * (1f - progress * 0.35f) * density).coerceAtLeast(1.0f)
 
-                // Glow halo morbido attorno a ciascuna particella per brillantezza visiva
+                // Glow halo circolare morbido ed etereo
                 drawCircle(
                     color = p.color.copy(alpha = alpha * 0.35f),
                     radius = particleRadius * 2.2f,
@@ -368,7 +377,6 @@ fun ParticleBurstEffect(
                 )
 
                 if (p.isDiamond) {
-                    // Sparkling diamond / stella rotante
                     val half = particleRadius
                     val diamondPath = androidx.compose.ui.graphics.Path().apply {
                         moveTo(currentX, currentY - half)
@@ -379,7 +387,6 @@ fun ParticleBurstEffect(
                     }
                     drawPath(path = diamondPath, color = p.color.copy(alpha = alpha))
                 } else {
-                    // Favilla circolare splendente
                     drawCircle(
                         color = p.color.copy(alpha = alpha),
                         radius = particleRadius,
@@ -469,7 +476,7 @@ fun MagicalActionFeedbackHUD(
             ) {
                 // Pillola compatta ed elegante: definisce la dimensione naturale stabile
                 Surface(
-                    shape = RoundedCornerShape(24.dp),
+                    shape = CircleShape,
                     color = containerBg,
                     border = androidx.compose.foundation.BorderStroke(
                         1.2.dp,

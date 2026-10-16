@@ -167,7 +167,7 @@ fun ReportScreen() {
                             modifier = Modifier.bouncyClickable { periodMode = ReportPeriodMode.PERSONALIZZATO }
                         ) {
                             Text(
-                                text = "Personalizzato",
+                                text = "Pers.",
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = if (periodMode == ReportPeriodMode.PERSONALIZZATO) ObsidianBackground else TextSecondary,
@@ -305,7 +305,7 @@ fun ReportScreen() {
                         }
 
                         Text(
-                            text = if (periodMode == ReportPeriodMode.ANNO) "Anno Intero $selectedYear"
+                            text = if (periodMode == ReportPeriodMode.ANNO) "$selectedYear"
                             else "${selectedMonth.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.titlecase(Locale.ITALIAN) }} ${selectedMonth.year}",
                             fontSize = 15.sp,
                             fontWeight = FontWeight.ExtraBold,
