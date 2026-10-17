@@ -91,6 +91,7 @@ fun ReportScreen() {
         modifier = Modifier
             .fillMaxSize()
             .background(ObsidianBackground)
+            .statusBarsPadding()
             .verticalScroll(rememberScrollState())
             .padding(horizontal = 14.dp, vertical = 8.dp)
     ) {

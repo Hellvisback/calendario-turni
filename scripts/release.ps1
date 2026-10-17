@@ -176,16 +176,13 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
     $ReleaseNotes = @"
 ### Calendario Turni v$newName (Build $newCode)
 
-#### Pacchetto di Aggiornamento:
-- **``app-release-v$newName.apk``**: Pacchetto APK pronto per l'installazione su Android.
+#### Pacchetto di Aggiornamento Ufficiale:
+- **``app-release-v$newName.apk``**: Pacchetto APK unico e versionato pronto per l'installazione su Android.
 
-#### Novità di questa versione:
-- **Badge Trasferta con Riquadro ad Alto Contrasto**: L'indicatore di trasferta (✈) torna al verde vivo iconico, racchiuso in un elegante riquadro scuro Obsidian con bordo smeraldo che stacca su qualsiasi colore di sfondo (mattina, pomeriggio, notte, ecc.).
-- **Nuova Scheda Sveglie Programmate (30 giorni)**: Schermata dedicata accessibile scorrendo a destra o tramite tab, con elenco completo di tutte le sveglie calcolate per i turni futuri.
-- **Raggruppamento e Collasso Intelligente per Settimana**: Le sveglie sono raggruppate per settimana con pulsante toggle di gruppo, freccia di espansione/collasso animata e switch on/off per ogni singolo turno.
-- **Pulsanti Rapidi Comodi**: Aggiunti pulsanti "Disattiva Tutte" (stacca tutte le sveglie ed elimina subito l'allarme di sistema), "Attiva Tutte" e "Collassa/Espandi".
-- **Verifica e Concessione Permessi Android**: Rilevamento automatico e pulsanti rapidi per autorizzare Sveglie Esatte (Android 12+) e Notifiche (Android 13+).
-- **Architettura Single-Alarm Garantita**: Zero rischio di ritrovarsi con centinaia di sveglie aperte nel telefono: viene programmata solo una sveglia alla volta a livello di sistema operativo.
+#### Novità e Miglioramenti di questa versione:
+- **Layout Dinamico Turni Multipli nelle Celle**: Rimossa la compressione verticale forzata dei turni multipli nello stesso giorno. Le celle del calendario misurano ora l'altezza effettiva disponibile con logica reattiva a vincoli (`BoxWithConstraints`), mostrando tutti i turni a grandezza piena e perfettamente leggibile in base allo spazio reale dello schermo. Solo se i turni eccedono l'altezza disponibile, i turni in eccesso vengono racchiusi nell'indicatore compatto a pallini colorati per non scendere mai sotto la cella.
+- **Trasferta Sempre Verde ad Alto Contrasto Garantito**: L'icona dell'aeroplano (✈) torna al verde brillante iconico (`#34D399`), inserita in una capsula protettiva scura Obsidian (`#04060A`) con micro-bordo smeraldo (`#10B981`). Questo garantisce uno stacco e un contrasto visivo assoluto su qualsiasi colore di turno (mattina blu, pomeriggio arancio, notte viola, giornaliero verde, riposo, ferie o assenza di turni).
+- **Armonizzazione Schermo Intero e Rimozione Bordini**: Eliminato il contrasto e i bordini di separazione in alto e in basso allo schermo. Status bar e navigation bar sono ora perfettamente unificate alla tonalità profonda Obsidian (`#080B11`), con gestione automatica dell'area di sicurezza (`statusBarsPadding`) per evitare qualsiasi sovrapposizione con l'orologio di sistema, la fotocamera o il notch.
 "@
 }
 

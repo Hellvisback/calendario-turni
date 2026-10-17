@@ -15,6 +15,17 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
+        // Sincronizza lo sfondo delle barre di sistema (status bar e navigation bar) con ObsidianBackground (#080B11)
+        // per rimuovere qualsiasi bordino o contrasto ai bordi superiore e inferiore dello schermo
+        val obsidianDarkColor = android.graphics.Color.parseColor("#080B11")
+        window.statusBarColor = obsidianDarkColor
+        window.navigationBarColor = obsidianDarkColor
+        window.decorView.setBackgroundColor(obsidianDarkColor)
+        androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
+            isAppearanceLightStatusBars = false
+            isAppearanceLightNavigationBars = false
+        }
+
         // Aggancia l'ascoltatore per aggiornamento in tempo reale dei Widget
         ShiftRepository.onDataChangedListener = {
             WidgetUpdateManager.notifyWidgetsChanged(applicationContext)

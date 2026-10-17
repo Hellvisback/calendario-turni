@@ -224,6 +224,7 @@ fun TurniModelsScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
         // Top Header: "Modelli & Turni"

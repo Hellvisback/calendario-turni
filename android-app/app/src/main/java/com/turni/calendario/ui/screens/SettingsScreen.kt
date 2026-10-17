@@ -96,12 +96,13 @@ fun SettingsScreen(
     } else {
         Box(modifier = Modifier.fillMaxSize()) {
         Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
+            modifier = Modifier
+                .fillMaxSize()
+                .background(ObsidianBackground)
+                .statusBarsPadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp, vertical = 12.dp)
+        ) {
         // Hero Header: Profilo Utente & App (Obsidian Surface)
         Card(
             modifier = Modifier.fillMaxWidth(),

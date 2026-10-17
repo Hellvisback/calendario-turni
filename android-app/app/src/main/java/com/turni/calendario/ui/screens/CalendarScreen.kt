@@ -157,6 +157,7 @@ fun CalendarScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .statusBarsPadding()
                 .padding(horizontal = 8.dp, vertical = 2.dp)
         ) {
             // 1. Header Superiore Rigido e Stabile: Navigazione Mese + Pill Anno + Tasti Rapidi (Altezza bloccata a 48dp fissa)
@@ -1366,22 +1367,36 @@ fun DayCellView(
                         }
                     }
 
-                    // Fallback per Trasferta su giorno orfano senza turni
+                    // Fallback per Trasferta su giorno orfano senza turni (con riquadro nero puro ad alto contrasto e aereo verde brillante)
                     if (hasTrasferta && shifts.isEmpty()) {
                         Box(
                             modifier = Modifier
-                                .clip(RoundedCornerShape(2.5.dp))
-                                .background(Color(0xFF10B981).copy(alpha = 0.25f))
-                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
+                                .clip(RoundedCornerShape(3.dp))
+                                .background(Color(0xFF04060A))
+                                .border(0.8.dp, Color(0xFF10B981), RoundedCornerShape(3.dp))
+                                .padding(horizontal = 2.dp, vertical = 0.5.dp)
                         ) {
-                            Text(
-                                text = "TR",
-                                fontSize = 5.8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color(0xFF34D399),
-                                maxLines = 1,
-                                softWrap = false
-                            )
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(1.dp)
+                            ) {
+                                Text(
+                                    text = "✈",
+                                    fontSize = 7.5.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color(0xFF34D399),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                                Text(
+                                    text = "TR",
+                                    fontSize = 6.2.sp,
+                                    fontWeight = FontWeight.ExtraBold,
+                                    color = Color(0xFF34D399),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
                         }
                     }
 
@@ -1405,186 +1420,211 @@ fun DayCellView(
                 ShiftRepository.getShiftDefinition(paintShiftId)
             } else null
 
-            if (isRangeStart && isEraser) {
-                // Indicatore visivo chiaro per cancellazione periodo sul giorno iniziale
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth(0.94f)
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(Color(0xFFEF4444).copy(alpha = 0.25f))
-                        .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.85f), RoundedCornerShape(4.dp))
-                        .padding(vertical = 1.2.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Text(
-                        text = "🧹 CANCELLA",
-                        fontSize = 7.2.sp,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        maxLines = 1,
-                        softWrap = false
-                    )
-                }
-            } else if (paintDef != null) {
-                // Anteprima immediata del turno selezionato sul giorno iniziale della selezione periodo!
-                ShiftCellBadge(
-                    def = paintDef,
-                    isModified = false,
-                    customStartTime = null,
-                    compactMode = false
-                )
-            } else if (isRotationPreviewActive) {
-                val previewSeqIdx = (daysBetween % activeRotation!!.daySequence.size.coerceAtLeast(1)).toInt()
-                val previewDefId = activeRotation.daySequence.getOrNull(previewSeqIdx)
-                val previewDef = previewDefId?.let { ShiftRepository.getShiftDefinition(it) }
-                if (previewDef != null) {
-                    if (isCycleStart) {
-                        // Giorno 1 d'inizio rotazione: BADGE COMPLETO E VIVIDO!
-                        ShiftCellBadge(
-                            def = previewDef,
-                            isModified = false,
-                            customStartTime = null,
-                            compactMode = false
-                        )
-                    } else {
-                        // Giorni successivi del ciclo: anteprima chiara e ad alto contrasto
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.94f)
-                                .clip(RoundedCornerShape(4.dp))
-                                .background(previewDef.color.copy(alpha = 0.35f))
-                                .border(1.dp, previewDef.color.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
-                                .padding(vertical = 1.2.dp),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = getCompactShiftCode(previewDef.id, previewDef.shortCode),
-                                fontSize = 8.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    }
-                }
-            } else if (shifts.isNotEmpty()) {
-                // Calcola in anticipo se c'è un ex-turno di rotazione da visualizzare
-                val primaryShift = shifts.firstOrNull()
-                val origShiftId = primaryShift?.originalShiftDefId
-                val origDefName = if (primaryShift != null && primaryShift.isModifiedFromRotation && origShiftId != null && origShiftId != primaryShift.shiftDefId) {
-                    val origDef = ShiftRepository.getShiftDefinition(origShiftId)
-                    origDef?.let { getCompactShiftCode(it.id, it.shortCode) }
-                } else null
-                val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift && origDefName != null
+            BoxWithConstraints(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                contentAlignment = Alignment.TopCenter
+            ) {
+                val availableHeight = maxHeight
 
-                // Con badge a due righe ultra-compatti (trasferta inline e straordinario nell'orario),
-                // possiamo mostrare fino a 3 turni per intero senza overflow né compenetrazioni!
-                val displayCount = minOf(shifts.size, 3)
-                val displayShifts = shifts.take(displayCount)
-                val isMulti = shifts.size >= 2
-                val isSuperCompact = shifts.size >= 3
-                displayShifts.forEachIndexed { idx, shift ->
-                    val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
-                    if (def != null) {
-                        if (idx > 0) {
-                            Spacer(modifier = Modifier.height(if (isSuperCompact) 0.6.dp else 1.dp))
-                        }
-                        // Calcola straordinario e trasferta specifici di questo turno (o fallback da dayExtra per giorno a singolo turno)
-                        val shiftTrasferta = shift.isTrasferta || (shifts.size == 1 && dayExtra.isTrasferta)
-                        val shiftOtHours = if (shift.overtimeHours > 0f) {
-                            shift.overtimeHours
-                        } else if (shifts.size == 1 && dayExtra.overtimeHours > 0f) {
-                            dayExtra.overtimeHours
-                        } else {
-                            0f
-                        }
-
-                        ShiftCellBadge(
-                            def = def,
-                            isModified = shift.isModifiedFromRotation,
-                            customStartTime = shift.customStartTime,
-                            compactMode = isMulti,
-                            superCompactMode = isSuperCompact,
-                            isTrasferta = shiftTrasferta,
-                            overtimeHours = shiftOtHours
-                        )
-                    }
-                }
-
-                // Se ci sono altri turni inseriti oltre lo spazio, indicatore dinamico con pallini colorati per ciascun turno eccedente
-                val overflowShifts = shifts.drop(displayCount)
-                if (overflowShifts.isNotEmpty()) {
-                    Spacer(modifier = Modifier.height(1.dp))
-                    val overflowBg = when (overflowShifts.size) {
-                        1 -> Color(0xFF38BDF8).copy(alpha = 0.22f)
-                        2 -> Color(0xFFF59E0B).copy(alpha = 0.25f)
-                        else -> Color(0xFFEC4899).copy(alpha = 0.30f)
-                    }
-                    val overflowBorder = when (overflowShifts.size) {
-                        1 -> Color(0xFF38BDF8).copy(alpha = 0.5f)
-                        2 -> Color(0xFFF59E0B).copy(alpha = 0.5f)
-                        else -> Color(0xFFEC4899).copy(alpha = 0.6f)
-                    }
-                    Row(
+                if (isRangeStart && isEraser) {
+                    // Indicatore visivo chiaro per cancellazione periodo sul giorno iniziale
+                    Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(overflowBg)
-                            .border(0.6.dp, overflowBorder, RoundedCornerShape(3.dp))
-                            .padding(horizontal = 3.dp, vertical = 0.8.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            .fillMaxWidth(0.94f)
+                            .clip(RoundedCornerShape(4.dp))
+                            .background(Color(0xFFEF4444).copy(alpha = 0.25f))
+                            .border(1.dp, Color(0xFFEF4444).copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                            .padding(vertical = 1.2.dp),
+                        contentAlignment = Alignment.Center
                     ) {
-                        overflowShifts.take(3).forEach { extraShift ->
-                            val extraDef = ShiftRepository.getShiftDefinition(extraShift.shiftDefId)
-                            val dotColor = extraDef?.color ?: ObsidianPrimary
-                            Box(
-                                modifier = Modifier
-                                    .size(4.5.dp)
-                                    .clip(CircleShape)
-                                    .background(dotColor)
-                            )
-                        }
-                        if (overflowShifts.size > 3) {
-                            Text(
-                                text = "+${overflowShifts.size - 3}",
-                                fontSize = 6.sp,
-                                fontWeight = FontWeight.Black,
-                                color = Color.White
-                            )
-                        }
-                    }
-                }
-
-                // Indicatore ex-turno sempre garantito nella cella (con pallino discreto e codice turno)
-                if (showExBadge && origDefName != null) {
-                    Spacer(modifier = Modifier.height(1.dp))
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(horizontal = 1.dp)
-                            .clip(RoundedCornerShape(3.dp))
-                            .background(Color(0xFF1E2638).copy(alpha = 0.95f))
-                            .border(0.5.dp, Color(0xFF475569).copy(alpha = 0.7f), RoundedCornerShape(3.dp))
-                            .padding(horizontal = 2.dp, vertical = 0.6.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.Center
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(4.dp)
-                                .clip(CircleShape)
-                                .background(Color(0xFF94A3B8))
-                        )
-                        Spacer(modifier = Modifier.width(2.5.dp))
                         Text(
-                            text = "ex $origDefName",
-                            fontSize = 6.2.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color(0xFF94A3B8),
+                            text = "🧹 CANCELLA",
+                            fontSize = 7.2.sp,
+                            fontWeight = FontWeight.Black,
+                            color = Color.White,
                             maxLines = 1,
                             softWrap = false
                         )
+                    }
+                } else if (paintDef != null) {
+                    // Anteprima immediata del turno selezionato sul giorno iniziale della selezione periodo!
+                    ShiftCellBadge(
+                        def = paintDef,
+                        isModified = false,
+                        customStartTime = null
+                    )
+                } else if (isRotationPreviewActive) {
+                    val previewSeqIdx = (daysBetween % activeRotation!!.daySequence.size.coerceAtLeast(1)).toInt()
+                    val previewDefId = activeRotation.daySequence.getOrNull(previewSeqIdx)
+                    val previewDef = previewDefId?.let { ShiftRepository.getShiftDefinition(it) }
+                    if (previewDef != null) {
+                        if (isCycleStart) {
+                            // Giorno 1 d'inizio rotazione: BADGE COMPLETO E VIVIDO!
+                            ShiftCellBadge(
+                                def = previewDef,
+                                isModified = false,
+                                customStartTime = null
+                            )
+                        } else {
+                            // Giorni successivi del ciclo: anteprima chiara e ad alto contrasto
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(0.94f)
+                                    .clip(RoundedCornerShape(4.dp))
+                                    .background(previewDef.color.copy(alpha = 0.35f))
+                                    .border(1.dp, previewDef.color.copy(alpha = 0.85f), RoundedCornerShape(4.dp))
+                                    .padding(vertical = 1.2.dp),
+                                contentAlignment = Alignment.Center
+                            ) {
+                                Text(
+                                    text = getCompactShiftCode(previewDef.id, previewDef.shortCode),
+                                    fontSize = 8.sp,
+                                    fontWeight = FontWeight.Black,
+                                    color = Color.White,
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
+                    }
+                } else if (shifts.isNotEmpty()) {
+                    // Calcola in anticipo se c'è un ex-turno di rotazione da visualizzare
+                    val primaryShift = shifts.firstOrNull()
+                    val origShiftId = primaryShift?.originalShiftDefId
+                    val origDefName = if (primaryShift != null && primaryShift.isModifiedFromRotation && origShiftId != null && origShiftId != primaryShift.shiftDefId) {
+                        val origDef = ShiftRepository.getShiftDefinition(origShiftId)
+                        origDef?.let { getCompactShiftCode(it.id, it.shortCode) }
+                    } else null
+                    val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift && origDefName != null
+
+                    // Calcolo dinamico dell'altezza reale disponibile per i turni dentro la cella:
+                    // Riserva spazio per l'indicatore ex-turno e calcola quanti badge a piena dimensione (26.5dp) entrano.
+                    val exBadgeHeight = if (showExBadge && origDefName != null) 14.dp else 0.dp
+                    val spaceForShifts = (availableHeight - exBadgeHeight).coerceAtLeast(0.dp)
+
+                    val badgeSlotHeight = 26.5.dp
+                    val overflowBarHeight = 12.dp
+
+                    val totalShifts = shifts.size
+                    val maxFittingWithoutOverflow = (spaceForShifts / badgeSlotHeight).toInt().coerceAtLeast(0)
+
+                    val displayCount = when {
+                        totalShifts <= maxFittingWithoutOverflow -> totalShifts
+                        else -> {
+                            // C'è overflow: riserviamo spazio per la riga dei pallini colorati per non scendere mai sotto la cella
+                            val fittingWithOverflow = ((spaceForShifts - overflowBarHeight) / badgeSlotHeight).toInt()
+                            fittingWithOverflow.coerceIn(1, totalShifts)
+                        }
+                    }
+
+                    val displayShifts = shifts.take(displayCount)
+                    val overflowShifts = shifts.drop(displayCount)
+
+                    Column(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        displayShifts.forEachIndexed { idx, shift ->
+                            val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
+                            if (def != null) {
+                                if (idx > 0) {
+                                    Spacer(modifier = Modifier.height(1.5.dp))
+                                }
+                                val shiftTrasferta = shift.isTrasferta || (shifts.size == 1 && dayExtra.isTrasferta)
+                                val shiftOtHours = if (shift.overtimeHours > 0f) {
+                                    shift.overtimeHours
+                                } else if (shifts.size == 1 && dayExtra.overtimeHours > 0f) {
+                                    dayExtra.overtimeHours
+                                } else {
+                                    0f
+                                }
+
+                                ShiftCellBadge(
+                                    def = def,
+                                    isModified = shift.isModifiedFromRotation,
+                                    customStartTime = shift.customStartTime,
+                                    isTrasferta = shiftTrasferta,
+                                    overtimeHours = shiftOtHours
+                                )
+                            }
+                        }
+
+                        // Se ci sono altri turni inseriti oltre lo spazio effettivo, indicatore dinamico con pallini colorati
+                        if (overflowShifts.isNotEmpty()) {
+                            Spacer(modifier = Modifier.height(1.5.dp))
+                            val overflowBg = when (overflowShifts.size) {
+                                1 -> Color(0xFF38BDF8).copy(alpha = 0.22f)
+                                2 -> Color(0xFFF59E0B).copy(alpha = 0.25f)
+                                else -> Color(0xFFEC4899).copy(alpha = 0.30f)
+                            }
+                            val overflowBorder = when (overflowShifts.size) {
+                                1 -> Color(0xFF38BDF8).copy(alpha = 0.5f)
+                                2 -> Color(0xFFF59E0B).copy(alpha = 0.5f)
+                                else -> Color(0xFFEC4899).copy(alpha = 0.6f)
+                            }
+                            Row(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(overflowBg)
+                                    .border(0.6.dp, overflowBorder, RoundedCornerShape(3.dp))
+                                    .padding(horizontal = 3.dp, vertical = 0.8.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(2.dp)
+                            ) {
+                                overflowShifts.take(3).forEach { extraShift ->
+                                    val extraDef = ShiftRepository.getShiftDefinition(extraShift.shiftDefId)
+                                    val dotColor = extraDef?.color ?: ObsidianPrimary
+                                    Box(
+                                        modifier = Modifier
+                                            .size(4.5.dp)
+                                            .clip(CircleShape)
+                                            .background(dotColor)
+                                    )
+                                }
+                                if (overflowShifts.size > 3) {
+                                    Text(
+                                        text = "+${overflowShifts.size - 3}",
+                                        fontSize = 6.sp,
+                                        fontWeight = FontWeight.Black,
+                                        color = Color.White
+                                    )
+                                }
+                            }
+                        }
+
+                        // Indicatore ex-turno garantito nella cella (con pallino discreto e codice turno)
+                        if (showExBadge && origDefName != null) {
+                            Spacer(modifier = Modifier.height(1.5.dp))
+                            Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(horizontal = 1.dp)
+                                    .clip(RoundedCornerShape(3.dp))
+                                    .background(Color(0xFF1E2638).copy(alpha = 0.95f))
+                                    .border(0.5.dp, Color(0xFF475569).copy(alpha = 0.7f), RoundedCornerShape(3.dp))
+                                    .padding(horizontal = 2.dp, vertical = 0.6.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.Center
+                            ) {
+                                Box(
+                                    modifier = Modifier
+                                        .size(4.dp)
+                                        .clip(CircleShape)
+                                        .background(Color(0xFF94A3B8))
+                                )
+                                Spacer(modifier = Modifier.width(2.5.dp))
+                                Text(
+                                    text = "ex $origDefName",
+                                    fontSize = 6.2.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = Color(0xFF94A3B8),
+                                    maxLines = 1,
+                                    softWrap = false
+                                )
+                            }
+                        }
                     }
                 }
             }
@@ -1627,31 +1667,12 @@ fun ShiftCellBadge(
     val code = getCompactShiftCode(def.id, def.shortCode)
     val timeText = customStartTime ?: if (def.isAllDay) "TG" else def.startTime
 
-    val headerVerticalPadding = when {
-        superCompactMode -> 0.4.dp
-        compactMode -> 0.6.dp
-        else -> 1.2.dp
-    }
-    val codeFontSize = when {
-        superCompactMode -> 6.8.sp
-        compactMode -> 7.4.sp
-        else -> 8.5.sp
-    }
-    val planeFontSize = when {
-        superCompactMode -> 6.0.sp
-        compactMode -> 6.6.sp
-        else -> 7.8.sp
-    }
-    val timeVerticalPadding = when {
-        superCompactMode -> 0.3.dp
-        compactMode -> 0.5.dp
-        else -> 0.9.dp
-    }
-    val timeFontSize = when {
-        superCompactMode -> 5.8.sp
-        compactMode -> 6.4.sp
-        else -> 7.5.sp
-    }
+    // Dimensioni uniformi, solide e ben proporzionate (nessun appiattimento artificiale!)
+    val headerVerticalPadding = 1.2.dp
+    val codeFontSize = 8.2.sp
+    val planeFontSize = 8.2.sp
+    val timeVerticalPadding = 0.8.dp
+    val timeFontSize = 7.2.sp
 
     Column(
         modifier = Modifier
@@ -1685,14 +1706,14 @@ fun ShiftCellBadge(
                     softWrap = false
                 )
                 if (isTrasferta) {
-                    Spacer(modifier = Modifier.width(2.dp))
-                    // Riquadro ad alto contrasto per la trasferta (sempre verde, stacca su qualsiasi colore di sfondo)
+                    Spacer(modifier = Modifier.width(2.5.dp))
+                    // Riquadro ad altissimo contrasto per la trasferta (aeroplano sempre verde vivo #34D399, sfondo nero puro #04060A che stacca su qualsiasi colore di turno)
                     Box(
                         modifier = Modifier
-                            .clip(RoundedCornerShape(2.5.dp))
-                            .background(Color(0xE6080B11))
-                            .border(0.6.dp, Color(0xFF10B981), RoundedCornerShape(2.5.dp))
-                            .padding(horizontal = 1.8.dp, vertical = 0.2.dp),
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(Color(0xFF04060A))
+                            .border(0.8.dp, Color(0xFF10B981), RoundedCornerShape(3.dp))
+                            .padding(horizontal = 2.dp, vertical = 0.4.dp),
                         contentAlignment = Alignment.Center
                     ) {
                         Text(
