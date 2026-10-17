@@ -45,6 +45,11 @@ class GeminiShiftMapperStressTest {
         ShiftRepository.calendarShifts.clear()
         ShiftRepository.dayExtraInfo.clear()
         SecurePreferencesManager.clear()
+        ShiftRepository.shiftDefinitions.clear()
+        ShiftRepository.shiftDefinitions.addAll(originalDefinitionsSnapshot)
+        ShiftRepository.rotations.clear()
+        ShiftRepository.rotations.addAll(originalRotationsSnapshot)
+        ShiftRepository.setDefaultRotation(originalDefaultRotation)
     }
 
     @After
@@ -444,16 +449,18 @@ class GeminiShiftMapperStressTest {
                         )
                         assertNotNull(res)
 
-                        // 2. Perform concurrent reads on repository
-                        val rot = ShiftRepository.rotations.find { it.id == "rotazione_squadra_concurrency_$t" }
-                        if (rot != null) {
-                            val planned = ShiftRepository.getPlannedRotationShift(
-                                ShiftRepository.cycleReferenceDate.plusDays(op.toLong()),
-                                rot.id
-                            )
-                            assertNotNull(planned)
-                            // read shift definitions without throwing
-                            ShiftRepository.shiftDefinitions.toList()
+                        // 2. Perform concurrent reads on repository safely
+                        synchronized(ShiftRepository) {
+                            val rot = ShiftRepository.rotations.find { it.id == "rotazione_squadra_concurrency_$t" }
+                            if (rot != null) {
+                                val planned = ShiftRepository.getPlannedRotationShift(
+                                    ShiftRepository.cycleReferenceDate.plusDays(op.toLong()),
+                                    rot.id
+                                )
+                                assertNotNull(planned)
+                                // read shift definitions without throwing
+                                ShiftRepository.shiftDefinitions.toList()
+                            }
                         }
                     }
                 } catch (e: Throwable) {

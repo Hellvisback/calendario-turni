@@ -1206,37 +1206,38 @@ fun DayCellView(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(2.dp)
                 ) {
+                    val dayNumberShape = RoundedCornerShape(6.5.dp)
                     val isSelectedToday = isToday && isSelected
                     if (isRangeStart) {
                         Surface(
-                            shape = RoundedCornerShape(percent = 50),
+                            shape = dayNumberShape,
                             color = if (isEraser) Color(0xFFEF4444) else Color(0xFF0284C7)
                         ) {
                             Text(
                                 text = "${dayInfo.date.dayOfMonth} ${if (isEraser) "🧹" else "📍"}",
-                                fontSize = 9.5.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.8.dp)
                             )
                         }
                     } else if (isCycleStart) {
                         Surface(
-                            shape = RoundedCornerShape(percent = 50),
+                            shape = dayNumberShape,
                             color = Color(0xFF0284C7)
                         ) {
                             Text(
                                 text = "${dayInfo.date.dayOfMonth} 🔄1",
-                                fontSize = 9.5.sp,
+                                fontSize = 9.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.White,
-                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.8.dp)
                             )
                         }
                     } else if (isSelectedToday) {
-                        // Oggi E Selezionato: pillola bianca con anello azzurro coordinato, nessun contatto con il bordo esterno
+                        // Oggi E Selezionato: pillola bianca con anello azzurro coordinato, concentrico alla cella
                         Surface(
-                            shape = RoundedCornerShape(percent = 50),
+                            shape = dayNumberShape,
                             color = Color.White,
                             border = androidx.compose.foundation.BorderStroke(1.2.dp, ObsidianPrimary)
                         ) {
@@ -1245,13 +1246,13 @@ fun DayCellView(
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.Black,
                                 color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.8.dp)
                             )
                         }
                     } else if (isToday) {
-                        // Solo Oggi: pillola bianca pura con testo nero marcato
+                        // Solo Oggi: pillola bianca pura con testo nero marcato concentrica
                         Surface(
-                            shape = RoundedCornerShape(percent = 50),
+                            shape = dayNumberShape,
                             color = Color.White
                         ) {
                             Text(
@@ -1259,13 +1260,13 @@ fun DayCellView(
                                 fontSize = 10.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
                                 color = Color.Black,
-                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.8.dp)
                             )
                         }
                     } else if (isSelected) {
-                        // Solo Selezionato: pillola azzurro brillante ObsidianPrimary con testo scuro nitido
+                        // Solo Selezionato: pillola azzurro brillante ObsidianPrimary con testo scuro nitido concentrica
                         Surface(
-                            shape = RoundedCornerShape(percent = 50),
+                            shape = dayNumberShape,
                             color = ObsidianPrimary
                         ) {
                             Text(
@@ -1273,7 +1274,7 @@ fun DayCellView(
                                 fontSize = 10.sp,
                                 fontWeight = FontWeight.Black,
                                 color = ObsidianBackground,
-                                modifier = Modifier.padding(horizontal = 4.5.dp, vertical = 0.8.dp)
+                                modifier = Modifier.padding(horizontal = 4.dp, vertical = 0.8.dp)
                             )
                         }
                     } else {
@@ -1477,15 +1478,17 @@ fun DayCellView(
                 } else null
                 val showExBadge = ShiftRepository.appPreferences.showExShifts && !dayExtra.hideExShift && origDefName != null
 
-                // Se c'è un ex-turno, mostra massimo 2 badge di turno interi e usa pallini compatti per i rimanenti, per garantire che l'ex-turno sia sempre visibile
-                val displayCount = if (showExBadge) minOf(shifts.size, 2) else minOf(shifts.size, 3)
+                // Con badge a due righe ultra-compatti (trasferta inline e straordinario nell'orario),
+                // possiamo mostrare fino a 3 turni per intero senza overflow né compenetrazioni!
+                val displayCount = minOf(shifts.size, 3)
                 val displayShifts = shifts.take(displayCount)
                 val isMulti = shifts.size >= 2
+                val isSuperCompact = shifts.size >= 3
                 displayShifts.forEachIndexed { idx, shift ->
                     val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
                     if (def != null) {
                         if (idx > 0) {
-                            Spacer(modifier = Modifier.height(1.dp))
+                            Spacer(modifier = Modifier.height(if (isSuperCompact) 0.6.dp else 1.dp))
                         }
                         // Calcola straordinario e trasferta specifici di questo turno (o fallback da dayExtra per giorno a singolo turno)
                         val shiftTrasferta = shift.isTrasferta || (shifts.size == 1 && dayExtra.isTrasferta)
@@ -1502,6 +1505,7 @@ fun DayCellView(
                             isModified = shift.isModifiedFromRotation,
                             customStartTime = shift.customStartTime,
                             compactMode = isMulti,
+                            superCompactMode = isSuperCompact,
                             isTrasferta = shiftTrasferta,
                             overtimeHours = shiftOtHours
                         )
@@ -1616,84 +1620,77 @@ fun ShiftCellBadge(
     isModified: Boolean = false,
     customStartTime: String? = null,
     compactMode: Boolean = false,
+    superCompactMode: Boolean = false,
     isTrasferta: Boolean = false,
     overtimeHours: Float = 0f
 ) {
     val code = getCompactShiftCode(def.id, def.shortCode)
     val timeText = customStartTime ?: if (def.isAllDay) "TG" else def.startTime
 
+    val headerVerticalPadding = when {
+        superCompactMode -> 0.4.dp
+        compactMode -> 0.6.dp
+        else -> 1.2.dp
+    }
+    val codeFontSize = when {
+        superCompactMode -> 6.8.sp
+        compactMode -> 7.4.sp
+        else -> 8.5.sp
+    }
+    val planeFontSize = when {
+        superCompactMode -> 6.0.sp
+        compactMode -> 6.6.sp
+        else -> 7.8.sp
+    }
+    val timeVerticalPadding = when {
+        superCompactMode -> 0.3.dp
+        compactMode -> 0.5.dp
+        else -> 0.9.dp
+    }
+    val timeFontSize = when {
+        superCompactMode -> 5.8.sp
+        compactMode -> 6.4.sp
+        else -> 7.5.sp
+    }
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.5.dp))
+            .clip(RoundedCornerShape(4.dp))
             .background(ObsidianBackground.copy(alpha = 0.85f))
             .border(
                 width = if (isModified) 1.dp else 0.dp,
                 color = if (isModified) Color(0xFFF59E0B) else Color.Transparent,
-                shape = RoundedCornerShape(4.5.dp)
+                shape = RoundedCornerShape(4.dp)
             )
     ) {
-        // 1. Header con colore identificativo del turno (solido e vivido)
+        // 1. Header con colore identificativo del turno + Codice centrato + Trasferta a destra del turno scritto
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(def.color)
-                .padding(vertical = if (compactMode) 0.6.dp else 1.2.dp),
+                .padding(vertical = headerVerticalPadding, horizontal = 2.dp),
             contentAlignment = Alignment.Center
         ) {
-            Text(
-                text = code,
-                fontSize = if (compactMode) 7.2.sp else 8.5.sp,
-                fontWeight = FontWeight.ExtraBold,
-                color = Color.White,
-                maxLines = 1,
-                softWrap = false
-            )
-        }
-
-        // 2. Orario di inizio o indicazione giornata (TG)
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = if (compactMode) 0.4.dp else 0.9.dp),
-            contentAlignment = Alignment.Center
-        ) {
-            Text(
-                text = timeText,
-                fontSize = if (compactMode) 6.4.sp else 7.5.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = TextSecondary,
-                maxLines = 1,
-                softWrap = false
-            )
-        }
-
-        // 3. Estensione Trasferta: fascia semitrasparente verde smeraldo integrata sotto il turno
-        if (isTrasferta) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF10B981).copy(alpha = 0.22f))
-                    .drawBehind {
-                        drawLine(
-                            color = Color(0xFF10B981).copy(alpha = 0.50f),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, 0f),
-                            strokeWidth = 0.8.dp.toPx()
-                        )
-                    }
-                    .padding(vertical = if (compactMode) 0.5.dp else 0.8.dp),
-                contentAlignment = Alignment.Center
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center
-                ) {
+                Text(
+                    text = code,
+                    fontSize = codeFontSize,
+                    fontWeight = FontWeight.ExtraBold,
+                    color = Color.White,
+                    maxLines = 1,
+                    softWrap = false
+                )
+                if (isTrasferta) {
+                    Spacer(modifier = Modifier.width(1.5.dp))
                     Text(
-                        text = if (compactMode) "✈ TR" else "✈ TRF",
-                        fontSize = if (compactMode) 6.sp else 6.8.sp,
+                        text = "✈",
+                        fontSize = planeFontSize,
                         fontWeight = FontWeight.Black,
-                        color = Color(0xFF34D399),
+                        color = Color.White,
                         maxLines = 1,
                         softWrap = false
                     )
@@ -1701,33 +1698,47 @@ fun ShiftCellBadge(
             }
         }
 
-        // 4. Estensione Straordinario: fascia semitrasparente blu cielo con ore di straordinario
-        if (overtimeHours > 0f) {
-            val otText = if (overtimeHours % 1f == 0f) {
-                "+${overtimeHours.toInt()}h"
+        // 2. Orario di inizio ed eventuale straordinario inline integrato (senza allungare la cella)
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = timeVerticalPadding, horizontal = 1.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            if (overtimeHours > 0f) {
+                val otText = if (overtimeHours % 1f == 0f) {
+                    "+${overtimeHours.toInt()}h"
+                } else {
+                    "+${String.format(Locale.US, "%.1f", overtimeHours)}h"
+                }
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = timeText,
+                        fontSize = timeFontSize,
+                        fontWeight = FontWeight.SemiBold,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                    Spacer(modifier = Modifier.width(1.5.dp))
+                    Text(
+                        text = otText,
+                        fontSize = timeFontSize,
+                        fontWeight = FontWeight.ExtraBold,
+                        color = Color(0xFF38BDF8),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
             } else {
-                "+${String.format(Locale.US, "%.1f", overtimeHours)}h"
-            }
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(Color(0xFF0284C7).copy(alpha = 0.25f))
-                    .drawBehind {
-                        drawLine(
-                            color = Color(0xFF38BDF8).copy(alpha = 0.50f),
-                            start = Offset(0f, 0f),
-                            end = Offset(size.width, 0f),
-                            strokeWidth = 0.8.dp.toPx()
-                        )
-                    }
-                    .padding(vertical = if (compactMode) 0.5.dp else 0.8.dp),
-                contentAlignment = Alignment.Center
-            ) {
                 Text(
-                    text = otText,
-                    fontSize = if (compactMode) 6.2.sp else 7.2.sp,
-                    fontWeight = FontWeight.Black,
-                    color = Color(0xFF38BDF8),
+                    text = timeText,
+                    fontSize = timeFontSize,
+                    fontWeight = FontWeight.SemiBold,
+                    color = TextSecondary,
                     maxLines = 1,
                     softWrap = false
                 )

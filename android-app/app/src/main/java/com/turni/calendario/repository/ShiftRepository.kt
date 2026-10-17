@@ -394,7 +394,7 @@ object ShiftRepository {
      * Calcola il turno pianificato dal ciclo di rotazione per una data specifica.
      * Gestisce dinamicamente qualsiasi lunghezza del ciclo (7, 14, 21, 28, 35 gg, ecc.).
      */
-    fun getPlannedRotationShift(date: LocalDate, rotationId: String = activeRotationId): ShiftDefinition? {
+    fun getPlannedRotationShift(date: LocalDate, rotationId: String = activeRotationId): ShiftDefinition? = synchronized(this) {
         val targetId = if (rotationId.isNotBlank()) rotationId else (activeRotationId.ifEmpty { "turno_a" })
         val rot = rotations.firstOrNull { it.id == targetId } ?: rotations.firstOrNull() ?: return null
         if (rot.daySequence.isEmpty()) return null
