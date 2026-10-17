@@ -33,6 +33,8 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -1313,34 +1315,18 @@ fun DayCellView(
 
                 val hasTrasferta = (shifts.any { it.isTrasferta } || dayExtra.isTrasferta) && dayInfo.isCurrentMonth
                 val hasReperibilita = isOnCall && dayInfo.isCurrentMonth
-                val hasOvertime = dayExtra.overtimeHours > 0f && dayInfo.isCurrentMonth
-                val hasNotes = dayExtra.notes.isNotBlank() && dayInfo.isCurrentMonth
+                val hasOvertime = (shifts.any { it.overtimeHours > 0f } || dayExtra.overtimeHours > 0f) && dayInfo.isCurrentMonth
+                val hasNotes = (dayExtra.notes.isNotBlank() || shifts.any { it.notes.isNotBlank() }) && dayInfo.isCurrentMonth
 
-                // Indicatori compatti di Reperibilità, Straordinari, Trasferta e Note (sempre allineati senza scombinare la larghezza)
+                // Indicatori in alto a destra: Reperibilità e Note sono sempre visibili;
+                // Straordinari e Trasferta sono invece integrati direttamente nel turno specifico,
+                // apparendo nell'header SOLO in caso eccezionale di giornata senza turni (shifts.isEmpty()).
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(1.dp),
                     modifier = Modifier.weight(1f, fill = false)
                 ) {
-                    if (hasOvertime) {
-                        Box(
-                            modifier = Modifier
-                                .clip(RoundedCornerShape(2.5.dp))
-                                .background(ObsidianPrimary.copy(alpha = 0.25f))
-                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
-                        ) {
-                            val otText = if (dayExtra.overtimeHours % 1f == 0f) "${dayExtra.overtimeHours.toInt()}h" else "${String.format(java.util.Locale.US, "%.1f", dayExtra.overtimeHours)}h"
-                            Text(
-                                text = "+$otText",
-                                fontSize = 5.8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = ObsidianPrimary,
-                                maxLines = 1,
-                                softWrap = false
-                            )
-                        }
-                    }
-
+                    // Reperibilità Software / Stagionale (badge ambra)
                     if (hasReperibilita) {
                         Box(
                             modifier = Modifier
@@ -1359,7 +1345,28 @@ fun DayCellView(
                         }
                     }
 
-                    if (hasTrasferta) {
+                    // Fallback per Straordinario su giorno orfano senza turni
+                    if (hasOvertime && shifts.isEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(2.5.dp))
+                                .background(ObsidianPrimary.copy(alpha = 0.25f))
+                                .padding(horizontal = 1.5.dp, vertical = 0.5.dp)
+                        ) {
+                            val otText = if (dayExtra.overtimeHours % 1f == 0f) "${dayExtra.overtimeHours.toInt()}h" else "${String.format(java.util.Locale.US, "%.1f", dayExtra.overtimeHours)}h"
+                            Text(
+                                text = "+$otText",
+                                fontSize = 5.8.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ObsidianPrimary,
+                                maxLines = 1,
+                                softWrap = false
+                            )
+                        }
+                    }
+
+                    // Fallback per Trasferta su giorno orfano senza turni
+                    if (hasTrasferta && shifts.isEmpty()) {
                         Box(
                             modifier = Modifier
                                 .clip(RoundedCornerShape(2.5.dp))
@@ -1377,6 +1384,7 @@ fun DayCellView(
                         }
                     }
 
+                    // Indicatore Note (pallino azzurro)
                     if (hasNotes) {
                         Box(
                             modifier = Modifier
@@ -1479,11 +1487,23 @@ fun DayCellView(
                         if (idx > 0) {
                             Spacer(modifier = Modifier.height(1.dp))
                         }
+                        // Calcola straordinario e trasferta specifici di questo turno (o fallback da dayExtra per giorno a singolo turno)
+                        val shiftTrasferta = shift.isTrasferta || (shifts.size == 1 && dayExtra.isTrasferta)
+                        val shiftOtHours = if (shift.overtimeHours > 0f) {
+                            shift.overtimeHours
+                        } else if (shifts.size == 1 && dayExtra.overtimeHours > 0f) {
+                            dayExtra.overtimeHours
+                        } else {
+                            0f
+                        }
+
                         ShiftCellBadge(
                             def = def,
                             isModified = shift.isModifiedFromRotation,
                             customStartTime = shift.customStartTime,
-                            compactMode = isMulti
+                            compactMode = isMulti,
+                            isTrasferta = shiftTrasferta,
+                            overtimeHours = shiftOtHours
                         )
                     }
                 }
@@ -1595,49 +1615,123 @@ fun ShiftCellBadge(
     def: ShiftDefinition,
     isModified: Boolean = false,
     customStartTime: String? = null,
-    compactMode: Boolean = false
+    compactMode: Boolean = false,
+    isTrasferta: Boolean = false,
+    overtimeHours: Float = 0f
 ) {
     val code = getCompactShiftCode(def.id, def.shortCode)
     val timeText = customStartTime ?: if (def.isAllDay) "TG" else def.startTime
+
     Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(4.dp))
-            .background(ObsidianBackground.copy(alpha = 0.8f))
+            .clip(RoundedCornerShape(4.5.dp))
+            .background(ObsidianBackground.copy(alpha = 0.85f))
             .border(
                 width = if (isModified) 1.dp else 0.dp,
                 color = if (isModified) Color(0xFFF59E0B) else Color.Transparent,
-                shape = RoundedCornerShape(4.dp)
+                shape = RoundedCornerShape(4.5.dp)
             )
     ) {
+        // 1. Header con colore identificativo del turno (solido e vivido)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(def.color)
-                .padding(vertical = if (compactMode) 0.8.dp else 1.2.dp),
+                .padding(vertical = if (compactMode) 0.6.dp else 1.2.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = code,
-                fontSize = if (compactMode) 7.5.sp else 8.5.sp,
+                fontSize = if (compactMode) 7.2.sp else 8.5.sp,
                 fontWeight = FontWeight.ExtraBold,
                 color = Color.White,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false
             )
         }
+
+        // 2. Orario di inizio o indicazione giornata (TG)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = if (compactMode) 0.5.dp else 1.dp),
+                .padding(vertical = if (compactMode) 0.4.dp else 0.9.dp),
             contentAlignment = Alignment.Center
         ) {
             Text(
                 text = timeText,
-                fontSize = if (compactMode) 6.8.sp else 7.5.sp,
+                fontSize = if (compactMode) 6.4.sp else 7.5.sp,
                 fontWeight = FontWeight.SemiBold,
                 color = TextSecondary,
-                maxLines = 1
+                maxLines = 1,
+                softWrap = false
             )
+        }
+
+        // 3. Estensione Trasferta: fascia semitrasparente verde smeraldo integrata sotto il turno
+        if (isTrasferta) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF10B981).copy(alpha = 0.22f))
+                    .drawBehind {
+                        drawLine(
+                            color = Color(0xFF10B981).copy(alpha = 0.50f),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 0.8.dp.toPx()
+                        )
+                    }
+                    .padding(vertical = if (compactMode) 0.5.dp else 0.8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center
+                ) {
+                    Text(
+                        text = if (compactMode) "✈ TR" else "✈ TRF",
+                        fontSize = if (compactMode) 6.sp else 6.8.sp,
+                        fontWeight = FontWeight.Black,
+                        color = Color(0xFF34D399),
+                        maxLines = 1,
+                        softWrap = false
+                    )
+                }
+            }
+        }
+
+        // 4. Estensione Straordinario: fascia semitrasparente blu cielo con ore di straordinario
+        if (overtimeHours > 0f) {
+            val otText = if (overtimeHours % 1f == 0f) {
+                "+${overtimeHours.toInt()}h"
+            } else {
+                "+${String.format(Locale.US, "%.1f", overtimeHours)}h"
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(Color(0xFF0284C7).copy(alpha = 0.25f))
+                    .drawBehind {
+                        drawLine(
+                            color = Color(0xFF38BDF8).copy(alpha = 0.50f),
+                            start = Offset(0f, 0f),
+                            end = Offset(size.width, 0f),
+                            strokeWidth = 0.8.dp.toPx()
+                        )
+                    }
+                    .padding(vertical = if (compactMode) 0.5.dp else 0.8.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Text(
+                    text = otText,
+                    fontSize = if (compactMode) 6.2.sp else 7.2.sp,
+                    fontWeight = FontWeight.Black,
+                    color = Color(0xFF38BDF8),
+                    maxLines = 1,
+                    softWrap = false
+                )
+            }
         }
     }
 }

@@ -859,6 +859,7 @@ object ShiftRepository {
         val anyTrasferta = newList.any { it.isTrasferta }
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(isTrasferta = anyTrasferta)
+        notifyDataChanged()
     }
 
     fun setShiftTrasferta(date: LocalDate, assignedShiftId: String, isTrasferta: Boolean) {
@@ -876,6 +877,7 @@ object ShiftRepository {
         val anyTrasferta = newList.any { it.isTrasferta }
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(isTrasferta = anyTrasferta)
+        notifyDataChanged()
     }
 
     fun setShiftOvertime(date: LocalDate, assignedShiftId: String, overtimeHours: Float) {
@@ -894,6 +896,7 @@ object ShiftRepository {
         val totalOvertime = newList.sumOf { it.overtimeHours.toDouble() }.toFloat()
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(overtimeHours = totalOvertime)
+        notifyDataChanged()
     }
 
     fun setShiftActualEndTime(date: LocalDate, assignedShiftId: String, actualEndTime: String?, overtimeHours: Float) {
@@ -918,6 +921,7 @@ object ShiftRepository {
         val totalOvertime = newList.sumOf { it.overtimeHours.toDouble() }.toFloat()
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(overtimeHours = totalOvertime, actualEndTime = actualEndTime)
+        notifyDataChanged()
     }
 
     fun setShiftNotes(date: LocalDate, assignedShiftId: String, notes: String) {
@@ -932,6 +936,7 @@ object ShiftRepository {
             }
         }
         calendarShifts[date] = newList
+        notifyDataChanged()
     }
 
     fun setShiftExtraDetails(
@@ -970,6 +975,7 @@ object ShiftRepository {
             actualEndTime = actualEndTime,
             isTrasferta = anyTrasferta
         )
+        notifyDataChanged()
     }
 
     fun hasTrasfertaForDate(date: LocalDate): Boolean {
