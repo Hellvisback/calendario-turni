@@ -1685,15 +1685,25 @@ fun ShiftCellBadge(
                     softWrap = false
                 )
                 if (isTrasferta) {
-                    Spacer(modifier = Modifier.width(1.5.dp))
-                    Text(
-                        text = "✈",
-                        fontSize = planeFontSize,
-                        fontWeight = FontWeight.Black,
-                        color = Color.White,
-                        maxLines = 1,
-                        softWrap = false
-                    )
+                    Spacer(modifier = Modifier.width(2.dp))
+                    // Riquadro ad alto contrasto per la trasferta (sempre verde, stacca su qualsiasi colore di sfondo)
+                    Box(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(2.5.dp))
+                            .background(Color(0xE6080B11))
+                            .border(0.6.dp, Color(0xFF10B981), RoundedCornerShape(2.5.dp))
+                            .padding(horizontal = 1.8.dp, vertical = 0.2.dp),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Text(
+                            text = "✈",
+                            fontSize = planeFontSize,
+                            fontWeight = FontWeight.Black,
+                            color = Color(0xFF34D399),
+                            maxLines = 1,
+                            softWrap = false
+                        )
+                    }
                 }
             }
         }

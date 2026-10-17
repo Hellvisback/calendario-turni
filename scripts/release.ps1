@@ -147,25 +147,10 @@ if (-not (Test-Path $apkSource)) {
     exit 1
 }
 
-# 4. Preparazione asset APK
-Write-Host "[4/7] Preparazione asset APK per il rilascio..." -ForegroundColor Yellow
-Copy-Item $apkSource $apkLatest -Force
+# 4. Preparazione asset APK (ESCLUSIVAMENTE il pacchetto versionato per GitHub)
+Write-Host "[4/7] Preparazione asset APK versionato..." -ForegroundColor Yellow
 Copy-Item $apkSource $apkVersioned -Force
-Write-Host "Creati:" -ForegroundColor Gray
-Write-Host " - $apkLatest" -ForegroundColor Gray
-Write-Host " - $apkVersioned" -ForegroundColor Gray
-
-# Esportazione pacchetto ZIP se lo script esiste
-$zipExport = "$projectRoot\Calendario_Turni_Antigravity_Export.zip"
-if (Test-Path $exportScript) {
-    Write-Host "Aggiornamento pacchetto ZIP di esportazione..." -ForegroundColor Gray
-    try {
-        & powershell -ExecutionPolicy Bypass -File $exportScript | Out-Null
-        Write-Host "Pacchetto ZIP aggiornato." -ForegroundColor Green
-    } catch {
-        Write-Warning "Impossibile aggiornare ZIP di esportazione: $_"
-    }
-}
+Write-Host "Creato pacchetto release: $apkVersioned" -ForegroundColor Green
 
 # 5. Git commit e push
 Write-Host "[5/7] Sincronizzazione modifiche su Git (main)..." -ForegroundColor Yellow
@@ -191,19 +176,16 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
     $ReleaseNotes = @"
 ### Calendario Turni v$newName (Build $newCode)
 
-#### Pacchetti di Installazione Disponibili:
-- **``app-release-latest.apk``**: Pacchetto APK principale sempre aggiornato all'ultima versione.
-- **``app-release-v$newName.apk``**: Pacchetto APK specifico per questa release.
-- **``Calendario_Turni_Antigravity_Export.zip``**: Archivio completo di codice sorgente e risorse.
+#### Pacchetto di Aggiornamento:
+- **``app-release-v$newName.apk``**: Pacchetto APK pronto per l'installazione su Android.
 
-#### Novità Principali:
-- **Suite Widget Android (Material 3 Expressive)**: 4 AppWidget per schermata home (Panorama 14 giorni, Oggi e Domani, Striscia Settimanale, Mini Griglia Mensile) con pulsanti di navigazione interattivi mese/settimana e contrasto visivo ottimizzato.
-- **Importazione Turni Multimodale con Gemini AI & Prompt Maker**: Riconoscimento istantaneo di tabelloni orari da immagini e PDF, con sanificazione avanzata del testo e assistente prompt per AI esterne.
-- **Straordinari Dettagliati per Singolo Turno**: Calcolo ore effettive di stacco e straordinario da timbratura reale e inserimento manuale con incrementi rapidi ±15min e ±1h.
-- **Sveglie Intelligenti & Reperibilità Preventiva**: Sveglia serale il giorno precedente per i turni in reperibilità e allarmi sincronizzati con i turni.
-- **Gestione Lavoro Universale & Allegato CCNL in PDF**: Personalizzazione profili di lavoro semplici o avanzati, e visualizzatore integrato per il proprio contratto collettivo.
-- **Esportazione PDF ad Alta Risoluzione**: Prospetto mensile ed annuale rinnovato in stile SuperShift, esportabile e condivisibile in un tap.
-- **Sincronizzazione Google Calendar**: Gestione sicura con cooldown di sicurezza e overlay animato dal basso.
+#### Novità di questa versione:
+- **Badge Trasferta con Riquadro ad Alto Contrasto**: L'indicatore di trasferta (✈) torna al verde vivo iconico, racchiuso in un elegante riquadro scuro Obsidian con bordo smeraldo che stacca su qualsiasi colore di sfondo (mattina, pomeriggio, notte, ecc.).
+- **Nuova Scheda Sveglie Programmate (30 giorni)**: Schermata dedicata accessibile scorrendo a destra o tramite tab, con elenco completo di tutte le sveglie calcolate per i turni futuri.
+- **Raggruppamento e Collasso Intelligente per Settimana**: Le sveglie sono raggruppate per settimana con pulsante toggle di gruppo, freccia di espansione/collasso animata e switch on/off per ogni singolo turno.
+- **Pulsanti Rapidi Comodi**: Aggiunti pulsanti "Disattiva Tutte" (stacca tutte le sveglie ed elimina subito l'allarme di sistema), "Attiva Tutte" e "Collassa/Espandi".
+- **Verifica e Concessione Permessi Android**: Rilevamento automatico e pulsanti rapidi per autorizzare Sveglie Esatte (Android 12+) e Notifiche (Android 13+).
+- **Architettura Single-Alarm Garantita**: Zero rischio di ritrovarsi con centinaia di sveglie aperte nel telefono: viene programmata solo una sveglia alla volta a livello di sistema operativo.
 "@
 }
 
@@ -218,10 +200,8 @@ try {
     $releaseAlreadyExists = $false
 }
 
-$assetsToUpload = @($apkLatest, $apkVersioned)
-if (Test-Path $zipExport) {
-    $assetsToUpload += $zipExport
-}
+# Carica ESCLUSIVAMENTE il singolo APK versionato (senza latest.apk né zip)
+$assetsToUpload = @($apkVersioned)
 
 if ($releaseAlreadyExists) {
     Write-Host "La release per il tag $tag esiste gia'. Aggiornamento asset con --clobber..." -ForegroundColor Yellow
@@ -251,7 +231,7 @@ if (-not $SkipDeviceInstall -and (Test-Path $adbPath)) {
     $devicesOutput = & $adbPath devices
     if ($devicesOutput -match $DeviceId) {
         Write-Host "Dispositivo $DeviceId rilevato. Eseguo aggiornamento con PackageInstaller (adb install -r)..." -ForegroundColor Cyan
-        & $adbPath -s $DeviceId install -r $apkLatest
+        & $adbPath -s $DeviceId install -r $apkVersioned
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Aggiornamento su Realme 8 Pro completato con SUCCESSO!" -ForegroundColor Green
             & $adbPath -s $DeviceId shell "dumpsys package com.turni.calendario | grep -E 'versionCode|versionName'"

@@ -7,6 +7,7 @@ import android.content.Intent
 import android.os.Build
 import android.provider.AlarmClock
 import android.util.Log
+import androidx.core.content.ContextCompat
 import com.turni.calendario.MainActivity
 import com.turni.calendario.model.ShiftAlarmRule
 import com.turni.calendario.repository.ShiftRepository
@@ -16,11 +17,14 @@ import java.time.LocalTime
 import java.time.ZoneId
 
 data class UpcomingAlarmInfo(
+    val id: String,
+    val date: LocalDate,
     val triggerDateTime: LocalDateTime,
     val shiftName: String,
     val shiftColorHex: Long,
     val isReperibilita: Boolean,
-    val message: String
+    val message: String,
+    val isEnabled: Boolean = true
 )
 
 object ShiftAlarmScheduler {
@@ -51,15 +55,13 @@ object ShiftAlarmScheduler {
     }
 
     /**
-     * Calcola la prima sveglia futura utile nei prossimi 30 giorni
+     * Restituisce tutte le sveglie calcolate per i turni e la reperibilità nei prossimi N giorni
      */
-    fun getNextUpcomingAlarm(context: Context): UpcomingAlarmInfo? {
+    fun getAllUpcomingAlarms(context: Context, daysAhead: Int = 30): List<UpcomingAlarmInfo> {
         val config = ShiftRepository.smartAlarmsConfig
-        if (!config.isGlobalEnabled) return null
-
         val now = LocalDateTime.now()
         val startDate = LocalDate.now()
-        val endDate = startDate.plusDays(30)
+        val endDate = startDate.plusDays(daysAhead.toLong())
 
         val repRule = config.rules.firstOrNull { it.shiftDefId == "reperibilita" }
         val candidates = mutableListOf<UpcomingAlarmInfo>()
@@ -69,17 +71,22 @@ object ShiftAlarmScheduler {
             // 1. REPERIBILITÀ: Avviso la sera del giorno precedente
             val nextDay = curr.plusDays(1)
             val isNextDayOnCall = ShiftRepository.isOnCall(nextDay)
-            if (isNextDayOnCall && repRule != null && repRule.isEnabled) {
+            if (isNextDayOnCall && repRule != null) {
                 val repTime = getResolvedAlarmTime(repRule) ?: LocalTime.of(20, 0)
                 val alarmDt = LocalDateTime.of(curr, repTime)
                 if (alarmDt.isAfter(now)) {
+                    val alarmId = "${curr}_rep"
+                    val isAlarmDisabled = !config.isGlobalEnabled || !repRule.isEnabled || config.disabledAlarmIds.contains(alarmId)
                     candidates.add(
                         UpcomingAlarmInfo(
+                            id = alarmId,
+                            date = nextDay,
                             triggerDateTime = alarmDt,
                             shiftName = "Reperibilità",
                             shiftColorHex = 0xFFF59E0B,
                             isReperibilita = true,
-                            message = "Promemoria: domani sei di Reperibilità!"
+                            message = "Promemoria: domani sei di Reperibilità!",
+                            isEnabled = !isAlarmDisabled
                         )
                     )
                 }
@@ -92,19 +99,24 @@ object ShiftAlarmScheduler {
 
             for (rule in config.rules) {
                 if (rule.shiftDefId == "reperibilita") continue
-                if (rule.isEnabled && targetDefIds.contains(rule.shiftDefId)) {
+                if (targetDefIds.contains(rule.shiftDefId)) {
                     val shiftDef = ShiftRepository.getShiftDefinition(rule.shiftDefId)
                     val alarmTime = getResolvedAlarmTime(rule)
                     if (shiftDef != null && alarmTime != null) {
                         val alarmDt = LocalDateTime.of(curr, alarmTime)
                         if (alarmDt.isAfter(now)) {
+                            val alarmId = "${curr}_${rule.shiftDefId}"
+                            val isAlarmDisabled = !config.isGlobalEnabled || !rule.isEnabled || config.disabledAlarmIds.contains(alarmId)
                             candidates.add(
                                 UpcomingAlarmInfo(
+                                    id = alarmId,
+                                    date = curr,
                                     triggerDateTime = alarmDt,
                                     shiftName = shiftDef.name,
                                     shiftColorHex = shiftDef.colorHex,
                                     isReperibilita = false,
-                                    message = "Sveglia Turno: ${shiftDef.name} (${shiftDef.startTime} - ${shiftDef.endTime})"
+                                    message = "Sveglia Turno: ${shiftDef.name} (${shiftDef.startTime} - ${shiftDef.endTime})",
+                                    isEnabled = !isAlarmDisabled
                                 )
                             )
                         }
@@ -115,7 +127,17 @@ object ShiftAlarmScheduler {
             curr = curr.plusDays(1)
         }
 
-        return candidates.minByOrNull { it.triggerDateTime }
+        return candidates.sortedBy { it.triggerDateTime }
+    }
+
+    /**
+     * Calcola la prima sveglia futura utile e abilitata nei prossimi 30 giorni
+     */
+    fun getNextUpcomingAlarm(context: Context): UpcomingAlarmInfo? {
+        val config = ShiftRepository.smartAlarmsConfig
+        if (!config.isGlobalEnabled) return null
+        val all = getAllUpcomingAlarms(context, 30)
+        return all.firstOrNull { it.isEnabled }
     }
 
     /**
@@ -186,5 +208,67 @@ object ShiftAlarmScheduler {
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
         )
         alarmManager.cancel(pendingIntent)
+    }
+
+    /**
+     * Attiva o disattiva un singolo allarme per ID specifico
+     */
+    fun toggleAlarmId(context: Context, alarmId: String, enable: Boolean): UpcomingAlarmInfo? {
+        val config = ShiftRepository.smartAlarmsConfig
+        val updatedSet = if (enable) {
+            config.disabledAlarmIds - alarmId
+        } else {
+            config.disabledAlarmIds + alarmId
+        }
+        ShiftRepository.smartAlarmsConfig = config.copy(disabledAlarmIds = updatedSet)
+        return scheduleNextAlarm(context)
+    }
+
+    /**
+     * Attiva o disattiva in blocco tutte le sveglie future
+     */
+    fun toggleAllAlarms(context: Context, enableAll: Boolean): UpcomingAlarmInfo? {
+        val config = ShiftRepository.smartAlarmsConfig
+        if (enableAll) {
+            ShiftRepository.smartAlarmsConfig = config.copy(
+                isGlobalEnabled = true,
+                disabledAlarmIds = emptySet()
+            )
+            return scheduleNextAlarm(context)
+        } else {
+            val all = getAllUpcomingAlarms(context, 30)
+            val allIds = all.map { it.id }.toSet()
+            ShiftRepository.smartAlarmsConfig = config.copy(
+                disabledAlarmIds = config.disabledAlarmIds + allIds
+            )
+            cancelScheduledAlarm(context)
+            return null
+        }
+    }
+
+    /**
+     * Verifica autorizzazione per programmare allarmi esatti (Android 12+)
+     */
+    fun canScheduleExactAlarms(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
+            am?.canScheduleExactAlarms() ?: true
+        } else {
+            true
+        }
+    }
+
+    /**
+     * Verifica autorizzazione per mostrare notifiche (Android 13+)
+     */
+    fun hasNotificationPermission(context: Context): Boolean {
+        return if (Build.VERSION.SDK_INT >= 33) {
+            ContextCompat.checkSelfPermission(
+                context,
+                "android.permission.POST_NOTIFICATIONS"
+            ) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        } else {
+            true
+        }
     }
 }

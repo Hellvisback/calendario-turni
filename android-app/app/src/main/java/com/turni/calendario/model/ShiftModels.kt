@@ -152,8 +152,9 @@ data class SmartAlarmsConfig(
         ShiftAlarmRule("mattina", isEnabled = true, minutesBefore = 60),
         ShiftAlarmRule("pomeriggio", isEnabled = false, minutesBefore = 90),
         ShiftAlarmRule("notte", isEnabled = false, minutesBefore = 120),
-        ShiftAlarmRule("reperibilita", isEnabled = true, minutesBefore = 0, customTime = "07:30")
-    )
+        ShiftAlarmRule("reperibilita", isEnabled = true, minutesBefore = 0, customTime = "20:00")
+    ),
+    val disabledAlarmIds: Set<String> = emptySet()
 )
 
 /**
