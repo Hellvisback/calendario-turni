@@ -117,9 +117,9 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
             // Overtime indicator
             if (todaySummary.overtimeHours > 0f) {
                 val otFormatted = if (todaySummary.overtimeHours % 1f == 0f) {
-                    "+${todaySummary.overtimeHours.toInt()}h Straord."
+                    "+${todaySummary.overtimeHours.toInt()}h Straordinario"
                 } else {
-                    "+${todaySummary.overtimeHours}h Straord."
+                    "+${todaySummary.overtimeHours}h Straordinario"
                 }
                 views.setTextViewText(R.id.widget_tt_overtime_badge, otFormatted)
                 views.setViewVisibility(R.id.widget_tt_overtime_badge, View.VISIBLE)
@@ -129,6 +129,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
 
             // On-Call indicator
             if (todaySummary.isOnCall) {
+                views.setTextViewText(R.id.widget_tt_oncall_badge, "🔔 Reperibile")
                 views.setViewVisibility(R.id.widget_tt_oncall_badge, View.VISIBLE)
             } else {
                 views.setViewVisibility(R.id.widget_tt_oncall_badge, View.GONE)
@@ -136,9 +137,18 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
 
             // Trasferta indicator
             if (todaySummary.isTrasferta) {
+                views.setTextViewText(R.id.widget_tt_trasferta_badge, "✈ Trasferta")
                 views.setViewVisibility(R.id.widget_tt_trasferta_badge, View.VISIBLE)
             } else {
                 views.setViewVisibility(R.id.widget_tt_trasferta_badge, View.GONE)
+            }
+
+            // Notes indicator
+            if (todaySummary.notes.isNotBlank()) {
+                views.setTextViewText(R.id.widget_tt_notes, "📝 ${todaySummary.notes}")
+                views.setViewVisibility(R.id.widget_tt_notes, View.VISIBLE)
+            } else {
+                views.setViewVisibility(R.id.widget_tt_notes, View.GONE)
             }
 
             // Tomorrow preview with dedicated colored badge
@@ -149,7 +159,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 WidgetUpdateManager.getBadgeDrawableRes(tomorrowSummary.shiftDef)
             )
 
-            val tomorrowDetail = if (tomorrowSummary.timeRange.isNotBlank()) {
+            val tomorrowDetail = if (tomorrowSummary.timeRange.contains(":")) {
                 tomorrowSummary.timeRange.replace(" ", "")
             } else {
                 tomorrowSummary.shiftName

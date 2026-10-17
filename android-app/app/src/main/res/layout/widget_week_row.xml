@@ -341,21 +341,21 @@
 
         <ImageView
             android:id="@+id/btn_wr_prev"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginEnd="3dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginEnd="4dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:padding="4dp"
+            android:padding="5.5dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_widget_chevron_left"
             android:visibility="gone" />
 
         <ImageView
             android:id="@+id/btn_wr_next"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:padding="4dp"
+            android:padding="5.5dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_widget_chevron_right" />
     </LinearLayout>

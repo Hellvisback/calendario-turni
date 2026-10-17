@@ -111,8 +111,16 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
                     WidgetUpdateManager.getBadgeDrawableRes(summary.shiftDef)
                 )
 
-                // Today highlight
-                if (summary.isToday) {
+                // Today & On-Call styling
+                if (summary.isOnCall && summary.isToday) {
+                    views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_today_oncall)
+                    views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
+                    views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
+                } else if (summary.isOnCall) {
+                    views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_col_oncall)
+                    views.setTextColor(nameIds[i], Color.parseColor("#FBBF24"))
+                    views.setTextColor(numIds[i], Color.parseColor("#FBBF24"))
+                } else if (summary.isToday) {
                     views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
                     views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
                     views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))

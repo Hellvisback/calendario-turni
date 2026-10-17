@@ -22,7 +22,8 @@ data class DayShiftSummary(
     val timeRange: String,
     val overtimeHours: Float,
     val isOnCall: Boolean,
-    val isTrasferta: Boolean
+    val isTrasferta: Boolean,
+    val notes: String = ""
 )
 
 object WidgetUpdateManager {
@@ -38,6 +39,7 @@ object WidgetUpdateManager {
         }
         val extra = ShiftRepository.getDayExtraInfo(date)
         val isOnCall = ShiftRepository.isOnCall(date)
+        val combinedNotes = (assigned?.notes?.ifBlank { null } ?: extra.notes).trim()
 
         val dayLetter = when (date.dayOfWeek) {
             DayOfWeek.MONDAY -> "L"
@@ -61,7 +63,8 @@ object WidgetUpdateManager {
             timeRange = shiftDef?.timeRangeFormatted ?: "",
             overtimeHours = extra.overtimeHours,
             isOnCall = isOnCall,
-            isTrasferta = extra.isTrasferta
+            isTrasferta = extra.isTrasferta,
+            notes = combinedNotes
         )
     }
 
@@ -82,6 +85,28 @@ object WidgetUpdateManager {
                     ShiftCategory.RIPOSO -> R.drawable.bg_badge_pink
                     ShiftCategory.ASSENZA -> R.drawable.bg_badge_blue
                     else -> R.drawable.bg_badge_green
+                }
+            }
+        }
+    }
+
+    fun getFadedBadgeDrawableRes(shiftDef: ShiftDefinition?): Int {
+        if (shiftDef == null) return R.drawable.bg_badge_pink_faded
+        return when (shiftDef.id.lowercase()) {
+            "pomeriggio", "pom" -> R.drawable.bg_badge_red_faded
+            "mattina", "mat" -> R.drawable.bg_badge_sky_faded
+            "notte", "not" -> R.drawable.bg_badge_green_faded
+            "smonto_notte", "smo", "smonto" -> R.drawable.bg_badge_cyan_faded
+            "riposo", "rip" -> R.drawable.bg_badge_pink_faded
+            "mat_dom", "dom", "md" -> R.drawable.bg_badge_amber_faded
+            "ferie", "fer" -> R.drawable.bg_badge_blue_faded
+            "giornaliero", "gio" -> R.drawable.bg_badge_emerald_faded
+            "uffici", "uff" -> R.drawable.bg_badge_gray_faded
+            else -> {
+                when (shiftDef.category) {
+                    ShiftCategory.RIPOSO -> R.drawable.bg_badge_pink_faded
+                    ShiftCategory.ASSENZA -> R.drawable.bg_badge_blue_faded
+                    else -> R.drawable.bg_badge_green_faded
                 }
             }
         }

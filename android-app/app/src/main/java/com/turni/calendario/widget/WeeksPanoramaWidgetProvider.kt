@@ -77,10 +77,6 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
             R.id.wp_shift_badge_0, R.id.wp_shift_badge_1, R.id.wp_shift_badge_2, R.id.wp_shift_badge_3, R.id.wp_shift_badge_4, R.id.wp_shift_badge_5, R.id.wp_shift_badge_6,
             R.id.wp_shift_badge_7, R.id.wp_shift_badge_8, R.id.wp_shift_badge_9, R.id.wp_shift_badge_10, R.id.wp_shift_badge_11, R.id.wp_shift_badge_12, R.id.wp_shift_badge_13
         )
-        val extraIds = intArrayOf(
-            R.id.wp_extra_badge_0, R.id.wp_extra_badge_1, R.id.wp_extra_badge_2, R.id.wp_extra_badge_3, R.id.wp_extra_badge_4, R.id.wp_extra_badge_5, R.id.wp_extra_badge_6,
-            R.id.wp_extra_badge_7, R.id.wp_extra_badge_8, R.id.wp_extra_badge_9, R.id.wp_extra_badge_10, R.id.wp_extra_badge_11, R.id.wp_extra_badge_12, R.id.wp_extra_badge_13
-        )
 
         val monthFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
         val rotationLabel = ShiftRepository.activeRotation?.name ?: "2 Settimane"
@@ -137,8 +133,16 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                     WidgetUpdateManager.getBadgeDrawableRes(summary.shiftDef)
                 )
 
-                // Today highlight (solo se nella settimana reale odierna)
-                if (summary.isToday) {
+                // Today & On-Call styling: applica il layer arancione trasparente per la reperibilità
+                if (summary.isOnCall && summary.isToday) {
+                    views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_today_oncall)
+                    views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
+                    views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
+                } else if (summary.isOnCall) {
+                    views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_col_oncall)
+                    views.setTextColor(nameIds[i], Color.parseColor("#FBBF24"))
+                    views.setTextColor(numIds[i], Color.parseColor("#FBBF24"))
+                } else if (summary.isToday) {
                     views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
                     views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
                     views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
@@ -154,20 +158,6 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                         views.setTextColor(nameIds[i], Color.parseColor("#64748B"))
                         views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
                     }
-                }
-
-                // Extra overtime or on-call indicator
-                if (summary.overtimeHours > 0f) {
-                    val otText = if (summary.overtimeHours % 1f == 0f) "+${summary.overtimeHours.toInt()}h" else "+${summary.overtimeHours}h"
-                    views.setTextViewText(extraIds[i], otText)
-                    views.setTextColor(extraIds[i], Color.parseColor("#FBBF24"))
-                    views.setViewVisibility(extraIds[i], View.VISIBLE)
-                } else if (summary.isOnCall) {
-                    views.setTextViewText(extraIds[i], "• R •")
-                    views.setTextColor(extraIds[i], Color.parseColor("#FBBF24"))
-                    views.setViewVisibility(extraIds[i], View.VISIBLE)
-                } else {
-                    views.setViewVisibility(extraIds[i], View.GONE)
                 }
 
                 // Click action to open MainActivity on that day

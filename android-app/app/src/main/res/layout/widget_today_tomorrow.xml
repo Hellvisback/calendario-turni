@@ -103,7 +103,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
-                android:text="+2h Straord."
+                android:text="+2h Straordinario"
                 android:textColor="#FFFFFF"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -119,7 +119,7 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
-                android:text="Reperibile"
+                android:text="🔔 Reperibile"
                 android:textColor="#FFFFFF"
                 android:textSize="10sp"
                 android:textStyle="bold"
@@ -134,12 +134,25 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="6dp"
                 android:paddingBottom="2dp"
-                android:text="Trasferta"
+                android:text="✈ Trasferta"
                 android:textColor="#FFFFFF"
                 android:textSize="10sp"
                 android:textStyle="bold"
                 android:visibility="gone" />
         </LinearLayout>
+
+        <!-- Notes text if present -->
+        <TextView
+            android:id="@+id/widget_tt_notes"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="5dp"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:maxLines="2"
+            android:textColor="#CBD5E1"
+            android:textSize="10.5sp"
+            android:visibility="gone" />
     </LinearLayout>
 
     <!-- Bottom Card: Domani Preview -->
@@ -197,23 +210,23 @@
         <!-- Navigation arrows in bottom right -->
         <ImageView
             android:id="@+id/btn_tt_prev"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
             android:layout_marginStart="4dp"
-            android:layout_marginEnd="3dp"
+            android:layout_marginEnd="4dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:padding="4dp"
+            android:padding="5.5dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_widget_chevron_left"
             android:visibility="gone" />
 
         <ImageView
             android:id="@+id/btn_tt_next"
-            android:layout_width="20dp"
-            android:layout_height="20dp"
-            android:layout_marginStart="3dp"
+            android:layout_width="26dp"
+            android:layout_height="26dp"
+            android:layout_marginStart="4dp"
             android:background="@drawable/bg_widget_nav_btn"
-            android:padding="4dp"
+            android:padding="5.5dp"
             android:scaleType="centerInside"
             android:src="@drawable/ic_widget_chevron_right" />
     </LinearLayout>

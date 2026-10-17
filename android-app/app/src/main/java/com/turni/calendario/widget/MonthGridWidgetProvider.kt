@@ -148,8 +148,15 @@ class MonthGridWidgetProvider : AppWidgetProvider() {
                         "setBackgroundResource",
                         WidgetUpdateManager.getBadgeDrawableRes(summary.shiftDef)
                     )
+                    views.setTextColor(codeIds[i], Color.WHITE)
 
-                    if (summary.isToday) {
+                    if (summary.isOnCall && summary.isToday) {
+                        views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_today_oncall)
+                        views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
+                    } else if (summary.isOnCall) {
+                        views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_cell_oncall)
+                        views.setTextColor(numIds[i], Color.parseColor("#FBBF24"))
+                    } else if (summary.isToday) {
                         views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
                         views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
                     } else {
@@ -170,11 +177,33 @@ class MonthGridWidgetProvider : AppWidgetProvider() {
                     )
                     views.setOnClickPendingIntent(cellIds[i], pi)
                 } else {
-                    // Day outside month
-                    views.setTextViewText(codeIds[i], "")
-                    views.setInt(codeIds[i], "setBackgroundColor", Color.TRANSPARENT)
-                    views.setInt(cellIds[i], "setBackgroundColor", Color.TRANSPARENT)
-                    views.setTextColor(numIds[i], Color.parseColor("#334155"))
+                    // Day outside month: visualizza turno con badge attenuato (faded) e testo semitrasparente
+                    views.setTextViewText(codeIds[i], summary.shortCode)
+                    views.setInt(
+                        codeIds[i],
+                        "setBackgroundResource",
+                        WidgetUpdateManager.getFadedBadgeDrawableRes(summary.shiftDef)
+                    )
+                    views.setTextColor(codeIds[i], Color.parseColor("#99FFFFFF"))
+
+                    if (summary.isOnCall) {
+                        views.setInt(cellIds[i], "setBackgroundResource", R.drawable.bg_widget_cell_oncall)
+                        views.setTextColor(numIds[i], Color.parseColor("#C28E10"))
+                    } else {
+                        views.setInt(cellIds[i], "setBackgroundColor", Color.TRANSPARENT)
+                        if (i % 7 == 6) {
+                            views.setTextColor(numIds[i], Color.parseColor("#80FCA5A5"))
+                        } else {
+                            views.setTextColor(numIds[i], Color.parseColor("#64748B"))
+                        }
+                    }
+
+                    val pi = WidgetUpdateManager.createDayPendingIntent(
+                        context,
+                        date,
+                        appWidgetId * 1000 + i
+                    )
+                    views.setOnClickPendingIntent(cellIds[i], pi)
                 }
             }
 
