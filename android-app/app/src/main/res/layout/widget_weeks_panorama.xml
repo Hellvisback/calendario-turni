@@ -47,6 +47,7 @@
 
     <!-- Week 1 (7 Days) -->
     <LinearLayout
+        android:id="@+id/wp_week1_row"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
@@ -54,110 +55,112 @@
         android:orientation="horizontal">
 
         <!-- Day 0 -->
-        <LinearLayout android:id="@+id/wp_col_0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="L" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="12" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_0" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="L" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="12" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_0" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 1 -->
-        <LinearLayout android:id="@+id/wp_col_1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="M" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="13" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_1" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="M" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="13" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_1" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 2 -->
-        <LinearLayout android:id="@+id/wp_col_2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="M" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="14" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_2" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="M" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="14" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_2" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 3 -->
-        <LinearLayout android:id="@+id/wp_col_3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="G" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="15" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_3" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="G" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="15" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_3" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 4 -->
-        <LinearLayout android:id="@+id/wp_col_4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="V" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="16" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_4" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="V" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="16" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_4" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 5 -->
-        <LinearLayout android:id="@+id/wp_col_5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="S" android:textColor="#94A3B8" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="17" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="SMO" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_5" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="S" android:textColor="#94A3B8" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="17" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_5" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="SMO" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 6 -->
-        <LinearLayout android:id="@+id/wp_col_6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="D" android:textColor="#F87171" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="18" android:textColor="#FCA5A5" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="RIP" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_6" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="D" android:textColor="#F87171" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="18" android:textColor="#FCA5A5" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_6" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="RIP" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 
-    <!-- Week 2 (7 Days) -->
+    <!-- Week 2 (7 Days) with dedicated top separation margin -->
     <LinearLayout
+        android:id="@+id/wp_week2_row"
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
+        android:layout_marginTop="5dp"
         android:gravity="center_vertical"
         android:orientation="horizontal">
 
         <!-- Day 7 -->
-        <LinearLayout android:id="@+id/wp_col_7" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="L" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="19" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_7" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="L" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="19" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_7" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 8 -->
-        <LinearLayout android:id="@+id/wp_col_8" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="M" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="20" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_8" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="M" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="20" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_8" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="NOT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 9 -->
-        <LinearLayout android:id="@+id/wp_col_9" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="M" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="21" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="SMO" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_9" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="M" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="21" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_9" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="SMO" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 10 -->
-        <LinearLayout android:id="@+id/wp_col_10" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="G" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="22" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="RIP" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_10" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="G" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="22" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_10" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="RIP" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 11 -->
-        <LinearLayout android:id="@+id/wp_col_11" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="V" android:textColor="#64748B" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="23" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_11" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="V" android:textColor="#64748B" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="23" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_11" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="MAT" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 12 -->
-        <LinearLayout android:id="@+id/wp_col_12" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="S" android:textColor="#94A3B8" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="24" android:textColor="#F1F5F9" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_12" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="S" android:textColor="#94A3B8" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="24" android:textColor="#F1F5F9" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_12" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="POM" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
 
         <!-- Day 13 -->
-        <LinearLayout android:id="@+id/wp_col_13" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center" android:orientation="vertical" android:padding="1dp">
-            <TextView android:id="@+id/wp_day_name_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="D" android:textColor="#F87171" android:textSize="11.5sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_day_num_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:text="25" android:textColor="#FCA5A5" android:textSize="16sp" android:textStyle="bold" />
-            <TextView android:id="@+id/wp_shift_badge_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2.5dp" android:background="@drawable/bg_widget_badge" android:paddingStart="5.5dp" android:paddingTop="2.5dp" android:paddingEnd="5.5dp" android:paddingBottom="2.5dp" android:text="DOM" android:textColor="#FFFFFF" android:textSize="11sp" android:textStyle="bold" />
+        <LinearLayout android:id="@+id/wp_col_13" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:layout_margin="1.5dp" android:gravity="center" android:orientation="vertical" android:paddingStart="1dp" android:paddingTop="3dp" android:paddingEnd="1dp" android:paddingBottom="3dp">
+            <TextView android:id="@+id/wp_day_name_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="D" android:textColor="#F87171" android:textSize="10.5sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_day_num_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="1dp" android:includeFontPadding="false" android:text="25" android:textColor="#FCA5A5" android:textSize="14sp" android:textStyle="bold" />
+            <TextView android:id="@+id/wp_shift_badge_13" android:layout_width="wrap_content" android:layout_height="wrap_content" android:layout_marginTop="2dp" android:background="@drawable/bg_widget_badge" android:includeFontPadding="false" android:paddingStart="4.5dp" android:paddingTop="1.5dp" android:paddingEnd="4.5dp" android:paddingBottom="1.5dp" android:text="DOM" android:textColor="#FFFFFF" android:textSize="9.5sp" android:textStyle="bold" />
         </LinearLayout>
     </LinearLayout>
 

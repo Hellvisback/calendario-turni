@@ -140,8 +140,8 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                     views.setTextColor(numIds[i], Color.parseColor("#38BDF8"))
                 } else if (summary.isOnCall) {
                     views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_col_oncall)
-                    views.setTextColor(nameIds[i], Color.parseColor("#FBBF24"))
-                    views.setTextColor(numIds[i], Color.parseColor("#FBBF24"))
+                    views.setTextColor(nameIds[i], Color.parseColor("#FDE68A"))
+                    views.setTextColor(numIds[i], Color.WHITE)
                 } else if (summary.isToday) {
                     views.setInt(colIds[i], "setBackgroundResource", R.drawable.bg_widget_today_highlight)
                     views.setTextColor(nameIds[i], Color.parseColor("#38BDF8"))
