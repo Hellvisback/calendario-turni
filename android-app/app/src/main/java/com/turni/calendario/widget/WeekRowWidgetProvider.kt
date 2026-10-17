@@ -74,6 +74,22 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
             R.id.wr_shift_code_0, R.id.wr_shift_code_1, R.id.wr_shift_code_2, R.id.wr_shift_code_3,
             R.id.wr_shift_code_4, R.id.wr_shift_code_5, R.id.wr_shift_code_6
         )
+        val dotsContainerIds = intArrayOf(
+            R.id.wr_dots_0, R.id.wr_dots_1, R.id.wr_dots_2, R.id.wr_dots_3,
+            R.id.wr_dots_4, R.id.wr_dots_5, R.id.wr_dots_6
+        )
+        val dot1Ids = intArrayOf(
+            R.id.wr_dot_0_1, R.id.wr_dot_1_1, R.id.wr_dot_2_1, R.id.wr_dot_3_1,
+            R.id.wr_dot_4_1, R.id.wr_dot_5_1, R.id.wr_dot_6_1
+        )
+        val dot2Ids = intArrayOf(
+            R.id.wr_dot_0_2, R.id.wr_dot_1_2, R.id.wr_dot_2_2, R.id.wr_dot_3_2,
+            R.id.wr_dot_4_2, R.id.wr_dot_5_2, R.id.wr_dot_6_2
+        )
+        val dot3Ids = intArrayOf(
+            R.id.wr_dot_0_3, R.id.wr_dot_1_3, R.id.wr_dot_2_3, R.id.wr_dot_3_3,
+            R.id.wr_dot_4_3, R.id.wr_dot_5_3, R.id.wr_dot_6_3
+        )
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_week_row)
@@ -136,6 +152,32 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
                         views.setTextColor(nameIds[i], Color.parseColor("#64748B"))
                         views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
                     }
+                }
+
+                // Gestione pallini colorati separati sotto il turno per turni multipli
+                val secondaryColors = summary.secondaryShiftColors
+                if (secondaryColors.isNotEmpty()) {
+                    views.setViewVisibility(dotsContainerIds[i], View.VISIBLE)
+                    if (secondaryColors.size >= 1) {
+                        views.setViewVisibility(dot1Ids[i], View.VISIBLE)
+                        views.setInt(dot1Ids[i], "setColorFilter", secondaryColors[0])
+                    } else {
+                        views.setViewVisibility(dot1Ids[i], View.GONE)
+                    }
+                    if (secondaryColors.size >= 2) {
+                        views.setViewVisibility(dot2Ids[i], View.VISIBLE)
+                        views.setInt(dot2Ids[i], "setColorFilter", secondaryColors[1])
+                    } else {
+                        views.setViewVisibility(dot2Ids[i], View.GONE)
+                    }
+                    if (secondaryColors.size >= 3) {
+                        views.setViewVisibility(dot3Ids[i], View.VISIBLE)
+                        views.setInt(dot3Ids[i], "setColorFilter", secondaryColors[2])
+                    } else {
+                        views.setViewVisibility(dot3Ids[i], View.GONE)
+                    }
+                } else {
+                    views.setViewVisibility(dotsContainerIds[i], View.GONE)
                 }
 
                 // Click action

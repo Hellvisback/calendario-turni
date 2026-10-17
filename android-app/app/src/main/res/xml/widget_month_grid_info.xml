@@ -5,6 +5,8 @@
     android:initialLayout="@layout/widget_month_grid"
     android:minWidth="260dp"
     android:minHeight="180dp"
+    android:minResizeWidth="250dp"
+    android:minResizeHeight="180dp"
     android:previewImage="@drawable/preview_widget_month_grid"
     android:previewLayout="@layout/widget_month_grid"
     android:resizeMode="horizontal|vertical"

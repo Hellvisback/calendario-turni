@@ -179,10 +179,10 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
 #### Pacchetto di Aggiornamento Ufficiale:
 - **``app-release-v$newName.apk``**: Pacchetto APK unico e versionato pronto per l'installazione su Android.
 
-#### Novità e Miglioramenti di questa versione:
-- **Layout Dinamico Turni Multipli nelle Celle**: Rimossa la compressione verticale forzata dei turni multipli nello stesso giorno. Le celle del calendario misurano ora l'altezza effettiva disponibile con logica reattiva a vincoli (`BoxWithConstraints`), mostrando tutti i turni a grandezza piena e perfettamente leggibile in base allo spazio reale dello schermo. Solo se i turni eccedono l'altezza disponibile, i turni in eccesso vengono racchiusi nell'indicatore compatto a pallini colorati per non scendere mai sotto la cella.
-- **Trasferta Sempre Verde ad Alto Contrasto Garantito**: L'icona dell'aeroplano (✈) torna al verde brillante iconico (`#34D399`), inserita in una capsula protettiva scura Obsidian (`#04060A`) con micro-bordo smeraldo (`#10B981`). Questo garantisce uno stacco e un contrasto visivo assoluto su qualsiasi colore di turno (mattina blu, pomeriggio arancio, notte viola, giornaliero verde, riposo, ferie o assenza di turni).
-- **Armonizzazione Schermo Intero e Rimozione Bordini**: Eliminato il contrasto e i bordini di separazione in alto e in basso allo schermo. Status bar e navigation bar sono ora perfettamente unificate alla tonalità profonda Obsidian (`#080B11`), con gestione automatica dell'area di sicurezza (`statusBarsPadding`) per evitare qualsiasi sovrapposizione con l'orologio di sistema, la fotocamera o il notch.
+#### Novità e Perfezionamenti dei Widget di questa versione:
+- **Pallini Turni Multipli Separati e Colorati nei Widget**: Rimosso completamente il carattere punto (`•`) dall'interno dei badge dei turni. Ora, in presenza di turni multipli nello stesso giorno, compare sotto al turno principale una serie distinta di pallini circolari colorati in base al turno secondario inserito, identica alla schermata principale dell'applicazione.
+- **Widget Mese Intero Completo a 6 Settimane (42 Celle)**: Risolto il problema per cui mesi come Novembre mostravano solo 29 giorni troncando il giorno 30. La griglia supporta ora nativamente fino a 6 righe, mostrando tutti i giorni del mese senza eccezioni. La barra di navigazione è integrata con eleganza nell'header, massimizzando lo spazio verticale delle celle senza sovrapposizioni.
+- **Widget Giorno Singolo Riorganizzato e Spazioso**: Rimossa la navigazione/scorrimento ai giorni futuri che causava troncamenti visivi. La card di Oggi mostra ora la data per esteso senza abbreviazioni, nome del turno completo e orari nitidi a tutto schermo, mentre la card di Domani si estende armoniosamente a tutta larghezza.
 "@
 }
 
@@ -226,8 +226,8 @@ Write-Host "Release pubblicata con successo su GitHub!" -ForegroundColor Green
 Write-Host "[7/7] Verifica dispositivo fisico ADB..." -ForegroundColor Yellow
 if (-not $SkipDeviceInstall -and (Test-Path $adbPath)) {
     $devicesOutput = & $adbPath devices
-    if ($devicesOutput -match $DeviceId) {
-        Write-Host "Dispositivo $DeviceId rilevato. Eseguo aggiornamento con PackageInstaller (adb install -r)..." -ForegroundColor Cyan
+    if ($devicesOutput -match "$DeviceId\s+device") {
+        Write-Host "Dispositivo $DeviceId rilevato e pronto. Eseguo aggiornamento con PackageInstaller (adb install -r)..." -ForegroundColor Cyan
         & $adbPath -s $DeviceId install -r $apkVersioned
         if ($LASTEXITCODE -eq 0) {
             Write-Host "Aggiornamento su Realme 8 Pro completato con SUCCESSO!" -ForegroundColor Green
@@ -236,7 +236,7 @@ if (-not $SkipDeviceInstall -and (Test-Path $adbPath)) {
             Write-Warning "Installazione ADB fallita su dispositivo $DeviceId."
         }
     } else {
-        Write-Host "Dispositivo $DeviceId non connesso. Skip installazione locale." -ForegroundColor Gray
+        Write-Host "Dispositivo $DeviceId non pronto o offline. Skip installazione locale." -ForegroundColor Gray
     }
 }
 

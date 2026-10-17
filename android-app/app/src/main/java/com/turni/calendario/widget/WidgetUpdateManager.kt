@@ -24,10 +24,11 @@ data class DayShiftSummary(
     val isOnCall: Boolean,
     val isTrasferta: Boolean,
     val notes: String = "",
-    val hasMultipleShifts: Boolean = false
+    val hasMultipleShifts: Boolean = false,
+    val secondaryShiftColors: List<Int> = emptyList()
 ) {
     val displayShortCode: String
-        get() = if (hasMultipleShifts) "$shortCode •" else shortCode
+        get() = shortCode
 }
 
 object WidgetUpdateManager {
@@ -46,6 +47,15 @@ object WidgetUpdateManager {
         val extra = ShiftRepository.getDayExtraInfo(date)
         val isOnCall = ShiftRepository.isOnCall(date)
         val combinedNotes = (assigned?.notes?.ifBlank { null } ?: extra.notes).trim()
+
+        val secondaryShiftColors = if (hasMultipleShifts) {
+            allAssigned.drop(1).mapNotNull { extraShift ->
+                val def = ShiftRepository.getShiftDefinition(extraShift.shiftDefId)
+                def?.let { (it.colorHex and 0xFFFFFFFFL).toInt() }
+            }
+        } else {
+            emptyList()
+        }
 
         val dayLetter = when (date.dayOfWeek) {
             DayOfWeek.MONDAY -> "L"
@@ -71,7 +81,8 @@ object WidgetUpdateManager {
             isOnCall = isOnCall,
             isTrasferta = extra.isTrasferta,
             notes = combinedNotes,
-            hasMultipleShifts = hasMultipleShifts
+            hasMultipleShifts = hasMultipleShifts,
+            secondaryShiftColors = secondaryShiftColors
         )
     }
 

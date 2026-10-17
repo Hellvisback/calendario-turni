@@ -77,9 +77,24 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
             R.id.wp_shift_badge_0, R.id.wp_shift_badge_1, R.id.wp_shift_badge_2, R.id.wp_shift_badge_3, R.id.wp_shift_badge_4, R.id.wp_shift_badge_5, R.id.wp_shift_badge_6,
             R.id.wp_shift_badge_7, R.id.wp_shift_badge_8, R.id.wp_shift_badge_9, R.id.wp_shift_badge_10, R.id.wp_shift_badge_11, R.id.wp_shift_badge_12, R.id.wp_shift_badge_13
         )
+        val dotsContainerIds = intArrayOf(
+            R.id.wp_dots_0, R.id.wp_dots_1, R.id.wp_dots_2, R.id.wp_dots_3, R.id.wp_dots_4, R.id.wp_dots_5, R.id.wp_dots_6,
+            R.id.wp_dots_7, R.id.wp_dots_8, R.id.wp_dots_9, R.id.wp_dots_10, R.id.wp_dots_11, R.id.wp_dots_12, R.id.wp_dots_13
+        )
+        val dot1Ids = intArrayOf(
+            R.id.wp_dot_0_1, R.id.wp_dot_1_1, R.id.wp_dot_2_1, R.id.wp_dot_3_1, R.id.wp_dot_4_1, R.id.wp_dot_5_1, R.id.wp_dot_6_1,
+            R.id.wp_dot_7_1, R.id.wp_dot_8_1, R.id.wp_dot_9_1, R.id.wp_dot_10_1, R.id.wp_dot_11_1, R.id.wp_dot_12_1, R.id.wp_dot_13_1
+        )
+        val dot2Ids = intArrayOf(
+            R.id.wp_dot_0_2, R.id.wp_dot_1_2, R.id.wp_dot_2_2, R.id.wp_dot_3_2, R.id.wp_dot_4_2, R.id.wp_dot_5_2, R.id.wp_dot_6_2,
+            R.id.wp_dot_7_2, R.id.wp_dot_8_2, R.id.wp_dot_9_2, R.id.wp_dot_10_2, R.id.wp_dot_11_2, R.id.wp_dot_12_2, R.id.wp_dot_13_2
+        )
+        val dot3Ids = intArrayOf(
+            R.id.wp_dot_0_3, R.id.wp_dot_1_3, R.id.wp_dot_2_3, R.id.wp_dot_3_3, R.id.wp_dot_4_3, R.id.wp_dot_5_3, R.id.wp_dot_6_3,
+            R.id.wp_dot_7_3, R.id.wp_dot_8_3, R.id.wp_dot_9_3, R.id.wp_dot_10_3, R.id.wp_dot_11_3, R.id.wp_dot_12_3, R.id.wp_dot_13_3
+        )
 
         val monthFmt = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
-        val rotationLabel = ShiftRepository.activeRotation?.name ?: "2 Settimane"
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_weeks_panorama)
@@ -91,7 +106,6 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
             val monthLabel = middleDate.format(monthFmt).replaceFirstChar { it.uppercase() }
 
             views.setTextViewText(R.id.widget_wp_title, monthLabel)
-            views.setTextViewText(R.id.widget_wp_stats, rotationLabel)
 
             // Setup Navigation pending intents
             val nextPi = WidgetUpdateManager.createNavPendingIntent(
@@ -158,6 +172,32 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
                         views.setTextColor(nameIds[i], Color.parseColor("#64748B"))
                         views.setTextColor(numIds[i], Color.parseColor("#F1F5F9"))
                     }
+                }
+
+                // Gestione pallini colorati separati sotto il turno per turni multipli
+                val secondaryColors = summary.secondaryShiftColors
+                if (secondaryColors.isNotEmpty()) {
+                    views.setViewVisibility(dotsContainerIds[i], View.VISIBLE)
+                    if (secondaryColors.size >= 1) {
+                        views.setViewVisibility(dot1Ids[i], View.VISIBLE)
+                        views.setInt(dot1Ids[i], "setColorFilter", secondaryColors[0])
+                    } else {
+                        views.setViewVisibility(dot1Ids[i], View.GONE)
+                    }
+                    if (secondaryColors.size >= 2) {
+                        views.setViewVisibility(dot2Ids[i], View.VISIBLE)
+                        views.setInt(dot2Ids[i], "setColorFilter", secondaryColors[1])
+                    } else {
+                        views.setViewVisibility(dot2Ids[i], View.GONE)
+                    }
+                    if (secondaryColors.size >= 3) {
+                        views.setViewVisibility(dot3Ids[i], View.VISIBLE)
+                        views.setInt(dot3Ids[i], "setColorFilter", secondaryColors[2])
+                    } else {
+                        views.setViewVisibility(dot3Ids[i], View.GONE)
+                    }
+                } else {
+                    views.setViewVisibility(dotsContainerIds[i], View.GONE)
                 }
 
                 // Click action to open MainActivity on that day

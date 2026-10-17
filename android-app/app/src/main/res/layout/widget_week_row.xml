@@ -17,8 +17,7 @@
         android:gravity="center"
         android:orientation="horizontal"
         android:paddingEnd="26dp">
-
-        <!-- Day 0 (Lunedì) -->
+        <!-- Day 0 -->
         <LinearLayout
             android:id="@+id/cell_wr_0"
             android:layout_width="0dp"
@@ -60,9 +59,41 @@
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 1 (Martedì) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_0"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_0_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_0_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_0_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 1 -->
         <LinearLayout
             android:id="@+id/cell_wr_1"
             android:layout_width="0dp"
@@ -85,7 +116,7 @@
                 android:id="@+id/wr_day_num_1"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="13"
+                android:text="12"
                 android:textColor="#F1F5F9"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -104,9 +135,41 @@
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 2 (Mercoledì) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_1"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_1_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_1_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_1_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 2 -->
         <LinearLayout
             android:id="@+id/cell_wr_2"
             android:layout_width="0dp"
@@ -129,7 +192,7 @@
                 android:id="@+id/wr_day_num_2"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="14"
+                android:text="12"
                 android:textColor="#F1F5F9"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -144,13 +207,45 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
-                android:text="POM"
+                android:text="MAT"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 3 (Giovedì) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_2"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_2_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_2_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_2_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 3 -->
         <LinearLayout
             android:id="@+id/cell_wr_3"
             android:layout_width="0dp"
@@ -173,7 +268,7 @@
                 android:id="@+id/wr_day_num_3"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="15"
+                android:text="12"
                 android:textColor="#F1F5F9"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -188,13 +283,45 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
-                android:text="POM"
+                android:text="MAT"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 4 (Venerdì) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_3"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_3_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_3_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_3_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 4 -->
         <LinearLayout
             android:id="@+id/cell_wr_4"
             android:layout_width="0dp"
@@ -217,7 +344,7 @@
                 android:id="@+id/wr_day_num_4"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="16"
+                android:text="12"
                 android:textColor="#F1F5F9"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -232,13 +359,45 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
-                android:text="NOT"
+                android:text="MAT"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 5 (Sabato) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_4"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_4_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_4_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_4_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 5 -->
         <LinearLayout
             android:id="@+id/cell_wr_5"
             android:layout_width="0dp"
@@ -261,7 +420,7 @@
                 android:id="@+id/wr_day_num_5"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="17"
+                android:text="12"
                 android:textColor="#F1F5F9"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -276,13 +435,45 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
-                android:text="SMO"
+                android:text="MAT"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
-        <!-- Day 6 (Domenica) -->
+            <LinearLayout
+                android:id="@+id/wr_dots_5"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_5_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_5_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_5_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
+        <!-- Day 6 -->
         <LinearLayout
             android:id="@+id/cell_wr_6"
             android:layout_width="0dp"
@@ -305,7 +496,7 @@
                 android:id="@+id/wr_day_num_6"
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
-                android:text="18"
+                android:text="12"
                 android:textColor="#FCA5A5"
                 android:textSize="15.5sp"
                 android:textStyle="bold" />
@@ -320,12 +511,44 @@
                 android:paddingTop="2dp"
                 android:paddingEnd="5dp"
                 android:paddingBottom="2dp"
-                android:text="RIP"
+                android:text="MAT"
                 android:textColor="#FFFFFF"
                 android:textSize="10.5sp"
                 android:textStyle="bold" />
-        </LinearLayout>
 
+            <LinearLayout
+                android:id="@+id/wr_dots_6"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="2dp"
+                android:gravity="center"
+                android:orientation="horizontal"
+                android:visibility="gone">
+
+                <ImageView
+                    android:id="@+id/wr_dot_6_1"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_6_2"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:layout_marginEnd="1.5dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+
+                <ImageView
+                    android:id="@+id/wr_dot_6_3"
+                    android:layout_width="4dp"
+                    android:layout_height="4dp"
+                    android:src="@drawable/bg_widget_dot"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </LinearLayout>
     </LinearLayout>
 
     <!-- Navigation arrows in basso a destra (perfettamente centrate) -->

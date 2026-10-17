@@ -16,36 +16,12 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
 
     override fun onReceive(context: Context, intent: Intent) {
         super.onReceive(context, intent)
-        var appWidgetId = intent.getIntExtra(
-            AppWidgetManager.EXTRA_APPWIDGET_ID,
-            AppWidgetManager.INVALID_APPWIDGET_ID
+        val manager = AppWidgetManager.getInstance(context)
+        val ids = manager.getAppWidgetIds(
+            ComponentName(context, TodayTomorrowWidgetProvider::class.java)
         )
-        if (appWidgetId == AppWidgetManager.INVALID_APPWIDGET_ID) {
-            val seg = intent.data?.pathSegments?.getOrNull(1)?.toIntOrNull()
-            if (seg != null) appWidgetId = seg
-        }
-        if (appWidgetId != AppWidgetManager.INVALID_APPWIDGET_ID) {
-            when (intent.action) {
-                WidgetUpdateManager.ACTION_NAV_NEXT -> {
-                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
-                    val next = if (current >= 12) 0 else current + 1
-                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, next)
-                    val manager = AppWidgetManager.getInstance(context)
-                    onUpdate(context, manager, intArrayOf(appWidgetId))
-                }
-                WidgetUpdateManager.ACTION_NAV_PREV -> {
-                    val current = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
-                    val prev = (current - 1).coerceAtLeast(0)
-                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, prev)
-                    val manager = AppWidgetManager.getInstance(context)
-                    onUpdate(context, manager, intArrayOf(appWidgetId))
-                }
-                WidgetUpdateManager.ACTION_NAV_RESET -> {
-                    WidgetUpdateManager.setWidgetOffset(context, appWidgetId, 0)
-                    val manager = AppWidgetManager.getInstance(context)
-                    onUpdate(context, manager, intArrayOf(appWidgetId))
-                }
-            }
+        if (ids.isNotEmpty()) {
+            onUpdate(context, manager, ids)
         }
     }
 
@@ -55,50 +31,20 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
         appWidgetIds: IntArray
     ) {
         val today = LocalDate.now()
-        val dateFmt = DateTimeFormatter.ofPattern("EEE d MMMM", Locale.ITALIAN)
+        val tomorrow = today.plusDays(1)
+        val dateFmt = DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN)
 
         for (appWidgetId in appWidgetIds) {
             val views = RemoteViews(context.packageName, R.layout.widget_today_tomorrow)
-            val weekOffset = WidgetUpdateManager.getWidgetOffset(context, appWidgetId)
-            val currentDay = today.plusWeeks(weekOffset.toLong())
-            val nextDay = currentDay.plusDays(1)
 
-            val todaySummary = WidgetUpdateManager.getDaySummary(currentDay, today)
-            val tomorrowSummary = WidgetUpdateManager.getDaySummary(nextDay, today)
+            val todaySummary = WidgetUpdateManager.getDaySummary(today, today)
+            val tomorrowSummary = WidgetUpdateManager.getDaySummary(tomorrow, today)
 
-            val baseDateStr = currentDay.format(dateFmt).replaceFirstChar { it.uppercase() }
-            val formattedDate = if (weekOffset > 0) {
-                "$baseDateStr (+$weekOffset sett.)"
-            } else {
-                baseDateStr
-            }
-
-            // Navigation buttons
-            val nextPi = WidgetUpdateManager.createNavPendingIntent(
-                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_NEXT, TodayTomorrowWidgetProvider::class.java
-            )
-            views.setOnClickPendingIntent(R.id.btn_tt_next, nextPi)
-
-            val prevPi = WidgetUpdateManager.createNavPendingIntent(
-                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_PREV, TodayTomorrowWidgetProvider::class.java
-            )
-            views.setOnClickPendingIntent(R.id.btn_tt_prev, prevPi)
-
-            val resetPi = WidgetUpdateManager.createNavPendingIntent(
-                context, appWidgetId, WidgetUpdateManager.ACTION_NAV_RESET, TodayTomorrowWidgetProvider::class.java
-            )
-            views.setOnClickPendingIntent(R.id.widget_tt_header_date, resetPi)
-
-            if (weekOffset > 0) {
-                views.setViewVisibility(R.id.btn_tt_prev, View.VISIBLE)
-            } else {
-                views.setViewVisibility(R.id.btn_tt_prev, View.GONE)
-            }
-
-            // Header date
+            // Header date nitida per esteso (es. "Sabato 17 Ottobre")
+            val formattedDate = today.format(dateFmt).replaceFirstChar { it.uppercase() }
             views.setTextViewText(R.id.widget_tt_header_date, formattedDate)
 
-            // Today Shift
+            // Turno di Oggi
             views.setTextViewText(R.id.widget_tt_shift_name, todaySummary.shiftName)
             views.setTextViewText(R.id.widget_tt_code_pill, todaySummary.displayShortCode)
             views.setInt(
@@ -107,6 +53,32 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 WidgetUpdateManager.getBadgeDrawableRes(todaySummary.shiftDef)
             )
 
+            // Pallini colorati sotto il turno se ci sono turni multipli oggi
+            val todayDots = todaySummary.secondaryShiftColors
+            if (todayDots.isNotEmpty()) {
+                views.setViewVisibility(R.id.widget_tt_dots, View.VISIBLE)
+                if (todayDots.size >= 1) {
+                    views.setViewVisibility(R.id.widget_tt_dot_1, View.VISIBLE)
+                    views.setInt(R.id.widget_tt_dot_1, "setColorFilter", todayDots[0])
+                } else {
+                    views.setViewVisibility(R.id.widget_tt_dot_1, View.GONE)
+                }
+                if (todayDots.size >= 2) {
+                    views.setViewVisibility(R.id.widget_tt_dot_2, View.VISIBLE)
+                    views.setInt(R.id.widget_tt_dot_2, "setColorFilter", todayDots[1])
+                } else {
+                    views.setViewVisibility(R.id.widget_tt_dot_2, View.GONE)
+                }
+                if (todayDots.size >= 3) {
+                    views.setViewVisibility(R.id.widget_tt_dot_3, View.VISIBLE)
+                    views.setInt(R.id.widget_tt_dot_3, "setColorFilter", todayDots[2])
+                } else {
+                    views.setViewVisibility(R.id.widget_tt_dot_3, View.GONE)
+                }
+            } else {
+                views.setViewVisibility(R.id.widget_tt_dots, View.GONE)
+            }
+
             val hoursText = if (todaySummary.timeRange.isNotBlank()) {
                 todaySummary.timeRange
             } else {
@@ -114,7 +86,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
             }
             views.setTextViewText(R.id.widget_tt_shift_hours, hoursText)
 
-            // Overtime indicator
+            // Indicatore Straordinario
             if (todaySummary.overtimeHours > 0f) {
                 val otFormatted = if (todaySummary.overtimeHours % 1f == 0f) {
                     "+${todaySummary.overtimeHours.toInt()}h Straordinario"
@@ -127,7 +99,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_tt_overtime_badge, View.GONE)
             }
 
-            // On-Call indicator
+            // Indicatore Reperibilità
             if (todaySummary.isOnCall) {
                 views.setTextViewText(R.id.widget_tt_oncall_badge, "🔔 Reperibile")
                 views.setViewVisibility(R.id.widget_tt_oncall_badge, View.VISIBLE)
@@ -135,7 +107,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_tt_oncall_badge, View.GONE)
             }
 
-            // Trasferta indicator
+            // Indicatore Trasferta (Verde vivid)
             if (todaySummary.isTrasferta) {
                 views.setTextViewText(R.id.widget_tt_trasferta_badge, "✈ Trasferta")
                 views.setViewVisibility(R.id.widget_tt_trasferta_badge, View.VISIBLE)
@@ -143,7 +115,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_tt_trasferta_badge, View.GONE)
             }
 
-            // Notes indicator
+            // Note se presenti
             if (todaySummary.notes.isNotBlank()) {
                 views.setTextViewText(R.id.widget_tt_notes, "📝 ${todaySummary.notes}")
                 views.setViewVisibility(R.id.widget_tt_notes, View.VISIBLE)
@@ -151,7 +123,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 views.setViewVisibility(R.id.widget_tt_notes, View.GONE)
             }
 
-            // Tomorrow preview with dedicated colored badge
+            // Card Domani: Spaziosa a piena larghezza con nome ed eventuale orario
             views.setTextViewText(R.id.widget_tt_tomorrow_badge, tomorrowSummary.displayShortCode)
             views.setInt(
                 R.id.widget_tt_tomorrow_badge,
@@ -159,14 +131,14 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
                 WidgetUpdateManager.getBadgeDrawableRes(tomorrowSummary.shiftDef)
             )
 
-            val tomorrowDetail = if (tomorrowSummary.timeRange.contains(":")) {
-                tomorrowSummary.timeRange.replace(" ", "")
+            val tomorrowDetail = if (tomorrowSummary.timeRange.isNotBlank() && tomorrowSummary.timeRange.contains(":")) {
+                "${tomorrowSummary.shiftName} • ${tomorrowSummary.timeRange}"
             } else {
                 tomorrowSummary.shiftName
             }
             views.setTextViewText(R.id.widget_tt_tomorrow_shift, tomorrowDetail)
 
-            // Deep link on click
+            // Deep link per aprire l'app sulla data odierna
             val pi = WidgetUpdateManager.createDayPendingIntent(context, today, appWidgetId)
             views.setOnClickPendingIntent(R.id.widget_tt_root, pi)
 
