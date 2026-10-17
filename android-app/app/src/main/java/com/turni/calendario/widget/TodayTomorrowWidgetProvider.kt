@@ -99,8 +99,8 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
             views.setTextViewText(R.id.widget_tt_header_date, formattedDate)
 
             // Today Shift
-            views.setTextViewText(R.id.widget_tt_shift_name, todaySummary.shiftName.uppercase())
-            views.setTextViewText(R.id.widget_tt_code_pill, todaySummary.shortCode)
+            views.setTextViewText(R.id.widget_tt_shift_name, todaySummary.shiftName)
+            views.setTextViewText(R.id.widget_tt_code_pill, todaySummary.displayShortCode)
             views.setInt(
                 R.id.widget_tt_code_pill,
                 "setBackgroundResource",
@@ -152,7 +152,7 @@ class TodayTomorrowWidgetProvider : AppWidgetProvider() {
             }
 
             // Tomorrow preview with dedicated colored badge
-            views.setTextViewText(R.id.widget_tt_tomorrow_badge, tomorrowSummary.shortCode)
+            views.setTextViewText(R.id.widget_tt_tomorrow_badge, tomorrowSummary.displayShortCode)
             views.setInt(
                 R.id.widget_tt_tomorrow_badge,
                 "setBackgroundResource",

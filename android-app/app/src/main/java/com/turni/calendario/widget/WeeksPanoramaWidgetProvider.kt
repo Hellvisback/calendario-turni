@@ -125,7 +125,7 @@ class WeeksPanoramaWidgetProvider : AppWidgetProvider() {
 
                 views.setTextViewText(nameIds[i], summary.dayNameShort)
                 views.setTextViewText(numIds[i], summary.dayNumber.toString())
-                views.setTextViewText(badgeIds[i], summary.shortCode)
+                views.setTextViewText(badgeIds[i], summary.displayShortCode)
 
                 views.setInt(
                     badgeIds[i],

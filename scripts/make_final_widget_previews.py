@@ -5,8 +5,8 @@ res_drawable_dir = r"android-app/app/src/main/res/drawable"
 os.makedirs(res_drawable_dir, exist_ok=True)
 
 brain_dir = r"C:\Users\marco\.gemini\antigravity\brain\208e7b54-1ea6-4362-9ea9-116c8f44a3bb"
-img1 = Image.open(os.path.join(brain_dir, "home_screen_widgets_awake.png"))
-img2 = Image.open(os.path.join(brain_dir, "home_screen_month_widget.png"))
+img1 = Image.open(os.path.join(brain_dir, "home_screen_v120_main.png"))
+img2 = Image.open(os.path.join(brain_dir, "home_screen_v120_month_fixed.png"))
 
 def apply_rounded_corners(im, radius=36):
     mask = Image.new("L", im.size, 0)
@@ -24,7 +24,7 @@ prev_week_row.save(p_week, "PNG")
 print(f"Saved {p_week} ({prev_week_row.size})")
 
 # 2. Today / Tomorrow (2x2)
-crop_today = img1.crop((66, 1093, 599, 1634))
+crop_today = img1.crop((66, 1093, 616, 1634))
 prev_today = apply_rounded_corners(crop_today, radius=38)
 p_today = os.path.join(res_drawable_dir, "preview_widget_today_tomorrow.png")
 prev_today.save(p_today, "PNG")
@@ -44,6 +44,4 @@ p_month = os.path.join(res_drawable_dir, "preview_widget_month_grid.png")
 prev_month.save(p_month, "PNG")
 print(f"Saved {p_month} ({prev_month.size})")
 
-print("All 4 widget previews generated successfully!")
-
-print("All 4 widget previews generated successfully!")
+print("All 4 widget previews updated successfully for v1.2.0!")

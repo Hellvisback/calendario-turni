@@ -13,6 +13,8 @@
         android:layout_height="wrap_content"
         android:gravity="center_vertical"
         android:orientation="horizontal"
+        android:paddingStart="5dp"
+        android:paddingEnd="5dp"
         android:paddingBottom="6dp">
 
         <TextView
@@ -68,11 +70,12 @@
                 android:layout_marginStart="7dp"
                 android:layout_weight="1"
                 android:ellipsize="end"
-                android:fontFamily="sans-serif-black"
+                android:fontFamily="sans-serif-bold"
+                android:singleLine="true"
                 android:maxLines="1"
-                android:text="POMERIGGIO"
+                android:text="Pomeriggio"
                 android:textColor="#F8FAFC"
-                android:textSize="13.5sp" />
+                android:textSize="12.5sp" />
         </LinearLayout>
 
         <TextView
@@ -183,9 +186,9 @@
                 android:layout_width="wrap_content"
                 android:layout_height="wrap_content"
                 android:fontFamily="sans-serif-bold"
-                android:text="DOMANI"
+                android:text="Dom."
                 android:textColor="#64748B"
-                android:textSize="8.5sp" />
+                android:textSize="9sp" />
 
             <TextView
                 android:id="@+id/widget_tt_tomorrow_badge"
@@ -193,13 +196,16 @@
                 android:layout_height="wrap_content"
                 android:layout_marginStart="4dp"
                 android:background="@drawable/bg_badge_green"
-                android:paddingStart="4.5dp"
-                android:paddingTop="1dp"
-                android:paddingEnd="4.5dp"
-                android:paddingBottom="1dp"
+                android:paddingStart="5dp"
+                android:paddingTop="1.5dp"
+                android:paddingEnd="5dp"
+                android:paddingBottom="1.5dp"
+                android:singleLine="true"
+                android:maxLines="1"
+                android:includeFontPadding="false"
                 android:text="NOT"
                 android:textColor="#FFFFFF"
-                android:textSize="8.5sp"
+                android:textSize="9sp"
                 android:textStyle="bold" />
 
             <TextView
@@ -211,10 +217,11 @@
                 android:ellipsize="end"
                 android:fontFamily="sans-serif-medium"
                 android:includeFontPadding="false"
+                android:singleLine="true"
                 android:maxLines="1"
                 android:text="22:00 - 05:36"
                 android:textColor="#E2E8F0"
-                android:textSize="8.5sp" />
+                android:textSize="9sp" />
         </LinearLayout>
 
         <!-- Navigation arrows in bottom right: completely outside the card! -->

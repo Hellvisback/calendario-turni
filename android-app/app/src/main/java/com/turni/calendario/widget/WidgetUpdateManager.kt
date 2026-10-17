@@ -23,15 +23,21 @@ data class DayShiftSummary(
     val overtimeHours: Float,
     val isOnCall: Boolean,
     val isTrasferta: Boolean,
-    val notes: String = ""
-)
+    val notes: String = "",
+    val hasMultipleShifts: Boolean = false
+) {
+    val displayShortCode: String
+        get() = if (hasMultipleShifts) "$shortCode •" else shortCode
+}
 
 object WidgetUpdateManager {
 
     const val EXTRA_SELECTED_DATE = "EXTRA_SELECTED_DATE"
 
     fun getDaySummary(date: LocalDate, today: LocalDate = LocalDate.now()): DayShiftSummary {
-        val assigned = ShiftRepository.getShiftsForDate(date).firstOrNull()
+        val allAssigned = ShiftRepository.getShiftsForDate(date)
+        val assigned = allAssigned.firstOrNull()
+        val hasMultipleShifts = allAssigned.size > 1
         val shiftDef = if (assigned != null) {
             ShiftRepository.getShiftDefinition(assigned.shiftDefId)
         } else {
@@ -64,7 +70,8 @@ object WidgetUpdateManager {
             overtimeHours = extra.overtimeHours,
             isOnCall = isOnCall,
             isTrasferta = extra.isTrasferta,
-            notes = combinedNotes
+            notes = combinedNotes,
+            hasMultipleShifts = hasMultipleShifts
         )
     }
 

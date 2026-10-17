@@ -142,7 +142,7 @@ class MonthGridWidgetProvider : AppWidgetProvider() {
                 views.setTextViewText(numIds[i], date.dayOfMonth.toString())
 
                 if (isCurrentMonth) {
-                    views.setTextViewText(codeIds[i], summary.shortCode)
+                    views.setTextViewText(codeIds[i], summary.displayShortCode)
                     views.setInt(
                         codeIds[i],
                         "setBackgroundResource",
@@ -178,7 +178,7 @@ class MonthGridWidgetProvider : AppWidgetProvider() {
                     views.setOnClickPendingIntent(cellIds[i], pi)
                 } else {
                     // Day outside month: visualizza turno con badge attenuato (faded) e testo semitrasparente
-                    views.setTextViewText(codeIds[i], summary.shortCode)
+                    views.setTextViewText(codeIds[i], summary.displayShortCode)
                     views.setInt(
                         codeIds[i],
                         "setBackgroundResource",

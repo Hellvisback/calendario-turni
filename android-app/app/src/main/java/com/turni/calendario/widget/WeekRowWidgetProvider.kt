@@ -102,7 +102,7 @@ class WeekRowWidgetProvider : AppWidgetProvider() {
 
                 views.setTextViewText(nameIds[i], summary.dayNameShort)
                 views.setTextViewText(numIds[i], summary.dayNumber.toString())
-                views.setTextViewText(codeIds[i], summary.shortCode)
+                views.setTextViewText(codeIds[i], summary.displayShortCode)
 
                 // Badge color
                 views.setInt(
