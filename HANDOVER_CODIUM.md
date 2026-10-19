@@ -2,199 +2,228 @@
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)  
 **Versione Corrente**: v1.2.3 (versionCode 15)  
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)  
-**Repository Git**: `https://github.com/Hellvisback/calendario-turni.git`
+**Parametri SDK**: compileSdk 32, minSdk 26, targetSdk 32, Java 11  
+**Repository Git**: `https://github.com/Hellvisback/calendario-turni.git`  
+**Branch Principale**: `main`  
+**Ambiente di Lavoro**: Locale su macchina Windows dell'utente (`c:\Users\marco\Antigravity Progetti\Calediario Turni`)
 
 ---
 
-## 1. Benvenuto in Calendario Turni!
-Questo documento fornisce al modello e all'agente AI (CodiumAI / Qodo Gen) il contesto esaustivo, le scelte architetturali, i vincoli operativi e le logiche di business dell'applicazione.  
-**Obiettivo primario**: Continuare lo sviluppo, la manutenzione, il refactoring o l'aggiunta di nuove feature mantenendo rigorosamente la coerenza visiva, l'ergonomia, la robustezza del codice e gli standard di release.
+## 1. Obiettivo del Progetto & Ambito di Sviluppo
+L'utente sviluppa localmente su questo PC questa applicazione Android nativa.
+L'obiettivo primario dei prossimi interventi con **CodiumAI / Qodo** è la **trasformazione e perfezionamento radicale dell'interfaccia grafica (UI/UX)**:
+- Adozione piena del design system **Material 3 Expressive** (Android 15/16).
+- Interfaccia pulita, geometricamente precisa ed ergonomica.
+- Esperienza utente visivamente appagante, con **animazioni fluide basate su fisica (springs)**, micro-interazioni elastiche al tocco e rifrazione **Obsidian Liquid Glass**.
+- Preservazione totale delle logiche di business esistenti (turni, rotazioni, ore, straordinari, trasferte, sveglie, sincronizzazione e widget).
 
 ---
 
-## 2. Regole di Comunicazione & Standard Operativi
+## 2. Architettura Operativa Multi-Agente (Orchestratore & Sub-Agenti)
 
-### A. Comunicazione
-1. **Rispondi e comunica SEMPRE in lingua italiana** con l'utente. Tutte le spiegazioni, i riassunti, i messaggi di chat e le descrizioni dei piani devono essere in italiano.
-2. **Codice sorgente in inglese**: Nomi di classi, funzioni, variabili, commenti nel codice sorgente, commit Git e comandi shell devono rimanere in lingua inglese standard.
+L'assistente AI opera secondo un modello gerarchico ad agenti specializzati per garantire massima precisione ed efficienza dei token:
 
-### B. Filosofia UI/UX (Tassativa)
-1. **Stile Visivo "Obsidian Liquid Glass"**:
-   - Tema scuro OLED ad altissimo contrasto (`Color(0xFF080B11)`).
-   - Superfici frosted glass con gradienti semitrasparenti, riflessi prismatici (`prismaticRefractionBrush`) e bordature sottili sfumate.
-   - Nessun elemento grezzo o piatto: uso armonioso di forme arrotondate (squircle / RoundedCornerShape 16-24dp).
-2. **Ergonomia "Riccardo Breccia UX"**:
-   - **Thumb Zone prioritaria**: Tutti i comandi principali, azioni frequenti e controlli critici devono trovarsi nella metà inferiore dello schermo, facilmente raggiungibili con una mano sola.
-   - **Dock inferiore fluttuante**: Navigation bar fluttuante e centrata (`LiquidGlassLensNavBar.kt`), non a tutto schermo da bordo a bordo.
-   - **Un solo pulsante "Indietro"**: Solo l'icona rotonda in alto a sinistra nella TopBar (`Icons.Default.ArrowBack`, dimensione 38-40dp). **MAI inserire doppi pulsanti "Indietro" in basso o nei footer!**
-   - **Notifiche a comparsa**: **MAI inserire banner statici o card rosse/verdi inline che spingono verso il basso il layout della schermata!** Usare sempre il componente `AnimatedStatusPopup` con overlay animato da sotto (`Alignment.BottomCenter`) dotato di auto-dismiss temporizzato.
-   - **Micro-interazioni elastiche**: Feedback tattile e di tocco elastico (`bouncyClickable`, spring physics) su icone e selettori.
+```mermaid
+graph TD
+    User["Utente (Lingua Italiana)"] --> Orchestrator["Master Orchestrator (Modello High-Tier: Claude 3.5 Sonnet / GPT-4o)"]
+    Orchestrator --> AgentUI["Sub-Agente UI/UX Motion & Expressive (Material 3 Expressive, Springs, Shaders)"]
+    Orchestrator --> AgentReview["Sub-Agente Code Quality & Architecture Reviewer"]
+    Orchestrator --> AgentBuild["Sub-Agente Build & Diagnostics (Gradle / JUnit / Lint)"]
+    Orchestrator --> AgentDevOps["Sub-Agente DevOps & Release (GitHub CLI / Script release.ps1)"]
+```
 
-### C. Standard di Sviluppo & Modifiche al Codice
-1. **Principio di Minimo Impatto**: Applica modifiche chirurgiche e contestualizzate (`replace_file_content`), senza mai cancellare file sconsideratamente o riscrivere interi file da zero quando non necessario.
-2. **Zero Allucinazioni**: Verifica sempre l'esistenza di metodi, classi o campi in `ShiftRepository.kt` o nei modelli prima di invocarli.
-3. **Verifica Empirica**: Ogni modifica al codice deve essere verificata compilando con Gradle (`.\gradlew.bat assembleDebug`).
+### Ruoli Operativi:
+1. **Master Orchestrator (Agente Principale)**:
+   - **Modello Consigliato**: Modello ad alto ragionamento (*Claude 3.5 Sonnet* o *GPT-4o*).
+   - **Responsabilità**: Interagisce in **italiano** con l'utente, analizza i requisiti, scompone i compiti complessi, coordina i sub-agenti specializzati e controlla la coerenza globale prima di dare conferma.
+2. **Sub-Agente UI/UX Motion & Expressive Designer**:
+   - **Responsabilità**: Progetta e rifinisce schermate e componenti Jetpack Compose. Implementa animazioni con molle (`spring physics`), forme dinamiche (`shape morphing`), feedback aptici ed elastici al tocco (`bouncyClickable`), gradienti e trasparenze Obsidian Liquid Glass.
+3. **Sub-Agente Code Quality & Architecture Reviewer**:
+   - **Responsabilità**: Revisiona ogni modifica prima del build: verifica che non vi siano regressioni, allucinazioni di classi/metodi o violazioni delle regole di design (es. nessun banner statico, nessun doppio pulsante indietro).
+4. **Sub-Agente Build & Diagnostics**:
+   - **Responsabilità**: Esegue la compilazione Gradle (`assembleDebug`) e la suite di test unitari (`.\gradlew.bat test`), diagnosticando e correggendo chirurgicamente eventuali warning o errori.
+5. **Sub-Agente DevOps & Release**:
+   - **Responsabilità**: Esegue i commit Git e pubblica le release su GitHub esclusivamente tramite `powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1`.
 
 ---
 
-## 3. Ambiente di Sviluppo & Comandi Shell
+## 3. Direzione UI/UX: Material 3 Expressive + Obsidian Liquid Glass + Riccardo Breccia
 
-Tutti i comandi vanno eseguiti in **PowerShell** nella cartella del progetto:
+L'utente richiede un salto di qualità visivo. Ecco i pilastri estetici ed ergonomici vincolanti:
+
+### A. Material 3 Expressive (Standard Google Android 15/16)
+1. **Fisica del Movimento (Spring Motion)**:
+   - Bandite le transizioni rigide o lineari.
+   - Usare sempre curve di molla realistiche di Compose:
+     `spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMedium)` o `StiffnessLow`.
+   - Transizioni organiche all'apertura dei fogli dal basso (bottom sheet), dialoghi, selettori e cambi mese.
+2. **Forme Dinamiche ed Espressive (Squircle & Dynamic Containers)**:
+   - Raggi di curvatura generosi e armonici (`RoundedCornerShape(16.dp)`, `24.dp` o `CircleShape`).
+   - Contenitori che si espandono e contraggono morbidamente in base al contenuto, senza scatti improvvisi.
+3. **Tipografia e Contrasto Espressivo**:
+   - Gerarchia visiva immediata: codici turno (M, P, N, RIP) e orari leggibili a colpo d'occhio anche da lontano o in condizioni di forte luce.
+4. **Micro-interazioni Tattili Appaganti**:
+   - Ogni elemento cliccabile deve reagire con feedback elastico (`bouncyClickable`), un leggero bagliore colorato (glow) coerente con la tipologia di turno e animazioni morbide.
+
+### B. Obsidian Liquid Glass (Design System Fondamentale)
+1. **Superfici Scure OLED**: Sfondo nero profondo `#080B11` per valorizzare i display AMOLED e contenere i consumi.
+2. **Effetto Frosted & Rifrazione Prismatica**: Trasparenze vitree sfumate con riflessi iridescenti prismatici (`prismaticRefractionBrush`) e bordature sottili a gradiente.
+
+### C. Ergonomia Riccardo Breccia UX (Regole Vincolanti)
+1. **Thumb Zone Assoluta**: Tutti i comandi principali, selettori di turni, pulsanti di azione e palette devono trovarsi nella metà inferiore dello schermo, facilmente utilizzabili con una sola mano.
+2. **Dock Inferiore Fluttuante**: La barra di navigazione inferiore (`LiquidGlassLensNavBar.kt`) deve essere una capsula/dock fluttuante centrata, non estesa rigidamente da bordo a bordo.
+3. **Un Solo Pulsante "Indietro"**: Sempre e solo l'icona rotonda in alto a sinistra nella TopBar (`Icons.Default.ArrowBack`, 38-40dp). **MAI inserire doppi tasti "Indietro" o "Annulla" in fondo alle schermate!**
+4. **Divieto di Spostamento Layout (Layout Shift Prohibition)**:
+   - **TASSATIVO**: Non mostrare mai card o banner statici (verdi o rossi) all'interno del flusso della pagina che "spingono" verso il basso il layout circostante.
+   - Qualsiasi notifica, conferma o errore deve apparire tramite `AnimatedStatusPopup` in overlay animato dal basso (`Alignment.BottomCenter`) con dissolvenza ed auto-chiusura temporizzata.
+
+---
+
+## 4. Guida alle Directory & Mappa dei File Sorgente
+
+L'assistente sa esattamente in quale cartella e file intervenire in base al tipo di task:
+
+```text
+c:\Users\marco\Antigravity Progetti\Calediario Turni\
+│
+├── AGENTS.md                          # Regole tassative di sistema per AI e release
+├── HANDOVER_CODIUM.md                 # Questo documento tecnico di riferimento
+├── HANDOVER_NOTES.md                  # Milestone storiche e note di progetto
+├── package.json                       # Metadati e script
+│
+├── scripts/                           # Script PowerShell e Python di supporto
+│   ├── release.ps1                    # SCRIPT UFFICIALE RELEASE: build, commit, tag e gh release
+│   ├── make_final_widget_previews.py  # Script Pillow per rendering anteprime widget
+│   └── process_logo.py                # Pipeline grafica per icone e logo
+│
+├── esApp/                             # Screenshot storici SuperShift di riferimento
+│
+└── android-app/                       # Root del progetto Android Studio
+    ├── build.gradle.kts               # Configurazione di build root
+    ├── settings.gradle.kts            # Configurazione moduli Gradle
+    ├── gradlew.bat                    # Gradle wrapper per Windows
+    │
+    └── app/
+        ├── build.gradle.kts           # compileSdk 32, minSdk 26, targetSdk 32, versionCode 15, versionName "1.2.3"
+        └── src/
+            │
+            ├── test/java/com/turni/calendario/ # TEST UNITARI (JUnit)
+            │   ├── ShiftCalculationTest.kt    # Test calcolo ore, straordinari e ferie
+            │   ├── NgeniaTurniParserTest.kt   # Test parsing tabelloni e PDF
+            │   └── WidgetMultiShiftTest.kt    # Test logica turni multipli sui widget
+            │
+            └── main/
+                ├── AndroidManifest.xml        # Permessi, provider widget, servizi, activity
+                ├── res/                       # Risorse grafiche, drawable, layout widget XML
+                │   ├── layout/                # Layout XML dei 4 Widget Android
+                │   │   ├── widget_today_tomorrow.xml   # Widget 2x2 Oggi/Domani
+                │   │   ├── widget_week_row.xml         # Widget 4x1 Striscia Settimana
+                │   │   ├── widget_weeks_panorama.xml   # Widget 4x2 Panorama 2 Settimane
+                │   │   └── widget_month_grid.xml       # Widget 4x3+ Griglia Mese Completo
+                │   └── xml/                   # Configurazione AppWidgetProviderInfo
+                │       └── widget_month_grid_info.xml  # Blocco altezza minima (minResizeHeight 3 rows)
+                │
+                └── java/com/turni/calendario/ # SORGENTI KOTLIN
+                    ├── MainActivity.kt        # Entry point Compose, navigation host, permissions
+                    │
+                    ├── model/                 # MODELLI DATI
+                    │   └── ShiftModels.kt     # ShiftDefinition, AssignedShift, RotationCycle, WorkProfile
+                    │
+                    ├── repository/            # SINGLE SOURCE OF TRUTH
+                    │   └── ShiftRepository.kt # Salvataggio SharedPreferences/JSON, StateFlow reattivi, logiche turni
+                    │
+                    ├── ui/
+                    │   ├── theme/             # DESIGN SYSTEM & TOKEN
+                    │   │   ├── Color.kt       # Colori Obsidian OLED, colori turni (Mattina, Pomeriggio, Notte, Riposo)
+                    │   │   ├── Theme.kt       # Tema Material 3 Compose
+                    │   │   └── Type.kt        # Tipografia e scale di testo
+                    │   │
+                    │   ├── components/        # COMPONENTI RIUTILIZZABILI
+                    │   │   ├── AnimatedStatusPopup.kt   # Overlay popup animato dal basso (success/error/info)
+                    │   │   ├── LiquidGlassLensNavBar.kt # Bottom navigation bar fluttuante a lente liquida
+                    │   │   └── TurniUiComponents.kt     # Chip, badge straordinari/trasferte, bottoni elastici
+                    │   │
+                    │   └── screens/           # LE SCHERMATE PRINCIPALI DELL'APP
+                    │       ├── MainScreen.kt            # Contenitore delle 4 tab principali
+                    │       ├── CalendarScreen.kt        # TAB 1: Calendario mensile, griglia giorni, editor turno, ore
+                    │       ├── ReportScreen.kt          # TAB 2: Statistiche ore, straordinari, trasferte (Mese/Anno/Pers)
+                    │       ├── TurniModelsScreen.kt     # TAB 3: Modelli turno e cicli di rotazione
+                    │       ├── SettingsScreen.kt        # TAB 4: Hub impostazioni ("Altro")
+                    │       ├── SmartAlarmsSettingsScreen.kt # Schermata configurazione sveglie intelligenti
+                    │       ├── ReperibilitaSettingsScreen.kt# Schermata configurazione reperibilità
+                    │       ├── HolidaysSettingsScreen.kt# Schermata selezione festività
+                    │       ├── ImportShiftsScreen.kt    # Schermata importazione universale turni (carosello guidato)
+                    │       ├── GeminiShiftImportScreen.kt # Schermata import intelligente con Gemini Flash Vision
+                    │       ├── GoogleCalendarSyncScreen.kt# Schermata sincronizzazione Google Calendar con cooldown
+                    │       ├── CloudBackupScreen.kt     # Schermata backup Google Drive
+                    │       ├── PdfExportScreen.kt       # Schermata esportazione PDF
+                    │       └── WorkProfileEditorScreen.kt# Schermata profilo lavoro e visualizzatore PDF CCNL
+                    │
+                    ├── widget/                # I 4 WIDGET ANDROID NATIVI
+                    │   ├── WidgetUpdateManager.kt         # Notifica sincrona di aggiornamento di tutti i widget
+                    │   ├── TodayTomorrowWidgetProvider.kt # Provider Widget 2x2
+                    │   ├── WeekRowWidgetProvider.kt       # Provider Widget 4x1
+                    │   ├── WeeksPanoramaWidgetProvider.kt # Provider Widget 4x2
+                    │   └── MonthGridWidgetProvider.kt     # Provider Widget 4x3+
+                    │
+                    ├── alarm/                 # SVEGLIE INTELLIGENTI
+                    │   ├── ShiftAlarmScheduler.kt         # Pianificatore sveglie automatiche in base al turno
+                    │   └── ShiftAlarmReceiver.kt          # BroadcastReceiver di sistema per scatto allarmi
+                    │
+                    ├── data/                  # NETWORKING & GEMINI VISION API
+                    │   ├── GeminiApiClient.kt             # Client REST multimodale verso Gemini Flash
+                    │   ├── GeminiShiftModels.kt           # Schema JSON strutturato per output Gemini
+                    │   ├── GeminiShiftMapper.kt           # Mappatura da JSON a modelli interni
+                    │   ├── DocumentProcessor.kt           # Rendering PDF nativo in Bitmap (PdfRenderer)
+                    │   └── SecurePreferencesManager.kt    # Salvataggio sicuro API Key
+                    │
+                    ├── importer/              # PARSER TABELLONI
+                    │   └── NgeniaTurniParser.kt           # Parser universale testo, CSV, tabelle e turnisti
+                    │
+                    ├── sync/                  # SINCRONIZZAZIONI ESTERNE
+                    │   ├── GoogleCalendarSyncHelper.kt    # Sincronizzazione reale Google Calendar (CalendarContract)
+                    │   └── GoogleDriveBackupHelper.kt     # Backup e ripristino Google Drive
+                    │
+                    └── export/                # ESPORTAZIONE PDF
+                        └── PdfGenerator.kt                # Generazione PDF prospetti A4 stile SuperShift
+```
+
+---
+
+## 5. Comandi Shell Rapidi (PowerShell su questa macchina)
 
 ```powershell
-# 1. Configurazione Java Home (usare il JRE integrato di Android Studio)
+# Imposta Java Home di Android Studio
 $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"
 
-# 2. Compilazione dell'APK Debug
+# Compilazione debug
 cd "android-app"
 .\gradlew.bat assembleDebug
 
-# 3. Esecuzione Test Unitari
+# Esecuzione test unitari
 .\gradlew.bat test
 
-# 4. Installazione su dispositivo fisico reale (Realme 8 Pro, ID cb08bc57)
+# Installazione su Realme 8 Pro (cb08bc57) via ADB
 & "C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe" -s cb08bc57 install -r "android-app\app\build\outputs\apk\debug\app-debug.apk"
 
-# 5. Avvio applicazione sul telefono
+# Avvio app
 & "C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe" -s cb08bc57 shell am start -n com.turni.calendario/.MainActivity
 
-# 6. Screenshot di verifica visiva (usare cmd /c per evitare corruzione binaria UTF-16LE di PowerShell)
-cmd.exe /c "`"C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe`" -s cb08bc57 exec-out screencap -p > screenshot.png"
+# Cattura screenshot da riga di comando
+cmd.exe /c "`"C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe`" -s cb08bc57 exec-out screencap -p > screen.png"
 ```
 
-### Regole Tassative di Release su GitHub:
-- **Script Ufficiale di Rilascio**: `powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1`
-- **MAI sovrascrivere release con `gh release upload v1.0.0 --clobber`**: Android rifiuta l'aggiornamento dell'app se `versionCode` non aumenta! Inoltre GitHub non notifica l'aggiornamento agli utenti.
-- Ogni release deve incrementare `versionCode` (intero progressivo es. 15 -> 16) e `versionName` semantico (es. 1.2.3 -> 1.2.4) in `android-app/app/build.gradle.kts`.
-- **REQUISITO TASSATIVO**: Caricare **ESCLUSIVAMENTE** il singolo file APK versionato (`app-release-vX.Y.Z.apk`).
-- **MAI caricare `app-release-latest.apk` né `.zip` nelle release di GitHub!**
-- **MAI copiare l'APK o sincronizzare su OneDrive!**
+### Script Ufficiale di Rilascio:
+Per ogni rilascio su GitHub:
+`powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1`
+(incrementa automaticamente `versionCode`, aggiorna `versionName`, compila, committa, pusha e crea la nuova release GitHub allegando solo il singolo APK versionato).
 
 ---
 
-## 4. Architettura e Albero del Repository
-
-```text
-Calediario Turni/
-├── AGENTS.md                          # Regole di governance per agenti AI
-├── HANDOVER_CODIUM.md                 # Questa guida tecnica per CodiumAI / Qodo
-├── HANDOVER_NOTES.md                  # Note storiche e milestone del progetto
-├── package.json                       # Configurazione meta-progetto e script release
-├── scripts/
-│   ├── release.ps1                    # Script ufficiale di compilazione, git push e release GitHub
-│   ├── export_project.ps1             # Script per impacchettare il progetto in ZIP pulito
-│   ├── make_final_widget_previews.py  # Generatore anteprime visive per i 4 widget Android
-│   └── process_logo.py                # Pipeline di ottimizzazione icona e logo
-└── android-app/                       # Modulo applicazione Android Studio
-    ├── build.gradle.kts               # Configurazione radice Gradle
-    ├── settings.gradle.kts
-    ├── gradlew.bat
-    └── app/
-        ├── build.gradle.kts           # Dipendenze Compose, Room, Gson, Coroutines (targetSdk 34)
-        └── src/
-            ├── test/                  # Test unitari JUnit
-            │   └── java/com/turni/calendario/
-            │       ├── ShiftCalculationTest.kt
-            │       ├── NgeniaTurniParserTest.kt
-            │       └── WidgetMultiShiftTest.kt
-            └── main/
-                ├── AndroidManifest.xml
-                ├── res/               # Layout XML dei Widget, drawable vettoriali, mipmap icone
-                └── java/com/turni/calendario/
-                    ├── MainActivity.kt        # Entry point Compose, permission handler, intent
-                    ├── model/
-                    │   └── ShiftModels.kt     # Modelli dati principali (ShiftDefinition, AssignedShift, RotationCycle...)
-                    ├── repository/
-                    │   └── ShiftRepository.kt # SINGLE SOURCE OF TRUTH: salvataggio SharedPreferences/JSON, reattività StateFlow
-                    ├── alarm/
-                    │   └── ShiftAlarmScheduler.kt # Gestore sveglie intelligenti basate su turni e reperibilità
-                    ├── widget/                # 4 Widget nativi per la schermata home di Android
-                    │   ├── WidgetUpdateManager.kt         # Notifica e aggiornamento sincrono di tutti i widget
-                    │   ├── TodayTomorrowWidgetProvider.kt # Widget 2x2 Oggi & Domani con orari e trasferte
-                    │   ├── WeekRowWidgetProvider.kt       # Widget 4x1 Striscia Settimanale
-                    │   ├── WeeksPanoramaWidgetProvider.kt # Widget 4x2 Panorama 2 Settimane con indicatori reperibilità
-                    │   └── MonthGridWidgetProvider.kt     # Widget 4x3+ Griglia Mese Completo con navigazione
-                    ├── sync/
-                    │   ├── GoogleCalendarSyncHelper.kt    # Sincronizzazione reale Google Calendar (CalendarContract)
-                    │   └── GoogleDriveBackupHelper.kt     # Backup e Restore 1-tap Google Drive
-                    ├── pdf/
-                    │   └── PdfGenerator.kt                # Esportazione prospetto turni A4 in PDF
-                    ├── parser/
-                    │   ├── NgeniaTurniParser.kt           # Parser universale tabelloni turni, fogli di calcolo e testo
-                    │   └── GeminiShiftVisionHelper.kt     # Parser multimodale intelligente tramite Gemini Flash Vision API
-                    └── ui/
-                        ├── theme/
-                        │   ├── Color.kt                   # Token colore Obsidian OLED, gradienti e colori turni
-                        │   ├── Theme.kt
-                        │   └── Type.kt
-                        ├── components/
-                        │   ├── AnimatedStatusPopup.kt     # Notifica HUD overlay non invasiva da sotto
-                        │   ├── LiquidGlassLensNavBar.kt   # Bottom navigation bar fluttuante a lente liquida
-                        │   └── TurniUiComponents.kt       # Componenti riutilizzabili, chip, badge, bottoni elastici
-                        └── screens/
-                            ├── MainScreen.kt              # Host delle 4 tab (Calendario, Report, Turni, Altro)
-                            ├── CalendarScreen.kt          # TAB 1: Griglia mese interattiva, dettagli giorno, ore e trasferte
-                            ├── ReportScreen.kt            # TAB 2: Statistiche ore, straordinari, trasferte (Mese/Anno/Pers)
-                            ├── TurniModelsScreen.kt       # TAB 3: Gestione catalogo turni e cicli di rotazione
-                            ├── SettingsScreen.kt          # TAB 4: Hub impostazioni ("Altro")
-                            ├── SmartAlarmsSettingsScreen.kt # Configurazione sveglie intelligenti
-                            ├── ReperibilitaSettingsScreen.kt# Gestione reperibilità singola, su turno o ciclica
-                            ├── HolidaysSettingsScreen.kt  # Selezione festività nazionali, religiose e patronali
-                            ├── ImportShiftsScreen.kt      # Flusso intelligente importazione turni (Vision AI + Parser)
-                            ├── GoogleCalendarSyncScreen.kt# Sincronizzazione Google Calendar reale con cooldown
-                            ├── CloudBackupScreen.kt       # Backup cloud su Google Drive
-                            ├── PdfExportScreen.kt         # Esportazione PDF in stile SuperShift
-                            └── WorkProfileEditorScreen.kt # Editor profilo lavorativo e allegato PDF CCNL
-```
-
----
-
-## 5. Logiche di Business Critiche
-
-### A. Calcolo Turni, Straordinari e Trasferte (`CalendarScreen.kt`, `ShiftRepository.kt`)
-1. **Turni Multipli nello Stesso Giorno**: Un singolo giorno può ospitare più turni (es. Mattina + Reperibilità, o Mattina + Notte).
-2. **Trasferte e Straordinari Legati al Turno**:
-   - Lo straordinario (+1h, +2h, etc.) allunga il turno visivamente con un'area in semitrasparenza azzurra.
-   - La trasferta viene visualizzata con un'icona o badge verde affiancato al turno specifico.
-3. **Regola Ferie vs Smonto/Riposo (`ReportScreen.kt`)**:
-   - Se l'utente applica il turno Ferie sopra uno Smonto Notte o un Riposo, compare visivamente Ferie per comodità, **MA nel calcolo statistico del Report non devono essere contati come giorni di ferie consumati**, bensì conteggiati come smonto/riposo contrattuale.
-4. **Badge Ex-Turno**:
-   - Viene mostrato in grigio discreto (`ex POM`, `ex NOT`) **esclusivamente** se il giorno apparteneva a una rotazione ciclica ed è stato sovrascritto manualmente. Non appare sui turni inseriti su giorni vuoti. L'utente può nasconderlo o disabilitarlo dalle impostazioni.
-
-### B. I 4 Widget Android (`widget/`)
-1. **Today & Tomorrow (2x2)**: Mostra chiaramente il turno di oggi con orari di inizio/fine, straordinari e trasferte, e il turno di domani in forma abbreviata (es. `dom. Mattina`).
-2. **Week Row (4x1)**: Striscia dei 7 giorni della settimana con evidenziazione del giorno corrente e icone/lettere turno.
-3. **Weeks Panorama (4x2)**: Visualizzazione a 2 settimane (14 giorni) con colorazione semitrasparente arancione per i giorni di reperibilità e frecce di scorrimento in alto a destra.
-4. **Month Grid (4x3+)**:
-   - Griglia completa del mese con anteprima chiara dei giorni precedenti e successivi in tonalità attenuata.
-   - Reperibilità evidenziata con overlay semitrasparente arancione (senza scritte ridondanti).
-   - Giorni con più turni visualizzati con appositi pallini colorati indicatori.
-   - Frecce di navigazione mese collocate in alto a destra.
-   - Altezza minima bloccata a 3 righe (`minResizeHeight` in `widget_month_grid_info.xml`) per evitare tagli grafici.
-   - Ogni volta che i dati dei turni cambiano, viene invocato `WidgetUpdateManager.updateAllWidgets(context)`.
-
-### C. Sveglie Intelligenti (`ShiftAlarmScheduler.kt`, `SmartAlarmsSettingsScreen.kt`)
-1. Configurazione sveglie differenziata per turno (Mattina, Pomeriggio, Notte, etc.) con anticipo configurabile (es. 60 minuti prima dell'inizio del turno).
-2. **Sveglia Reperibilità**: Suona la **sera prima alle 20:00** (orario modificabile con preset rapidi 19:00, 20:00, 21:00).
-3. Integrazione con `AlarmManager` di Android e notifica di sincronizzazione.
-
-### D. Sincronizzazione Google Calendar (`GoogleCalendarSyncScreen.kt`)
-1. **Cooldown Obbligatorio di 5 Minuti**: Dopo aver sincronizzato o eliminato gli eventi, il pulsante viene bloccato con un conto alla rovescia (es. `Attendi 4:32...`) per impedire doppi click e duplicazione massiva di eventi nel calendario di sistema.
-2. **Eliminazione Sicura One-by-One**: Gli eventi dell'app sono identificati dal prefisso `[CalendarioTurni]`. La cancellazione avviene elemento per elemento tramite query degli ID, evitando il popup di sistema Android "Eliminazione di più di 50 eventi".
-3. **Notifica forzata al ContentResolver**: Viene invocato `context.contentResolver.notifyChange(CalendarContract.Events.CONTENT_URI, null)`.
-
-### E. Importazione Intelligente con Gemini Flash Vision (`ImportShiftsScreen.kt`, `GeminiShiftVisionHelper.kt`)
-1. Supporta il caricamento di immagini, screenshot o documenti PDF (convertiti nativamente in Bitmap tramite `PdfRenderer`).
-2. Invio dell'immagine a Google Gemini Flash con schema JSON strutturato: estrazione automatica di squadre, rotazioni cicliche, orari e condizioni di reperibilità.
-3. Se l'utente inserisce a monte il proprio nome, la squadra di appartenenza viene automaticamente individuata e pre-selezionata con la stellina ⭐.
-4. Carosello guidato a step per spiegare all'utente il flusso in modo semplice ed ergonomico.
-
----
-
-## 6. Checklist per Qualsiasi Task di Sviluppo
-Prima di considerare concluso qualsiasi intervento:
-- [ ] Il codice compila senza errori con `.\gradlew.bat assembleDebug` in `android-app/`.
-- [ ] Nessun linter o test unitario è rotto (`.\gradlew.bat test`).
-- [ ] Il design rispetta Obsidian Liquid Glass e l'ergonomia Breccia (nessun popup statico, nessun doppio pulsante back).
-- [ ] Se vengono modificate le logiche dei turni, verificare che i Widget si aggiornino tramite `WidgetUpdateManager`.
-- [ ] Ogni nuova release su GitHub viene effettuata tramite `powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1` con incremento di `versionCode`.
+## 6. Regole Tassative di Governance
+1. **Rispondere sempre in italiano** all'utente.
+2. **Codice, nomi e comandi in inglese**.
+3. **MAI toccare o salvare su OneDrive**.
+4. **MAI sovrascrivere release GitHub con `--clobber`**; incrementare sempre `versionCode`.
+5. **Non creare MAI banner statici** che provocano layout shift.
+6. **Un solo tasto indietro in alto a sinistra** (mai duplicati in basso).
