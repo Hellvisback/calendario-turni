@@ -26,9 +26,13 @@ Applicazione Android nativa in **Kotlin** e **Jetpack Compose** progettata per l
   - Esportazione report PDF e timbrature.
 
 ## Download & Installazione APK
-Scarica l'ultimo file APK direttamente dalla sezione [Releases](../../releases) di questa repository:
-- File: `app-release-latest.apk`
+Scarica l'ultimo file APK versionato (es. `app-release-v1.2.3.apk`) direttamente dalla sezione [Releases](../../releases) di questa repository.
 - Requisiti: Android 8.0 (API 26) o superiore.
+
+## Documentazione Tecnica & AI Handover
+Per sviluppatori e agenti AI (CodiumAI / Qodo), fare riferimento al documento di architettura:
+👉 [HANDOVER_CODIUM.md](HANDOVER_CODIUM.md)
+
 
 ## Compilazione da Sorgente
 ```powershell
