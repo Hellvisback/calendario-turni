@@ -454,7 +454,7 @@ fun GeminiShiftImportScreen(
                             Icon(
                                 imageVector = Icons.Default.ContentCopy,
                                 contentDescription = null,
-                                tint = Color.White,
+                                tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(20.dp)
                             )
                             Spacer(modifier = Modifier.width(10.dp))
@@ -462,7 +462,7 @@ fun GeminiShiftImportScreen(
                                 text = "Copia Prompt negli Appunti",
                                 fontSize = 14.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
 
@@ -565,7 +565,7 @@ fun GeminiShiftImportScreen(
                         text = "Avanti: Incolla Risposta AI →",
                         fontSize = 14.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
 
@@ -773,13 +773,13 @@ fun GeminiShiftImportScreen(
                                     modifier = Modifier
                                         .size(36.dp)
                                         .clip(RoundedCornerShape(10.dp))
-                                        .background(Color(0xFF10B981).copy(alpha = 0.15f)),
+                                        .background(ObsidianTertiary.copy(alpha = 0.15f)),
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
                                         imageVector = Icons.Default.ContentPaste,
                                         contentDescription = null,
-                                        tint = Color(0xFF10B981),
+                                        tint = ObsidianTertiary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                 }
@@ -887,7 +887,7 @@ fun GeminiShiftImportScreen(
                     Icon(
                         imageVector = Icons.Default.AutoAwesome,
                         contentDescription = null,
-                        tint = Color.White,
+                        tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(20.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -895,7 +895,7 @@ fun GeminiShiftImportScreen(
                         text = "Elabora Turni e Squadre ✨",
                         fontSize = 14.5.sp,
                         fontWeight = FontWeight.Bold,
-                        color = Color.White
+                        color = MaterialTheme.colorScheme.onPrimaryContainer
                     )
                 }
 
@@ -937,7 +937,7 @@ fun GeminiShiftImportScreen(
                                 Icon(
                                     imageVector = Icons.Default.CheckCircle,
                                     contentDescription = null,
-                                    tint = Color(0xFF10B981),
+                                    tint = ObsidianTertiary,
                                     modifier = Modifier.size(20.dp)
                                 )
                                 Spacer(modifier = Modifier.width(8.dp))
@@ -967,8 +967,8 @@ fun GeminiShiftImportScreen(
                             Spacer(modifier = Modifier.height(10.dp))
                             Surface(
                                 shape = RoundedCornerShape(10.dp),
-                                color = Color(0xFF10B981).copy(alpha = 0.12f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFF10B981).copy(alpha = 0.3f)),
+                                color = ObsidianTertiary.copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianTertiary.copy(alpha = 0.3f)),
                                 modifier = Modifier.fillMaxWidth()
                             ) {
                                 Row(
@@ -978,7 +978,7 @@ fun GeminiShiftImportScreen(
                                     Icon(
                                         imageVector = Icons.Default.Star,
                                         contentDescription = null,
-                                        tint = Color(0xFFFBBF24),
+                                        tint = ColorReperibilita,
                                         modifier = Modifier.size(16.dp)
                                     )
                                     Spacer(modifier = Modifier.width(8.dp))
@@ -1063,7 +1063,7 @@ fun GeminiShiftImportScreen(
                                                 text = def.code.take(4),
                                                 fontSize = 10.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = Color.White
+                                                color = catalogInk(Color(colorParsed))
                                             )
                                         }
                                         Spacer(modifier = Modifier.width(10.dp))
@@ -1084,13 +1084,13 @@ fun GeminiShiftImportScreen(
                                                     Spacer(modifier = Modifier.width(6.dp))
                                                     Surface(
                                                         shape = RoundedCornerShape(4.dp),
-                                                        color = Color(0xFFF59E0B).copy(alpha = 0.15f)
+                                                        color = ColorReperibilita.copy(alpha = 0.15f)
                                                     ) {
                                                         Text(
                                                             text = "Reperibile",
                                                             fontSize = 9.sp,
                                                             fontWeight = FontWeight.Bold,
-                                                            color = Color(0xFFF59E0B),
+                                                            color = ColorReperibilita,
                                                             modifier = Modifier.padding(horizontal = 4.dp, vertical = 1.dp)
                                                         )
                                                     }
@@ -1417,13 +1417,13 @@ fun GeminiShiftImportScreen(
                         .height(50.dp)
                 ) {
                     if (isSaving) {
-                        CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
+                        CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimaryContainer, strokeWidth = 2.dp, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Salvataggio in corso...", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Salvataggio in corso...", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     } else {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Salva nel Catalogo", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                        Text("Salva nel Catalogo", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
                 }
 
@@ -1542,7 +1542,7 @@ fun GeminiShiftImportScreen(
                 onDismissRequest = { showExitToEditDialog = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.WarningAmber, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(22.dp))
+                        Icon(Icons.Default.WarningAmber, contentDescription = null, tint = ColorReperibilita, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Salvataggio e Modifica", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
                     }
@@ -1576,7 +1576,7 @@ fun GeminiShiftImportScreen(
                         colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                         shape = RoundedCornerShape(10.dp)
                     ) {
-                        Text("Procedi a Modifica", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("Procedi a Modifica", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 },
                 dismissButton = {
@@ -1681,14 +1681,14 @@ private fun StepPillItem(
         shape = RoundedCornerShape(10.dp),
         color = when {
             isActive -> ObsidianPrimaryContainer
-            isCompleted -> Color(0xFF10B981).copy(alpha = 0.15f)
+            isCompleted -> ObsidianTertiary.copy(alpha = 0.15f)
             else -> Color.Transparent
         },
         border = androidx.compose.foundation.BorderStroke(
             1.dp,
             when {
                 isActive -> ObsidianPrimary
-                isCompleted -> Color(0xFF10B981).copy(alpha = 0.3f)
+                isCompleted -> ObsidianTertiary.copy(alpha = 0.3f)
                 else -> Color.Transparent
             }
         ),
@@ -1702,7 +1702,7 @@ private fun StepPillItem(
                 Icon(
                     imageVector = Icons.Default.Check,
                     contentDescription = null,
-                    tint = Color(0xFF10B981),
+                    tint = ObsidianTertiary,
                     modifier = Modifier.size(13.dp)
                 )
                 Spacer(modifier = Modifier.width(4.dp))
@@ -1712,8 +1712,8 @@ private fun StepPillItem(
                 fontSize = 11.5.sp,
                 fontWeight = if (isActive || isCompleted) FontWeight.Bold else FontWeight.Medium,
                 color = when {
-                    isActive -> Color.White
-                    isCompleted -> Color(0xFF10B981)
+                    isActive -> MaterialTheme.colorScheme.onPrimaryContainer
+                    isCompleted -> ObsidianTertiary
                     else -> TextSecondary
                 }
             )
@@ -1840,7 +1840,7 @@ private fun EditShiftDialog(
                                 .background(Color(android.graphics.Color.parseColor(hex)))
                                 .border(
                                     if (isSelected) 2.dp else 0.dp,
-                                    if (isSelected) Color.White else Color.Transparent,
+                                    if (isSelected) TextPrimary else Color.Transparent,
                                     CircleShape
                                 )
                                 .clickable { colorHex = hex }
@@ -1889,7 +1889,7 @@ private fun EditShiftDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Salva", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Salva", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         },
         dismissButton = {
@@ -2035,7 +2035,7 @@ private fun EditSquadDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Salva", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                Text("Salva", color = MaterialTheme.colorScheme.onPrimaryContainer, fontWeight = FontWeight.Bold, fontSize = 13.sp)
             }
         },
         dismissButton = {
@@ -2190,11 +2190,11 @@ private fun DirectApiCard(
                 modifier = Modifier.fillMaxWidth().height(44.dp)
             ) {
                 if (isAnalyzing) {
-                    CircularProgressIndicator(color = Color.White, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
+                    CircularProgressIndicator(color = MaterialTheme.colorScheme.onPrimaryContainer, strokeWidth = 2.dp, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Analisi in corso...", fontSize = 12.sp, color = Color.White)
+                    Text("Analisi in corso...", fontSize = 12.sp, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 } else {
-                    Text("Analizza con Gemini Vision", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Analizza con Gemini Vision", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
             }
         }
@@ -2228,10 +2228,10 @@ private fun ImportElasticStarButton(
             onToggle()
         },
         shape = RoundedCornerShape(10.dp),
-        color = if (isDefault) Color(0xFFF59E0B).copy(alpha = 0.2f) else ObsidianSurfaceContainer,
+        color = if (isDefault) ColorReperibilita.copy(alpha = 0.2f) else ObsidianSurfaceContainer,
         border = androidx.compose.foundation.BorderStroke(
             0.8.dp,
-            if (isDefault) Color(0xFFF59E0B) else ObsidianBorderSubtle
+            if (isDefault) ColorReperibilita else ObsidianBorderSubtle
         ),
         modifier = modifier.size(38.dp)
     ) {
@@ -2239,7 +2239,7 @@ private fun ImportElasticStarButton(
             Icon(
                 imageVector = if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
                 contentDescription = if (isDefault) "Revoca predefinito" else "Imposta come predefinito",
-                tint = if (isDefault) Color(0xFFFBBF24) else TextSecondary,
+                tint = if (isDefault) ColorReperibilita else TextSecondary,
                 modifier = Modifier
                     .size(20.dp)
                     .scale(scale.value)

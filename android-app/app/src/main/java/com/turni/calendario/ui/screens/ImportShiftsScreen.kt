@@ -269,9 +269,9 @@ fun ImportShiftsScreen(
                         .fillMaxWidth()
                         .height(42.dp)
                 ) {
-                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
-                    Text("Sfoglia File (PDF, Excel, CSV, TXT)", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                    Text("Sfoglia File (PDF, Excel, CSV, TXT)", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
@@ -298,7 +298,7 @@ fun ImportShiftsScreen(
                             },
                             contentPadding = PaddingValues(horizontal = 4.dp, vertical = 0.dp)
                         ) {
-                            Text("Cancella", color = Color(0xFFEF4444), fontSize = 11.sp)
+                            Text("Cancella", color = ColorNegative, fontSize = 11.sp)
                         }
                     }
                 }
@@ -335,16 +335,16 @@ fun ImportShiftsScreen(
                 ) {
                     if (isProcessing) {
                         CircularProgressIndicator(
-                            color = Color.White,
+                            color = MaterialTheme.colorScheme.onPrimary,
                             strokeWidth = 2.dp,
                             modifier = Modifier.size(18.dp)
                         )
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Analisi in corso...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("Analisi in corso...", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     } else {
-                        Icon(Icons.Default.Bolt, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
-                        Text("Analizza Tabellone Turni", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                        Text("Analizza Tabellone Turni", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
                 }
             }
@@ -538,10 +538,10 @@ fun ImportShiftsScreen(
                                     if (emp.isOnCallGeneral) {
                                         Surface(
                                             shape = RoundedCornerShape(6.dp),
-                                            color = Color(0xFFF59E0B).copy(alpha = 0.2f),
-                                            border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
+                                            color = ColorReperibilita.copy(alpha = 0.2f),
+                                            border = androidx.compose.foundation.BorderStroke(0.6.dp, ColorReperibilita.copy(alpha = 0.5f))
                                         ) {
-                                            Text("REP", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBBF24), modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                            Text("REP", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = ColorReperibilita, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                         }
                                     }
                                 }
@@ -639,7 +639,7 @@ fun ImportShiftsScreen(
                                     currentEmp.dayShifts.toList().sortedBy { it.first }.forEach { (date, rawCode) ->
                                         val defId = NgeniaTurniParser.mapCodeToShiftDefId(rawCode)
                                         val def = ShiftRepository.getShiftDefinition(defId)
-                                        val chipColor = def?.color ?: Color(0xFF1E2638)
+                                        val chipColor = def?.color ?: ObsidianSurfaceContainer
 
                                         Column(
                                             horizontalAlignment = Alignment.CenterHorizontally,
@@ -663,7 +663,7 @@ fun ImportShiftsScreen(
                                                     text = rawCode.take(3),
                                                     fontSize = 10.sp,
                                                     fontWeight = FontWeight.ExtraBold,
-                                                    color = Color.White
+                                                    color = catalogInk(chipColor)
                                                 )
                                             }
                                         }
@@ -686,7 +686,7 @@ fun ImportShiftsScreen(
                                         checked = overwriteCalendar,
                                         onCheckedChange = { overwriteCalendar = it },
                                         colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
+                                            checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                             checkedTrackColor = ObsidianPrimary
                                         )
                                     )
@@ -707,8 +707,8 @@ fun ImportShiftsScreen(
                                             checked = setOnCallCalendar,
                                             onCheckedChange = { setOnCallCalendar = it },
                                             colors = SwitchDefaults.colors(
-                                                checkedThumbColor = Color.White,
-                                                checkedTrackColor = Color(0xFFF59E0B)
+                                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                                checkedTrackColor = ColorReperibilita
                                             )
                                         )
                                     }
@@ -751,13 +751,13 @@ fun ImportShiftsScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                                 ) {
-                                    Icon(Icons.Default.DoneAll, contentDescription = null, tint = Color.White, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Default.DoneAll, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Applica i Miei Turni al Calendario",
                                         fontWeight = FontWeight.Bold,
                                         fontSize = 13.sp,
-                                        color = Color.White
+                                        color = MaterialTheme.colorScheme.onPrimary
                                     )
                                 }
                             }
@@ -797,7 +797,7 @@ fun ImportShiftsScreen(
                     ),
                     border = androidx.compose.foundation.BorderStroke(
                         width = if (isSelected) 1.5.dp else if (isDefault) 1.2.dp else 1.dp,
-                        color = if (isSelected) ObsidianPrimary else if (isDefault) Color(0xFFF59E0B) else ObsidianBorder
+                        color = if (isSelected) ObsidianPrimary else if (isDefault) ColorReperibilita else ObsidianBorder
                     )
                 ) {
                     Column(modifier = Modifier.padding(14.dp)) {
@@ -857,7 +857,7 @@ fun ImportShiftsScreen(
                             team.dayCodes.forEachIndexed { idx, code ->
                                 val shiftId = team.dayShiftDefIds.getOrNull(idx)
                                 val shiftDef = shiftId?.let { ShiftRepository.getShiftDefinition(it) }
-                                val col = shiftDef?.color ?: Color(0xFF1E2638)
+                                val col = shiftDef?.color ?: ObsidianSurfaceContainer
                                 Box(
                                     modifier = Modifier
                                         .size(24.dp)
@@ -869,7 +869,7 @@ fun ImportShiftsScreen(
                                         text = code.take(3),
                                         fontSize = 8.sp,
                                         fontWeight = FontWeight.ExtraBold,
-                                        color = Color.White
+                                        color = catalogInk(col)
                                     )
                                 }
                             }
@@ -900,9 +900,9 @@ fun ImportShiftsScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                                 modifier = Modifier.weight(1.3f).height(40.dp)
                             ) {
-                                Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = Color.White, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
-                                Text("Salva nel catalogo", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                Text("Salva nel catalogo", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
 
                             OutlinedButton(
@@ -1009,9 +1009,9 @@ fun ImportShiftsScreen(
                                 .weight(1.3f)
                                 .height(44.dp)
                         ) {
-                            Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = Color.White, modifier = Modifier.size(17.dp))
+                            Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(17.dp))
                             Spacer(modifier = Modifier.width(6.dp))
-                            Text("Salva nel catalogo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                            Text("Salva nel catalogo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
 
                         OutlinedButton(
@@ -1055,7 +1055,7 @@ fun ImportShiftsScreen(
                     Icon(
                         Icons.Default.WarningAmber,
                         contentDescription = null,
-                        tint = Color(0xFFF59E0B),
+                        tint = ColorReperibilita,
                         modifier = Modifier.size(22.dp)
                     )
                     Spacer(modifier = Modifier.width(8.dp))
@@ -1102,10 +1102,10 @@ fun ImportShiftsScreen(
                             onDismiss()
                         }
                     },
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444)),
+                    colors = ButtonDefaults.buttonColors(containerColor = ColorNegative),
                     shape = RoundedCornerShape(10.dp)
                 ) {
-                    Text("Conferma", color = Color.White, fontWeight = FontWeight.Bold)
+                    Text("Conferma", color = catalogInk(ColorNegative), fontWeight = FontWeight.Bold)
                 }
             },
             dismissButton = {
@@ -1159,10 +1159,10 @@ private fun ElasticStarButton(
             onToggle()
         },
         shape = RoundedCornerShape(10.dp),
-        color = if (isDefault) Color(0xFFF59E0B).copy(alpha = 0.2f) else ObsidianSurfaceContainer,
+        color = if (isDefault) ColorReperibilita.copy(alpha = 0.2f) else ObsidianSurfaceContainer,
         border = androidx.compose.foundation.BorderStroke(
             0.8.dp,
-            if (isDefault) Color(0xFFF59E0B) else ObsidianBorderSubtle
+            if (isDefault) ColorReperibilita else ObsidianBorderSubtle
         ),
         modifier = modifier.size(38.dp)
     ) {
@@ -1170,7 +1170,7 @@ private fun ElasticStarButton(
             Icon(
                 imageVector = if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
                 contentDescription = if (isDefault) "Revoca predefinito" else "Imposta come predefinito",
-                tint = if (isDefault) Color(0xFFFBBF24) else TextSecondary,
+                tint = if (isDefault) ColorReperibilita else TextSecondary,
                 modifier = Modifier
                     .size(20.dp)
                     .scale(scale.value)

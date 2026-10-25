@@ -97,14 +97,14 @@ fun HolidaysSettingsScreen(
             // Pillola contatore festività attive
             Surface(
                 shape = RoundedCornerShape(10.dp),
-                color = Color(0xFFEF4444).copy(alpha = 0.18f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFEF4444).copy(alpha = 0.4f))
+                color = ColorNegative.copy(alpha = 0.18f),
+                border = androidx.compose.foundation.BorderStroke(1.dp, ColorNegative.copy(alpha = 0.4f))
             ) {
                 Text(
                     text = "${enabledIds.size} Attive",
                     fontSize = 11.5.sp,
                     fontWeight = FontWeight.ExtraBold,
-                    color = Color(0xFFF87171),
+                    color = ColorNegative,
                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
                 )
             }
@@ -228,10 +228,10 @@ private fun HolidaySectionView(
                             // Badge data compatta
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isChecked) Color(0xFFEF4444).copy(alpha = 0.22f) else ObsidianSurfaceContainer,
+                                color = if (isChecked) ColorNegative.copy(alpha = 0.22f) else ObsidianSurfaceContainer,
                                 border = androidx.compose.foundation.BorderStroke(
                                     0.8.dp,
-                                    if (isChecked) Color(0xFFEF4444).copy(alpha = 0.6f) else ObsidianBorderSubtle
+                                    if (isChecked) ColorNegative.copy(alpha = 0.6f) else ObsidianBorderSubtle
                                 ),
                                 modifier = Modifier.size(width = 44.dp, height = 34.dp)
                             ) {
@@ -240,7 +240,7 @@ private fun HolidaySectionView(
                                         text = "${item.day}/${item.month}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Black,
-                                        color = if (isChecked) Color(0xFFFCA5A5) else TextSecondary
+                                        color = if (isChecked) ColorNegative else TextSecondary
                                     )
                                 }
                             }
@@ -266,8 +266,8 @@ private fun HolidaySectionView(
                             checked = isChecked,
                             onCheckedChange = { onToggle(item.id) },
                             colors = SwitchDefaults.colors(
-                                checkedThumbColor = Color.White,
-                                checkedTrackColor = Color(0xFFEF4444),
+                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
+                                checkedTrackColor = ColorNegative,
                                 uncheckedTrackColor = ObsidianSurfaceContainer,
                                 uncheckedThumbColor = TextMuted
                             )

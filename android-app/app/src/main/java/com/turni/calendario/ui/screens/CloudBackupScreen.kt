@@ -37,10 +37,8 @@ import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 
 /**
- * Schermata Account Google & Backup Reale su Google Drive:
- * - Salva e ripristina file JSON completi direttamente su Google Drive tramite lo Storage Access Framework nativo.
- * - Condivisione one-tap su Google Drive ("Salva su Drive").
- * - Gestione account Google reale del dispositivo.
+ * Local database backups plus provider-independent JSON export/import through SAF.
+ * A selected account is a profile reference, not a Drive authentication session.
  */
 @Composable
 fun CloudBackupScreen(
@@ -48,7 +46,7 @@ fun CloudBackupScreen(
 ) {
     val context = LocalContext.current
     val autoBackupEnabled = ShiftRepository.appPreferences.autoBackupDaily
-    var lastBackupTime by remember { mutableStateOf(LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))) }
+    var lastBackupTime by remember { mutableStateOf(GoogleDriveBackupHelper.getCloudBackupInfo(context) ?: "Nessun backup") }
     var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
 
     val totalShifts = ShiftRepository.calendarShifts.values.sumOf { it.size }
@@ -62,16 +60,14 @@ fun CloudBackupScreen(
         if (uri != null) {
             val ok = GoogleDriveBackupHelper.writeBackupToUri(context, uri)
             if (ok) {
-                val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                lastBackupTime = now
                 actionFeedback = ActionFeedback(
-                    message = "Backup salvato su Google Drive",
+                    message = "File backup esportato",
                     timestamp = System.currentTimeMillis(),
                     isDestructive = false
                 )
             } else {
                 actionFeedback = ActionFeedback(
-                    message = "Errore salvataggio backup su Google Drive",
+                    message = "Impossibile esportare il backup",
                     timestamp = System.currentTimeMillis(),
                     isDestructive = true
                 )
@@ -127,16 +123,16 @@ fun CloudBackupScreen(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFF1E2638))
+                    .background(ObsidianSurfaceContainer)
             ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = Color.White)
+                Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = TextPrimary)
             }
 
             Text(
-                text = "Google Drive & Backup",
+                text = "Backup e ripristino",
                 fontSize = 18.sp,
                 fontWeight = FontWeight.Bold,
-                color = Color.White
+                color = TextPrimary
             )
 
             Box(modifier = Modifier.size(40.dp))
@@ -151,7 +147,7 @@ fun CloudBackupScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
             border = CardDefaults.outlinedCardBorder()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
@@ -163,13 +159,13 @@ fun CloudBackupScreen(
                         modifier = Modifier
                             .size(52.dp)
                             .clip(CircleShape)
-                            .background(if (currentAccount != null) ColorMattina else Color(0xFF334155)),
+                            .background(if (currentAccount != null) ObsidianPrimary else ObsidianBorder),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = if (currentAccount != null) Icons.Default.AccountCircle else Icons.Default.PersonOff,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
                             modifier = Modifier.size(34.dp)
                         )
                     }
@@ -179,14 +175,14 @@ fun CloudBackupScreen(
                     Column(modifier = Modifier.weight(1f)) {
                         Text(
                             text = if (currentAccount != null) currentAccount.displayName else "Nessun Account Collegato",
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
-                            text = currentAccount?.email ?: "Accedi per abilitare il backup cloud",
-                            color = Color(0xFF94A3B8),
+                            text = currentAccount?.email ?: "Profilo facoltativo per i tuoi dati",
+                            color = TextSecondary,
                             fontSize = 13.sp
                         )
                         Spacer(modifier = Modifier.height(4.dp))
@@ -195,12 +191,12 @@ fun CloudBackupScreen(
                                 modifier = Modifier
                                     .size(8.dp)
                                     .clip(CircleShape)
-                                    .background(if (currentAccount != null) Color(0xFF10B981) else Color(0xFFEF4444))
+                                    .background(if (currentAccount != null) ObsidianTertiary else ColorNegative)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
                             Text(
-                                text = if (currentAccount != null) "Google Drive collegato" else "Drive disconnesso",
-                                color = if (currentAccount != null) Color(0xFF10B981) else Color(0xFFEF4444),
+                                text = if (currentAccount != null) "Profilo selezionato" else "Nessun profilo selezionato",
+                                color = if (currentAccount != null) ObsidianTertiary else ColorNegative,
                                 fontSize = 11.sp,
                                 fontWeight = FontWeight.SemiBold
                             )
@@ -209,7 +205,7 @@ fun CloudBackupScreen(
                 }
 
                 Spacer(modifier = Modifier.height(14.dp))
-                Divider(color = Color(0xFF1E2638), thickness = 1.dp)
+                Divider(color = ObsidianSurfaceContainer, thickness = 1.dp)
                 Spacer(modifier = Modifier.height(10.dp))
 
                 Row(
@@ -222,31 +218,31 @@ fun CloudBackupScreen(
                             onClick = {
                                 ShiftRepository.disconnectGoogleAccount()
                                 actionFeedback = ActionFeedback(
-                                    message = "Account Google disconnesso",
+                                    message = "Profilo rimosso",
                                     timestamp = System.currentTimeMillis(),
                                     isDestructive = true
                                 )
                             }
                         ) {
-                            Text("Disconnetti", color = Color(0xFFEF4444), fontSize = 13.sp)
+                            Text("Rimuovi profilo", color = ColorNegative, fontSize = 13.sp)
                         }
                         Spacer(modifier = Modifier.width(8.dp))
                     }
                     Button(
                         onClick = { showAccountPicker = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (currentAccount != null) Color(0xFF1E293B) else ColorMattina),
+                        colors = ButtonDefaults.buttonColors(containerColor = if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
                         shape = RoundedCornerShape(10.dp)
                     ) {
                         Icon(
                             imageVector = Icons.Default.SwitchAccount,
                             contentDescription = null,
-                            tint = Color.White,
+                            tint = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
                             modifier = Modifier.size(16.dp)
                         )
                         Spacer(modifier = Modifier.width(6.dp))
                         Text(
-                            text = if (currentAccount != null) "Cambia Account" else "Accedi con Google",
-                            color = Color.White,
+                            text = if (currentAccount != null) "Cambia profilo" else "Profilo di riferimento",
+                            color = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
                             fontWeight = FontWeight.Bold,
                             fontSize = 13.sp
                         )
@@ -262,16 +258,16 @@ fun CloudBackupScreen(
                 onDismissRequest = { showAccountPicker = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = ColorMattina)
+                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = ObsidianPrimary)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Account Google", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 18.sp)
+                        Text("Account Google", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
                     }
                 },
                 text = {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                         Text(
-                            text = "Seleziona uno dei tuoi account Google per il backup su Drive:",
-                            color = Color(0xFF94A3B8),
+                            text = "Scegli il profilo di riferimento. Il backup automatico rimane sul dispositivo.",
+                            color = TextSecondary,
                             fontSize = 13.sp
                         )
 
@@ -279,14 +275,14 @@ fun CloudBackupScreen(
                             val isSelected = currentAccount?.email == acc.email
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = if (isSelected) ColorMattina.copy(alpha = 0.2f) else Color(0xFF1E2638),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) ColorMattina else Color(0xFF334155)),
+                                color = if (isSelected) ObsidianPrimary.copy(alpha = 0.2f) else ObsidianSurfaceContainer,
+                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) ObsidianPrimary else ObsidianBorder),
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .clickable {
                                         ShiftRepository.setGoogleAccount(acc.email, acc.displayName)
                                         actionFeedback = ActionFeedback(
-                                            message = "Connesso all'account Google: ${acc.email}",
+                                            message = "Profilo selezionato: ${acc.email}",
                                             timestamp = System.currentTimeMillis(),
                                             isDestructive = false
                                         )
@@ -300,24 +296,24 @@ fun CloudBackupScreen(
                                     Icon(
                                         Icons.Default.Mail,
                                         contentDescription = null,
-                                        tint = if (isSelected) ColorMattina else Color.White,
+                                        tint = if (isSelected) ObsidianPrimary else TextPrimary,
                                         modifier = Modifier.size(20.dp)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column(modifier = Modifier.weight(1f)) {
-                                        Text(acc.email, color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
-                                        Text(acc.displayName, color = Color(0xFF94A3B8), fontSize = 11.5.sp)
+                                        Text(acc.email, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
+                                        Text(acc.displayName, color = TextSecondary, fontSize = 11.5.sp)
                                     }
                                     if (isSelected) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF10B981), modifier = Modifier.size(18.dp))
+                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ObsidianTertiary, modifier = Modifier.size(18.dp))
                                     }
                                 }
                             }
                         }
 
-                        Divider(color = Color(0xFF1E2638), modifier = Modifier.padding(vertical = 4.dp))
+                        Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 4.dp))
 
-                        Text("Oppure inserisci un altro account Google:", color = Color(0xFF94A3B8), fontSize = 12.sp)
+                        Text("Oppure inserisci un altro account Google:", color = TextSecondary, fontSize = 12.sp)
 
                         OutlinedTextField(
                             value = customEmailInput,
@@ -332,9 +328,9 @@ fun CloudBackupScreen(
                     Button(
                         onClick = {
                             if (customEmailInput.isNotBlank() && customEmailInput.contains("@")) {
-                                ShiftRepository.setGoogleAccount(customEmailInput.trim(), "Marco Graziani")
+                                ShiftRepository.setGoogleAccount(customEmailInput.trim(), customEmailInput.substringBefore("@"))
                                 actionFeedback = ActionFeedback(
-                                    message = "Connesso all'account Google: ${customEmailInput.trim()}",
+                                    message = "Profilo selezionato: ${customEmailInput.trim()}",
                                     timestamp = System.currentTimeMillis(),
                                     isDestructive = false
                                 )
@@ -342,17 +338,17 @@ fun CloudBackupScreen(
                             }
                         },
                         enabled = customEmailInput.isNotBlank() && customEmailInput.contains("@"),
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorMattina)
+                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                     ) {
-                        Text("Accedi", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Seleziona", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showAccountPicker = false }) {
-                        Text("Annulla", color = Color(0xFF94A3B8))
+                        Text("Annulla", color = TextSecondary)
                     }
                 },
-                containerColor = Color(0xFF151B26),
+                containerColor = ObsidianSurface,
                 shape = RoundedCornerShape(20.dp)
             )
         }
@@ -363,13 +359,13 @@ fun CloudBackupScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
             border = CardDefaults.outlinedCardBorder()
         ) {
             Column(modifier = Modifier.padding(16.dp)) {
                 Text(
                     text = "Dati del tuo Profilo",
-                    color = Color.White,
+                    color = TextPrimary,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp
                 )
@@ -384,15 +380,15 @@ fun CloudBackupScreen(
                     StatItem(title = "Cicli Rotazione", value = "$totalRotations")
                 }
 
-                Divider(color = Color(0xFF1E2638), modifier = Modifier.padding(vertical = 12.dp))
+                Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 12.dp))
 
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.SpaceBetween,
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text("Ultimo salvataggio Cloud:", color = Color(0xFF94A3B8), fontSize = 12.sp)
-                    Text(lastBackupTime, color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
+                    Text("Ultimo backup locale:", color = TextSecondary, fontSize = 12.sp)
+                    Text(lastBackupTime, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
                 }
             }
         }
@@ -403,7 +399,7 @@ fun CloudBackupScreen(
         Card(
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
             border = CardDefaults.outlinedCardBorder()
         ) {
             Row(
@@ -414,9 +410,9 @@ fun CloudBackupScreen(
                 verticalAlignment = Alignment.CenterVertically
             ) {
                 Column(modifier = Modifier.weight(1f)) {
-                    Text("Backup Automatico Giornaliero", color = Color.White, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+                    Text("Backup automatico locale", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
                     Spacer(modifier = Modifier.height(2.dp))
-                    Text("Sincronizza una copia cifrata con Google Drive regolarmente", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                    Text("Salva una copia all’avvio dell’app. Esporta un file per conservarlo anche altrove.", color = TextSecondary, fontSize = 11.sp)
                 }
                 Switch(
                     checked = autoBackupEnabled,
@@ -427,7 +423,7 @@ fun CloudBackupScreen(
                             if (ok) {
                                 lastBackupTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                                 actionFeedback = ActionFeedback(
-                                    message = "Backup automatico attivato su Drive",
+                                    message = "Backup locale automatico attivato",
                                     timestamp = System.currentTimeMillis(),
                                     isDestructive = false
                                 )
@@ -440,7 +436,7 @@ fun CloudBackupScreen(
                             )
                         }
                     },
-                    colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
+                    colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
                 )
             }
         }
@@ -450,7 +446,7 @@ fun CloudBackupScreen(
 
         var showConfirmRestoreDialog by remember { mutableStateOf(false) }
 
-        // Tasto Principale 1-Tap: Salva Backup su Google Drive Diretto
+        // Tasto Principale 1-Tap: Salva backup sul dispositivo Diretto
         Button(
             onClick = {
                 try {
@@ -459,13 +455,13 @@ fun CloudBackupScreen(
                         val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
                         lastBackupTime = now
                         actionFeedback = ActionFeedback(
-                            message = "Backup salvato su Google Drive",
+                            message = "Backup locale salvato",
                             timestamp = System.currentTimeMillis(),
                             isDestructive = false
                         )
                     } else {
                         actionFeedback = ActionFeedback(
-                            message = "Errore durante il salvataggio nel Cloud",
+                            message = "Impossibile salvare il backup locale",
                             timestamp = System.currentTimeMillis(),
                             isDestructive = true
                         )
@@ -484,7 +480,7 @@ fun CloudBackupScreen(
         ) {
             Icon(Icons.Default.CloudUpload, contentDescription = null, tint = ObsidianBackground)
             Spacer(modifier = Modifier.width(10.dp))
-            Text("Salva Backup su Google Drive", color = ObsidianBackground, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+            Text("Salva backup sul dispositivo", color = ObsidianBackground, fontWeight = FontWeight.Bold, fontSize = 15.sp)
         }
 
         Spacer(modifier = Modifier.height(10.dp))
@@ -495,7 +491,7 @@ fun CloudBackupScreen(
                 if (GoogleDriveBackupHelper.hasCloudBackup(context)) {
                     showConfirmRestoreDialog = true
                 } else {
-                    Toast.makeText(context, "Nessun backup trovato su Google Drive", Toast.LENGTH_SHORT).show()
+                    Toast.makeText(context, "Nessun backup locale disponibile", Toast.LENGTH_SHORT).show()
                 }
             },
             modifier = Modifier.fillMaxWidth().height(48.dp),
@@ -504,7 +500,7 @@ fun CloudBackupScreen(
         ) {
             Icon(Icons.Default.CloudDownload, contentDescription = null, tint = ObsidianPrimary)
             Spacer(modifier = Modifier.width(8.dp))
-            Text("Ripristina Ultimo Backup da Drive", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
+            Text("Ripristina backup locale", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
         }
 
         Spacer(modifier = Modifier.height(14.dp))
@@ -543,10 +539,10 @@ fun CloudBackupScreen(
             val backupDate = GoogleDriveBackupHelper.getCloudBackupInfo(context) ?: "recente"
             AlertDialog(
                 onDismissRequest = { showConfirmRestoreDialog = false },
-                title = { Text("Ripristina da Google Drive", color = TextPrimary, fontWeight = FontWeight.Bold) },
+                title = { Text("Ripristina backup locale", color = TextPrimary, fontWeight = FontWeight.Bold) },
                 text = {
                     Text(
-                        text = "Vuoi ripristinare il backup del $backupDate?\nI turni, le rotazioni e i modelli verranno sincronizzati con la copia cloud.",
+                        text = "Vuoi ripristinare il backup del $backupDate?\nI turni, le rotazioni e i modelli verranno sostituiti con quelli della copia locale.",
                         color = TextSecondary,
                         fontSize = 13.5.sp
                     )
@@ -614,13 +610,13 @@ private fun StatItem(title: String, value: String) {
             text = value,
             fontSize = 20.sp,
             fontWeight = FontWeight.Bold,
-            color = ColorMattina
+            color = ObsidianPrimary
         )
         Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = title,
             fontSize = 11.sp,
-            color = Color(0xFF94A3B8)
+            color = TextSecondary
         )
     }
 }

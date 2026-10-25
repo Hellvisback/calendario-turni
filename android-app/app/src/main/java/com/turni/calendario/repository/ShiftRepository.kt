@@ -92,6 +92,14 @@ object ShiftRepository {
                 workProfiles[0] = workProfiles[0].copy(isDefault = true)
                 activeWorkProfileId = workProfiles[0].id
             }
+            val destination = workProfiles.firstOrNull { it.id == activeWorkProfileId } ?: workProfiles.first()
+            for (i in shiftDefinitions.indices) {
+                val definition = shiftDefinitions[i]
+                if (definition.workProfileId == profileId) {
+                    shiftDefinitions[i] = definition.copy(workProfileId = destination.id)
+                }
+            }
+            notifyDataChanged()
             return true
         }
         return false
@@ -119,7 +127,7 @@ object ShiftRepository {
     val rotations = mutableStateListOf<ShiftRotation>()
 
     // Rotazione attiva corrente (inizializzata PRIMA di init)
-    var activeRotationId: String = "turno_a"
+    var activeRotationId by mutableStateOf("turno_a")
 
     val activeRotation: ShiftRotation?
         get() = rotations.firstOrNull { it.id == activeRotationId } ?: rotations.firstOrNull()
@@ -235,7 +243,6 @@ object ShiftRepository {
     init {
         initDefaultShiftDefinitions()
         initRotations()
-        seedRealisticCalendarData()
     }
 
     private fun initDefaultShiftDefinitions() {
@@ -249,7 +256,7 @@ object ShiftRepository {
                     startTime = "14:00",
                     endTime = "21:36",
                     isAllDay = false,
-                    colorHex = 0xFFEF4444, // Rosso corallo
+                    colorHex = 0xFFEE9C9C, // Coral
                     iconKey = "wb_sunny",
                     category = ShiftCategory.LAVORO
                 ),
@@ -260,7 +267,7 @@ object ShiftRepository {
                     startTime = "06:00",
                     endTime = "13:36",
                     isAllDay = false,
-                    colorHex = 0xFF0284C7, // Azzurro Avio
+                    colorHex = 0xFFF2C46D, // Amber
                     iconKey = "wb_twilight",
                     category = ShiftCategory.LAVORO
                 ),
@@ -271,7 +278,7 @@ object ShiftRepository {
                     startTime = "22:00",
                     endTime = "05:36",
                     isAllDay = false,
-                    colorHex = 0xFF22C55E, // Verde chiaro
+                    colorHex = 0xFFBAAEF6, // Lavender
                     iconKey = "nightlight_round",
                     category = ShiftCategory.LAVORO
                 ),
@@ -282,7 +289,7 @@ object ShiftRepository {
                     startTime = "08:36",
                     endTime = "16:12",
                     isAllDay = false,
-                    colorHex = 0xFFF59E0B, // Giallo ambra
+                    colorHex = 0xFFF2C46D, // Amber
                     iconKey = "wb_sunny",
                     category = ShiftCategory.LAVORO
                 ),
@@ -293,7 +300,7 @@ object ShiftRepository {
                     startTime = "05:36",
                     endTime = "05:36",
                     isAllDay = true,
-                    colorHex = 0xFF06B6D4, // Ciano
+                    colorHex = 0xFF83CDB7, // Mint
                     iconKey = "bedtime",
                     category = ShiftCategory.RIPOSO
                 ),
@@ -304,7 +311,7 @@ object ShiftRepository {
                     startTime = "00:00",
                     endTime = "23:59",
                     isAllDay = true,
-                    colorHex = 0xFFEC4899, // Fucsia
+                    colorHex = 0xFFAAB9CE, // Pearl
                     iconKey = "weekend",
                     category = ShiftCategory.RIPOSO
                 ),
@@ -315,7 +322,7 @@ object ShiftRepository {
                     startTime = "00:00",
                     endTime = "23:59",
                     isAllDay = true,
-                    colorHex = 0xFF2563EB, // Blu cobalto
+                    colorHex = 0xFF94C4EF, // Sky
                     iconKey = "beach_access",
                     category = ShiftCategory.ASSENZA
                 ),
@@ -327,7 +334,7 @@ object ShiftRepository {
                     endTime = "17:06",
                     breakMinutes = 60,
                     isAllDay = false,
-                    colorHex = 0xFF10B981, // Verde smeraldo
+                    colorHex = 0xFF83CDB7, // Mint
                     iconKey = "schedule",
                     category = ShiftCategory.LAVORO
                 ),
@@ -338,7 +345,7 @@ object ShiftRepository {
                     startTime = "07:30",
                     endTime = "15:36",
                     isAllDay = false,
-                    colorHex = 0xFF64748B, // Grigio ardesia
+                    colorHex = 0xFFAAB9CE, // Pearl
                     iconKey = "business",
                     category = ShiftCategory.LAVORO
                 ),
@@ -349,7 +356,7 @@ object ShiftRepository {
                     startTime = "00:00",
                     endTime = "23:59",
                     isAllDay = true,
-                    colorHex = 0xFFEAB308, // Giallo oro
+                    colorHex = 0xFFF2C46D, // Amber
                     iconKey = "volunteer_activism",
                     category = ShiftCategory.ASSENZA
                 ),
@@ -360,7 +367,7 @@ object ShiftRepository {
                     startTime = "00:00",
                     endTime = "23:59",
                     isAllDay = true,
-                    colorHex = 0xFF84CC16, // Lime
+                    colorHex = 0xFF94C4EF, // Sky
                     iconKey = "local_hospital",
                     category = ShiftCategory.ASSENZA
                 )
@@ -404,91 +411,6 @@ object ShiftRepository {
         return getShiftDefinition(defId)
     }
 
-    private fun seedRealisticCalendarData() {
-        calendarShifts.clear()
-        val startDate = LocalDate.of(2026, 9, 1)
-        val endDate = LocalDate.of(2026, 12, 31)
-
-        var curr = startDate
-        while (!curr.isAfter(endDate)) {
-            val planned = getPlannedRotationShift(curr)
-            if (planned != null) {
-                val list = mutableStateListOf<AssignedShift>()
-                list.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = planned.id,
-                        isFromRotation = true,
-                        originalShiftDefId = null,
-                        isModifiedFromRotation = false
-                    )
-                )
-                calendarShifts[curr] = list
-            }
-
-            // Cambi turno e ferie reali visibili negli screenshot
-            if (curr == LocalDate.of(2026, 10, 16)) {
-                val list = mutableStateListOf<AssignedShift>()
-                list.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = "giornaliero",
-                        isFromRotation = false,
-                        isModifiedFromRotation = true,
-                        originalShiftDefId = "smonto_notte"
-                    )
-                )
-                calendarShifts[curr] = list
-            }
-            if (curr == LocalDate.of(2026, 10, 30)) {
-                val list = mutableStateListOf<AssignedShift>()
-                list.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = "ferie",
-                        isFromRotation = false,
-                        isModifiedFromRotation = true,
-                        originalShiftDefId = "riposo"
-                    )
-                )
-                calendarShifts[curr] = list
-            }
-            if (curr == LocalDate.of(2026, 10, 31)) {
-                val list = mutableStateListOf<AssignedShift>()
-                list.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = "ferie",
-                        isFromRotation = false,
-                        isModifiedFromRotation = true,
-                        originalShiftDefId = "mattina"
-                    )
-                )
-                calendarShifts[curr] = list
-            }
-            if (curr == LocalDate.of(2026, 11, 4) || curr == LocalDate.of(2026, 11, 5) || curr == LocalDate.of(2026, 11, 6)) {
-                val plannedShift = getPlannedRotationShift(curr)
-                val list = mutableStateListOf<AssignedShift>()
-                list.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = "ferie",
-                        isFromRotation = false,
-                        isModifiedFromRotation = true,
-                        originalShiftDefId = plannedShift?.id
-                    )
-                )
-                calendarShifts[curr] = list
-            }
-
-            curr = curr.plusDays(1)
-        }
-    }
 
     // CRUD per Modelli Turno
     fun saveShiftDefinition(def: ShiftDefinition) = synchronized(this) {
@@ -502,6 +424,26 @@ object ShiftRepository {
 
     fun deleteShiftDefinition(id: String) = synchronized(this) {
         shiftDefinitions.removeAll { it.id == id }
+        calendarShifts.keys.toList().forEach { date ->
+            val retained = getShiftsForDate(date).filter { it.shiftDefId != id }.map { assigned ->
+                if (assigned.originalShiftDefId == id) assigned.copy(originalShiftDefId = null, isModifiedFromRotation = false)
+                else assigned
+            }
+            calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(retained) }
+            synchronizeAssignmentExtras(date)
+        }
+        for (i in rotations.indices) {
+            val rotation = rotations[i]
+            rotations[i] = rotation.copy(daySequence = rotation.daySequence.map { if (it == id) "" else it })
+        }
+        reperibilitaConfig = reperibilitaConfig.copy(
+            shiftSpecificIds = reperibilitaConfig.shiftSpecificIds.filterNot { it == id },
+            seasonal = reperibilitaConfig.seasonal.copy(winterShiftIds = reperibilitaConfig.seasonal.winterShiftIds.filterNot { it == id })
+        )
+        smartAlarmsConfig = smartAlarmsConfig.copy(rules = smartAlarmsConfig.rules.filterNot { it.shiftDefId == id })
+        // Undo must never resurrect assignments whose definition no longer exists.
+        undoHistory.clear()
+        notifyDataChanged()
     }
 
     fun getShiftDefinition(id: String): ShiftDefinition? = synchronized(this) {
@@ -509,11 +451,15 @@ object ShiftRepository {
     }
 
     // Cronologia modifiche per funzione Annulla (Undo)
-    private val undoHistory = mutableListOf<Map<LocalDate, List<AssignedShift>>>()
+    private data class CalendarSnapshot(
+        val shifts: Map<LocalDate, List<AssignedShift>>,
+        val extras: Map<LocalDate, DayExtraInfo>
+    )
+    private val undoHistory = mutableListOf<CalendarSnapshot>()
 
     fun saveSnapshot() {
         val snapshot = calendarShifts.mapValues { (_, list) -> list.map { it.copy() } }
-        undoHistory.add(snapshot)
+        undoHistory.add(CalendarSnapshot(snapshot, dayExtraInfo.toMap()))
         if (undoHistory.size > 40) undoHistory.removeAt(0)
     }
 
@@ -523,11 +469,14 @@ object ShiftRepository {
         if (undoHistory.isEmpty()) return false
         val last = undoHistory.removeAt(undoHistory.size - 1)
         calendarShifts.clear()
-        last.forEach { (date, list) ->
+        last.shifts.forEach { (date, list) ->
             val mList = mutableStateListOf<AssignedShift>()
             mList.addAll(list)
             calendarShifts[date] = mList
         }
+        dayExtraInfo.clear()
+        dayExtraInfo.putAll(last.extras)
+        notifyDataChanged()
         return true
     }
 
@@ -546,7 +495,9 @@ object ShiftRepository {
         isFromRotation: Boolean = false
     ) {
         val currentList = calendarShifts[date]?.toList() ?: emptyList()
-        val prev = currentList.firstOrNull()
+        val profileId = getShiftDefinition(shiftDefId)?.workProfileId ?: activeWorkProfileId
+        val ownShifts = currentList.filter { getShiftDefinition(it.shiftDefId)?.workProfileId == profileId }
+        val prev = ownShifts.firstOrNull()
         val isCleared = dayExtraInfo[date]?.rotationCleared == true
         val isFromRotationOrigin = !isCleared && (isFromRotation || (prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)))
 
@@ -577,8 +528,9 @@ object ShiftRepository {
 
         val isAbsenceOrSpecial = shiftDefId in listOf("ferie", "malattia", "donazione", "riposo")
         val newList = mutableStateListOf<AssignedShift>()
+        newList.addAll(currentList.filter { getShiftDefinition(it.shiftDefId)?.workProfileId != profileId })
         if (!modifiedFromRot && !isAbsenceOrSpecial && !isFromRotation) {
-            newList.addAll(currentList)
+            newList.addAll(ownShifts)
         }
 
         val newEntry = AssignedShift(
@@ -625,109 +577,45 @@ object ShiftRepository {
      * Se l'utente inserisce turni singoli manuali, l'ex-turno NON deve apparire mai.
      */
     fun replaceShift(date: LocalDate, newShiftDefId: String) {
+        if (getShiftDefinition(newShiftDefId) == null) return
         saveSnapshot()
-        val currentList = calendarShifts[date]?.toList() ?: emptyList()
-        val prev = currentList.firstOrNull()
-        val isCleared = dayExtraInfo[date]?.rotationCleared == true
-        val isFromRotationOrigin = !isCleared && prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)
-
-        val newList = mutableStateListOf<AssignedShift>()
-        if (isFromRotationOrigin && prev != null) {
-            val baseRotationDefId = prev.originalShiftDefId ?: prev.shiftDefId
-            if (newShiftDefId == baseRotationDefId) {
-                // Ripristinato il turno naturale del ciclo di rotazione
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = date,
-                        shiftDefId = newShiftDefId,
-                        isFromRotation = true,
-                        isModifiedFromRotation = false,
-                        originalShiftDefId = null
-                    )
-                )
-            } else {
-                // Turno sovrascritto rispetto al ciclo di rotazione originario (mostra ex-turno)
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = date,
-                        shiftDefId = newShiftDefId,
-                        isFromRotation = false,
-                        isModifiedFromRotation = true,
-                        originalShiftDefId = baseRotationDefId
-                    )
-                )
-            }
-            val extra = getDayExtraInfo(date)
-            if (extra.hideExShift) {
-                dayExtraInfo[date] = extra.copy(hideExShift = false)
-            }
-        } else {
-            // Turno assegnato manualmente su giorno vuoto o cancellato (nessun ex-turno)
-            newList.add(
-                AssignedShift(
-                    id = UUID.randomUUID().toString(),
-                    date = date,
-                    shiftDefId = newShiftDefId,
-                    isFromRotation = false,
-                    isModifiedFromRotation = false,
-                    originalShiftDefId = null
-                )
-            )
-        }
-        calendarShifts[date] = newList
+        replacePrimaryWithoutSnapshot(date, newShiftDefId)
         notifyDataChanged()
+    }
+
+    private fun replacePrimaryWithoutSnapshot(date: LocalDate, newShiftDefId: String) {
+        val definition = getShiftDefinition(newShiftDefId) ?: return
+        val current = getShiftsForDate(date).toList()
+        val primaryIndex = current.indexOfFirst { getShiftDefinition(it.shiftDefId)?.workProfileId == definition.workProfileId }
+        val previous = current.getOrNull(primaryIndex)
+        val original = previous?.takeIf { it.isFromRotation || it.isModifiedFromRotation }?.let { it.originalShiftDefId ?: it.shiftDefId }
+        val replacement = AssignedShift(
+            id = UUID.randomUUID().toString(), date = date, shiftDefId = newShiftDefId,
+            isFromRotation = original == newShiftDefId,
+            isModifiedFromRotation = original != null && original != newShiftDefId,
+            originalShiftDefId = original?.takeIf { it != newShiftDefId }
+        )
+        val updated = mutableStateListOf<AssignedShift>().apply { addAll(current) }
+        if (primaryIndex < 0) updated.add(replacement) else updated[primaryIndex] = replacement
+        calendarShifts[date] = updated
+        dayExtraInfo[date] = getDayExtraInfo(date).copy(hideExShift = false)
+        synchronizeAssignmentExtras(date)
     }
 
     /**
      * Assegna un turno a un intervallo di date in blocco (da startDate a endDate)
      */
     fun applyShiftRange(shiftDefId: String, startDate: LocalDate, endDate: LocalDate) {
+        val erasing = shiftDefId == "eraser" || shiftDefId == "empty"
+        if (!erasing && getShiftDefinition(shiftDefId) == null) return
         saveSnapshot()
-        val start = if (startDate.isBefore(endDate)) startDate else endDate
-        val end = if (startDate.isBefore(endDate)) endDate else startDate
-        var curr = start
-        while (!curr.isAfter(end)) {
-            if (shiftDefId == "eraser" || shiftDefId == "empty") {
-                clearDayShifts(curr)
-                curr = curr.plusDays(1)
-                continue
-            }
-            val prev = calendarShifts[curr]?.firstOrNull()
-            val isCleared = dayExtraInfo[curr]?.rotationCleared == true
-            val isFromRotationOrigin = !isCleared && prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)
-            val newList = mutableStateListOf<AssignedShift>()
-            if (isFromRotationOrigin && prev != null) {
-                val baseRotationDefId = prev.originalShiftDefId ?: prev.shiftDefId
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = shiftDefId,
-                        isFromRotation = false,
-                        isModifiedFromRotation = shiftDefId != baseRotationDefId,
-                        originalShiftDefId = if (shiftDefId != baseRotationDefId) baseRotationDefId else null
-                    )
-                )
-                val extra = getDayExtraInfo(curr)
-                if (extra.hideExShift) {
-                    dayExtraInfo[curr] = extra.copy(hideExShift = false)
-                }
-            } else {
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = curr,
-                        shiftDefId = shiftDefId,
-                        isFromRotation = false,
-                        isModifiedFromRotation = false,
-                        originalShiftDefId = null
-                    )
-                )
-            }
-            calendarShifts[curr] = newList
-            curr = curr.plusDays(1)
+        val start = minOf(startDate, endDate)
+        val end = maxOf(startDate, endDate)
+        var current = start
+        while (!current.isAfter(end)) {
+            if (erasing) clearWorkDayWithoutSnapshot(current, activeWorkProfileId)
+            else replacePrimaryWithoutSnapshot(current, shiftDefId)
+            current = current.plusDays(1)
         }
         notifyDataChanged()
     }
@@ -739,71 +627,15 @@ object ShiftRepository {
      * - Se è diverso, lo sostituisce salvando il turno originario SOLO se proveniva da una rotazione.
      */
     fun toggleShiftOnDate(date: LocalDate, shiftDefId: String) {
-        saveSnapshot()
         if (shiftDefId == "eraser" || shiftDefId == "empty") {
-            clearDayShifts(date)
+            clearWorkDayShifts(date)
             return
         }
-        val currentList = calendarShifts[date]?.toList() ?: emptyList()
-        val existingIndex = currentList.indexOfFirst { it.shiftDefId == shiftDefId }
-        val newList = mutableStateListOf<AssignedShift>()
-
-        if (existingIndex >= 0) {
-            val filtered = currentList.filterIndexed { index, _ -> index != existingIndex }
-            newList.addAll(filtered)
-            if (newList.isEmpty()) {
-                clearDayShifts(date)
-                return
-            }
-        } else {
-            val prev = currentList.firstOrNull()
-            val isCleared = dayExtraInfo[date]?.rotationCleared == true
-            val isFromRotationOrigin = !isCleared && prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)
-
-            if (isFromRotationOrigin && prev != null) {
-                val baseRotationDefId = prev.originalShiftDefId ?: prev.shiftDefId
-                if (shiftDefId == baseRotationDefId) {
-                    newList.add(
-                        AssignedShift(
-                            id = UUID.randomUUID().toString(),
-                            date = date,
-                            shiftDefId = shiftDefId,
-                            isFromRotation = true,
-                            isModifiedFromRotation = false,
-                            originalShiftDefId = null
-                        )
-                    )
-                } else {
-                    newList.add(
-                        AssignedShift(
-                            id = UUID.randomUUID().toString(),
-                            date = date,
-                            shiftDefId = shiftDefId,
-                            isFromRotation = false,
-                            isModifiedFromRotation = true,
-                            originalShiftDefId = baseRotationDefId
-                        )
-                    )
-                }
-                val extra = getDayExtraInfo(date)
-                if (extra.hideExShift) {
-                    dayExtraInfo[date] = extra.copy(hideExShift = false)
-                }
-            } else {
-                newList.add(
-                    AssignedShift(
-                        id = UUID.randomUUID().toString(),
-                        date = date,
-                        shiftDefId = shiftDefId,
-                        isFromRotation = false,
-                        isModifiedFromRotation = false,
-                        originalShiftDefId = null
-                    )
-                )
-            }
+        val definition = getShiftDefinition(shiftDefId) ?: return
+        val existing = getShiftsForDate(date).firstOrNull {
+            it.shiftDefId == shiftDefId && getShiftDefinition(it.shiftDefId)?.workProfileId == definition.workProfileId
         }
-        calendarShifts[date] = newList
-        notifyDataChanged()
+        if (existing != null) removeAssignedShift(date, existing.id) else replaceShift(date, shiftDefId)
     }
 
     fun saveRotation(updated: ShiftRotation) = synchronized(this) {
@@ -822,6 +654,7 @@ object ShiftRepository {
             if (activeRotationId == id) {
                 activeRotationId = rotations.first().id
             }
+            if (defaultRotationId == id) defaultRotationId = ""
         }
     }
 
@@ -838,6 +671,8 @@ object ShiftRepository {
         val isNowEmpty = newList.isEmpty()
         dayExtraInfo[date] = extra.copy(
             isTrasferta = anyTrasferta,
+            overtimeHours = newList.sumOf { it.overtimeHours.toDouble() }.toFloat(),
+            actualEndTime = newList.firstOrNull()?.actualEndTime,
             rotationCleared = if (isNowEmpty) true else extra.rotationCleared,
             hideExShift = if (isNowEmpty) true else extra.hideExShift
         )
@@ -982,33 +817,68 @@ object ShiftRepository {
         return calendarShifts[date]?.any { it.isTrasferta } == true || dayExtraInfo[date]?.isTrasferta == true
     }
 
+    private fun synchronizeAssignmentExtras(date: LocalDate) {
+        val shifts = getShiftsForDate(date)
+        dayExtraInfo[date] = getDayExtraInfo(date).copy(
+            overtimeHours = shifts.sumOf { it.overtimeHours.toDouble() }.toFloat(),
+            isTrasferta = shifts.any { it.isTrasferta },
+            actualEndTime = shifts.firstOrNull()?.actualEndTime
+        )
+    }
+
     fun clearDayShifts(date: LocalDate) {
         saveSnapshot()
+        clearDayShiftsWithoutSnapshot(date)
+        notifyDataChanged()
+    }
+
+    fun clearWorkDayShifts(date: LocalDate, profileId: String = activeWorkProfileId) {
+        saveSnapshot()
+        clearWorkDayWithoutSnapshot(date, profileId)
+        notifyDataChanged()
+    }
+
+    private fun clearWorkDayWithoutSnapshot(date: LocalDate, profileId: String) {
+        val remaining = getShiftsForDate(date).filter { getShiftDefinition(it.shiftDefId)?.workProfileId != profileId }
+        calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(remaining) }
+        val extra = getDayExtraInfo(date)
+        dayExtraInfo[date] = extra.copy(
+            rotationCleared = remaining.isEmpty(),
+            hideExShift = if (remaining.isEmpty()) true else extra.hideExShift
+        )
+        synchronizeAssignmentExtras(date)
+    }
+
+    private fun clearDayShiftsWithoutSnapshot(date: LocalDate) {
         calendarShifts[date] = mutableStateListOf()
         val extra = getDayExtraInfo(date)
         dayExtraInfo[date] = extra.copy(
             overtimeHours = 0f,
             isTrasferta = false,
             actualEndTime = null,
-            notes = "",
-            isOnCallManual = null,
             hideExShift = true,
             rotationCleared = true
         )
-        notifyDataChanged()
     }
 
-    fun applyRotation(rotationId: String, startDate: LocalDate, daysCount: Int = 90) {
-        val rotation = rotations.firstOrNull { it.id == rotationId } ?: rotations.firstOrNull() ?: return
+    fun applyRotation(rotationId: String, startDate: LocalDate, daysCount: Int = 90, profileId: String = activeWorkProfileId) {
+        val rotation = rotations.firstOrNull { it.id == rotationId } ?: return
         if (rotation.daySequence.isEmpty() || daysCount <= 0) return
         saveSnapshot()
         var curr = startDate
         val seqSize = rotation.daySequence.size
         for (i in 0 until daysCount) {
             val defId = rotation.daySequence[i % seqSize]
+            val definition = getShiftDefinition(defId)
+            if (definition != null && definition.workProfileId != profileId) {
+                curr = curr.plusDays(1)
+                continue
+            }
             val list = calendarShifts.getOrPut(curr) { mutableStateListOf() }
+            val otherWorkShifts = list.filter { getShiftDefinition(it.shiftDefId)?.workProfileId != profileId }
             list.clear()
-            list.add(
+            list.addAll(otherWorkShifts)
+            if (defId.isNotBlank() && defId != "empty" && defId != "eraser" && getShiftDefinition(defId) != null) list.add(
                 AssignedShift(
                     id = UUID.randomUUID().toString(),
                     date = curr,
@@ -1019,7 +889,11 @@ object ShiftRepository {
                 )
             )
             val extra = getDayExtraInfo(curr)
-            dayExtraInfo[curr] = extra.copy(rotationCleared = false, hideExShift = false)
+            dayExtraInfo[curr] = extra.copy(
+                rotationCleared = false, hideExShift = false,
+                overtimeHours = list.sumOf { it.overtimeHours.toDouble() }.toFloat(),
+                actualEndTime = list.firstOrNull()?.actualEndTime, isTrasferta = list.any { it.isTrasferta }
+            )
             curr = curr.plusDays(1)
         }
         notifyDataChanged()
@@ -1038,7 +912,7 @@ object ShiftRepository {
         val end = yearMonth.atEndOfMonth()
         var curr = start
         while (!curr.isAfter(end)) {
-            clearDayShifts(curr)
+            clearDayShiftsWithoutSnapshot(curr)
             curr = curr.plusDays(1)
         }
         notifyDataChanged()
@@ -1303,18 +1177,10 @@ object ShiftRepository {
 
     fun calculateOvertimeFromEndTime(shiftEndTime: String, actualEndTime: String): Float {
         return try {
-            val pParts = shiftEndTime.trim().split(":")
-            val aParts = actualEndTime.trim().split(":")
-            val pMins = pParts[0].toInt() * 60 + pParts[1].toInt()
-            val aMins = aParts[0].toInt() * 60 + aParts[1].toInt()
-            val diffMinutes = if (aMins >= pMins) {
-                aMins - pMins
-            } else {
-                (1440 - pMins) + aMins
-            }
-            if (diffMinutes in 1..960) {
-                Math.round((diffMinutes / 60f) * 100) / 100f
-            } else 0f
+            val scheduled = java.time.LocalTime.parse(shiftEndTime.trim())
+            val actual = java.time.LocalTime.parse(actualEndTime.trim())
+            val minutes = Math.floorMod(actual.toSecondOfDay() / 60 - scheduled.toSecondOfDay() / 60, 1440)
+            if (minutes in 1..960) minutes / 60f else 0f
         } catch (_: Exception) {
             0f
         }
@@ -1340,6 +1206,8 @@ object ShiftRepository {
 
     fun setDayOnCallManual(date: LocalDate, isOnCall: Boolean?) {
         val current = getDayExtraInfo(date)
+        if(current.isOnCallManual==isOnCall)return
+        saveSnapshot()
         dayExtraInfo[date] = current.copy(isOnCallManual = isOnCall)
         notifyDataChanged()
     }
@@ -1447,9 +1315,12 @@ object ShiftRepository {
         var curr = start
         while (!curr.isAfter(end)) {
             val extra = dayExtraInfo[curr]
-            val overtime = extra?.overtimeHours ?: 0f
-            totalOvertimeSum += overtime
             val dayShifts = getShiftsForDate(curr)
+            val shiftOvertime = dayShifts.sumOf { it.overtimeHours.toDouble() }.toFloat()
+            val overtime = if (dayShifts.any { it.isOvertime || it.overtimeHours > 0f || it.actualEndTime != null }) {
+                shiftOvertime
+            } else extra?.overtimeHours ?: 0f
+            totalOvertimeSum += overtime
             val shiftTrasferte = dayShifts.count { it.isTrasferta }
             if (shiftTrasferte > 0) {
                 trasferte += shiftTrasferte
@@ -1491,7 +1362,10 @@ object ShiftRepository {
                         when (def.category) {
                             ShiftCategory.LAVORO -> {
                                 workedToday = true
-                                hoursSum += def.durationHoursFloat
+                                hoursSum += def.copy(
+                                    startTime = s.customStartTime ?: def.startTime,
+                                    endTime = s.customEndTime ?: def.endTime
+                                ).durationHoursFloat
                                 if (def.id == "notte" || def.name.contains("Notte", ignoreCase = true)) {
                                     notti++
                                 }

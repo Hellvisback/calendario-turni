@@ -71,15 +71,34 @@ if ($gradleContent -match 'versionName\s*=\s*"([^"]+)"') {
 
 Write-Host "Versione attuale: versionName = '$currentName', versionCode = $currentCode" -ForegroundColor Gray
 
+# Rilevamento versione su git HEAD per validare l'incremento
+$headGradle = (git show HEAD:android-app/app/build.gradle.kts 2>$null | Out-String)
+$baselineCode = $currentCode
+$committedName = $currentName
+if (-not [string]::IsNullOrWhiteSpace($headGradle)) {
+    if ($headGradle -match 'versionCode\s*=\s*(\d+)') {
+        $baselineCode = [int]$matches[1]
+    }
+    if ($headGradle -match 'versionName\s*=\s*"([^"]+)"') {
+        $committedName = $matches[1]
+    }
+}
+
 # Calcolo nuovo versionCode
 if ($VersionCode -gt 0) {
     $newCode = $VersionCode
+} elseif ($currentCode -gt $baselineCode) {
+    $newCode = $currentCode
 } else {
     $newCode = $currentCode + 1
 }
 
 # Calcolo nuovo versionName
-if ([string]::IsNullOrWhiteSpace($VersionName)) {
+if (-not [string]::IsNullOrWhiteSpace($VersionName)) {
+    $newName = $VersionName
+} elseif ($currentCode -gt $baselineCode -and $currentName -ne $committedName) {
+    $newName = $currentName
+} else {
     $parts = $currentName.Split('.')
     if ($parts.Length -eq 3) {
         $major = [int]$parts[0]
@@ -95,11 +114,12 @@ if ([string]::IsNullOrWhiteSpace($VersionName)) {
     } else {
         $newName = "$currentName.1"
     }
-} else {
-    $newName = $VersionName
 }
 
 Write-Host "Nuova versione target: v$newName (versionCode: $newCode)" -ForegroundColor Green
+if ($newCode -le $baselineCode) {
+    throw "Release versionCode must be greater than the baseline committed versionCode ($baselineCode)."
+}
 
 # Aggiornamento build.gradle.kts se necessario
 if ($currentCode -ne $newCode -or $currentName -ne $newName) {
@@ -158,7 +178,9 @@ git add -A
 $gitStatus = git status --porcelain
 if ($gitStatus) {
     git commit -m "chore(release): release v$newName (versionCode $newCode)"
+    if ($LASTEXITCODE -ne 0) { throw "Git commit failed; release stopped." }
     git push origin main
+    if ($LASTEXITCODE -ne 0) { throw "Git push failed; release stopped." }
     Write-Host "Modifiche inviate a origin/main." -ForegroundColor Green
 } else {
     Write-Host "Nessuna modifica pendente nel repository git." -ForegroundColor Gray
@@ -169,7 +191,7 @@ Write-Host "[6/7] Creazione della nuova Release su GitHub..." -ForegroundColor Y
 $tag = "v$newName"
 
 if ([string]::IsNullOrWhiteSpace($ReleaseTitle)) {
-    $ReleaseTitle = "Calendario Turni v$newName - Release Stabile"
+    $ReleaseTitle = "Calendario Turni v$newName - Architettura Nativa TurniSync & Full Compose UI"
 }
 
 if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
@@ -179,10 +201,22 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
 #### Pacchetto di Aggiornamento Ufficiale:
 - **``app-release-v$newName.apk``**: Pacchetto APK unico e versionato pronto per l'installazione su Android.
 
-#### Novità e Perfezionamenti dei Widget di questa versione:
-- **Pallini Turni Multipli Separati e Colorati nei Widget**: Rimosso completamente il carattere punto (`•`) dall'interno dei badge dei turni. Ora, in presenza di turni multipli nello stesso giorno, compare sotto al turno principale una serie distinta di pallini circolari colorati in base al turno secondario inserito, identica alla schermata principale dell'applicazione.
-- **Widget Mese Intero Completo a 6 Settimane (42 Celle)**: Risolto il problema per cui mesi come Novembre mostravano solo 29 giorni troncando il giorno 30. La griglia supporta ora nativamente fino a 6 righe, mostrando tutti i giorni del mese senza eccezioni. La barra di navigazione è integrata con eleganza nell'header, massimizzando lo spazio verticale delle celle senza sovrapposizioni.
-- **Widget Giorno Singolo Riorganizzato e Spazioso**: Rimossa la navigazione/scorrimento ai giorni futuri che causava troncamenti visivi. La card di Oggi mostra ora la data per esteso senza abbreviazioni, nome del turno completo e orari nitidi a tutto schermo, mentre la card di Domani si estende armoniosamente a tutta larghezza.
+#### Novita' e Perfezionamenti Architetturali di questa versione:
+- **Porting Architettura Nativa TurniSync**: L'intera interfaccia e' stata rifattorizzata in componenti Compose nativi ad alte prestazioni:
+  - ``NativeMonthCanvas``: griglia calendario ottimizzata con supporto gestures e transizioni fluide.
+  - ``TurniDock``: dock a doppia destinazione ergonomico e thumb-zone compliant.
+  - ``NativeCalendarPanels`` & ``CatalogEditorComponents``: pannelli compatti per la modifica rapida di turni, modelli e rotazioni cicliche.
+  - ``NativeColorPlane``: gestione e selezione cromatica dinamica con contrasto garantito.
+- **Database Atomico ``turnisync-database-v3.json``**:
+  - Inizializzazione asincrona tramite ``TurniSyncApplication`` e ``LocalDatabaseStore`` prima dell'avvio delle schermate.
+  - Migrazione automatica sicura del database locale preesistente senza perdita di dati.
+  - Scritture atomiche, aggiornamenti widget e ricalcolo sveglie intelligenti delegati a coroutine in background.
+- **Gestione Straordinari e Trasferte Ottimizzata**:
+  - Straordinario calcolato da stacco effettivo del turno.
+  - Supporto trasferta personalizzata per singolo turno.
+  - Rotazioni con anteprima dinamica, navigazione bidirezionale e gomma selettiva.
+- **Suite di Test Unitari & Qualita'**:
+  - 264 test automatizzati eseguiti con successo per le varianti debug e release.
 "@
 }
 
@@ -201,10 +235,7 @@ try {
 $assetsToUpload = @($apkVersioned)
 
 if ($releaseAlreadyExists) {
-    Write-Host "La release per il tag $tag esiste gia'. Aggiornamento asset con --clobber..." -ForegroundColor Yellow
-    foreach ($asset in $assetsToUpload) {
-        gh release upload $tag $asset --clobber
-    }
+    throw "Release $tag already exists. Increase versionCode and versionName; existing assets are never overwritten."
 } else {
     Write-Host "Creazione nuova release $tag su GitHub..." -ForegroundColor Yellow
     # Scrivi le note in un file temporaneo per preservare accenti e markdown

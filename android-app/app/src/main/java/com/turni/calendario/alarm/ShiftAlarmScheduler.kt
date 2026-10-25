@@ -57,10 +57,14 @@ object ShiftAlarmScheduler {
     /**
      * Restituisce tutte le sveglie calcolate per i turni e la reperibilità nei prossimi N giorni
      */
-    fun getAllUpcomingAlarms(context: Context, daysAhead: Int = 30): List<UpcomingAlarmInfo> {
+    fun getAllUpcomingAlarms(context: Context, daysAhead: Int = 30): List<UpcomingAlarmInfo> =
+        calculateUpcomingAlarms(LocalDateTime.now(), daysAhead)
+
+    /** Deterministic calendar calculation, independent of Android services. */
+    fun calculateUpcomingAlarms(now: LocalDateTime, daysAhead: Int = 30): List<UpcomingAlarmInfo> {
+        if (daysAhead < 0) return emptyList()
         val config = ShiftRepository.smartAlarmsConfig
-        val now = LocalDateTime.now()
-        val startDate = LocalDate.now()
+        val startDate = now.toLocalDate()
         val endDate = startDate.plusDays(daysAhead.toLong())
 
         val repRule = config.rules.firstOrNull { it.shiftDefId == "reperibilita" }
@@ -94,17 +98,26 @@ object ShiftAlarmScheduler {
 
             // 2. TURNI DELLA GIORNATA
             val dayShifts = ShiftRepository.getShiftsForDate(curr)
-            val planned = ShiftRepository.getPlannedRotationShift(curr)
-            val targetDefIds = (dayShifts.map { it.shiftDefId } + listOfNotNull(planned?.id)).distinct()
 
             for (rule in config.rules) {
                 if (rule.shiftDefId == "reperibilita") continue
-                if (targetDefIds.contains(rule.shiftDefId)) {
+                val assigned = dayShifts.filter { it.shiftDefId == rule.shiftDefId }
+                if (assigned.isNotEmpty()) {
                     val shiftDef = ShiftRepository.getShiftDefinition(rule.shiftDefId)
-                    val alarmTime = getResolvedAlarmTime(rule)
-                    if (shiftDef != null && alarmTime != null) {
-                        val alarmDt = LocalDateTime.of(curr, alarmTime)
-                        if (alarmDt.isAfter(now)) {
+                    if (shiftDef != null) {
+                        // Keep the existing model/date alarm ID and select the next matching
+                        // assignment when the same model occurs more than once on a date.
+                        val alarmDt = assigned.mapNotNull { shift ->
+                            try {
+                                if (!rule.customTime.isNullOrBlank()) {
+                                    LocalDateTime.of(curr, LocalTime.parse(rule.customTime.trim()))
+                                } else {
+                                    LocalDateTime.of(curr, LocalTime.parse(shift.customStartTime ?: shiftDef.startTime))
+                                        .minusMinutes(rule.minutesBefore.coerceAtLeast(0).toLong())
+                                }
+                            } catch (_: Exception) { null }
+                        }.filter { it.isAfter(now) }.minOrNull()
+                        if (alarmDt != null) {
                             val alarmId = "${curr}_${rule.shiftDefId}"
                             val isAlarmDisabled = !config.isGlobalEnabled || !rule.isEnabled || config.disabledAlarmIds.contains(alarmId)
                             candidates.add(

@@ -8,16 +8,22 @@ import com.turni.calendario.widget.WidgetUpdateManager
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
+import org.junit.Assert.assertNull
 import org.junit.Before
 import org.junit.Test
 import java.time.LocalDate
 
 class WidgetMultiShiftTest {
+    private lateinit var original: com.turni.calendario.repository.DatabaseSnapshot
 
     @Before
     fun setUp() {
+        original=com.turni.calendario.repository.DatabaseSnapshot.capture()
         ShiftRepository.calendarShifts.clear()
+        ShiftRepository.dayExtraInfo.clear()
     }
+
+    @org.junit.After fun restoreRepository() { com.turni.calendario.sync.DatabaseRestore.apply(original) }
 
     @Test
     fun testMultiShiftSummary_dotsAndNoBullet() {
@@ -49,5 +55,21 @@ class WidgetMultiShiftTest {
         assertTrue(summaryMulti.hasMultipleShifts)
         assertEquals(1, summaryMulti.secondaryShiftColors.size)
         assertEquals(0xFFEF4444.toInt(), summaryMulti.secondaryShiftColors[0])
+    }
+
+    @Test
+    fun erasedOrUnassignedDayDoesNotInventAnImplicitRotation() {
+        val date = LocalDate.of(2026, 10, 17)
+        assertNull(WidgetUpdateManager.getDaySummary(date).shiftDef)
+        val definition=ShiftDefinition("widget_erase", "Test", "TST", workProfileId=ShiftRepository.activeWorkProfileId)
+        ShiftRepository.saveShiftDefinition(definition)
+        ShiftRepository.saveRotation(com.turni.calendario.model.ShiftRotation("widget_cycle","Test",1,listOf(definition.id)))
+        ShiftRepository.applyRotation("widget_cycle", date, 1)
+        assertEquals(definition.id, WidgetUpdateManager.getDaySummary(date).shiftDef?.id)
+        ShiftRepository.clearDayShifts(date)
+        val erased = WidgetUpdateManager.getDaySummary(date)
+        assertNull(erased.shiftDef)
+        assertEquals("—", erased.shortCode)
+        assertFalse(erased.hasMultipleShifts)
     }
 }

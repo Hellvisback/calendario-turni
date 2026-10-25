@@ -4,6 +4,9 @@ import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.screens.MainScreen
 import com.turni.calendario.ui.theme.CalendarioTurniTheme
@@ -14,6 +17,7 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
         // Sincronizza lo sfondo delle barre di sistema (status bar e navigation bar) con ObsidianBackground (#080B11)
         // per rimuovere qualsiasi bordino o contrasto ai bordi superiore e inferiore dello schermo
@@ -26,20 +30,18 @@ class MainActivity : ComponentActivity() {
             isAppearanceLightNavigationBars = false
         }
 
-        // Aggancia l'ascoltatore per aggiornamento in tempo reale dei Widget
-        ShiftRepository.onDataChangedListener = {
-            WidgetUpdateManager.notifyWidgetsChanged(applicationContext)
-        }
+        // LocalDatabaseStore coalesces durable saves, widget refreshes and alarm scheduling off main.
 
         // Gestione eventuale apertura da click su giorno del widget
         handleWidgetDeepLink(intent)
 
         if (ShiftRepository.appPreferences.autoBackupDaily) {
-            com.turni.calendario.sync.GoogleDriveBackupHelper.saveCloudBackupDirect(applicationContext)
+            lifecycleScope.launch(Dispatchers.IO) {
+                val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
+                try { snapshot.enter { com.turni.calendario.sync.GoogleDriveBackupHelper.saveCloudBackupDirect(applicationContext) } }
+                finally { snapshot.dispose() }
+            }
         }
-
-        // Aggiorna tutti i widget all'avvio dell'app per sincronizzare orari e date odierne
-        WidgetUpdateManager.updateAllWidgets(applicationContext)
 
         setContent {
             CalendarioTurniTheme {

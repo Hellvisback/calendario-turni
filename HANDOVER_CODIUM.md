@@ -1,11 +1,21 @@
 # Handover Tecnico & Guida Architetturale per CodiumAI / Qodo
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)  
-**Versione Corrente**: v1.2.3 (versionCode 15)  
+**Versione Corrente**: v1.3.0 (versionCode 16, installata sul Realme il 25 ottobre 2026; pubblicazione GitHub non eseguita)  
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)  
 **Parametri SDK**: compileSdk 32, minSdk 26, targetSdk 32, Java 11  
 **Repository Git**: `https://github.com/Hellvisback/calendario-turni.git`  
 **Branch Principale**: `main`  
 **Ambiente di Lavoro**: Locale su macchina Windows dell'utente (`c:\Users\marco\Antigravity Progetti\Calediario Turni`)
+
+---
+
+## Aggiornamento nativo del 25 ottobre 2026
+
+Il prototipo TurniSync è stato portato nelle schermate native Compose: calendario, dock a due destinazioni, modifica compatta, dettagli giorno/turno, editor di lavori/modelli/rotazioni, statistiche dinamiche e impostazioni. I componenti principali aggiunti sono `NativeMonthCanvas`, `NativeCalendarPanels`, `CatalogEditorComponents`, `NativeColorPlane` e `TurniDock`. Le vecchie funzioni editor rinominate `Legacy...` non sono i punti di ingresso attivi.
+
+`TurniSyncApplication` inizializza `LocalDatabaseStore` prima delle schermate. Il database atomico `files/turnisync-database-v3.json` conserva lo stato completo; in sua assenza viene migrato il backup locale precedente senza eliminarlo. Scritture successive, widget e aggiornamenti delle sveglie sono eseguiti fuori dal thread UI. La migrazione della palette modifica solo colori predefiniti noti, preservando quelli personalizzati.
+
+Verificati: build APK, 264 test per variante debug/release, installazione sul dispositivo cb08bc57, scorrimenti brevi dal centro della griglia, straordinario da stacco effettivo, trasferta per turno, rotazioni con anteprima, periodo bidirezionale, gomma selettiva, Annulla e persistenza dopo riavvio. Sul telefono restano 122 assegnazioni, 11 modelli e un lavoro. Non sono state collaudate chiamate reali a Google Calendar/Drive/Gemini né l'erogazione effettiva delle sveglie. L'APK è firmato con la chiave debug esistente; non è stata pubblicata una release GitHub.
 
 ---
 

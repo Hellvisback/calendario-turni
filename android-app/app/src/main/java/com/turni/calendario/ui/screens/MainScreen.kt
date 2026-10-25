@@ -1,164 +1,77 @@
-
 package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.CircleShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.scale
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import androidx.compose.animation.core.tween
-import com.turni.calendario.ui.components.bouncyClickable
-import com.turni.calendario.ui.components.FluidGlassContainer
-import com.turni.calendario.ui.components.LiquidGlassLensNavBar
+import com.turni.calendario.model.ShiftRotation
+import com.turni.calendario.ui.components.TurniDock
 import com.turni.calendario.ui.theme.*
 
 sealed class NavItem(val route: String, val label: String, val icon: ImageVector) {
     object Calendario : NavItem("calendar", "Calendario", Icons.Default.CalendarMonth)
-    object Report : NavItem("report", "Report", Icons.Default.BarChart)
+    object Report : NavItem("report", "Statistiche", Icons.Default.BarChart)
     object Turni : NavItem("turni", "Turni", Icons.Default.Schedule)
-    object Altro : NavItem("altro", "Altro", Icons.Default.Tune)
+    object Altro : NavItem("altro", "Impostazioni", Icons.Default.Settings)
 }
 
-@OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
+@OptIn(ExperimentalAnimationApi::class)
 @Composable
 fun MainScreen() {
-    var selectedItem by remember { mutableStateOf<NavItem>(NavItem.Calendario) }
-    var isSubScreenActive by remember { mutableStateOf(false) }
-    var isCalendarEditModeActive by remember { mutableStateOf(false) }
-    var targetRotationToEdit by remember { mutableStateOf<com.turni.calendario.model.ShiftRotation?>(null) }
-
-    // Intercetta il tasto indietro di sistema: se siamo in un altro tab, torna a Calendario
-    BackHandler(enabled = selectedItem != NavItem.Calendario && !isSubScreenActive && !isCalendarEditModeActive) {
-        selectedItem = NavItem.Calendario
-    }
-
-    val navItems = listOf(
-        NavItem.Calendario,
-        NavItem.Report,
-        NavItem.Turni,
-        NavItem.Altro
-    )
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-    ) {
-        // Contenuto principale a TUTTO SCHERMO con transizione orizzontale fluida continua (Zero Scatti)
-        Box(modifier = Modifier.fillMaxSize()) {
-            AnimatedContent(
-                targetState = selectedItem,
-                transitionSpec = {
-                    val fromIndex = navItems.indexOf(initialState)
-                    val toIndex = navItems.indexOf(targetState)
-                    val isForward = toIndex >= fromIndex
-
-                    if (isForward) {
-                        (slideInHorizontally(
-                            initialOffsetX = { fullWidth -> (fullWidth * 0.45f).toInt() },
-                            animationSpec = spring(
-                                dampingRatio = 0.86f,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
-                        ) + fadeIn(animationSpec = tween(220))).with(
-                            slideOutHorizontally(
-                                targetOffsetX = { fullWidth -> (-fullWidth * 0.45f).toInt() },
-                                animationSpec = spring(
-                                    dampingRatio = 0.86f,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            ) + fadeOut(animationSpec = tween(180))
-                        )
-                    } else {
-                        (slideInHorizontally(
-                            initialOffsetX = { fullWidth -> (-fullWidth * 0.45f).toInt() },
-                            animationSpec = spring(
-                                dampingRatio = 0.86f,
-                                stiffness = Spring.StiffnessMediumLow
-                            )
-                        ) + fadeIn(animationSpec = tween(220))).with(
-                            slideOutHorizontally(
-                                targetOffsetX = { fullWidth -> (fullWidth * 0.45f).toInt() },
-                                animationSpec = spring(
-                                    dampingRatio = 0.86f,
-                                    stiffness = Spring.StiffnessMediumLow
-                                )
-                            ) + fadeOut(animationSpec = tween(180))
-                        )
-                    }
+    var route by rememberSaveable { mutableStateOf("calendar") }
+    var editMode by remember { mutableStateOf(false) }
+    var editRequest by remember { mutableStateOf(0) }
+    var subScreen by remember { mutableStateOf(false) }
+    var rotation by remember { mutableStateOf<ShiftRotation?>(null) }
+    val savedScreens=rememberSaveableStateHolder()
+    BackHandler(route != "calendar" && !subScreen) { route = "calendar" }
+    Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
+        AnimatedContent(route, transitionSpec = {
+            (slideInHorizontally(spring(.95f, 400f)) { it / 12 } + fadeIn(tween(180))) with
+                fadeOut(tween(100)) using SizeTransform(clip = false)
+        }) { destination ->
+            savedScreens.SaveableStateProvider(destination) {
+            Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
+                when (destination) {
+                    "calendar" -> CalendarScreen(editRequest = editRequest,
+                        onEditModeActiveChanged = { editMode = it; if(!it)editRequest=0 }, onOpenSettings = { route = "altro" })
+                    "report" -> ReportScreen(onOpenSettings = { route = "altro" })
+                    "turni" -> TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
+                        initialTab = if (rotation != null) 2 else 0, initialEditingRotation = rotation,
+                        onClearInitialRotation = { rotation = null },
+                        onDismiss = { route = "calendar"; subScreen = false })
+                    else -> SettingsScreen(onSubScreenActiveChanged = { subScreen = it },
+                        onNavigateToTurni = { rotation = it; route = "turni"; subScreen = false },
+                        onDismiss = { route = "calendar"; subScreen = false })
                 }
-            ) { currentNav ->
-                when (currentNav) {
-                    NavItem.Calendario -> CalendarScreen(
-                        onEditModeActiveChanged = { isCalendarEditModeActive = it }
-                    )
-                    NavItem.Report -> ReportScreen()
-                    NavItem.Turni -> TurniModelsScreen(
-                        onEditorActiveChanged = { isSubScreenActive = it },
-                        initialTab = if (targetRotationToEdit != null) 2 else 0,
-                        initialEditingRotation = targetRotationToEdit,
-                        onClearInitialRotation = { targetRotationToEdit = null }
-                    )
-                    NavItem.Altro -> SettingsScreen(
-                        onSubScreenActiveChanged = { isSubScreenActive = it },
-                        onNavigateToTurni = { rotation ->
-                            targetRotationToEdit = rotation
-                            selectedItem = NavItem.Turni
-                            isSubScreenActive = false
-                        }
-                    )
-                }
+            }
             }
         }
-
-        // Floating Navigation Dock (Liquid Glass Optical Lens Bar)
-        AnimatedVisibility(
-            visible = !isSubScreenActive && !isCalendarEditModeActive,
-            enter = slideInVertically(
-                initialOffsetY = { it },
-                animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy, stiffness = Spring.StiffnessMediumLow)
-            ) + fadeIn(),
-            exit = slideOutVertically(targetOffsetY = { it }) + fadeOut(),
-            modifier = Modifier.align(Alignment.BottomCenter)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .navigationBarsPadding()
-                    .padding(bottom = 10.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                LiquidGlassLensNavBar(
-                    navItems = navItems,
-                    selectedItem = selectedItem,
-                    onItemSelected = { item ->
-                        selectedItem = item
-                        isSubScreenActive = false
-                    }
-                )
-            }
+        var loadWarning by remember { mutableStateOf(com.turni.calendario.repository.LocalDatabaseStore.loadError) }
+        com.turni.calendario.ui.components.AnimatedStatusPopup(message=loadWarning,
+            type=com.turni.calendario.ui.components.PopupType.ERROR,onDismiss={loadWarning=null},
+            modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding())
+        AnimatedVisibility(visible = (route == "calendar" || route == "report" || (route=="altro"&&!subScreen)) && !editMode,
+            enter = slideInVertically(spring(.92f, 380f)) { it } + fadeIn(tween(220)),
+            exit = slideOutVertically(spring(1f, 520f)) { it } + fadeOut(tween(160)),
+            modifier = Modifier.align(Alignment.BottomCenter)) {
+            TurniDock(calendarSelected = route == "calendar",primarySelected=route!="altro",
+                onCalendar = { route = "calendar"; subScreen = false },
+                onStatistics = { route = "report"; subScreen = false }, onEdit = { editMode=true;editRequest++ },
+                onModels = { route = "turni"; subScreen = false },
+                modifier = Modifier.navigationBarsPadding().padding(bottom = 8.dp))
         }
     }
 }

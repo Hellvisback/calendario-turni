@@ -177,16 +177,16 @@ fun GoogleCalendarSyncScreen(
                     modifier = Modifier
                         .size(40.dp)
                         .clip(CircleShape)
-                        .background(Color(0xFF1E2638))
+                        .background(ObsidianSurfaceContainer)
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = Color.White)
+                    Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = TextPrimary)
                 }
 
                 Text(
                     text = "Google Calendar Sync",
                     fontSize = 18.sp,
                     fontWeight = FontWeight.Bold,
-                    color = Color.White
+                    color = TextPrimary
                 )
 
                 Box(modifier = Modifier.size(40.dp))
@@ -199,19 +199,19 @@ fun GoogleCalendarSyncScreen(
                 Card(
                     modifier = Modifier.fillMaxWidth(),
                     shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF2E200C)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B))
+                    colors = CardDefaults.cardColors(containerColor = ColorReperibilita.copy(alpha = 0.10f)),
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ColorReperibilita)
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.SecurityUpdateWarning, contentDescription = null, tint = Color(0xFFF59E0B), modifier = Modifier.size(24.dp))
+                            Icon(Icons.Default.SecurityUpdateWarning, contentDescription = null, tint = ColorReperibilita, modifier = Modifier.size(24.dp))
                             Spacer(modifier = Modifier.width(10.dp))
-                            Text("Permessi Calendario Richiesti", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                            Text("Permessi Calendario Richiesti", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
                         }
                         Spacer(modifier = Modifier.height(6.dp))
                         Text(
                             "Per sincronizzare i tuoi turni con Google Calendar sul tuo telefono, concedi i permessi di lettura e scrittura calendario.",
-                            color = Color(0xFFE2E8F0),
+                            color = ObsidianBorder,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
                         )
@@ -225,7 +225,7 @@ fun GoogleCalendarSyncScreen(
                                     )
                                 )
                             },
-                            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+                            colors = ButtonDefaults.buttonColors(containerColor = ColorReperibilita),
                             shape = RoundedCornerShape(10.dp)
                         ) {
                             Text("Autorizza Accesso Calendario", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
@@ -239,7 +239,7 @@ fun GoogleCalendarSyncScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF0F2537)),
+                colors = CardDefaults.cardColors(containerColor = ObsidianPrimarySubtle),
                 border = CardDefaults.outlinedCardBorder()
             ) {
                 Row(
@@ -250,10 +250,10 @@ fun GoogleCalendarSyncScreen(
                         modifier = Modifier
                             .size(44.dp)
                             .clip(CircleShape)
-                            .background(Color(0xFF0284C7)),
+                            .background(ObsidianPrimary),
                         contentAlignment = Alignment.Center
                     ) {
-                        Icon(Icons.Default.Security, contentDescription = null, tint = Color.White)
+                        Icon(Icons.Default.Security, contentDescription = null, tint = catalogInk(ObsidianPrimary))
                     }
 
                     Spacer(modifier = Modifier.width(14.dp))
@@ -261,14 +261,14 @@ fun GoogleCalendarSyncScreen(
                     Column {
                         Text(
                             text = "Sincronizzazione Reale & Sicura",
-                            color = Color.White,
+                            color = TextPrimary,
                             fontWeight = FontWeight.Bold,
                             fontSize = 15.sp
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
                             text = "Sincronizza direttamente con il tuo account Google e con l'app Google Calendar installata sul tuo smartphone.",
-                            color = Color(0xFF94A3B8),
+                            color = TextSecondary,
                             fontSize = 12.sp,
                             lineHeight = 16.sp
                         )
@@ -283,7 +283,7 @@ fun GoogleCalendarSyncScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
                 border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
@@ -295,31 +295,31 @@ fun GoogleCalendarSyncScreen(
                             modifier = Modifier
                                 .size(40.dp)
                                 .clip(CircleShape)
-                                .background(ColorMattina),
+                                .background(ObsidianPrimary),
                             contentAlignment = Alignment.Center
                         ) {
-                            Icon(Icons.Default.AccountCircle, contentDescription = null, tint = Color.White, modifier = Modifier.size(26.dp))
+                            Icon(Icons.Default.AccountCircle, contentDescription = null, tint = catalogInk(ObsidianPrimary), modifier = Modifier.size(26.dp))
                         }
                         Spacer(modifier = Modifier.width(12.dp))
                         Column(modifier = Modifier.weight(1f)) {
                             Text(
                                 text = currentGoogleAccount?.email ?: "Account Google Principale",
-                                color = Color.White,
+                                color = TextPrimary,
                                 fontWeight = FontWeight.Bold,
                                 fontSize = 14.sp
                             )
                             Text(
                                 text = if (deviceCalendars.isNotEmpty()) "${deviceCalendars.size} calendari rilevati sul dispositivo" else "Sincronizzazione nativa attiva",
-                                color = Color(0xFF94A3B8),
+                                color = TextSecondary,
                                 fontSize = 11.5.sp
                             )
                         }
                     }
 
                     Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = Color(0xFF1E2638), thickness = 0.8.dp)
+                    Divider(color = ObsidianSurfaceContainer, thickness = 0.8.dp)
                     Spacer(modifier = Modifier.height(8.dp))
-                    Text("Seleziona Calendario di Destinazione:", color = Color(0xFF94A3B8), fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Seleziona Calendario di Destinazione:", color = TextSecondary, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
                     Spacer(modifier = Modifier.height(8.dp))
 
                     if (deviceCalendars.isNotEmpty()) {
@@ -339,22 +339,22 @@ fun GoogleCalendarSyncScreen(
                                         modifier = Modifier
                                             .size(10.dp)
                                             .clip(CircleShape)
-                                            .background(if (isSelected) ColorMattina else Color(0xFF64748B))
+                                            .background(if (isSelected) ObsidianPrimary else TextMuted)
                                     )
                                     Spacer(modifier = Modifier.width(10.dp))
                                     Column {
-                                        Text(cal.displayName, color = if (isSelected) Color.White else Color(0xFFCBD5E1), fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
+                                        Text(cal.displayName, color = if (isSelected) TextPrimary else TextSecondary, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
                                         if (cal.accountName.isNotBlank()) {
-                                            Text(cal.accountName, color = Color(0xFF64748B), fontSize = 10.5.sp)
+                                            Text(cal.accountName, color = TextMuted, fontSize = 10.5.sp)
                                         }
                                     }
                                 }
                                 if (isSelected) {
                                     Surface(
                                         shape = RoundedCornerShape(4.dp),
-                                        color = ColorMattina.copy(alpha = 0.2f)
+                                        color = ObsidianPrimary.copy(alpha = 0.2f)
                                     ) {
-                                        Text("Attivo", color = ColorMattina, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                        Text("Attivo", color = ObsidianPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                     }
                                 }
                             }
@@ -372,13 +372,13 @@ fun GoogleCalendarSyncScreen(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
                                 Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(if (isSelected) ColorMattina else Color(0xFF64748B)))
+                                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(if (isSelected) ObsidianPrimary else TextMuted))
                                     Spacer(modifier = Modifier.width(8.dp))
-                                    Text(name, color = if (isSelected) Color.White else Color(0xFFCBD5E1), fontSize = 12.5.sp)
+                                    Text(name, color = if (isSelected) TextPrimary else TextSecondary, fontSize = 12.5.sp)
                                 }
                                 if (isSelected) {
-                                    Surface(shape = RoundedCornerShape(4.dp), color = ColorMattina.copy(alpha = 0.2f)) {
-                                        Text("Predefinito", color = ColorMattina, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
+                                    Surface(shape = RoundedCornerShape(4.dp), color = ObsidianPrimary.copy(alpha = 0.2f)) {
+                                        Text("Predefinito", color = ObsidianPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
                                     }
                                 }
                             }
@@ -393,13 +393,13 @@ fun GoogleCalendarSyncScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
                 border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Periodo da Sincronizzare",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp
                     )
@@ -415,7 +415,7 @@ fun GoogleCalendarSyncScreen(
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) Color(0xFF1E293B) else Color.Transparent)
+                                .background(if (isSelected) ObsidianSurfaceHigh else Color.Transparent)
                                 .clickable { selectedRange = rangeOption }
                                 .padding(horizontal = 12.dp, vertical = 10.dp),
                             verticalAlignment = Alignment.CenterVertically
@@ -423,12 +423,12 @@ fun GoogleCalendarSyncScreen(
                             RadioButton(
                                 selected = isSelected,
                                 onClick = { selectedRange = rangeOption },
-                                colors = RadioButtonDefaults.colors(selectedColor = ColorMattina)
+                                colors = RadioButtonDefaults.colors(selectedColor = ObsidianPrimary)
                             )
                             Spacer(modifier = Modifier.width(8.dp))
                             Text(
                                 text = rangeOption,
-                                color = if (isSelected) Color.White else Color(0xFF94A3B8),
+                                color = if (isSelected) TextPrimary else TextSecondary,
                                 fontSize = 13.sp,
                                 fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
                             )
@@ -443,13 +443,13 @@ fun GoogleCalendarSyncScreen(
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26)),
+                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
                 border = CardDefaults.outlinedCardBorder()
             ) {
                 Column(modifier = Modifier.padding(16.dp)) {
                     Text(
                         text = "Parametri Eventi",
-                        color = Color.White,
+                        color = TextPrimary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 14.sp
                     )
@@ -461,17 +461,17 @@ fun GoogleCalendarSyncScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Orari Esatti Turno", color = Color.White, fontSize = 14.sp)
-                            Text("Es. 06:00 - 13:36 invece di tutto il giorno", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Orari Esatti Turno", color = TextPrimary, fontSize = 14.sp)
+                            Text("Es. 06:00 - 13:36 invece di tutto il giorno", color = TextSecondary, fontSize = 11.sp)
                         }
                         Switch(
                             checked = syncExactHours,
                             onCheckedChange = { syncExactHours = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
+                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
                         )
                     }
 
-                    Divider(color = Color(0xFF1E2638), modifier = Modifier.padding(vertical = 10.dp))
+                    Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -479,17 +479,17 @@ fun GoogleCalendarSyncScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Includi Riposi e Smonti", color = Color.White, fontSize = 14.sp)
-                            Text("Consigliato disattivato per non intasare il calendario", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Includi Riposi e Smonti", color = TextPrimary, fontSize = 14.sp)
+                            Text("Consigliato disattivato per non intasare il calendario", color = TextSecondary, fontSize = 11.sp)
                         }
                         Switch(
                             checked = includeRestDays,
                             onCheckedChange = { includeRestDays = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
+                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
                         )
                     }
 
-                    Divider(color = Color(0xFF1E2638), modifier = Modifier.padding(vertical = 10.dp))
+                    Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 10.dp))
 
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -497,13 +497,13 @@ fun GoogleCalendarSyncScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Column(modifier = Modifier.weight(1f)) {
-                            Text("Notifica e Promemoria", color = Color.White, fontSize = 14.sp)
-                            Text("Notifica 1 ora prima dell'inizio turno", color = Color(0xFF94A3B8), fontSize = 11.sp)
+                            Text("Notifica e Promemoria", color = TextPrimary, fontSize = 14.sp)
+                            Text("Notifica 1 ora prima dell'inizio turno", color = TextSecondary, fontSize = 11.sp)
                         }
                         Switch(
                             checked = setReminderOneHourBefore,
                             onCheckedChange = { setReminderOneHourBefore = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ColorMattina)
+                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
                         )
                     }
                 }
@@ -520,12 +520,12 @@ fun GoogleCalendarSyncScreen(
                 Icon(
                     if (showEventListPreview) Icons.Default.ExpandLess else Icons.Default.Visibility,
                     contentDescription = null,
-                    tint = Color.White
+                    tint = TextPrimary
                 )
                 Spacer(modifier = Modifier.width(8.dp))
                 Text(
                     text = if (showEventListPreview) "Nascondi Anteprima (${shiftsToSync.size} turni)" else "Mostra Anteprima Turni (${shiftsToSync.size} turni)",
-                    color = Color.White
+                    color = TextPrimary
                 )
             }
 
@@ -536,7 +536,7 @@ fun GoogleCalendarSyncScreen(
                         .fillMaxWidth()
                         .heightIn(max = 220.dp),
                     shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = Color(0xFF151B26))
+                    colors = CardDefaults.cardColors(containerColor = ObsidianSurface)
                 ) {
                     LazyColumn(modifier = Modifier.padding(12.dp)) {
                         items(shiftsToSync) { (date, assigned) ->
@@ -549,17 +549,17 @@ fun GoogleCalendarSyncScreen(
                             ) {
                                 Text(
                                     text = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                                    color = Color(0xFF94A3B8),
+                                    color = TextSecondary,
                                     fontSize = 12.sp,
                                     fontWeight = FontWeight.Bold
                                 )
                                 Text(
                                     text = "${def?.name ?: assigned.shiftDefId} (${def?.startTime ?: "00:00"} - ${def?.endTime ?: "00:00"})",
-                                    color = Color.White,
+                                    color = TextPrimary,
                                     fontSize = 12.sp
                                 )
                             }
-                            Divider(color = Color(0xFF1E2638), thickness = 0.5.dp)
+                            Divider(color = ObsidianSurfaceContainer, thickness = 0.5.dp)
                         }
                     }
                 }
@@ -613,34 +613,34 @@ fun GoogleCalendarSyncScreen(
                 modifier = Modifier.fillMaxWidth().height(52.dp),
                 shape = RoundedCornerShape(14.dp),
                 colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCooldownActive || isSyncing) Color(0xFF334155) else ColorMattina,
-                    disabledContainerColor = Color(0xFF334155)
+                    containerColor = if (isCooldownActive || isSyncing) ObsidianBorder else ObsidianPrimary,
+                    disabledContainerColor = ObsidianBorder
                 ),
                 enabled = !isCooldownActive && !isSyncing && !isDeleting
             ) {
                 if (isSyncing) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(22.dp),
-                        color = Color.White,
+                        color = catalogInk(ObsidianPrimary),
                         strokeWidth = 2.5.dp
                     )
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text("Sincronizzazione in corso...", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 14.sp)
+                    Text("Sincronizzazione in corso...", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold, fontSize = 14.sp)
                 } else if (isCooldownActive) {
-                    Icon(Icons.Default.Timer, contentDescription = null, tint = Color(0xFF94A3B8), modifier = Modifier.size(20.dp))
+                    Icon(Icons.Default.Timer, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     val minutes = cooldownRemainingSeconds / 60
                     val seconds = cooldownRemainingSeconds % 60
                     Text(
                         "Attendi ${minutes}:${String.format("%02d", seconds)} prima della prossima sincronizzazione",
-                        color = Color(0xFF94A3B8),
+                        color = TextSecondary,
                         fontWeight = FontWeight.SemiBold,
                         fontSize = 12.sp
                     )
                 } else {
-                    Icon(Icons.Default.Sync, contentDescription = null, tint = Color.White)
+                    Icon(Icons.Default.Sync, contentDescription = null, tint = catalogInk(ObsidianPrimary))
                     Spacer(modifier = Modifier.width(10.dp))
-                    Text("Sincronizza Ora con Google Calendar", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 15.sp)
+                    Text("Sincronizza Ora con Google Calendar", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold, fontSize = 15.sp)
                 }
             }
 
@@ -663,15 +663,15 @@ fun GoogleCalendarSyncScreen(
                 if (isDeleting) {
                     CircularProgressIndicator(
                         modifier = Modifier.size(14.dp),
-                        color = Color(0xFFEF4444),
+                        color = ColorNegative,
                         strokeWidth = 2.dp
                     )
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Eliminazione in corso...", color = Color(0xFFEF4444), fontSize = 12.sp)
+                    Text("Eliminazione in corso...", color = ColorNegative, fontSize = 12.sp)
                 } else {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = Color(0xFFEF4444), modifier = Modifier.size(16.dp))
+                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = ColorNegative, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text("Rimuovi eventi dell'app dal Google Calendar", color = Color(0xFFEF4444), fontSize = 12.sp)
+                    Text("Rimuovi eventi dell'app dal Google Calendar", color = ColorNegative, fontSize = 12.sp)
                 }
             }
 
@@ -695,16 +695,16 @@ fun GoogleCalendarSyncScreen(
                 onDismissRequest = { showConfirmDeleteDialog = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = Color(0xFFF59E0B))
+                        Icon(Icons.Default.Warning, contentDescription = null, tint = ColorReperibilita)
                         Spacer(modifier = Modifier.width(8.dp))
-                        Text("Conferma Eliminazione", color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+                        Text("Conferma Eliminazione", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
                     }
                 },
                 text = {
                     Text(
                         "Sei sicuro di voler rimuovere tutti i turni sincronizzati dal Google Calendar?\n\n" +
                         "Questa operazione potrebbe richiedere alcuni secondi. Solo gli eventi creati da questa app verranno eliminati.",
-                        color = Color(0xFFCBD5E1),
+                        color = TextSecondary,
                         fontSize = 13.sp,
                         lineHeight = 18.sp
                     )
@@ -748,17 +748,17 @@ fun GoogleCalendarSyncScreen(
                                 }
                             }
                         },
-                        colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFEF4444))
+                        colors = ButtonDefaults.buttonColors(containerColor = ColorNegative)
                     ) {
-                        Text("Elimina Tutto", color = Color.White, fontWeight = FontWeight.Bold)
+                        Text("Elimina Tutto", color = catalogInk(ColorNegative), fontWeight = FontWeight.Bold)
                     }
                 },
                 dismissButton = {
                     TextButton(onClick = { showConfirmDeleteDialog = false }) {
-                        Text("Annulla", color = Color(0xFF94A3B8))
+                        Text("Annulla", color = TextSecondary)
                     }
                 },
-                containerColor = Color(0xFF151B26),
+                containerColor = ObsidianSurface,
                 shape = RoundedCornerShape(18.dp)
             )
         }

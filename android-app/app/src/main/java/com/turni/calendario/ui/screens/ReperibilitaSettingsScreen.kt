@@ -123,7 +123,7 @@ fun ReperibilitaSettingsScreen(
                 ),
                 border = androidx.compose.foundation.BorderStroke(
                     width = if (isSelected) 1.5.dp else 1.dp,
-                    color = if (isSelected) Color(0xFFF59E0B) else ObsidianBorder
+                    color = if (isSelected) ColorReperibilita else ObsidianBorder
                 )
             ) {
                 Row(
@@ -139,7 +139,7 @@ fun ReperibilitaSettingsScreen(
                             ShiftRepository.reperibilitaConfig = config
                         },
                         colors = RadioButtonDefaults.colors(
-                            selectedColor = Color(0xFFF59E0B),
+                            selectedColor = ColorReperibilita,
                             unselectedColor = TextMuted
                         )
                     )
@@ -149,7 +149,7 @@ fun ReperibilitaSettingsScreen(
                             text = mode.label,
                             fontSize = 14.5.sp,
                             fontWeight = FontWeight.Bold,
-                            color = if (isSelected) Color(0xFFFBBF24) else TextPrimary
+                            color = if (isSelected) ColorReperibilita else TextPrimary
                         )
                         Spacer(modifier = Modifier.height(2.dp))
                         Text(
@@ -175,7 +175,7 @@ fun ReperibilitaSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.TouchApp, contentDescription = null, tint = Color(0xFFF59E0B))
+                            Icon(Icons.Default.TouchApp, contentDescription = null, tint = ColorReperibilita)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Reperibilità Singola / Manuale", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                         }
@@ -211,7 +211,7 @@ fun ReperibilitaSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = Color(0xFFF59E0B))
+                            Icon(Icons.Default.Schedule, contentDescription = null, tint = ColorReperibilita)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Seleziona i Turni di Reperibilità", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                         }
@@ -276,7 +276,7 @@ fun ReperibilitaSettingsScreen(
                                                 text = "${shiftDef.shortCode} • ${shiftDef.name}",
                                                 fontSize = 12.sp,
                                                 fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isChosen) Color.White else TextSecondary
+                                                color = if (isChosen) TextPrimary else TextSecondary
                                             )
                                         }
                                     }
@@ -455,7 +455,7 @@ fun ReperibilitaSettingsScreen(
                                                 text = "${sDef.shortCode} • ${sDef.name}",
                                                 fontSize = 11.sp,
                                                 fontWeight = FontWeight.Bold,
-                                                color = if (isWinterActive) Color.White else TextSecondary
+                                                color = if (isWinterActive) TextPrimary else TextSecondary
                                             )
                                         }
                                     }
@@ -473,7 +473,7 @@ fun ReperibilitaSettingsScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = Color(0xFFF59E0B))
+                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = ColorReperibilita)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Estate: Rotazione a Settimane (Data B ➜ Data A)", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                             }
@@ -500,7 +500,7 @@ fun ReperibilitaSettingsScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Column {
-                                        Text("INIZIO 1ª SETTIMANA REPERIBILITÀ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = Color(0xFFFBBF24))
+                                        Text("INIZIO 1ª SETTIMANA REPERIBILITÀ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorReperibilita)
                                         val refDate = seasonal.summerCycleReferenceDate
                                         Text(
                                             "${refDate.dayOfMonth} ${monthNames[refDate.monthValue] ?: ""} ${refDate.year}",
@@ -599,7 +599,7 @@ fun ReperibilitaSettingsScreen(
                                     ) {
                                         Box(contentAlignment = Alignment.Center) { Text("-", color = TextPrimary, fontWeight = FontWeight.Bold) }
                                     }
-                                    Text("${seasonal.summerCycleOnCallWeeks} sett.", color = Color(0xFFFBBF24), fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    Text("${seasonal.summerCycleOnCallWeeks} sett.", color = ColorReperibilita, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                                     Surface(
                                         shape = CircleShape,
                                         color = ObsidianSurfaceHigh,
@@ -627,7 +627,7 @@ fun ReperibilitaSettingsScreen(
                 ShiftRepository.reperibilitaConfig = config
                 saveSuccessMessage = "Configurazione Reperibilità salvata con successo!"
             },
-            colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B)),
+            colors = ButtonDefaults.buttonColors(containerColor = ColorReperibilita),
             shape = RoundedCornerShape(14.dp),
             modifier = Modifier
                 .fillMaxWidth()

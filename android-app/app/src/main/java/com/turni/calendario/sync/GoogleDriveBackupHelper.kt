@@ -6,6 +6,7 @@ import android.net.Uri
 import androidx.core.content.FileProvider
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
+import com.turni.calendario.repository.DatabaseSnapshot
 import org.json.JSONArray
 import org.json.JSONObject
 import java.io.BufferedReader
@@ -27,15 +28,17 @@ object GoogleDriveBackupHelper {
     /**
      * Serializza l'intero database dell'applicazione in formato JSON.
      */
-    fun exportDatabaseToJson(): String {
+    fun exportDatabaseToJson(snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): String {
         val root = JSONObject()
-        root.put("version", 2)
+        root.put("version", 3)
         root.put("exportDate", LocalDate.now().toString())
-        root.put("activeWorkProfileId", ShiftRepository.activeWorkProfileId)
+        root.put("activeWorkProfileId", snapshot.activeWorkProfileId)
+        root.put("activeRotationId", snapshot.activeRotationId)
+        root.put("defaultRotationId", snapshot.defaultRotationId)
 
         // 1. Modelli Turno
         val modelsArray = JSONArray()
-        ShiftRepository.shiftDefinitions.toList().forEach { def ->
+        snapshot.definitions.forEach { def ->
             val obj = JSONObject().apply {
                 put("id", def.id)
                 put("name", def.name)
@@ -48,6 +51,9 @@ object GoogleDriveBackupHelper {
                 put("colorHex", def.colorHex)
                 put("iconKey", def.iconKey)
                 put("category", def.category.name)
+                put("workProfileId", def.workProfileId)
+                put("hourlyRate", def.hourlyRate)
+                put("allowance", def.allowance)
             }
             modelsArray.put(obj)
         }
@@ -55,7 +61,7 @@ object GoogleDriveBackupHelper {
 
         // 2. Rotazioni
         val rotationsArray = JSONArray()
-        ShiftRepository.rotations.toList().forEach { rot ->
+        snapshot.rotations.forEach { rot ->
             val obj = JSONObject().apply {
                 put("id", rot.id)
                 put("name", rot.name)
@@ -71,7 +77,7 @@ object GoogleDriveBackupHelper {
 
         // 3. Assegnazioni Calendario
         val shiftsArray = JSONArray()
-        ShiftRepository.calendarShifts.toMap().forEach { (date, list) ->
+        snapshot.shifts.forEach { (date, list) ->
             list.toList().forEach { s ->
                 val obj = JSONObject().apply {
                     put("id", s.id)
@@ -88,6 +94,8 @@ object GoogleDriveBackupHelper {
                     put("overtimeHours", s.overtimeHours.toDouble())
                     put("isTrasferta", s.isTrasferta)
                     put("hideExShift", s.hideExShift)
+                    put("tags", JSONArray(s.tags))
+                    put("isOnCallManual", s.isOnCallManual ?: JSONObject.NULL)
                 }
                 shiftsArray.put(obj)
             }
@@ -96,7 +104,7 @@ object GoogleDriveBackupHelper {
 
         // 4. Extra Info per Giorno (straordinari, trasferte, note)
         val extraArray = JSONArray()
-        ShiftRepository.dayExtraInfo.toMap().forEach { (date, extra) ->
+        snapshot.extras.forEach { (date, extra) ->
             val obj = JSONObject().apply {
                 put("date", date.toString())
                 put("overtimeHours", extra.overtimeHours.toDouble())
@@ -104,6 +112,8 @@ object GoogleDriveBackupHelper {
                 put("hideExShift", extra.hideExShift)
                 put("rotationCleared", extra.rotationCleared)
                 put("notes", extra.notes)
+                put("actualEndTime", extra.actualEndTime ?: "")
+                put("isOnCallManual", extra.isOnCallManual ?: JSONObject.NULL)
             }
             extraArray.put(obj)
         }
@@ -111,7 +121,7 @@ object GoogleDriveBackupHelper {
 
         // 5. Profili di Lavoro
         val profilesArray = JSONArray()
-        ShiftRepository.workProfiles.toList().forEach { p ->
+        snapshot.profiles.forEach { p ->
             val pObj = JSONObject().apply {
                 put("id", p.id)
                 put("name", p.name)
@@ -126,6 +136,11 @@ object GoogleDriveBackupHelper {
                 put("colorHex", p.colorHex)
                 put("isDefault", p.isDefault)
                 put("enableAdvancedCalc", p.enableAdvancedCalc)
+                put("iconKey", p.iconKey)
+                put("ccnlCode", p.ccnlCode)
+                put("ccnlName", p.ccnlName)
+                put("ccnlDocumentName", p.ccnlDocumentName ?: "")
+                put("ccnlDocumentUri", p.ccnlDocumentUri ?: "")
             }
             profilesArray.put(pObj)
         }
@@ -133,13 +148,38 @@ object GoogleDriveBackupHelper {
 
         // 5. Preferenze & Reperibilità
         val prefObj = JSONObject().apply {
-            put("showExShifts", ShiftRepository.appPreferences.showExShifts)
-            put("weekStartMonday", ShiftRepository.appPreferences.weekStartMonday)
-            put("timeFormat24h", ShiftRepository.appPreferences.timeFormat24h)
-            put("showHolidays", ShiftRepository.appPreferences.showHolidays)
-            put("autoBackupDaily", ShiftRepository.appPreferences.autoBackupDaily)
+            put("showExShifts", snapshot.preferences.showExShifts)
+            put("weekStartMonday", snapshot.preferences.weekStartMonday)
+            put("timeFormat24h", snapshot.preferences.timeFormat24h)
+            put("showHolidays", snapshot.preferences.showHolidays)
+            put("autoBackupDaily", snapshot.preferences.autoBackupDaily)
         }
         root.put("appPreferences", prefObj)
+        root.put("enabledHolidayIds", JSONArray(snapshot.holidayIds.toList()))
+        root.put("reperibilitaConfig", JSONObject().apply {
+            put("mode", snapshot.onCall.mode.name)
+            put("shiftSpecificIds", JSONArray(snapshot.onCall.shiftSpecificIds))
+            put("manualDates", JSONArray(snapshot.onCall.manualDates.map { it.toString() }))
+            put("seasonal", JSONObject().apply {
+                val s = snapshot.onCall.seasonal
+                put("winterStartMonth", s.winterStartMonth); put("winterStartDay", s.winterStartDay)
+                put("winterEndMonth", s.winterEndMonth); put("winterEndDay", s.winterEndDay)
+                put("winterShiftIds", JSONArray(s.winterShiftIds))
+                put("summerCycleWorkWeeks", s.summerCycleWorkWeeks)
+                put("summerCycleOnCallWeeks", s.summerCycleOnCallWeeks)
+                put("summerCycleReferenceDate", s.summerCycleReferenceDate.toString())
+            })
+        })
+        root.put("smartAlarmsConfig", JSONObject().apply {
+            put("isGlobalEnabled", snapshot.alarms.isGlobalEnabled)
+            put("disabledAlarmIds", JSONArray(snapshot.alarms.disabledAlarmIds.toList()))
+            put("rules", JSONArray().apply {
+                snapshot.alarms.rules.forEach { rule -> put(JSONObject().apply {
+                    put("shiftDefId", rule.shiftDefId); put("isEnabled", rule.isEnabled)
+                    put("minutesBefore", rule.minutesBefore); put("customTime", rule.customTime ?: "")
+                }) }
+            })
+        })
 
         return root.toString(2)
     }
@@ -150,7 +190,8 @@ object GoogleDriveBackupHelper {
     fun writeBackupToUri(context: Context, uri: Uri): Boolean {
         return try {
             val json = exportDatabaseToJson()
-            context.contentResolver.openOutputStream(uri)?.use { out ->
+            val output = context.contentResolver.openOutputStream(uri) ?: return false
+            output.use { out ->
                 OutputStreamWriter(out, Charsets.UTF_8).use { writer ->
                     writer.write(json)
                     writer.flush()
@@ -243,138 +284,8 @@ object GoogleDriveBackupHelper {
     /**
      * Parsing ed importazione del JSON nel database dell'applicazione.
      */
-    fun restoreFromJsonString(jsonStr: String): RestoreResult {
-        return try {
-            val root = JSONObject(jsonStr)
-            ShiftRepository.saveSnapshot()
+    fun restoreFromJsonString(jsonStr: String): RestoreResult = DatabaseRestore.restore(jsonStr)
 
-            var modelsCount = 0
-            var rotationsCount = 0
-            var shiftsCount = 0
-
-            // 1. Modelli Turno
-            if (root.has("shiftDefinitions")) {
-                val arr = root.getJSONArray("shiftDefinitions")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val def = ShiftDefinition(
-                        id = obj.getString("id"),
-                        name = obj.getString("name"),
-                        shortCode = obj.getString("shortCode"),
-                        startTime = obj.optString("startTime", "06:00"),
-                        endTime = obj.optString("endTime", "13:36"),
-                        isAllDay = obj.optBoolean("isAllDay", false),
-                        breakMinutes = obj.optInt("breakMinutes", 0),
-                        colorHex = obj.optLong("colorHex", 0xFF0284C7),
-                        category = try {
-                            ShiftCategory.valueOf(obj.optString("category", "LAVORO"))
-                        } catch (_: Exception) {
-                            ShiftCategory.LAVORO
-                        }
-                    )
-                    ShiftRepository.saveShiftDefinition(def)
-                    modelsCount++
-                }
-            }
-
-            // 2. Rotazioni
-            if (root.has("rotations")) {
-                val arr = root.getJSONArray("rotations")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val seqArr = obj.optJSONArray("daySequence")
-                    val sequence = mutableListOf<String>()
-                    if (seqArr != null) {
-                        for (j in 0 until seqArr.length()) {
-                            sequence.add(seqArr.getString(j))
-                        }
-                    }
-                    val rot = ShiftRotation(
-                        id = obj.getString("id"),
-                        name = obj.getString("name"),
-                        totalDays = obj.optInt("totalDays", sequence.size),
-                        daySequence = sequence,
-                        description = obj.optString("description", "")
-                    )
-                    ShiftRepository.saveRotation(rot)
-                    rotationsCount++
-                }
-            }
-
-            // 3. Assegnazioni Calendario
-            if (root.has("calendarShifts")) {
-                ShiftRepository.calendarShifts.clear()
-                val arr = root.getJSONArray("calendarShifts")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val date = LocalDate.parse(obj.getString("date"))
-                    val origDefId = obj.optString("originalShiftDefId").ifBlank { null }
-                    val isMod = obj.optBoolean("isModifiedFromRotation", false)
-                    val isFromRot = obj.optBoolean("isFromRotation", false)
-
-                    val assigned = AssignedShift(
-                        id = obj.optString("id", java.util.UUID.randomUUID().toString()),
-                        date = date,
-                        shiftDefId = obj.getString("shiftDefId"),
-                        originalShiftDefId = origDefId,
-                        isModifiedFromRotation = isMod,
-                        isFromRotation = isFromRot,
-                        notes = obj.optString("notes", ""),
-                        actualEndTime = obj.optString("actualEndTime").ifBlank { null },
-                        isOvertime = obj.optBoolean("isOvertime", false),
-                        overtimeHours = obj.optDouble("overtimeHours", 0.0).toFloat(),
-                        isTrasferta = obj.optBoolean("isTrasferta", false),
-                        hideExShift = obj.optBoolean("hideExShift", false)
-                    )
-
-                    val list = ShiftRepository.calendarShifts.getOrPut(date) { androidx.compose.runtime.mutableStateListOf() }
-                    list.add(assigned)
-                    shiftsCount++
-                }
-            }
-
-            // 4. Extra Info
-            if (root.has("dayExtraInfo")) {
-                val arr = root.getJSONArray("dayExtraInfo")
-                for (i in 0 until arr.length()) {
-                    val obj = arr.getJSONObject(i)
-                    val date = LocalDate.parse(obj.getString("date"))
-                    val extra = DayExtraInfo(
-                        date = date,
-                        overtimeHours = obj.optDouble("overtimeHours", 0.0).toFloat(),
-                        isTrasferta = obj.optBoolean("isTrasferta", false),
-                        hideExShift = obj.optBoolean("hideExShift", false),
-                        rotationCleared = obj.optBoolean("rotationCleared", false),
-                        notes = obj.optString("notes", "")
-                    )
-                    ShiftRepository.dayExtraInfo[date] = extra
-                }
-            }
-
-            // 5. Preferenze
-            if (root.has("appPreferences")) {
-                val p = root.getJSONObject("appPreferences")
-                ShiftRepository.appPreferences = ShiftRepository.appPreferences.copy(
-                    showExShifts = p.optBoolean("showExShifts", ShiftRepository.appPreferences.showExShifts),
-                    weekStartMonday = p.optBoolean("weekStartMonday", ShiftRepository.appPreferences.weekStartMonday),
-                    timeFormat24h = p.optBoolean("timeFormat24h", ShiftRepository.appPreferences.timeFormat24h),
-                    showHolidays = p.optBoolean("showHolidays", ShiftRepository.appPreferences.showHolidays),
-                    autoBackupDaily = p.optBoolean("autoBackupDaily", ShiftRepository.appPreferences.autoBackupDaily)
-                )
-            }
-
-            RestoreResult(
-                success = true,
-                message = "Ripristino completato con successo!",
-                shiftsCount = shiftsCount,
-                modelsCount = modelsCount,
-                rotationsCount = rotationsCount
-            )
-        } catch (e: Exception) {
-            e.printStackTrace()
-            RestoreResult(false, "Errore durante il parsing del backup: ${e.localizedMessage}")
-        }
-    }
 
     /**
      * Crea un intent per condividere il file di backup direttamente con Google Drive ("Salva su Drive").

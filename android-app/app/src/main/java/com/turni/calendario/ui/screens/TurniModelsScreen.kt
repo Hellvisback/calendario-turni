@@ -55,6 +55,7 @@ import com.turni.calendario.ui.theme.*
 import java.time.LocalDate
 import java.time.LocalTime
 import java.util.UUID
+import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
@@ -62,8 +63,21 @@ fun TurniModelsScreen(
     onEditorActiveChanged: ((Boolean) -> Unit)? = null,
     initialTab: Int = 0,
     initialEditingRotation: ShiftRotation? = null,
-    onClearInitialRotation: (() -> Unit)? = null
+    onClearInitialRotation: (() -> Unit)? = null,
+    onDismiss: () -> Unit = {}
 ) {
+    val colors = MaterialTheme.colorScheme
+    val ObsidianBackground = colors.background
+    val ObsidianSurface = colors.surface
+    val ObsidianSurfaceContainer = colors.surfaceVariant
+    val ObsidianSurfaceHigh = colors.surfaceVariant
+    val ObsidianPrimary = colors.primary
+    val ObsidianPrimaryContainer = colors.primaryContainer
+    val ObsidianBorder = colors.outline.copy(alpha = .18f)
+    val ObsidianBorderSubtle = colors.outline.copy(alpha = .10f)
+    val TextPrimary = colors.onSurface
+    val TextSecondary = colors.onSurfaceVariant
+    val TextMuted = colors.onSurfaceVariant
     var selectedTab by remember { mutableStateOf(initialTab) } // 0: Turni, 1: Lavori, 2: Rotazioni
     var editingShift by remember { mutableStateOf<ShiftDefinition?>(null) }
     var editingRotation by remember { mutableStateOf<ShiftRotation?>(initialEditingRotation) }
@@ -120,6 +134,7 @@ fun TurniModelsScreen(
     }
 
     val isEditing = editingShift != null || editingRotation != null || editingWorkProfile != null
+    BackHandler(enabled = !isEditing) { onDismiss() }
     LaunchedEffect(isEditing) {
         onEditorActiveChanged?.invoke(isEditing)
     }
@@ -227,16 +242,21 @@ fun TurniModelsScreen(
                 .statusBarsPadding()
                 .padding(horizontal = 16.dp, vertical = 12.dp)
         ) {
-        // Top Header: "Modelli & Turni"
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp)
+                .padding(vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
+            IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) {
+                Icon(Icons.Default.ArrowBack, "Torna al calendario", tint = TextPrimary, modifier = Modifier.size(25.dp))
+            }
+            Spacer(Modifier.width(10.dp))
+            Column(Modifier.weight(1f)) {
             Text(
                 text = "Modelli & Turni",
-                fontSize = 24.sp,
-                fontWeight = FontWeight.ExtraBold,
+                fontSize = 22.sp,
+                fontWeight = FontWeight.Bold,
                 color = TextPrimary
             )
             Text(
@@ -244,34 +264,23 @@ fun TurniModelsScreen(
                 fontSize = 12.sp,
                 color = TextSecondary
             )
+            }
         }
 
         Spacer(modifier = Modifier.height(10.dp))
 
-        // Pill Tabs con Lente Scorrevole Fluida: Turni | Lavori | Rotazioni
+        // One themed track with a sliding selection pill.
         Surface(
             modifier = Modifier
                 .fillMaxWidth()
                 .height(50.dp)
-                .clip(RoundedCornerShape(25.dp))
-                .border(
-                    width = 1.2.dp,
-                    brush = prismaticRefractionBrush(ObsidianPrimary),
-                    shape = RoundedCornerShape(25.dp)
-                ),
-            color = Color.Transparent
+                .clip(RoundedCornerShape(25.dp)),
+            color = colors.surfaceVariant
         ) {
             BoxWithConstraints(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(
-                        Brush.verticalGradient(
-                            listOf(
-                                Color(0xF6111B2C),
-                                Color(0xFA0A0E18)
-                            )
-                        )
-                    )
+                    .background(colors.surfaceVariant)
                     .padding(4.dp)
             ) {
                 val tabs = listOf("Turni", "Lavori", "Rotazioni")
@@ -287,7 +296,7 @@ fun TurniModelsScreen(
                     )
                 )
 
-                // Lente di scorrimento fluida
+                // The indicator moves across stable tab hit targets.
                 Box(
                     modifier = Modifier
                         .offset(x = animatedOffsetX)
@@ -295,24 +304,7 @@ fun TurniModelsScreen(
                         .fillMaxHeight()
                         .padding(horizontal = 2.dp, vertical = 2.dp)
                         .clip(RoundedCornerShape(21.dp))
-                        .background(
-                            Brush.verticalGradient(
-                                listOf(
-                                    Color.White,
-                                    Color(0xFFE2E8F0)
-                                )
-                            )
-                        )
-                        .border(
-                            1.dp,
-                            Brush.linearGradient(
-                                listOf(
-                                    Color.White,
-                                    Color(0x8038BDF8)
-                                )
-                            ),
-                            RoundedCornerShape(21.dp)
-                        )
+                        .background(colors.primaryContainer)
                 )
 
                 Row(
@@ -334,7 +326,7 @@ fun TurniModelsScreen(
                                 text = title,
                                 fontSize = 13.5.sp,
                                 fontWeight = if (isSelected) FontWeight.Black else FontWeight.SemiBold,
-                                color = if (isSelected) Color(0xFF0F172A) else TextSecondary
+                                color = if (isSelected) colors.onPrimaryContainer else TextSecondary
                             )
                         }
                     }
@@ -455,7 +447,8 @@ fun TurniModelsScreen(
                                             shortCode = "NT",
                                             startTime = "08:00",
                                             endTime = "16:00",
-                                            colorHex = 0xFF38BDF8
+                                            colorHex = catalogPastelColors[4],
+                                            workProfileId = ShiftRepository.activeWorkProfileId
                                         )
                                     }
                                     .padding(horizontal = 16.dp, vertical = 14.dp),
@@ -868,7 +861,7 @@ fun TurniModelsScreen(
                                     nightHolidaySurchargePercent = 50,
                                     overtimeDaySurchargePercent = 20,
                                     overtimeNightSurchargePercent = 35,
-                                    colorHex = 0xFF10B981,
+                                    colorHex = catalogPastelColors[3],
                                     iconKey = "work",
                                     isDefault = false,
                                     enableAdvancedCalc = false
@@ -1343,17 +1336,17 @@ fun hsvToColor(hue: Float, saturation: Float, value: Float): Color {
 }
 
 fun colorToLong(color: Color): Long {
-    val a = (color.alpha * 255).toLong().coerceIn(0, 255)
-    val r = (color.red * 255).toLong().coerceIn(0, 255)
-    val g = (color.green * 255).toLong().coerceIn(0, 255)
-    val b = (color.blue * 255).toLong().coerceIn(0, 255)
+    val a = (color.alpha * 255).roundToInt().toLong().coerceIn(0, 255)
+    val r = (color.red * 255).roundToInt().toLong().coerceIn(0, 255)
+    val g = (color.green * 255).roundToInt().toLong().coerceIn(0, 255)
+    val b = (color.blue * 255).roundToInt().toLong().coerceIn(0, 255)
     return (a shl 24) or (r shl 16) or (g shl 8) or b
 }
 
 fun colorToHex(color: Color): String {
-    val r = (color.red * 255).toInt().coerceIn(0, 255)
-    val g = (color.green * 255).toInt().coerceIn(0, 255)
-    val b = (color.blue * 255).toInt().coerceIn(0, 255)
+    val r = (color.red * 255).roundToInt().coerceIn(0, 255)
+    val g = (color.green * 255).roundToInt().coerceIn(0, 255)
+    val b = (color.blue * 255).roundToInt().coerceIn(0, 255)
     return String.format("#%02X%02X%02X", r, g, b)
 }
 
@@ -1378,7 +1371,7 @@ fun parseHexToColor(hex: String): Color? {
 }
 
 @Composable
-fun CustomColorPickerDialog(
+private fun LegacyCustomColorPickerDialog(
     initialColorHex: Long,
     onDismiss: () -> Unit,
     onColorSelected: (Long) -> Unit
@@ -1600,7 +1593,7 @@ fun CustomColorPickerDialog(
 }
 
 @Composable
-fun UniversalColorPickerRow(
+private fun LegacyUniversalColorPickerRow(
     selectedColorHex: Long,
     onColorSelected: (Long) -> Unit
 ) {
@@ -1706,7 +1699,7 @@ fun ShiftItemRow(
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable { onClick() }
+            .bouncyClickable { onClick() }
             .padding(horizontal = 16.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -1720,7 +1713,7 @@ fun ShiftItemRow(
         ) {
             Text(
                 text = compactCode,
-                color = Color.White,
+                color = catalogInk(shiftDef.color),
                 fontWeight = FontWeight.ExtraBold,
                 fontSize = 10.5.sp,
                 letterSpacing = 0.2.sp
@@ -1767,7 +1760,7 @@ fun ShiftItemRow(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShiftEditorScreen(
+private fun LegacyShiftEditorScreen(
     shift: ShiftDefinition,
     onDismiss: () -> Unit,
     onSave: (ShiftDefinition) -> Unit,
@@ -2571,7 +2564,7 @@ fun ShiftEditorScreen(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RotationMatrixEditorScreen(
+private fun LegacyRotationMatrixEditorScreen(
     rotation: ShiftRotation,
     onDismiss: () -> Unit,
     onSave: (ShiftRotation) -> Unit,
@@ -3018,7 +3011,9 @@ fun RotationMatrixEditorScreen(
  * Apre il file PDF del CCNL associato al profilo lavorativo tramite il visualizzatore predefinito di Android.
  */
 fun openWorkProfilePdf(context: Context, profile: WorkProfile) {
-    val file = File(context.filesDir, "ccnl_${profile.id}.pdf")
+    val file = profile.ccnlDocumentUri?.let { File(it) }
+        ?.takeIf { it.exists() && it.length() > 0 }
+        ?: File(context.filesDir, "ccnl_${profile.id}.pdf")
     val hasValidFile = file.exists() && file.length() > 0
     if (hasValidFile) {
         try {
@@ -3046,6 +3041,8 @@ fun openWorkProfilePdf(context: Context, profile: WorkProfile) {
  */
 fun getWorkProfileIcon(iconKey: String): ImageVector {
     return when (iconKey) {
+        "people" -> Icons.Default.PeopleOutline
+        "computer" -> Icons.Default.Computer
         "work" -> Icons.Default.WorkOutline
         "transit" -> Icons.Default.DirectionsTransit
         "hospital" -> Icons.Default.LocalHospital
@@ -3144,7 +3141,7 @@ fun NumberStepperRow(
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun WorkProfileEditorScreen(
+private fun LegacyWorkProfileEditorScreen(
     profile: WorkProfile,
     isNew: Boolean,
     onDismiss: () -> Unit,

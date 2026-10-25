@@ -183,7 +183,7 @@ fun PdfExportScreen(
                         .shadow(16.dp, RoundedCornerShape(8.dp)),
                     shape = RoundedCornerShape(8.dp),
                     color = Color.White,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFE2E8F0))
+                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
                 ) {
                     Box(modifier = Modifier.fillMaxSize()) {
                         when (options.mode) {
@@ -794,11 +794,11 @@ private fun ExportToggleRow(
             checked = checked,
             onCheckedChange = onCheckedChange,
             colors = SwitchDefaults.colors(
-                checkedThumbColor = Color.White,
+                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                 checkedTrackColor = ObsidianPrimaryContainer,
-                uncheckedThumbColor = Color(0xFF94A3B8),
-                uncheckedTrackColor = Color(0xFF1E293B),
-                uncheckedBorderColor = Color(0xFF475569)
+                uncheckedThumbColor = TextSecondary,
+                uncheckedTrackColor = ObsidianSurfaceHigh,
+                uncheckedBorderColor = ObsidianBorder
             )
         )
     }

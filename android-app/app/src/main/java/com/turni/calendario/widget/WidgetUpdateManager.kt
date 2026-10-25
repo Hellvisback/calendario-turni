@@ -42,7 +42,7 @@ object WidgetUpdateManager {
         val shiftDef = if (assigned != null) {
             ShiftRepository.getShiftDefinition(assigned.shiftDefId)
         } else {
-            ShiftRepository.getPlannedRotationShift(date)
+            null
         }
         val extra = ShiftRepository.getDayExtraInfo(date)
         val isOnCall = ShiftRepository.isOnCall(date)
@@ -74,8 +74,8 @@ object WidgetUpdateManager {
             dayNumber = date.dayOfMonth,
             isToday = (date == today),
             shiftDef = shiftDef,
-            shortCode = shiftDef?.shortCode ?: "RIP",
-            shiftName = shiftDef?.name ?: "Riposo",
+            shortCode = shiftDef?.shortCode ?: "—",
+            shiftName = shiftDef?.name ?: "Nessun turno",
             timeRange = shiftDef?.timeRangeFormatted ?: "",
             overtimeHours = extra.overtimeHours,
             isOnCall = isOnCall,

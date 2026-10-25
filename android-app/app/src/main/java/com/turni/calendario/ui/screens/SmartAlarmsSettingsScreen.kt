@@ -324,15 +324,15 @@ fun SmartAlarmsSettingsScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(16.dp),
-                                color = Color(0xFFF59E0B).copy(alpha = 0.12f),
-                                border = androidx.compose.foundation.BorderStroke(1.dp, Color(0xFFF59E0B).copy(alpha = 0.5f))
+                                color = ColorReperibilita.copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(1.dp, ColorReperibilita.copy(alpha = 0.5f))
                             ) {
                                 Column(modifier = Modifier.padding(14.dp)) {
                                     Row(verticalAlignment = Alignment.CenterVertically) {
                                         Icon(
                                             Icons.Default.WarningAmber,
                                             contentDescription = null,
-                                            tint = Color(0xFFF59E0B),
+                                            tint = ColorReperibilita,
                                             modifier = Modifier.size(20.dp)
                                         )
                                         Spacer(modifier = Modifier.width(8.dp))
@@ -340,7 +340,7 @@ fun SmartAlarmsSettingsScreen(
                                             text = "AUTORIZZAZIONI ANDROID NECESSARIE",
                                             fontSize = 12.sp,
                                             fontWeight = FontWeight.ExtraBold,
-                                            color = Color(0xFFF59E0B)
+                                            color = ColorReperibilita
                                         )
                                     }
                                     Spacer(modifier = Modifier.height(6.dp))
@@ -371,7 +371,7 @@ fun SmartAlarmsSettingsScreen(
                                                 },
                                                 modifier = Modifier.weight(1f).height(38.dp),
                                                 shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFF59E0B))
+                                                colors = ButtonDefaults.buttonColors(containerColor = ColorReperibilita)
                                             ) {
                                                 Text("Autorizza Sveglie", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = ObsidianBackground)
                                             }
@@ -384,9 +384,9 @@ fun SmartAlarmsSettingsScreen(
                                                 },
                                                 modifier = Modifier.weight(1f).height(38.dp),
                                                 shape = RoundedCornerShape(10.dp),
-                                                colors = ButtonDefaults.buttonColors(containerColor = Color(0xFF0284C7))
+                                                colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                                             ) {
-                                                Text("Consenti Notifiche", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                                Text("Consenti Notifiche", fontSize = 11.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimary)
                                             }
                                         }
                                     }
@@ -397,19 +397,19 @@ fun SmartAlarmsSettingsScreen(
                             Surface(
                                 modifier = Modifier.fillMaxWidth(),
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFF10B981).copy(alpha = 0.12f),
-                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFF10B981).copy(alpha = 0.4f))
+                                color = ObsidianTertiary.copy(alpha = 0.12f),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianTertiary.copy(alpha = 0.4f))
                             ) {
                                 Row(
                                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = Color(0xFF34D399), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ObsidianTertiary, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Autorizzazioni Android attive: Sveglie esatte e notifiche autorizzate",
                                         fontSize = 11.sp,
-                                        color = Color(0xFF34D399),
+                                        color = ObsidianTertiary,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -474,11 +474,11 @@ fun SmartAlarmsSettingsScreen(
                                         syncAndScheduleSmartAlarm()
                                     },
                                     colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
+                                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                         checkedTrackColor = ObsidianPrimaryContainer,
-                                        uncheckedThumbColor = Color(0xFF94A3B8),
-                                        uncheckedTrackColor = Color(0xFF1E293B),
-                                        uncheckedBorderColor = Color(0xFF475569)
+                                        uncheckedThumbColor = TextSecondary,
+                                        uncheckedTrackColor = ObsidianSurfaceHigh,
+                                        uncheckedBorderColor = ObsidianBorder
                                     )
                                 )
                             }
@@ -491,7 +491,7 @@ fun SmartAlarmsSettingsScreen(
                             color = ObsidianSurfaceContainer,
                             border = androidx.compose.foundation.BorderStroke(
                                 1.dp,
-                                if (upcomingAlarm != null && config.isGlobalEnabled) Color(0xFF0284C7).copy(alpha = 0.5f)
+                                if (upcomingAlarm != null && config.isGlobalEnabled) ObsidianPrimary.copy(alpha = 0.5f)
                                 else ObsidianBorderSubtle
                             )
                         ) {
@@ -526,15 +526,15 @@ fun SmartAlarmsSettingsScreen(
                                     if (upcomingAlarm != null && config.isGlobalEnabled) {
                                         Surface(
                                             shape = RoundedCornerShape(8.dp),
-                                            color = Color(0xFF0284C7).copy(alpha = 0.2f),
-                                            border = androidx.compose.foundation.BorderStroke(0.6.dp, Color(0xFF0284C7))
+                                            color = ObsidianPrimary.copy(alpha = 0.2f),
+                                            border = androidx.compose.foundation.BorderStroke(0.6.dp, ObsidianPrimary)
                                         ) {
                                             Text(
                                                 text = "ATTIVA",
                                                 fontSize = 10.sp,
                                                 maxLines = 1,
                                                 fontWeight = FontWeight.Black,
-                                                color = Color(0xFF38BDF8),
+                                                color = ObsidianPrimary,
                                                 modifier = Modifier.padding(horizontal = 7.dp, vertical = 3.dp)
                                             )
                                         }
@@ -596,7 +596,7 @@ fun SmartAlarmsSettingsScreen(
                                     Text(
                                         text = "Ultimo aggiornamento: $lastSyncDate",
                                         fontSize = 10.5.sp,
-                                        color = Color(0xFF34D399),
+                                        color = ObsidianTertiary,
                                         fontWeight = FontWeight.SemiBold
                                     )
                                 }
@@ -633,8 +633,8 @@ fun SmartAlarmsSettingsScreen(
                             title = "Giorno di Reperibilità",
                             subtitle = "Suonerà la sera del giorno prima per avvertirti che l'indomani sei reperibile",
                             icon = Icons.Default.PhoneCallback,
-                            iconTint = Color(0xFFFBBF24),
-                            iconBg = Color(0xFFF59E0B).copy(alpha = 0.22f),
+                            iconTint = ColorReperibilita,
+                            iconBg = ColorReperibilita.copy(alpha = 0.22f),
                             isEnabled = repRule.isEnabled && config.isGlobalEnabled,
                             isGlobalEnabled = config.isGlobalEnabled,
                             onToggleEnabled = { enabled ->
@@ -666,8 +666,8 @@ fun SmartAlarmsSettingsScreen(
                             title = "Turno Mattina (06:00 - 13:36)",
                             subtitle = "Sveglia automatica per servizio mattutino",
                             icon = Icons.Default.WbTwilight,
-                            iconTint = Color(0xFF38BDF8),
-                            iconBg = Color(0xFF0284C7).copy(alpha = 0.22f),
+                            iconTint = ObsidianPrimary,
+                            iconBg = ObsidianPrimary.copy(alpha = 0.22f),
                             isEnabled = matRule.isEnabled && config.isGlobalEnabled,
                             isGlobalEnabled = config.isGlobalEnabled,
                             onToggleEnabled = { enabled ->
@@ -699,8 +699,8 @@ fun SmartAlarmsSettingsScreen(
                             title = "Turno Pomeriggio (14:00 - 21:36)",
                             subtitle = "Sveglia automatica per servizio pomeridiano",
                             icon = Icons.Default.WbSunny,
-                            iconTint = Color(0xFFF87171),
-                            iconBg = Color(0xFFEF4444).copy(alpha = 0.22f),
+                            iconTint = ColorNegative,
+                            iconBg = ColorNegative.copy(alpha = 0.22f),
                             isEnabled = pomRule.isEnabled && config.isGlobalEnabled,
                             isGlobalEnabled = config.isGlobalEnabled,
                             onToggleEnabled = { enabled ->
@@ -732,8 +732,8 @@ fun SmartAlarmsSettingsScreen(
                             title = "Turno Notte (22:00 - 05:36)",
                             subtitle = "Sveglia automatica per servizio notturno",
                             icon = Icons.Default.Bedtime,
-                            iconTint = Color(0xFF4ADE80),
-                            iconBg = Color(0xFF22C55E).copy(alpha = 0.22f),
+                            iconTint = ObsidianTertiary,
+                            iconBg = ObsidianTertiary.copy(alpha = 0.22f),
                             isEnabled = notRule.isEnabled && config.isGlobalEnabled,
                             isGlobalEnabled = config.isGlobalEnabled,
                             onToggleEnabled = { enabled ->
@@ -776,8 +776,8 @@ fun SmartAlarmsSettingsScreen(
                             // Tasto Disattiva Tutte
                             Surface(
                                 shape = RoundedCornerShape(12.dp),
-                                color = Color(0xFFEF4444).copy(alpha = 0.16f),
-                                border = androidx.compose.foundation.BorderStroke(0.8.dp, Color(0xFFEF4444).copy(alpha = 0.6f)),
+                                color = ColorNegative.copy(alpha = 0.16f),
+                                border = androidx.compose.foundation.BorderStroke(0.8.dp, ColorNegative.copy(alpha = 0.6f)),
                                 modifier = Modifier
                                     .weight(1f)
                                     .bouncyClickable {
@@ -793,9 +793,9 @@ fun SmartAlarmsSettingsScreen(
                                     horizontalArrangement = Arrangement.Center,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.AlarmOff, contentDescription = null, tint = Color(0xFFF87171), modifier = Modifier.size(16.dp))
+                                    Icon(Icons.Default.AlarmOff, contentDescription = null, tint = ColorNegative, modifier = Modifier.size(16.dp))
                                     Spacer(modifier = Modifier.width(6.dp))
-                                    Text("Disattiva Tutte", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = Color(0xFFF87171))
+                                    Text("Disattiva Tutte", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = ColorNegative)
                                 }
                             }
 
@@ -870,14 +870,14 @@ fun SmartAlarmsSettingsScreen(
                                 modifier = Modifier.padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(Icons.Default.Info, contentDescription = null, tint = Color(0xFF38BDF8), modifier = Modifier.size(18.dp))
+                                Icon(Icons.Default.Info, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(18.dp))
                                 Spacer(modifier = Modifier.width(10.dp))
                                 Column {
                                     Text(
                                         text = "GESTIONE INTELLIGENTE A SVEGLIA SINGOLA",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Bold,
-                                        color = Color(0xFF38BDF8)
+                                        color = ObsidianPrimary
                                     )
                                     Spacer(modifier = Modifier.height(2.dp))
                                     Text(
@@ -1002,11 +1002,11 @@ fun SmartAlarmsSettingsScreen(
                                                     upcomingAlarm = ShiftAlarmScheduler.scheduleNextAlarm(context)
                                                 },
                                                 colors = SwitchDefaults.colors(
-                                                    checkedThumbColor = Color.White,
+                                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                                     checkedTrackColor = ObsidianPrimaryContainer,
-                                                    uncheckedThumbColor = Color(0xFF94A3B8),
-                                                    uncheckedTrackColor = Color(0xFF1E293B),
-                                                    uncheckedBorderColor = Color(0xFF475569)
+                                                    uncheckedThumbColor = TextSecondary,
+                                                    uncheckedTrackColor = ObsidianSurfaceHigh,
+                                                    uncheckedBorderColor = ObsidianBorder
                                                 )
                                             )
                                         }
@@ -1037,7 +1037,7 @@ fun SmartAlarmsSettingsScreen(
                                                         color = if (alarm.isEnabled) ObsidianSurfaceContainer else ObsidianBackground,
                                                         border = androidx.compose.foundation.BorderStroke(
                                                             0.8.dp,
-                                                            if (alarm.isEnabled) ObsidianBorderSubtle else Color(0xFF1E293B)
+                                                            if (alarm.isEnabled) ObsidianBorderSubtle else ObsidianSurfaceHigh
                                                         ),
                                                         modifier = Modifier.fillMaxWidth()
                                                     ) {
@@ -1094,11 +1094,11 @@ fun SmartAlarmsSettingsScreen(
                                                                     config = ShiftRepository.smartAlarmsConfig
                                                                 },
                                                                 colors = SwitchDefaults.colors(
-                                                                    checkedThumbColor = Color.White,
+                                                                    checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                                                                     checkedTrackColor = ObsidianPrimaryContainer,
-                                                                    uncheckedThumbColor = Color(0xFF94A3B8),
-                                                                    uncheckedTrackColor = Color(0xFF1E293B),
-                                                                    uncheckedBorderColor = Color(0xFF475569)
+                                                                    uncheckedThumbColor = TextSecondary,
+                                                                    uncheckedTrackColor = ObsidianSurfaceHigh,
+                                                                    uncheckedBorderColor = ObsidianBorder
                                                                 )
                                                             )
                                                         }
@@ -1180,11 +1180,11 @@ private fun AlarmRuleCard(
                     enabled = isGlobalEnabled,
                     onCheckedChange = onToggleEnabled,
                     colors = SwitchDefaults.colors(
-                        checkedThumbColor = Color.White,
+                        checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
                         checkedTrackColor = ObsidianPrimaryContainer,
-                        uncheckedThumbColor = Color(0xFF94A3B8),
-                        uncheckedTrackColor = Color(0xFF1E293B),
-                        uncheckedBorderColor = Color(0xFF475569)
+                        uncheckedThumbColor = TextSecondary,
+                        uncheckedTrackColor = ObsidianSurfaceHigh,
+                        uncheckedBorderColor = ObsidianBorder
                     )
                 )
             }
