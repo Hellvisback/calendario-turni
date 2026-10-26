@@ -1,6 +1,6 @@
 {
   "name": "calendario-turni",
-  "version": "1.4.1",
+  "version": "1.4.6",
   "description": "Applicazione di gestione e pianificazione turni",
   "type": "module",
   "scripts": {
@@ -8,6 +8,12 @@
     "stitch:projects": "node scripts/stitch_client.mjs list-projects",
     "stitch:screens": "node scripts/stitch_client.mjs list-screens"
   },
-  "keywords": ["turni", "shift", "calendar", "stitch", "mcp"],
+  "keywords": [
+    "turni",
+    "shift",
+    "calendar",
+    "stitch",
+    "mcp"
+  ],
   "license": "ISC"
 }

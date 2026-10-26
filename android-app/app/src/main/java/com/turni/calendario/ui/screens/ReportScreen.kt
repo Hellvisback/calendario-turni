@@ -51,7 +51,6 @@ import java.util.Locale
 import kotlin.math.*
 
 private enum class ReportPeriodMode(val label: String) { MESE("Mese"), ANNO("Anno"), PERSONALIZZATO("Personalizzato") }
-private data class ShiftMetric(val definition: ShiftDefinition, val count: Int, val hours: Float)
 private typealias ReportProgress = Animatable<Float, AnimationVector1D>
 private data class WorkReportSummary(
     val profile: WorkProfile, val metrics: List<ShiftMetric>, val hours: Float,
@@ -64,7 +63,7 @@ private val reportMuted get() = if(TurniThemeState.dark) Color(0xFFBEC1CD) else 
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun ReportScreen(onOpenSettings: () -> Unit = {}) {
+fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
     var mode by remember { mutableStateOf(ReportPeriodMode.MESE) }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var year by remember { mutableStateOf(LocalDate.now().year) }
@@ -76,6 +75,7 @@ fun ReportScreen(onOpenSettings: () -> Unit = {}) {
     var pickerField by remember { mutableStateOf(0) }
     var dateBottom by remember { mutableStateOf(150f) }
     var rootTop by remember { mutableStateOf(0f) }
+    LaunchedEffect(active) { if(!active)picking=null }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
     val start = when (mode) { ReportPeriodMode.MESE -> month.atDay(1); ReportPeriodMode.ANNO -> LocalDate.of(year, 1, 1); else -> from }
@@ -91,17 +91,7 @@ fun ReportScreen(onOpenSettings: () -> Unit = {}) {
         ShiftRepository.reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationId) {
         ShiftRepository.getComprehensiveReportStats(start, end)
     }
-    val metrics = remember(assignments, definitions) {
-        val byDefinition = assignments.groupBy { it.shiftDefId }
-        definitions.mapNotNull { def ->
-        // Presentation follows the assigned model; payroll may classify leave by its rotation origin.
-        val matching = byDefinition[def.id].orEmpty()
-        val count = matching.size
-        if (count == 0) null else ShiftMetric(def, count, if (def.category == ShiftCategory.LAVORO) matching.sumOf { s ->
-            def.copy(startTime = s.customStartTime ?: def.startTime, endTime = s.customEndTime ?: def.endTime).durationHoursFloat.toDouble() + s.overtimeHours
-        }.toFloat() else 0f)
-    }
-    }
+    val metrics = remember(assignments, definitions) { reportMetrics(assignments,definitions) }
     val profiles = ShiftRepository.workProfiles.toList()
     val workSummaries = remember(assignments, definitions, metrics, profiles, extrasSnapshot, ShiftRepository.reperibilitaConfig) {
         val byId = definitions.associateBy { it.id }
@@ -117,9 +107,9 @@ fun ReportScreen(onOpenSettings: () -> Unit = {}) {
                 shifts.count { it.first.isTrasferta }, shifts.map { it.first.date }.distinct().count { ShiftRepository.isOnCall(it) })
         }
     }
-    val progress = remember(start, end) { Animatable(0f) }
+    val progress = remember(mode, start, end) { Animatable(0f) }
     LaunchedEffect(progress) { progress.animateTo(1f, spring(dampingRatio = 1f, stiffness = 55f)) }
-    val periodKey = "$start/$end"
+    val periodKey = "$mode/$start/$end"
     val shapeKeys = metrics.map { "model:"+it.definition.id } + if(stats.countReperibilita>0) listOf("oncall") else emptyList()
     val shapePlan = remember(shapeKeys) { reportShapePlan(shapeKeys) }
     Box(Modifier.fillMaxSize().background(ObsidianBackground).onGloballyPositioned { rootTop=it.boundsInRoot().top }) {
@@ -306,36 +296,46 @@ private fun ReportWorkExtra(label:String,value:String) { Row(Modifier.fillMaxWid
 
 @Composable
 private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
-    val entrance=remember { Animatable(0f) }
-    LaunchedEffect(Unit) { kotlinx.coroutines.delay(30);entrance.animateTo(1f,spring(dampingRatio=.9f,stiffness=110f)) }
-    Surface(shape=RoundedCornerShape(23.dp),color=ObsidianSurface,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=entrance.value;translationY=(1-entrance.value)*12;scaleX=.98f+.02f*entrance.value;scaleY=scaleX }) {
+    Surface(shape=RoundedCornerShape(23.dp),color=ObsidianSurface,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
         Box(Modifier.clip(RoundedCornerShape(23.dp))) {
-            val working=remember(metrics){metrics.filter { it.definition.category==ShiftCategory.LAVORO && !it.definition.isAllDay }}
-            // One continuous contour and one moving head. Off-card continuations never
-            // fade in independently or grow backwards into the last visible segment.
+            // Every assigned user model participates, including rest, leave and all-day models.
+            val distribution=metrics
+            // Preserve the three original paths exactly; only their reveal is shared.
+            // A single head crosses each path in order, including both clipped continuations.
             val ring=remember { PathParser().parsePathString("M38.7048 0 A100 100 0 0 0 190 117.4616").toPath() }
             val leading=remember { PathParser().parsePathString("M56.7053 -29.8082 A100 100 0 0 0 38.7048 0").toPath() }
             val trailing=remember { PathParser().parsePathString("M190 117.4616 A100 100 0 0 0 214.4167 92.6347").toPath() }
-            val contour=remember { PathParser().parsePathString("M56.7053 -29.8082 A100 100 0 0 0 38.7048 0 A100 100 0 0 0 190 117.4616 A100 100 0 0 0 214.4167 92.6347").toPath() }
-            val measure=remember(contour){PathMeasure().apply{setPath(contour,false)}}
-            val boundaries=remember(working,ring,leading,trailing) {
-                reportRingBoundaries(working.map { it.count },
-                    PathMeasure().apply { setPath(leading,false) }.length,
-                    PathMeasure().apply { setPath(ring,false) }.length,
-                    PathMeasure().apply { setPath(trailing,false) }.length)
+            val ringMeasure=remember(ring){PathMeasure().apply{setPath(ring,false)}}
+            val leadingMeasure=remember(leading){PathMeasure().apply{setPath(leading,false)}}
+            val trailingMeasure=remember(trailing){PathMeasure().apply{setPath(trailing,false)}}
+            val measures=remember(leadingMeasure,ringMeasure,trailingMeasure){listOf(leadingMeasure,ringMeasure,trailingMeasure)}
+            val fullLength=leadingMeasure.length+ringMeasure.length+trailingMeasure.length
+            val boundaries=remember(distribution,leadingMeasure,ringMeasure,trailingMeasure) {
+                reportRingBoundaries(distribution.map { it.count },leadingMeasure.length,ringMeasure.length,trailingMeasure.length)
             }
+            // Reuse native paths throughout the reveal instead of allocating per frame/segment.
+            val segmentBuffer=remember { Path() }
+            val ringStroke=remember { Stroke(26f) }
             Canvas(Modifier.matchParentSize()) {
-                val head=measure.length*animation.value.coerceIn(0f,1f)
+                val head=fullLength*animation.value.coerceIn(0f,1f)
                 val densityScale=1.dp.toPx()
                 translate(left=size.width-190*densityScale) { scale(densityScale,densityScale,pivot=Offset.Zero) {
-                    drawPath(contour,if(TurniThemeState.dark)Color(0xFF383B46).copy(alpha=.23f) else Color(0xFFE5EBF3).copy(alpha=.23f),style=Stroke(26f))
-                    working.forEachIndexed { index,metric ->
+                    drawPath(ring,if(TurniThemeState.dark)Color(0xFF383B46).copy(alpha=.23f) else Color(0xFFE5EBF3).copy(alpha=.23f),style=ringStroke)
+                    distribution.forEachIndexed { index,metric ->
                         val boundary=boundaries[index]
                         val endDistance=minOf(head,boundary.endDistance)
                         if(endDistance>boundary.startDistance) {
-                            val segment=Path()
-                            measure.getSegment(boundary.startDistance,endDistance,segment,true)
-                            drawPath(segment,metric.definition.color.copy(alpha=if(TurniThemeState.dark).46f else .38f),style=Stroke(26f))
+                            var offset=0f
+                            measures.forEach { piece ->
+                                val localStart=(boundary.startDistance-offset).coerceAtLeast(0f)
+                                val localEnd=(endDistance-offset).coerceAtMost(piece.length)
+                                if(localEnd>localStart) {
+                                    segmentBuffer.reset()
+                                    piece.getSegment(localStart,localEnd,segmentBuffer,true)
+                                    drawPath(segmentBuffer,metric.definition.color.copy(alpha=if(TurniThemeState.dark).46f else .38f),style=ringStroke)
+                                }
+                                offset+=piece.length
+                            }
                         }
                     }
                 } }
@@ -355,7 +355,7 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                     Row(Modifier.weight(1f).padding(start=13.dp),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(assignments.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold);Text("Turni totali",Modifier.padding(start=6.dp),fontSize=10.sp,color=reportMuted) }
                 }
                 Divider(color=ObsidianBorderSubtle)
-                working.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                distribution.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     row.forEach { metric -> Row(Modifier.weight(1f).heightIn(min=27.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                         Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(metric.definition.color))
                         Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=reportMuted,maxLines=2)
@@ -385,9 +385,7 @@ private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Bo
     val surface=if(TurniThemeState.dark)Color(0xFF1A1C22)else Color.White
     val background=lerp(surface,color,if(onCall).24f else if(TurniThemeState.dark).28f else .38f)
     val path=remember(shape){reportShapePath(shape)}
-    val entrance=remember{Animatable(0f)}
-    LaunchedEffect(Unit){kotlinx.coroutines.delay(95L+index.coerceAtMost(5)*55);entrance.animateTo(1f,spring(dampingRatio=.82f,stiffness=110f))}
-    Box(modifier.aspectRatio(1f).graphicsLayer{alpha=entrance.value;translationY=(1-entrance.value)*12;scaleX=.82f+.18f*entrance.value;scaleY=scaleX;rotationZ=(if(index%2==0)-2f else 2f)*(1-entrance.value)},contentAlignment=Alignment.Center) {
+    Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.82f+.18f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-2f else 2f)*(1-entrance)},contentAlignment=Alignment.Center) {
         Canvas(Modifier.matchParentSize()){scale(size.width/160f,size.height/160f,pivot=Offset.Zero){if(shape=="cushion")rotate(-12f,Offset(80f,80f)){drawPath(path,background)}else drawPath(path,background)}}
         Column(Modifier.fillMaxWidth(.76f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
             Text(name,color=reportInk,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
@@ -419,3 +417,7 @@ private fun ReportDatePicker(selected:LocalDate,onClose:()->Unit,onDate:(LocalDa
         }
     }
 }
+
+/** One period clock also advances widgets that have not entered the lazy viewport yet. */
+internal fun reportEntranceProgress(progress:Float,index:Int):Float =
+    (progress*1.5f-index.coerceIn(0,5)*.045f).coerceIn(0f,1f)

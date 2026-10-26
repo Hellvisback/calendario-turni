@@ -246,6 +246,7 @@ internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: 
                     shifts.forEach { shift -> key(shift.id) {
                         NativeDayShiftRow(date, shift, onDetails = { detailShift = shift }, onFeedback = onFeedback)
                     } }
+                    NativeNotePreview(note, "Nota della giornata")
                 }
                 Row(Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(5.dp)) {
@@ -317,15 +318,30 @@ private fun NativeDayShiftRow(date: LocalDate, shift: AssignedShift, onDetails: 
 
 @Composable
 private fun NativeShiftExtraChips(shift: AssignedShift, modifier: Modifier = Modifier, vertical: Boolean = false) {
-    val hasExtra = shift.overtimeHours > 0 || shift.actualEndTime != null
-    AnimatedVisibility(hasExtra, enter = expandVertically(tween(440, easing = panelEasing)) + fadeIn(tween(440)),
-        exit = shrinkVertically(tween(440, easing = panelEasing)) + fadeOut(tween(260)), modifier = modifier) {
-        val contents: @Composable () -> Unit = {
-            if (shift.overtimeHours > 0) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
-            shift.actualEndTime?.let { DetailPill("Stacco $it", ObsidianPrimary, ObsidianSurface) }
+    Column(modifier) {
+        val hasExtra = shift.overtimeHours > 0 || shift.actualEndTime != null
+        AnimatedVisibility(hasExtra, enter = expandVertically(tween(440, easing = panelEasing)) + fadeIn(tween(300)),
+            exit = shrinkVertically(tween(340, easing = panelEasing)) + fadeOut(tween(220))) {
+            val contents: @Composable () -> Unit = {
+                if (shift.overtimeHours > 0) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
+                shift.actualEndTime?.let { DetailPill("Stacco $it", ObsidianPrimary, ObsidianSurface) }
+            }
+            if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
+            else Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) { contents() }
         }
-        if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
-        else Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) { contents() }
+        NativeNotePreview(shift.notes, "Nota del turno")
+    }
+}
+
+@Composable
+private fun NativeNotePreview(note:String,label:String) {
+    AnimatedVisibility(note.isNotBlank(),enter=expandVertically(tween(360,easing=panelEasing))+fadeIn(tween(300)),
+        exit=shrinkVertically(tween(300,easing=panelEasing))+fadeOut(tween(220))) {
+        Row(Modifier.fillMaxWidth().padding(top=7.dp).clip(RoundedCornerShape(10.dp))
+            .background(ObsidianPrimarySubtle).padding(9.dp),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            SiteIcon("message",label,Modifier.size(16.dp),tint=ObsidianPrimary)
+            Text(note,color=TextPrimary,fontSize=12.sp,lineHeight=17.sp,modifier=Modifier.weight(1f))
+        }
     }
 }
 

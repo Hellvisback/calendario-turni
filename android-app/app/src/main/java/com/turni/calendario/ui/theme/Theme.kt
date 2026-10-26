@@ -15,7 +15,9 @@ import androidx.core.view.WindowCompat
 @Composable
 fun CalendarioTurniTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
-    remember(context) { TurniThemeState.initialize(context); true }
+
+    val systemDark = androidx.compose.foundation.isSystemInDarkTheme()
+    SideEffect { TurniThemeState.followSystem(systemDark) }
     val dark = TurniThemeState.dark
     val scheme = if (dark) darkColorScheme(
         primary = ObsidianPrimary, onPrimary = Color(0xFF24213F),

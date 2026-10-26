@@ -64,9 +64,8 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
                     SettingsSubScreen.HOLIDAYS->HolidaysSettingsScreen(onDismiss=close)
                     SettingsSubScreen.APPEARANCE->Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)) {
                         PreferenceHeading("Aspetto e calendario","Preferenze di visualizzazione",close)
+                        PreferenceGroup("Tema") { PreferenceThemeSelector() }
                         PreferenceGroup("Calendario") {
-                            PreferenceToggle("Tema scuro","Scegli il contrasto più adatto a te",TurniThemeState.dark){TurniThemeState.setDark(context,it)}
-                            PreferenceDivider()
                             PreferenceToggle("La settimana inizia lunedì","Disattiva per iniziare dalla domenica",ShiftRepository.appPreferences.weekStartMonday){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(weekStartMonday=it);ShiftRepository.notifyDataChanged()}
                             PreferenceDivider()
                             PreferenceToggle("Formato 24 ore","Orari compatti e leggibili",ShiftRepository.appPreferences.timeFormat24h){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(timeFormat24h=it);ShiftRepository.notifyDataChanged()}
@@ -80,7 +79,7 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
                         PreferenceHeading("Impostazioni",ShiftRepository.activeWorkProfile.name,onDismiss)
                         PreferenceGroup("Notifiche","bell",bottom=16,iconProgress=bellMotion.value) {
                             val alarms=ShiftRepository.smartAlarmsConfig
-                            PreferenceToggle("Avvisa prima dell’inizio di ogni turno","Sveglie sonore per i turni con un orario",alarms.isGlobalEnabled){enabled->
+                            PreferenceToggle("Sveglie dei turni","Avvisi sonori prima dell’inizio",alarms.isGlobalEnabled){enabled->
                                 if(enabled&&(!ShiftAlarmScheduler.canScheduleExactAlarms(context)||!ShiftAlarmScheduler.hasNotificationPermission(context))){
                                     screen=SettingsSubScreen.SMART_ALARMS
                                 }else{
@@ -89,47 +88,23 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
                                 ShiftRepository.notifyDataChanged()
                                 }
                             }
-                            AnimatedVisibility(alarms.isGlobalEnabled,enter=expandVertically(spring(dampingRatio=.9f,stiffness=160f))+fadeIn(tween(460)),exit=shrinkVertically(spring(dampingRatio=1f,stiffness=220f))+fadeOut(tween(320))) {
-                                Column(Modifier.padding(top=16.dp)) {
-                                    Text("Quanto prima vuoi essere avvisato?",Modifier.padding(bottom=9.dp),fontSize=11.sp,color=TextPrimary)
-                                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                        listOf(5,15,30,60).forEach{minutes->
-                                            val workingIds=ShiftRepository.shiftDefinitions.filter{it.category==ShiftCategory.LAVORO&&!it.isAllDay}.map{it.id}
-                                            val chosen=workingIds.isNotEmpty()&&workingIds.all{id->alarms.rules.any{it.shiftDefId==id&&it.minutesBefore==minutes&&it.customTime==null&&it.isEnabled}}
-                                            val fill by animateColorAsState(if(chosen)ObsidianPrimary else ObsidianSurfaceHigh,tween(220))
-                                            Surface(shape=RoundedCornerShape(13.dp),color=fill,modifier=Modifier.weight(1f).height(47.dp).bouncyClickable{
-                                                ShiftRepository.smartAlarmsConfig=alarms.copy(rules=alarms.rules.filter{it.shiftDefId !in workingIds}+workingIds.map{ShiftAlarmRule(it,true,minutes,null)})
-                                                ShiftAlarmScheduler.scheduleNextAlarm(context);ShiftRepository.notifyDataChanged()
-                                            }) {
-                                                Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
-                                                    val ink=if(chosen)MaterialTheme.colorScheme.onPrimary else TextPrimary
-                                                    Text(if(minutes==60)"1 ora" else "$minutes min",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=ink)
-                                                    Text("prima",Modifier.padding(top=3.dp),fontSize=9.sp,color=ink)
-                                                }
-                                            }
-                                        }
-                                    }
-                                    Text("Gli avvisi sul telefono richiedono il permesso notifiche. Controlla le regole in Sveglie intelligenti.",Modifier.padding(top=12.dp),fontSize=9.sp,lineHeight=14.sp,color=TextMuted)
-                                }
-                            }
+                            PreferenceDivider()
+                            PreferenceRow("alarm-clock","Regole e prossime sveglie","Orari, suoni e autorizzazioni"){screen=SettingsSubScreen.SMART_ALARMS}
                         }
                         PreferenceGroup("Il tuo calendario") {
-                            PreferenceRow("palette","Aspetto e calendario","Settimana, orari e turno di provenienza"){screen=SettingsSubScreen.APPEARANCE}
+                            PreferenceRow("palette","Aspetto e calendario","Tema automatico, settimana e orari"){screen=SettingsSubScreen.APPEARANCE}
                             PreferenceDivider()
                             PreferenceRow("bell-ring","Reperibilità","Giorni, turni e regole stagionali"){screen=SettingsSubScreen.REPERIBILITA}
                             PreferenceDivider()
                             PreferenceRow("calendar-heart","Festività","Nazionali, religiose e CCNL"){screen=SettingsSubScreen.HOLIDAYS}
-                            PreferenceDivider()
-                            PreferenceRow("bell-ring","Reperibilità","Regole e giorni di disponibilità"){screen=SettingsSubScreen.REPERIBILITA}
+
                         }
-                        PreferenceGroup("Servizi") {
-                            PreferenceRow("alarm-clock","Sveglie intelligenti","Regole e prossimi avvisi"){screen=SettingsSubScreen.SMART_ALARMS}
-                            PreferenceDivider()
+                        PreferenceGroup("Strumenti") {
                             PreferenceRow("calendar-sync","Google Calendar","Opzioni e anteprima eventi"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
                             PreferenceDivider()
                             PreferenceRow("scan-text","Importazione turni","Importa e controlla i turni"){screen=SettingsSubScreen.IMPORT_SHIFTS}
                             PreferenceDivider()
-                            PreferenceRow("file-text","Prospetto e PDF","Contenuti, intervalli e anteprima"){screen=SettingsSubScreen.PDF_EXPORT}
+                            PreferenceRow("file-text","Esporta & Stampa PDF","Calendario, elenco e riepilogo dei turni"){screen=SettingsSubScreen.PDF_EXPORT}
                         }
                         PreferenceGroup("Gestione dati") {
                             PreferenceRow("database-backup","Backup e ripristino","Conserva una copia del calendario"){screen=SettingsSubScreen.CLOUD_BACKUP}
@@ -166,16 +141,18 @@ private fun PreferenceDivider(){Divider(color=ObsidianBorderSubtle)}
 @Composable
 private fun PreferenceRow(icon:String,title:String,subtitle:String,danger:Boolean=false,onClick:()->Unit){
     val tint=if(danger)ColorNegative else ObsidianPrimary
-    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable(onClick=onClick).padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-        Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha=.10f)),contentAlignment=Alignment.Center){SiteIcon(icon,null,Modifier.size(18.dp),tint=tint)}
-        Column(Modifier.weight(1f)){Text(title,color=if(danger)tint else TextPrimary,fontSize=12.sp,lineHeight=17.sp,fontWeight=FontWeight.SemiBold);Text(subtitle,Modifier.padding(top=3.dp),color=TextMuted,fontSize=10.sp,lineHeight=15.sp)}
+    val scope=rememberCoroutineScope()
+    val motion=remember{Animatable(0f)}
+    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable { scope.launch{motion.snapTo(0f);motion.animateTo(1f,tween(520));motion.snapTo(0f)};onClick() }.padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha=.10f)),contentAlignment=Alignment.Center){SiteIcon(icon,null,Modifier.size(19.dp),tint=tint,progress=motion.value)}
+        Column(Modifier.weight(1f)){Text(title,color=if(danger)tint else TextPrimary,fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.SemiBold);Text(subtitle,Modifier.padding(top=3.dp),color=TextMuted,fontSize=11.sp,lineHeight=16.sp)}
         SiteIcon("chevron-right",null,Modifier.size(16.dp),tint=TextMuted)
     }
 }
 @Composable
 private fun PreferenceToggle(title:String,subtitle:String,checked:Boolean,onChange:(Boolean)->Unit){
     Row(Modifier.fillMaxWidth().heightIn(min=58.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
-        Column(Modifier.weight(1f)){Text(title,fontSize=12.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary);Text(subtitle,Modifier.padding(top=5.dp),fontSize=10.sp,lineHeight=15.sp,color=TextMuted)}
+        Column(Modifier.weight(1f)){Text(title,fontSize=12.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary);Text(subtitle,Modifier.padding(top=5.dp),fontSize=11.sp,lineHeight=16.sp,color=TextMuted)}
         val thumb by animateDpAsState(if(checked)19.dp else 3.dp,spring(dampingRatio=.82f,stiffness=280f))
         val fill by animateColorAsState(if(checked)ObsidianPrimary else ObsidianSurfaceHigh,tween(240))
         Box(Modifier.size(44.dp,28.dp).clip(CircleShape).background(fill).toggleable(checked,role=Role.Switch,onValueChange=onChange),contentAlignment=Alignment.CenterStart){Box(Modifier.offset(x=thumb).size(18.dp).clip(CircleShape).background(if(checked)MaterialTheme.colorScheme.onPrimary else TextMuted))}
@@ -200,6 +177,35 @@ private fun PreferenceDeleteDialog(step:Int,onClose:()->Unit,onContinue:()->Unit
                     Box(Modifier.fillMaxWidth().padding(top=8.dp).height(46.dp).bouncyClickable{dismiss()},contentAlignment=Alignment.Center){Text("Annulla",fontSize=12.sp,color=TextPrimary)}
                 }
             }
+        }
+    }
+}
+
+@Composable
+private fun PreferenceThemeSelector() {
+    val context=LocalContext.current
+    val selected=TurniThemeState.mode
+    Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+        BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ObsidianSurfaceHigh).padding(4.dp)) {
+            val tabWidth=maxWidth/3
+            val offset by animateDpAsState(tabWidth*selected.ordinal,spring(dampingRatio=.9f,stiffness=300f))
+            Box(Modifier.offset(x=offset).width(tabWidth).height(64.dp).clip(RoundedCornerShape(12.dp)).background(ObsidianPrimary))
+            Row { ThemeMode.values().forEach { mode ->
+                val active=mode==selected
+                val iconMotion=remember{Animatable(0f)}
+                val scope=rememberCoroutineScope()
+                Column(Modifier.width(tabWidth).height(64.dp).bouncyClickable {
+                    TurniThemeState.setMode(context,mode)
+                    scope.launch{iconMotion.snapTo(0f);iconMotion.animateTo(1f,tween(560));iconMotion.snapTo(0f)}
+                }.padding(vertical=9.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    val ink=if(active)OnBrand else TextSecondary
+                    SiteIcon(mode.icon,null,Modifier.size(20.dp),tint=ink,progress=iconMotion.value)
+                    Text(mode.label,fontSize=12.sp,color=ink,fontWeight=FontWeight.Medium,maxLines=1)
+                }
+            } }
+        }
+        AnimatedContent(selected,transitionSpec={fadeIn(tween(220)) with fadeOut(tween(160))}) { mode ->
+            Text(when(mode){ThemeMode.AUTOMATIC->"Segue il tema del dispositivo, anche quando cambia durante la giornata.";ThemeMode.LIGHT->"Superfici chiare e colori ad alto contrasto.";ThemeMode.DARK->"Superfici scure e luminosità ridotta."},color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
         }
     }
 }

@@ -39,17 +39,16 @@ data class DayShiftSummary(
     val notes: String = "",
     val hasMultipleShifts: Boolean = false,
     val secondaryShiftColors: List<Int> = emptyList(),
-    val shifts: List<WidgetShift> = emptyList()
+    val shifts: List<WidgetShift> = emptyList(),
+    val holidayName: String? = null
 ) {
     val displayShortCode: String get() = shortCode
     val accessibilityLabel: String get() = buildString {
         append(date.toString())
         if (isToday) append(", oggi")
+        holidayName?.let { append(", festività: ").append(it) }
         shifts.forEach {
             append(", ").append(it.definition.name).append(" ").append(it.startTime)
-            if (it.overtimeHours > 0f) append(", straordinario ").append(widgetOvertimeLabel(it.overtimeHours))
-            if (it.isTrasferta) append(", trasferta")
-            if (it.notes.isNotBlank()) append(", ").append(it.notes)
         }
         if (shifts.isEmpty()) append(", nessun turno")
         if (isOnCall) append(", reperibile")
@@ -90,7 +89,7 @@ object WidgetUpdateManager {
             first?.startTime ?: "", shifts.sumOf { it.overtimeHours.toDouble() }.toFloat(),
             ShiftRepository.isOnCall(date), shifts.any { it.isTrasferta },
             shifts.map { it.notes }.filter { it.isNotBlank() }.joinToString(" • "),
-            shifts.size > 1, shifts.drop(1).map { it.definition.colorHex.toInt() }, shifts)
+            shifts.size > 1, shifts.drop(1).map { it.definition.colorHex.toInt() }, shifts, ShiftRepository.isHoliday(date)?.name)
     }
 
     fun createDayPendingIntent(context: Context, date: LocalDate, requestCode: Int): PendingIntent {

@@ -65,7 +65,7 @@ fun monthSwipeDirection(distance:Float,velocity:Float,width:Float,density:Float)
 }
 
 @Composable
-fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,onOpenSettings:()->Unit={}) {
+fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,onOpenSettings:()->Unit={}) {
     var monthKey by rememberSaveable{mutableStateOf(YearMonth.now().toString())}
     val month=YearMonth.parse(monthKey)
     var selectedDate by remember{mutableStateOf<LocalDate?>(null)}
@@ -89,13 +89,14 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
     var dragging by remember{mutableStateOf(false)}
     val density=LocalDensity.current.density
     LaunchedEffect(editRequest){if(editRequest>0){editing=true;selectedDate=null}}
-    LaunchedEffect(editing){onEditModeActiveChanged(editing)}
+    LaunchedEffect(editing,active){onEditModeActiveChanged(active&&editing)}
+    LaunchedEffect(active){if(!active){selectedDate=null;workMenu=false;anchor=null;rangeEnd=null}}
     DisposableEffect(Unit){onDispose{onEditModeActiveChanged(false)}}
-    LaunchedEffect(ShiftRepository.selectedDateFromWidget){ShiftRepository.selectedDateFromWidget?.let{
+    LaunchedEffect(active,ShiftRepository.selectedDateFromWidget){if(active)ShiftRepository.selectedDateFromWidget?.let{
         monthKey=YearMonth.from(it).toString();lastDate=it;selectedDate=it;ShiftRepository.selectedDateFromWidget=null
     }}
     fun closeEditor(){editing=false;anchor=null;rangeEnd=null}
-    BackHandler(editing||selectedDate!=null||workMenu){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;else->closeEditor()}}
+    BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;else->closeEditor()}}
     fun changeMonth(direction:Int){
         motion?.cancel()
         if(direction!=0)Snapshot.withMutableSnapshot {
@@ -110,7 +111,13 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
     }
     fun removeAt(date:LocalDate,extrasOnly:Boolean=false){
         val shifts=ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}
-        if(extrasOnly){if(shifts.size>1)eraseDate=date}
+        if(extrasOnly){
+            val extras=calendarExtraEraserTargets(shifts.map{it.id})
+            when {
+                extras.size==1->{ShiftRepository.removeAssignedShift(date,extras.single());paintDay(date,"");feedback=ActionFeedback("Turno aggiuntivo eliminato",true)}
+                extras.size>1->eraseDate=date
+            }
+        }
         else if(calendarNeedsSelectiveEraser(shifts.size))eraseDate=date
         else if(shifts.isNotEmpty()){ShiftRepository.clearWorkDayShifts(date,clearOnCall=true);paintDay(date,"");feedback=ActionFeedback("Turno eliminato",true)}
         else if(ShiftRepository.isOnCall(date)){ShiftRepository.setDayOnCallManual(date,false);feedback=ActionFeedback("Reperibilità rimossa",true)}

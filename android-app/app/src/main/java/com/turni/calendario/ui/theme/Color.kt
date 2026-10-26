@@ -8,14 +8,32 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 object TurniThemeState {
-    var dark by mutableStateOf(true)
+    var mode by mutableStateOf(ThemeMode.AUTOMATIC)
         private set
-    fun initialize(context: Context) { dark = context.getSharedPreferences("turnisync_theme", 0).getBoolean("dark", true) }
-    fun setDark(context: Context, value: Boolean) {
-        dark = value
-        context.getSharedPreferences("turnisync_theme", 0).edit().putBoolean("dark", value).apply()
+    private var systemDark by mutableStateOf(true)
+    val dark: Boolean get() = mode.isDark(systemDark)
+
+    fun storedMode(context: Context): ThemeMode {
+        val prefs = context.getSharedPreferences("turnisync_theme", 0)
+        return resolveThemeMode(prefs.getString("mode", null), if (prefs.contains("dark")) prefs.getBoolean("dark", true) else null)
+    }
+    fun isDark(context: Context): Boolean = storedMode(context).isDark(
+        context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+    fun initialize(context: Context) {
+        mode = storedMode(context)
+        refreshSystem(context)
+    }
+    fun refreshSystem(context: Context) {
+        systemDark = context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES
+    }
+    fun followSystem(value: Boolean) { systemDark = value }
+    fun setMode(context: Context, value: ThemeMode) {
+        refreshSystem(context)
+        mode = value
+        context.getSharedPreferences("turnisync_theme", 0).edit().putString("mode", value.name).putBoolean("dark", dark).apply()
         com.turni.calendario.widget.WidgetUpdateManager.notifyWidgetsChanged(context)
     }
+    fun setDark(context: Context, value: Boolean) = setMode(context, if (value) ThemeMode.DARK else ThemeMode.LIGHT)
 }
 private fun themed(dark: Long, light: Long) = Color(if (TurniThemeState.dark) dark else light)
 val ObsidianBackground get() = themed(0xFF101114, 0xFFF4F6F9)

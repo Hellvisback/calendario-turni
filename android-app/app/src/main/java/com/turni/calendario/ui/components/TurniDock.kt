@@ -20,19 +20,22 @@ import kotlinx.coroutines.launch
 import java.io.DataInputStream
 import kotlin.math.*
 
-private class DockContours(val frames:Array<FloatArray>,val step:Float){
-    private val heights=FloatArray(frames[0].size)
-    /** Interpolate baked samples, without distance searches, square roots or frame allocations. */
-    fun path(progress:Float,width:Float,target:Path){
-        val position=progress.coerceIn(0f,1f)*(frames.size-1);val a=position.toInt();val b=min(a+1,frames.lastIndex);val mix=position-a
-        val scale=width/380f
-        for(i in heights.indices)heights[i]=(frames[a][i]+(frames[b][i]-frames[a][i])*mix)*scale
-        target.reset();var start=-1
-        fun close(end:Int){if(start>=0){for(j in end downTo start)target.lineTo(j*step*scale,46f+heights[j]);target.close();start=-1}}
-        for(i in heights.indices){val x=i*step*scale;val h=heights[i]
-            if(h>.001f){if(start<0){start=i;target.moveTo(x,46f-h)}else target.lineTo(x,46f-h)}else close(i-1)
-        };close(heights.lastIndex)
+private class DockContours(frames:Array<FloatArray>,step:Float){
+    // Prepare immutable native paths on the loader's IO thread. The UI thread never emits
+    // 1,500 path commands per frame; 181 phases retain sub-pixel motion at phone sizes.
+    private val paths=Array(181){phase->
+        val position=phase.toFloat()/180f*(frames.size-1)
+        val a=position.toInt();val b=min(a+1,frames.lastIndex);val mix=position-a
+        val heights=FloatArray(frames[0].size){i->frames[a][i]+(frames[b][i]-frames[a][i])*mix}
+        Path().apply{
+            var start=-1
+            fun close(end:Int){if(start>=0){for(j in end downTo start)lineTo(j*step,heights[j]);close();start=-1}}
+            for(i in heights.indices){val h=heights[i]
+                if(h>.001f){if(start<0){start=i;moveTo(i*step,-h)}else lineTo(i*step,-h)}else close(i-1)
+            };close(heights.lastIndex)
+        }
     }
+    fun path(progress:Float):Path=paths[(progress.coerceIn(0f,1f)*180f).roundToInt()]
 }
 private object DockContourAssets{
     @Volatile var cache:DockContours?=null
@@ -55,13 +58,15 @@ fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit
     val contours by produceState(DockContourAssets.cache,context){if(value==null)value=withContext(Dispatchers.IO){DockContourAssets.load(context)}}
     val showSatellites by remember{derivedStateOf{progress.value>.015f}}
     val body=DockBody;val active=ObsidianPrimary
-    val path=remember{Path()}
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal=8.dp).height(92.dp),contentAlignment=Alignment.Center){
         val width=maxWidth.value;val scale=width/380f;val left=width*.425f;val right=width*.575f
         Canvas(Modifier.fillMaxSize()){
             val unit=size.width/width
             drawContext.canvas.save();drawContext.canvas.scale(unit,unit)
-            if(contours!=null){contours!!.path(progress.value,width,path);drawPath(path,body)}else{
+            if(contours!=null){
+                drawContext.canvas.save();drawContext.canvas.translate(0f,46f);drawContext.canvas.scale(scale,scale)
+                drawPath(contours!!.path(progress.value),body);drawContext.canvas.restore()
+            }else{
                 // Brief first-frame fallback while the tiny asset is read on IO.
                 drawRoundRect(body,Offset(left-34*scale,46-34*scale),androidx.compose.ui.geometry.Size(right-left+68*scale,68*scale),androidx.compose.ui.geometry.CornerRadius(34*scale))
                 if(calendarSelected)listOf(left-71*scale,right+71*scale).forEach{drawCircle(body,23*scale,Offset(it,46f))}
@@ -80,6 +85,6 @@ fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit
 private fun DockAction(name:String,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit){
     val motion=remember{Animatable(0f)};val scope=rememberCoroutineScope()
     Box(modifier.bouncyClickable{scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
-        SiteIcon(name,label,Modifier.size(23.dp),if(selected)OnBrand else DockInk,motion.value)
+        SiteIconMotion(name,label,Modifier.size(23.dp),if(selected)OnBrand else DockInk){motion.value}
     }
 }

@@ -2,7 +2,7 @@
 
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)
 
-**Versione Corrente**: v1.4.1 (versionCode 22, APK compilato e testato; sul Realme resta installata v1.4.0; nessuna pubblicazione GitHub)
+**Versione Corrente**: v1.4.6 (versionCode 27, build/test e installazione sul Realme; nessuna release GitHub)
 
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)
 
@@ -19,6 +19,46 @@
 ---
 
 
+
+## Aggiornamento nativo v1.4.5 — 26 ottobre 2026
+
+Widget puliti: eliminati i metadati grafici di straordinario/trasferta/note, giorni della settimana solo nella prima settimana e header data 14 dp uniforme. Rimossi i renderer e le policy obsolete; turno, attacco, campanella e festività restano invariati.
+
+Statistiche: una timeline del periodo guida ingresso e contatori di tutte le schede, anche fuori viewport. La ricomposizione lazy durante lo scroll non avvia animazioni nuove. Chiave modalità+intervallo, per ripartire al cambio Mese/Anno/Personalizzato.
+
+Note: messaggio animato a sinistra della data per note del giorno o di almeno un turno attivo; testo delle note nel dettaglio, insieme agli straordinari senza mutua esclusione. 345 test per variante superati, APK installato e firma/hash verificati. Prove reali di entrambe le note + straordinario + trasferta annullate; database finale identico all’iniziale. Vedere docs/VERIFICA_v1.4.5.md. Non dichiarare eliminati tutti gli scatti iniziali: nessun nuovo benchmark generale rispetto ai limiti v1.4.4.
+
+---
+
+## Aggiornamento nativo v1.4.4 — 26 ottobre 2026
+
+ReportMetrics segue tutti gli ID effettivamente assegnati, senza esclusioni per nome, categoria o giornata intera nella distribuzione. Ore lavorate e categorie payroll restano distinte. Icone animate con Canvas/geometria memorizzata; dock con 181 contorni preparati su IO e riutilizzati. Calendario e Statistiche conservano la composizione tra i tab, escludendo le viste inattive da input/accessibilità. Corretti i deep link dai widget mentre Statistiche è attiva.
+
+Contorni festivi ridotti, numero festivo rosso nei widget, capsule proporzionate al numero e campanella separata. Chevron vettoriali centrati. Oggi e domani ridisegnato con badge, nome e attacco; temi chiaro/scuro verificati sul telefono. 341 test per variante superati; firma e hash installato verificati; database identico prima/dopo anche dopo le prove temporanee annullate.
+
+Limite prestazioni: miglioramento misurato, ma restano scatti al primo caricamento e alcuni frame fuori budget. Gfxinfo finale 47,95% jank al primo campione post-installazione e 14,17% a caldo; non dichiarare 60 fps costanti. Vedere docs/VERIFICA_v1.4.4.md per dati, protocollo ed evidenze. Google OAuth rimane in stato Esterno/Test come in v1.4.1; nessuna nuova verifica remota in questa task.
+
+---
+
+## Aggiornamento nativo v1.4.3 — 26 ottobre 2026
+
+Widget: header unico 32 dp, frecce adiacenti alla data con larghezza massima adattiva, lavoro sulla stessa riga a destra; eliminata la sottoriga e ridotto il padding verticale. Recuperato l’attacco nel settimanale basso. WidgetVisualPolicy separa budget header, spazio dei metadati e altezze: niente scomparsa dell’orario tra dimensioni vicine. Straordinario celeste, aeroplanino trasferta verde e nota con icona distinta, soltanto nello spazio disponibile.
+
+HolidayDayStyle condivide il colore del bordo festivo tra NativeMonthCanvas e TurniWidgetRenderer. La festività è un piccolo contorno attorno al numero, senza modificare il fondo della giornata; resta separata da selezione, oggi e reperibilità. HolidayName aggiunto in coda a DayShiftSummary e nelle descrizioni accessibili.
+
+337 test per variante, screenshot chiaro/scuro e controlli reali sul Realme. Dati esattamente uguali prima/dopo le prove. Limite esplicito: il mensile già installato è molto basso per sei settimane e mantiene una vista ridotta; non è stata cambiata la disposizione del launcher. Dettagli in docs/VERIFICA_v1.4.3.md.
+
+---
+
+## Aggiornamento nativo v1.4.2 — 26 ottobre 2026
+
+Gomma Più turni: un solo extra viene rimosso direttamente, più extra aprono la scelta senza esporre il turno base. Indicatore Periodo più evidente e senza anteprima globale. Grafico statistico con geometria originale e un’unica testa di avanzamento. Impostazioni senza doppione Reperibilità, tema Automatico/Chiaro/Scuro coerente con widget e inizializzazione nell’Application.
+
+Esporta & Stampa PDF è il nome uniforme della sezione. PdfExportPlan pianifica intervalli; PdfGenerator cattura i dati del solo lavoro attivo su main, genera da snapshot su IO e conserva tutti i turni nel dettaglio paginato. Calendari colorati e orari personalizzati, filtri e contenuti verificati. Aggiunti test di pianificazione e acquisizione dati.
+
+Build verificata, **331 test per variante debug/release**, firma originale e hash locale/installato uguali. Installata v1.4.2 sul Realme; tre avvii a freddo senza nuovi crash, tema automatico, gomma e PDF reali provati. Dati originali dei turni conservati. Dettagli e limiti in `docs/VERIFICA_v1.4.2.md`. ADB ora funziona usando il normale profilo Windows; i blocchi v1.4.1 restano note storiche.
+
+---
 
 ## Aggiornamento nativo v1.4.1 — 26 ottobre 2026
 
@@ -518,3 +558,8 @@ Per ogni rilascio su GitHub:
 5. **Non creare MAI banner statici** che provocano layout shift.
 
 6. **Un solo tasto indietro in alto a sinistra** (mai duplicati in basso).
+
+
+## Aggiornamento v1.4.6 — sveglie e PDF
+
+Icona sveglia condivisa ridisegnata e animata. Anteprima PDF reale ingrandibile ripristinata; condivisione dello stesso file. Export a pagina unica, Elenco bilanciato, calendari senza elenco duplicato, anno A3. Overflow esplicito anziché taglio. Massimo 12 mesi per calendario. Build/test 350 per variante e collaudo Realme completati, database invariato. Dettagli e limiti in docs/VERIFICA_v1.4.6.md. APK finale nel workspace Codex outputs/TurniSync-v1.4.6.apk, installato e verificato con firma originale.

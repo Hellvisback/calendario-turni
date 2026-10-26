@@ -1,1390 +1,319 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class, androidx.compose.ui.ExperimentalComposeUiApi::class)
 package com.turni.calendario.ui.screens
 
-import android.widget.Toast
 import androidx.activity.compose.BackHandler
-import androidx.compose.animation.*
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
+import android.graphics.Bitmap
+import android.graphics.pdf.PdfRenderer
+import android.os.ParcelFileDescriptor
+import androidx.compose.foundation.Image
+import androidx.compose.foundation.gestures.rememberTransformableState
+import androidx.compose.foundation.gestures.transformable
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import java.io.File
+import kotlinx.coroutines.delay
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.turni.calendario.export.PdfExportPlan
 import com.turni.calendario.export.PdfGenerator
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
 import com.turni.calendario.repository.ShiftRepository
-import com.turni.calendario.ui.components.bouncyClickable
+import com.turni.calendario.ui.components.AnimatedStatusPopup
+import com.turni.calendario.ui.components.PopupType
+import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import java.time.LocalDate
+import java.time.YearMonth
 import java.time.format.DateTimeFormatter
-import java.time.format.TextStyle
 import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun PdfExportScreen(
-    onDismiss: () -> Unit
-) {
+fun PdfExportScreen(onDismiss: () -> Unit) {
     val context = LocalContext.current
     var options by remember { mutableStateOf(ShiftRepository.pdfExportOptions) }
-    var headerNotes by remember { mutableStateOf(options.headerNotes) }
-    var showShiftFilterDialog by remember { mutableStateOf(false) }
-    var showDateRangeDialog by remember { mutableStateOf(false) }
-
+    var dateDialog by remember { mutableStateOf(false) }
+    var filterDialog by remember { mutableStateOf(false) }
+    var busy by remember { mutableStateOf(false) }
+    var message by remember { mutableStateOf<String?>(null) }
+    var preview by remember { mutableStateOf<PdfPreview?>(null) }
+    var previewLoading by remember { mutableStateOf(true) }
+    var previewError by remember { mutableStateOf<String?>(null) }
+    var zoom by remember { mutableStateOf(false) }
+    val calendar=ShiftRepository.calendarShifts.mapValues{it.value.toList()}
+    val extras=ShiftRepository.dayExtraInfo.toMap()
+    val definitions=ShiftRepository.shiftDefinitions.toList()
+    LaunchedEffect(options,ShiftRepository.activeWorkProfileId,calendar,extras,definitions) {
+        previewLoading=true;previewError=null;preview=null
+        try {
+            delay(280)
+            val snapshot=PdfGenerator.capture(options)
+            preview=withContext(Dispatchers.IO) {
+                val file=PdfGenerator.writePdf(context,snapshot)
+                ParcelFileDescriptor.open(file,ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor ->
+                    PdfRenderer(descriptor).use { renderer ->
+                        check(renderer.pageCount==1){"Il documento deve contenere una sola pagina"}
+                        renderer.openPage(0).use { page ->
+                            val width=1100
+                            val bitmap=Bitmap.createBitmap(width,(width.toFloat()*page.height/page.width).toInt(),Bitmap.Config.ARGB_8888)
+                            bitmap.eraseColor(android.graphics.Color.WHITE)
+                            page.render(bitmap,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
+                            PdfPreview(file,bitmap)
+                        }
+                    }
+                }
+            }
+        } catch(error:Exception) {
+            if(error is kotlinx.coroutines.CancellationException)throw error
+            previewError=if(error is IllegalArgumentException)error.message else "Impossibile preparare l’anteprima. Riprova."
+        } finally {previewLoading=false}
+    }
+    val update: (PdfExportOptions) -> Unit = { options = it; ShiftRepository.pdfExportOptions = it; ShiftRepository.notifyDataChanged() }
+    val range = remember(options.mode, options.startDate, options.endDate, options.selectedYear) { PdfExportPlan.range(options) }
+    val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN) }
     BackHandler(onBack = onDismiss)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-            .statusBarsPadding()
-    ) {
-        // Top App Bar Ergonomica Breccia (Unico tasto indietro in alto)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 16.dp, vertical = 14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    onClick = onDismiss,
-                    shape = CircleShape,
-                    color = ObsidianSurfaceContainer,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            imageVector = Icons.Outlined.ArrowBack,
-                            contentDescription = "Indietro",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(22.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column(modifier = Modifier.weight(1f, fill = false)) {
-                    Text(
-                        text = "Esporta & Stampa PDF",
-                        color = TextPrimary,
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        maxLines = 1
-                    )
-                    Text(
-                        text = "Prospetto turni professionale",
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        maxLines = 1
-                    )
+    Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
+        Column(Modifier.fillMaxSize().statusBarsPadding()) {
+            Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) { SiteIcon("arrow-left", "Indietro") }
+                Column(Modifier.padding(start = 10.dp).weight(1f)) {
+                    Text("Esporta & Stampa PDF", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text(ShiftRepository.activeWorkProfile.name, color = TextSecondary, fontSize = 12.sp)
                 }
             }
-
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = ObsidianPrimary.copy(alpha = 0.2f),
-                border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianPrimary.copy(alpha = 0.5f))
-            ) {
-                Text(
-                    text = options.mode.label.uppercase(),
-                    fontSize = 10.sp,
-                    fontWeight = FontWeight.Black,
-                    color = ObsidianPrimary,
-                    maxLines = 1,
-                    softWrap = false,
-                    modifier = Modifier.padding(horizontal = 10.dp, vertical = 5.dp)
-                )
-            }
-        }
-
-        // Scrollable content
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(horizontal = 16.dp)
-        ) {
-            // Segmented Control stile Liquid Glass: Elenco | Mese | Anno
-            Surface(
-                shape = RoundedCornerShape(14.dp),
-                color = ObsidianSurfaceContainer,
-                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(46.dp)
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxSize()
-                        .padding(4.dp),
-                    horizontalArrangement = Arrangement.spacedBy(4.dp)
-                ) {
-                    PdfExportMode.values().forEach { mode ->
-                        val isSelected = options.mode == mode
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(if (isSelected) ObsidianPrimary else Color.Transparent)
-                                .clickable {
-                                    options = options.copy(mode = mode)
-                                    ShiftRepository.pdfExportOptions = options
-                                },
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Text(
-                                text = mode.label,
-                                color = if (isSelected) ObsidianBackground else TextSecondary,
-                                fontSize = 12.sp,
-                                maxLines = 1,
-                                fontWeight = if (isSelected) FontWeight.ExtraBold else FontWeight.Medium
-                            )
+            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+                PdfSection("Formato", "Scegli come organizzare il documento") {
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                        PdfExportMode.values().forEach { mode ->
+                            val selected = options.mode == mode
+                            val color by animateColorAsState(if (selected) ObsidianPrimaryContainer else ObsidianSurfaceContainer, spring(stiffness = 240f))
+                            Box(Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(13.dp)).background(color).selectable(selected, role = Role.RadioButton) { update(options.copy(mode = mode)) }.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                                Text(mode.label, fontSize = 12.sp, color = TextPrimary, fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium)
+                            }
                         }
                     }
+                    Text(if (options.mode == PdfExportMode.ELENCO) "Elenco compatto su una pagina, con tutti i dettagli selezionati." else "Calendario su una pagina, senza aggiungere un elenco separato.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Foglio Bianco di Anteprima A4 in Miniatura con elegante ombreggiatura
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                val previewWidth = if (options.mode == PdfExportMode.ELENCO) 230.dp else 280.dp
-                val previewHeight = if (options.mode == PdfExportMode.ELENCO) 310.dp else 210.dp
-
-                Surface(
-                    modifier = Modifier
-                        .size(width = previewWidth, height = previewHeight)
-                        .shadow(16.dp, RoundedCornerShape(8.dp)),
-                    shape = RoundedCornerShape(8.dp),
-                    color = Color.White,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-                ) {
-                    Box(modifier = Modifier.fillMaxSize()) {
-                        when (options.mode) {
-                            PdfExportMode.ELENCO -> PreviewElencoContent(options)
-                            PdfExportMode.MESE -> PreviewMeseContent(options)
-                            PdfExportMode.ANNO -> PreviewAnnoContent(options)
-                            PdfExportMode.PERSONALIZZATO -> PreviewPersonalizzatoContent(options)
-                        }
-                    }
+                PdfSection("Periodo e turni") {
+                    PdfAction("calendar", "${range.first.format(formatter)} - ${range.second.format(formatter)}", "Cambia periodo") { dateDialog = true }
+                    Divider(color = ObsidianBorderSubtle, modifier = Modifier.padding(vertical = 9.dp))
+                    PdfAction("layers", options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it)?.name } ?: "Tutti i turni", "Filtra modelli") { filterDialog = true }
                 }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Sezione Parametri Principali
-            Text(
-                text = "PARAMETRI DOCUMENTO",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
-
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    // Riga Intervallo / Periodo
-                    val intervalText = when (options.mode) {
-                        PdfExportMode.ELENCO, PdfExportMode.PERSONALIZZATO -> "${options.startDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))} - ${options.endDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))}"
-                        PdfExportMode.MESE -> "${options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).replaceFirstChar { it.uppercase() }} ${options.startDate.year}"
-                        PdfExportMode.ANNO -> "${options.selectedYear}"
-                    }
-
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .bouncyClickable { showDateRangeDialog = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f, fill = false)
-                        ) {
-                            Icon(Icons.Outlined.DateRange, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Periodo di Stampa", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
+                PdfSection("Anteprima", "Lo stesso documento che verrà condiviso · 1 pagina") {
+                    when {
+                        previewLoading -> Box(Modifier.fillMaxWidth().height(220.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(26.dp),color=ObsidianPrimary,strokeWidth=2.dp)}
+                        preview!=null -> Surface(onClick={zoom=true},shape=RoundedCornerShape(12.dp),color=androidx.compose.ui.graphics.Color.White) {
+                            Image(preview!!.bitmap.asImageBitmap(),"Anteprima PDF, tocca per ingrandire",Modifier.fillMaxWidth().height(250.dp).padding(6.dp),contentScale=ContentScale.Fit)
                         }
-                        Spacer(modifier = Modifier.width(10.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(intervalText, color = ObsidianPrimary, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
+                        else -> Text(previewError?:"Nessuna anteprima disponibile",color=TextSecondary,fontSize=12.sp)
                     }
-
-                    Divider(color = ObsidianBorderSubtle, thickness = 0.8.dp)
-
-                    // Riga Filtro Turni
-                    val currentShiftFilterName = if (options.filterShiftId == null) "Tutti i turni" else {
-                        ShiftRepository.getShiftDefinition(options.filterShiftId!!)?.name ?: "Tutti i turni"
-                    }
-                    val filterDef = options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it) }
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .bouncyClickable { showShiftFilterDialog = true }
-                            .padding(horizontal = 16.dp, vertical = 14.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Filtro Turni", color = TextPrimary, fontSize = 14.5.sp, fontWeight = FontWeight.Bold)
-                        }
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            if (filterDef != null) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(10.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(filterDef.colorHex))
-                                )
-                                Spacer(modifier = Modifier.width(6.dp))
-                            }
-                            Text(currentShiftFilterName, color = TextSecondary, fontSize = 13.5.sp)
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-                        }
-                    }
+                    if(preview!=null&&!previewLoading)Text("Tocca per ingrandire",fontSize=11.sp,color=TextMuted,modifier=Modifier.padding(top=9.dp))
                 }
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Sezione Opzioni di Layout
-            Text(
-                text = "DETTAGLI E COLONNE INCLUSE",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
-
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                Column {
-                    when (options.mode) {
-                        PdfExportMode.ELENCO -> {
-                            ExportToggleRow("Festività & Eventi", options.includeEvents) {
-                                options = options.copy(includeEvents = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Badge Colore Turno", options.includeIcon) {
-                                options = options.copy(includeIcon = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Orario Inizio e Fine", options.includeTime) {
-                                options = options.copy(includeTime = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Denominazione Turno", options.includeTitle) {
-                                options = options.copy(includeTitle = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Note del Giorno", options.includeNotes) {
-                                options = options.copy(includeNotes = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Orario e Durata Pausa", options.includeBreak) {
-                                options = options.copy(includeBreak = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Ore Totali Lavorate", options.includeDuration) {
-                                options = options.copy(includeDuration = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Includi Righe Vuote", options.includeEmptyRows) {
-                                options = options.copy(includeEmptyRows = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Intestazione Logo", options.includeLogo) {
-                                options = options.copy(includeLogo = it); ShiftRepository.pdfExportOptions = options
-                            }
-                        }
-                        PdfExportMode.MESE -> {
-                            ExportToggleRow("Festività & Eventi", options.includeEvents) {
-                                options = options.copy(includeEvents = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Nome del Turno", options.includeTitle) {
-                                options = options.copy(includeTitle = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Orari di Servizio", options.includeTime) {
-                                options = options.copy(includeTime = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Badge Cromatico Turno", options.includeIcon) {
-                                options = options.copy(includeIcon = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Intestazione Logo", options.includeLogo) {
-                                options = options.copy(includeLogo = it); ShiftRepository.pdfExportOptions = options
-                            }
-                        }
-                        PdfExportMode.ANNO -> {
-                            ExportToggleRow("Badge Cromatico Turno", options.includeIcon) {
-                                options = options.copy(includeIcon = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Intestazione Logo", options.includeLogo) {
-                                options = options.copy(includeLogo = it); ShiftRepository.pdfExportOptions = options
-                            }
-                        }
-                        PdfExportMode.PERSONALIZZATO -> {
-                            ExportToggleRow("Festività & Eventi", options.includeEvents) {
-                                options = options.copy(includeEvents = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Badge Cromatico Turno", options.includeIcon) {
-                                options = options.copy(includeIcon = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Orari di Servizio (per intervalli brevi)", options.includeTime) {
-                                options = options.copy(includeTime = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Nome del Turno", options.includeTitle) {
-                                options = options.copy(includeTitle = it); ShiftRepository.pdfExportOptions = options
-                            }
-                            Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp)
-                            ExportToggleRow("Intestazione Logo", options.includeLogo) {
-                                options = options.copy(includeLogo = it); ShiftRepository.pdfExportOptions = options
-                            }
-                        }
-                    }
+                PdfSection("Contenuti", "Anteprima aggiornata automaticamente") {
+                    PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
+                    PdfToggle("Orario di inizio e fine", options.includeTime) { update(options.copy(includeTime = it)) }
+                    PdfToggle("Durata prevista", options.includeDuration) { update(options.copy(includeDuration = it)) }
+                    PdfToggle("Pausa", options.includeBreak) { update(options.copy(includeBreak = it)) }
+                    PdfToggle("Trasferte", options.includeLocation) { update(options.copy(includeLocation = it)) }
+                    PdfToggle("Note e tag", options.includeNotes) { update(options.copy(includeNotes = it)) }
+                    PdfToggle("Festività", options.includeEvents) { update(options.copy(includeEvents = it)) }
+                    PdfToggle("Colori dei turni", options.includeIcon) { update(options.copy(includeIcon = it)) }
+                    if(options.mode==PdfExportMode.ELENCO)PdfToggle("Giorni senza turni", options.includeEmptyRows) { update(options.copy(includeEmptyRows = it)) }
+                    PdfToggle("Marchio TurniSync", options.includeLogo) { update(options.copy(includeLogo = it)) }
                 }
+                PdfSection("Nota del documento") {
+                    OutlinedTextField(value = options.headerNotes, onValueChange = { update(options.copy(headerNotes = it.take(4000))) }, placeholder = { Text("Una nota per chi riceve il prospetto") }, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp), maxLines = 5, colors = TextFieldDefaults.outlinedTextFieldColors(textColor = TextPrimary, focusedBorderColor = ObsidianPrimary, unfocusedBorderColor = ObsidianBorderSubtle), shape = RoundedCornerShape(14.dp))
+                    Text("Il PDF usa fondo bianco e testo scuro per la lettura e la stampa.", fontSize = 11.sp, color = TextMuted, modifier = Modifier.padding(top = 10.dp))
+                }
+                Spacer(Modifier.height(8.dp))
             }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Sezione Intestazione / Note
-            Text(
-                text = "INTESTAZIONE & NOTE DOCUMENTO",
-                color = TextMuted,
-                fontSize = 11.sp,
-                fontWeight = FontWeight.Bold,
-                letterSpacing = 1.2.sp,
-                modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-            )
-
-            Card(
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder),
-                modifier = Modifier.fillMaxWidth()
-            ) {
-                OutlinedTextField(
-                    value = headerNotes,
-                    onValueChange = {
-                        headerNotes = it
-                        options = options.copy(headerNotes = it)
-                        ShiftRepository.pdfExportOptions = options
-                    },
-                    placeholder = { Text("Note o diciture da stampare in cima al foglio (es. Squadra B - UT Pescara)...", color = TextMuted, fontSize = 13.sp) },
-                    colors = TextFieldDefaults.outlinedTextFieldColors(
-                        textColor = TextPrimary,
-                        containerColor = Color.Transparent,
-                        focusedBorderColor = Color.Transparent,
-                        unfocusedBorderColor = Color.Transparent
-                    ),
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(84.dp)
-                        .padding(8.dp)
-                )
-            }
-
-            Spacer(modifier = Modifier.height(28.dp))
-        }
-
-        // Barra Inferiore Fluttuante con UNICO pulsante di Azione Esporta
-        Surface(
-            color = ObsidianSurface.copy(alpha = 0.95f),
-            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-            modifier = Modifier.fillMaxWidth()
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 12.dp)
-            ) {
-                Button(
-                    onClick = {
-                        val file = PdfGenerator.generateAndSharePdf(context, options)
-                        if (file != null) {
-                            Toast.makeText(context, "PDF generato e condiviso con successo!", Toast.LENGTH_SHORT).show()
-                        } else {
-                            Toast.makeText(context, "Errore nella generazione del PDF", Toast.LENGTH_SHORT).show()
-                        }
-                    },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(52.dp),
-                    shape = RoundedCornerShape(16.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
-                ) {
-                    Icon(Icons.Outlined.PictureAsPdf, contentDescription = null, tint = ObsidianBackground, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text(
-                        text = "Genera e Condividi PDF",
-                        color = ObsidianBackground,
-                        fontWeight = FontWeight.Black,
-                        fontSize = 15.sp
-                    )
+            Surface(color = ObsidianBackground) {
+                Button(onClick = {
+                    preview?.let { ready ->
+                        busy=true
+                        try { PdfGenerator.sharePdf(context,ready.file) }
+                        catch(error:Exception){message="Impossibile condividere il PDF. Riprova."}
+                        finally{busy=false}
+                    }
+                }, enabled = !busy && !previewLoading && preview!=null, shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand), modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).heightIn(min = 50.dp)) {
+                    if (busy) CircularProgressIndicator(Modifier.size(19.dp), color = OnBrand, strokeWidth = 2.dp) else SiteIcon("download", null, tint = OnBrand)
+                    Spacer(Modifier.width(10.dp)); Text(if (previewLoading) "Preparazione anteprima…" else "Condividi PDF · 1 pagina", fontWeight = FontWeight.Bold)
                 }
             }
         }
+        AnimatedStatusPopup(message, PopupType.ERROR, { message = null }, modifier = Modifier.align(Alignment.BottomCenter).padding(bottom = 90.dp))
     }
-
-    // Dialog Selezione Filtro Turni
-    if (showShiftFilterDialog) {
-        AlertDialog(
-            onDismissRequest = { showShiftFilterDialog = false },
-            title = { Text("Filtra per Turno", color = TextPrimary, fontWeight = FontWeight.Bold) },
-            text = {
-                Column(modifier = Modifier.verticalScroll(rememberScrollState())) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .bouncyClickable {
-                                options = options.copy(filterShiftId = null)
-                                ShiftRepository.pdfExportOptions = options
-                                showShiftFilterDialog = false
-                            }
-                            .padding(vertical = 12.dp),
-                        horizontalArrangement = Arrangement.SpaceBetween
-                    ) {
-                        Text("Tutti i turni", color = TextPrimary, fontSize = 14.5.sp)
-                        if (options.filterShiftId == null) {
-                            Icon(Icons.Outlined.Check, contentDescription = null, tint = ObsidianPrimary)
-                        }
-                    }
-                    Divider(color = ObsidianBorderSubtle)
-                    ShiftRepository.shiftDefinitions.forEach { def ->
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .bouncyClickable {
-                                    options = options.copy(filterShiftId = def.id)
-                                    ShiftRepository.pdfExportOptions = options
-                                    showShiftFilterDialog = false
-                                }
-                                .padding(vertical = 12.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(12.dp)
-                                        .clip(CircleShape)
-                                        .background(Color(def.colorHex))
-                                )
-                                Spacer(modifier = Modifier.width(10.dp))
-                                Text(def.name, color = TextPrimary, fontSize = 14.sp)
-                            }
-                            if (options.filterShiftId == def.id) {
-                                Icon(Icons.Outlined.Check, contentDescription = null, tint = ObsidianPrimary)
-                            }
-                        }
-                        Divider(color = ObsidianBorderSubtle)
-                    }
+    if(zoom&&preview!=null) PdfPreviewDialog(preview!!){zoom=false}
+    if (dateDialog) PdfPeriodDialog(options, { dateDialog = false }) { update(it); dateDialog = false }
+    if (filterDialog) AlertDialog(onDismissRequest = { filterDialog = false }, title = { Text("Turni da includere") }, containerColor = ObsidianSurface, text = {
+        Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
+            val entries = listOf(null to "Tutti i turni") + ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.map { it.id to it.name }
+            entries.forEach { (id, label) ->
+                Row(Modifier.fillMaxWidth().selectable(options.filterShiftId == id, role = Role.RadioButton) { update(options.copy(filterShiftId = id)); filterDialog = false }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
+                    RadioButton(options.filterShiftId == id, onClick = null); Text(label, color = TextPrimary, modifier = Modifier.padding(start = 8.dp))
                 }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showShiftFilterDialog = false }) {
-                    Text("Annulla", color = TextMuted)
-                }
-            },
-            containerColor = ObsidianSurfaceContainer,
-            shape = RoundedCornerShape(18.dp)
-        )
-    }
+            }
+        }
+    }, confirmButton = { TextButton(onClick = { filterDialog = false }) { Text("Chiudi") } })
+}
 
-    // Dialog Selezione Periodo
-    if (showDateRangeDialog) {
-        var pickerYear by remember { mutableStateOf(options.startDate.year) }
-        val monthNames = listOf(
-            "Gennaio", "Febbraio", "Marzo", "Aprile", "Maggio", "Giugno",
-            "Luglio", "Agosto", "Settembre", "Ottobre", "Novembre", "Dicembre"
-        )
-
-        AlertDialog(
-            onDismissRequest = { showDateRangeDialog = false },
-            title = {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Seleziona Periodo", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        IconButton(
-                            onClick = { pickerYear-- },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Outlined.ChevronLeft, contentDescription = "Anno precedente", tint = TextPrimary)
-                        }
-                        Text(
-                            text = pickerYear.toString(),
-                            color = ObsidianPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 16.sp
-                        )
-                        IconButton(
-                            onClick = { pickerYear++ },
-                            modifier = Modifier.size(32.dp)
-                        ) {
-                            Icon(Icons.Outlined.ChevronRight, contentDescription = "Anno successivo", tint = TextPrimary)
-                        }
-                    }
-                }
-            },
-            text = {
-                Column(modifier = Modifier.fillMaxWidth()) {
-                    if (options.mode == PdfExportMode.ANNO) {
-                        Text(
-                            text = "Tocca per esportare il prospetto per l'anno $pickerYear:",
-                            color = TextSecondary,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        Button(
-                            onClick = {
-                                options = options.copy(selectedYear = pickerYear)
-                                ShiftRepository.pdfExportOptions = options
-                                showDateRangeDialog = false
-                            },
-                            modifier = Modifier.fillMaxWidth().height(44.dp),
-                            shape = RoundedCornerShape(12.dp),
-                            colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
-                        ) {
-                            Text("Seleziona Anno $pickerYear", color = ObsidianBackground, fontWeight = FontWeight.Bold)
-                        }
-                    } else if (options.mode == PdfExportMode.PERSONALIZZATO) {
-                        Text(
-                            text = "Intervallo rapido preimpostato:",
-                            color = TextSecondary,
-                            fontSize = 12.5.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(6.dp)
-                        ) {
-                            listOf(
-                                Triple("30 Giorni", 30L, "1 Mese"),
-                                Triple("60 Giorni", 60L, "Bimestre"),
-                                Triple("90 Giorni", 90L, "Trimestre"),
-                                Triple("180 Giorni", 180L, "Semestre")
-                            ).forEach { (label, days, sub) ->
-                                Surface(
-                                    shape = RoundedCornerShape(10.dp),
-                                    color = ObsidianSurfaceHigh,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .bouncyClickable {
-                                            val start = LocalDate.now()
-                                            options = options.copy(
-                                                startDate = start,
-                                                endDate = start.plusDays(days)
-                                            )
-                                            ShiftRepository.pdfExportOptions = options
-                                            showDateRangeDialog = false
-                                        }
-                                ) {
-                                    Column(
-                                        modifier = Modifier.padding(vertical = 8.dp, horizontal = 4.dp),
-                                        horizontalAlignment = Alignment.CenterHorizontally
-                                    ) {
-                                        Text(label, fontSize = 11.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                                        Text(sub, fontSize = 9.sp, color = ObsidianPrimary)
-                                    }
-                                }
-                            }
-                        }
-
-                        Spacer(modifier = Modifier.height(14.dp))
-                        Text(
-                            text = "Oppure scegli il mese di inizio nel $pickerYear:",
-                            color = TextSecondary,
-                            fontSize = 12.5.sp,
-                            modifier = Modifier.padding(bottom = 8.dp)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            for (row in 0 until 4) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    for (col in 0 until 3) {
-                                        val monthIndex = row * 3 + col + 1
-                                        val monthName = monthNames[monthIndex - 1]
-                                        val isCurrentSelected = options.startDate.year == pickerYear && options.startDate.monthValue == monthIndex
-
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = if (isCurrentSelected) ObsidianPrimary else ObsidianSurfaceHigh,
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                1.dp,
-                                                if (isCurrentSelected) ObsidianPrimary else ObsidianBorderSubtle
-                                            ),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(40.dp)
-                                                .clickable {
-                                                    val start = LocalDate.of(pickerYear, monthIndex, 1)
-                                                    val end = start.withDayOfMonth(start.lengthOfMonth())
-                                                    options = options.copy(
-                                                        startDate = start,
-                                                        endDate = end,
-                                                        selectedYear = pickerYear
-                                                    )
-                                                    ShiftRepository.pdfExportOptions = options
-                                                    showDateRangeDialog = false
-                                                }
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = monthName.take(3),
-                                                    color = if (isCurrentSelected) ObsidianBackground else TextPrimary,
-                                                    fontWeight = if (isCurrentSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                                                    fontSize = 13.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    } else {
-                        Text(
-                            text = "Scegli il mese da esportare:",
-                            color = TextSecondary,
-                            fontSize = 13.sp,
-                            modifier = Modifier.padding(bottom = 12.dp)
-                        )
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            for (row in 0 until 4) {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    for (col in 0 until 3) {
-                                        val monthIndex = row * 3 + col + 1
-                                        val monthName = monthNames[monthIndex - 1]
-                                        val isCurrentSelected = options.startDate.year == pickerYear && options.startDate.monthValue == monthIndex
-
-                                        Surface(
-                                            shape = RoundedCornerShape(10.dp),
-                                            color = if (isCurrentSelected) ObsidianPrimary else ObsidianSurfaceHigh,
-                                            border = androidx.compose.foundation.BorderStroke(
-                                                1.dp,
-                                                if (isCurrentSelected) ObsidianPrimary else ObsidianBorderSubtle
-                                            ),
-                                            modifier = Modifier
-                                                .weight(1f)
-                                                .height(40.dp)
-                                                .clickable {
-                                                    val start = LocalDate.of(pickerYear, monthIndex, 1)
-                                                    val end = start.withDayOfMonth(start.lengthOfMonth())
-                                                    options = options.copy(
-                                                        startDate = start,
-                                                        endDate = end,
-                                                        selectedYear = pickerYear
-                                                    )
-                                                    ShiftRepository.pdfExportOptions = options
-                                                    showDateRangeDialog = false
-                                                }
-                                        ) {
-                                            Box(
-                                                modifier = Modifier.fillMaxSize(),
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Text(
-                                                    text = monthName.take(3),
-                                                    color = if (isCurrentSelected) ObsidianBackground else TextPrimary,
-                                                    fontWeight = if (isCurrentSelected) FontWeight.ExtraBold else FontWeight.Medium,
-                                                    fontSize = 13.sp
-                                                )
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            },
-            confirmButton = {},
-            dismissButton = {
-                TextButton(onClick = { showDateRangeDialog = false }) {
-                    Text("Annulla", color = TextMuted)
-                }
-            },
-            containerColor = ObsidianSurfaceContainer,
-            shape = RoundedCornerShape(18.dp)
-        )
+@Composable
+private fun PdfSection(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    Surface(color = ObsidianSurface, shape = RoundedCornerShape(22.dp), modifier = Modifier.fillMaxWidth().animateContentSize(spring(dampingRatio = .9f, stiffness = 220f))) {
+        Column(Modifier.padding(16.dp)) {
+            Text(title, color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
+            subtitle?.let { Text(it, color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 4.dp)) }
+            Spacer(Modifier.height(13.dp)); content()
+        }
     }
 }
 
 @Composable
-private fun ExportToggleRow(
-    title: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit
-) {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .bouncyClickable { onCheckedChange(!checked) }
-            .padding(horizontal = 16.dp, vertical = 11.dp),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(title, color = TextPrimary, fontSize = 14.sp)
-        Switch(
-            checked = checked,
-            onCheckedChange = onCheckedChange,
-            colors = SwitchDefaults.colors(
-                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                checkedTrackColor = ObsidianPrimaryContainer,
-                uncheckedThumbColor = TextSecondary,
-                uncheckedTrackColor = ObsidianSurfaceHigh,
-                uncheckedBorderColor = ObsidianBorder
-            )
-        )
+private fun PdfAction(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+    val progress = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    Surface(onClick = { scope.launch { progress.snapTo(0f); progress.animateTo(1f, tween(560)); progress.snapTo(0f) }; onClick() }, color = ObsidianSurface, shape = RoundedCornerShape(12.dp)) {
+        Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
+            SiteIcon(icon, null, tint = ObsidianPrimary, progress = progress.value)
+            Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(subtitle, color = TextMuted, fontSize = 11.sp) }
+            SiteIcon("chevron-right", null, Modifier.size(18.dp), TextMuted)
+        }
     }
 }
 
-// Miniatura per Anteprima Elenco (Allineata al nuovo layout PdfGenerator)
 @Composable
-private fun PreviewElencoContent(options: PdfExportOptions) {
-    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
-    val stats = ShiftRepository.getComprehensiveReportStats(options.startDate, options.endDate)
+private fun PdfToggle(label: String, checked: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(checked, role = Role.Switch, onValueChange = onChange), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f).padding(end = 12.dp), color = TextPrimary, fontSize = 13.sp)
+        Switch(checked, onCheckedChange = null, colors = SwitchDefaults.colors(checkedThumbColor = OnBrand, checkedTrackColor = ObsidianPrimary))
+    }
+}
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(5.dp)
-    ) {
-        // 1. Header Fascia Navy
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(3.dp))
-                .background(Color(0xFF0F172A))
-                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(3.dp))
-                .padding(horizontal = 4.dp, vertical = 2.5.dp)
-        ) {
-            Column {
-                Text(
-                    text = "CALENDARIO TURNI",
-                    fontSize = 4.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = Color.White
-                )
-                Text(
-                    text = "$monthName ${options.startDate.year}",
-                    fontSize = 3.8.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = Color(0xFF38BDF8)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(2.5.dp))
-
-        // 2. Micro Card Statistiche
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(1.5.dp)
-        ) {
-            listOf(
-                Pair(String.format(Locale.US, "%.0fh", stats.totalHours), "Ore"),
-                Pair("${stats.workedDays}", "Turni"),
-                Pair("${stats.countRiposo}R", "Riposi"),
-                Pair("+${String.format(Locale.US, "%.0fh", stats.totalOvertimeHours)}", "Extra")
-            ).forEach { (valore, label) ->
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .clip(RoundedCornerShape(2.dp))
-                        .background(Color(0xFFF1F5F9))
-                        .border(0.3.dp, Color(0xFFCBD5E1), RoundedCornerShape(2.dp))
-                        .padding(vertical = 1.dp),
-                    contentAlignment = Alignment.Center
-                ) {
-                    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                        Text(valore, fontSize = 3.6.sp, fontWeight = FontWeight.Bold, color = Color(0xFF0F172A))
-                        Text(label, fontSize = 2.4.sp, color = Color(0xFF64748B))
-                    }
+@Composable
+private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save: (PdfExportOptions) -> Unit) {
+    var month by remember { mutableStateOf(YearMonth.from(options.startDate)) }
+    var year by remember { mutableStateOf(options.selectedYear) }
+    var from by remember { mutableStateOf(options.startDate) }
+    var to by remember { mutableStateOf(options.endDate) }
+    var selectingEnd by remember { mutableStateOf(false) }
+    var error by remember { mutableStateOf<String?>(null) }
+    AlertDialog(onDismissRequest = dismiss, containerColor = ObsidianSurface, title = { Text("Periodo da esportare", color = TextPrimary) }, text = {
+        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (options.mode == PdfExportMode.MESE || options.mode == PdfExportMode.ANNO) {
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                    IconButton(onClick = { if (options.mode == PdfExportMode.MESE) { if (month > YearMonth.of(1900, 1)) month = month.minusMonths(1) } else if (year > 1900) year-- }) { SiteIcon("chevron-left", "Periodo precedente") }
+                    Text(if (options.mode == PdfExportMode.MESE) month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)) else "$year", color = TextPrimary, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
+                    IconButton(onClick = { if (options.mode == PdfExportMode.MESE) { if (month < YearMonth.of(2200, 12)) month = month.plusMonths(1) } else if (year < 2200) year++ }) { SiteIcon("chevron-right", "Periodo successivo") }
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(2.5.dp))
-
-        // 3. Intestazione Tabella
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(Color(0xFF1E293B))
-                .padding(horizontal = 3.dp, vertical = 1.5.dp)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Text("GIORNO", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(0.7f))
-                Text("ORA", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(0.9f))
-                Text("TURNO", fontSize = 3.2.sp, fontWeight = FontWeight.Bold, color = Color.White, modifier = Modifier.weight(1.4f))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(1.dp))
-
-        // 4. Righe della Tabella con Zebra Striping e Pillole
-        val previewDates = (0 until 9).map { options.startDate.plusDays(it.toLong()) }
-        previewDates.forEachIndexed { idx, date ->
-            val dayNum = date.dayOfMonth
-            val dayOfWeek = date.dayOfWeek.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).lowercase(Locale.ITALIAN)
-            val isSunday = date.dayOfWeek == java.time.DayOfWeek.SUNDAY
-            val holiday = ShiftRepository.isHoliday(date)
-            val isHoliday = isSunday || holiday != null
-
-            val shifts = ShiftRepository.getShiftsForDate(date)
-            val activeShift = shifts.firstOrNull()
-            val def = activeShift?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
-
-            val rowBg = when {
-                isHoliday -> Color(0xFFFEF2F2)
-                idx % 2 == 1 -> Color(0xFFF8FAFC)
-                else -> Color.White
-            }
-
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(rowBg)
-                    .border(0.2.dp, Color(0xFFE2E8F0))
-                    .padding(horizontal = 2.dp, vertical = 1.dp),
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text(
-                    text = String.format(Locale.ITALIAN, "%02d %s", dayNum, dayOfWeek),
-                    fontSize = 3.sp,
-                    color = if (isHoliday) Color(0xFFDC2626) else Color(0xFF0F172A),
-                    fontWeight = if (isHoliday) FontWeight.Bold else FontWeight.Medium,
-                    modifier = Modifier.weight(0.7f)
-                )
-
-                val timeStr = when {
-                    def != null && def.isAllDay -> "Tutto il gg"
-                    def != null -> "${def.startTime}-${def.endTime}"
-                    else -> "—"
-                }
-                Text(
-                    text = timeStr,
-                    fontSize = 2.8.sp,
-                    color = Color(0xFF475569),
-                    modifier = Modifier.weight(0.9f)
-                )
-
-                Box(
-                    modifier = Modifier.weight(1.4f),
-                    contentAlignment = Alignment.CenterStart
-                ) {
-                    if (def != null) {
-                        Box(
-                            modifier = Modifier
-                                .fillMaxWidth(0.92f)
-                                .clip(RoundedCornerShape(2.dp))
-                                .background(Color(def.colorHex))
-                                .padding(horizontal = 2.dp, vertical = 0.5.dp),
-                            contentAlignment = Alignment.CenterStart
-                        ) {
-                            Text(
-                                text = "${def.shortCode} • ${def.name.take(6)}",
-                                fontSize = 2.8.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = Color.White,
-                                maxLines = 1
-                            )
+            } else {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    listOf(false, true).forEach { end ->
+                        val selected = selectingEnd == end
+                        val tone by animateColorAsState(if (selected) ObsidianPrimaryContainer else ObsidianSurfaceContainer)
+                        Surface(onClick = { selectingEnd = end; month = YearMonth.from(if (end) to else from) }, color = tone, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
+                            Column(Modifier.padding(10.dp)) {
+                                Text(if (end) "Al" else "Dal", color = TextSecondary, fontSize = 11.sp)
+                                Text((if (end) to else from).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), color = TextPrimary, fontSize = 12.sp)
+                            }
                         }
-                    } else if (holiday != null) {
-                        Text(
-                            text = "★ ${holiday.name.take(8)}",
-                            fontSize = 2.6.sp,
-                            color = Color(0xFFDC2626),
-                            fontWeight = FontWeight.Bold,
-                            maxLines = 1
-                        )
-                    } else {
-                        Text("—", fontSize = 2.8.sp, color = Color(0xFF94A3B8))
                     }
+                }
+                PdfDateGrid(month, if (selectingEnd) to else from, { month = it }) { date ->
+                    error = null
+                    if (selectingEnd) to = date else { from = date; if (to < from) to = from; selectingEnd = true }
+                }
+            }
+            error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
+        }
+    }, dismissButton = { TextButton(onClick = dismiss) { Text("Annulla") } }, confirmButton = {
+        TextButton(onClick = {
+            try {
+                val changed = when (options.mode) {
+                    PdfExportMode.MESE -> options.copy(startDate = month.atDay(1), endDate = month.atEndOfMonth())
+                    PdfExportMode.ANNO -> options.copy(selectedYear = year)
+                    else -> options.copy(startDate = from, endDate = to)
+                }
+                PdfExportPlan.dates(changed); save(changed)
+            } catch (_: java.time.format.DateTimeParseException) { error = "Controlla le date: esempio 2026-11-01" }
+            catch (exception: IllegalArgumentException) { error = exception.message }
+        }) { Text("Conferma") }
+    })
+}
+
+@Composable
+private fun PdfDateGrid(month: YearMonth, selected: LocalDate, changeMonth: (YearMonth) -> Unit, select: (LocalDate) -> Unit) {
+    Column(Modifier.animateContentSize(spring(stiffness = 250f))) {
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            IconButton(onClick = { if (month > YearMonth.of(1900, 1)) changeMonth(month.minusMonths(1)) }) { SiteIcon("chevron-left", "Mese precedente") }
+            Text(month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)), color = TextPrimary, modifier = Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
+            IconButton(onClick = { if (month < YearMonth.of(2200, 12)) changeMonth(month.plusMonths(1)) }) { SiteIcon("chevron-right", "Mese successivo") }
+        }
+        Row(Modifier.fillMaxWidth()) { listOf("L", "M", "M", "G", "V", "S", "D").forEach { Text(it, color = TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) } }
+        val offset = month.atDay(1).dayOfWeek.value - 1
+        repeat((offset + month.lengthOfMonth() + 6) / 7) { row ->
+            Row(Modifier.fillMaxWidth()) {
+                repeat(7) { column ->
+                    val day = row * 7 + column - offset + 1
+                    if (day in 1..month.lengthOfMonth()) {
+                        val date = month.atDay(day)
+                        val tone by animateColorAsState(if (selected == date) ObsidianPrimaryContainer else ObsidianSurface)
+                        Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(10.dp)).background(tone).selectable(selected == date, role = Role.RadioButton) { select(date) }, contentAlignment = Alignment.Center) { Text("$day", color = TextPrimary, fontSize = 12.sp) }
+                    } else Spacer(Modifier.weight(1f).height(38.dp))
                 }
             }
         }
     }
 }
 
-// Miniatura per Anteprima Mese: A4 Landscape espanso a tutta altezza senza vuoti
+private data class PdfPreview(val file:File,val bitmap:Bitmap)
+
 @Composable
-private fun PreviewMeseContent(options: PdfExportOptions) {
-    val monthName = options.startDate.month.getDisplayName(TextStyle.FULL, Locale.ITALIAN).uppercase(Locale.ITALIAN)
-    val ym = java.time.YearMonth.from(options.startDate)
-    val firstDay = ym.atDay(1)
-    val firstCol = firstDay.dayOfWeek.value - 1
-    val totalDays = ym.lengthOfMonth()
-    val numRows = kotlin.math.ceil((firstCol + totalDays) / 7.0).toInt().coerceAtLeast(5)
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(4.dp)
-    ) {
-        // Header Fascia Navy Landscape
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(2.5.dp))
-                .background(Color(0xFF0F172A))
-                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(2.5.dp))
-                .padding(horizontal = 5.dp, vertical = 2.5.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column {
-                    Text("CALENDARIO TURNI • PROSPETTO MENSILE", fontSize = 4.sp, fontWeight = FontWeight.ExtraBold, color = Color.White)
-                    Text("$monthName ${ym.year}", fontSize = 3.4.sp, fontWeight = FontWeight.Bold, color = Color(0xFF38BDF8))
-                }
-                Text("Foglio A4 Orizzontale", fontSize = 2.8.sp, color = Color(0xFF94A3B8))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(2.dp))
-
-        // Intestazione giorni L M M G V S D
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(Color(0xFF1E293B))
-                .padding(vertical = 1.2.dp)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                listOf("Lunedì", "Martedì", "Mercoledì", "Giovedì", "Venerdì", "Sabato", "Domenica").forEach { d ->
-                    Text(d.take(3), fontSize = 3.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(1.dp))
-
-        // Griglia Mese: usa weight(1f) su ogni riga per riempire tutto il foglio senza spazi bianchi!
-        Column(modifier = Modifier.weight(1f)) {
-            var curDay = 1
-            for (r in 0 until numRows) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    for (c in 0 until 7) {
-                        val cellIndex = r * 7 + c
-                        if (cellIndex >= firstCol && curDay <= totalDays) {
-                            val thisDate = ym.atDay(curDay)
-                            val shifts = ShiftRepository.getShiftsForDate(thisDate)
-                            val def = shifts.firstOrNull()?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
-                            val isSunday = c == 6
-                            val holiday = ShiftRepository.isHoliday(thisDate)
-                            val isHoliday = isSunday || holiday != null
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .border(0.25.dp, Color(0xFFCBD5E1))
-                                    .background(if (isHoliday) Color(0xFFFEF2F2) else Color.White),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxSize()
-                                        .padding(1.dp),
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "$curDay",
-                                        fontSize = 3.sp,
-                                        color = if (isHoliday) Color(0xFFDC2626) else Color(0xFF0F172A),
-                                        fontWeight = FontWeight.Bold,
-                                        modifier = Modifier.align(Alignment.End)
-                                    )
-                                    if (def != null) {
-                                        Box(
-                                            modifier = Modifier
-                                                .fillMaxWidth(0.92f)
-                                                .clip(RoundedCornerShape(1.5.dp))
-                                                .background(Color(def.colorHex))
-                                                .padding(vertical = 1.dp),
-                                            contentAlignment = Alignment.Center
-                                        ) {
-                                            Text(
-                                                text = "${def.shortCode} ${if (!def.isAllDay) def.startTime else ""}",
-                                                fontSize = 2.4.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = Color.White,
-                                                maxLines = 1
-                                            )
-                                        }
-                                    } else {
-                                        Spacer(modifier = Modifier.height(1.dp))
-                                    }
-                                }
-                            }
-                            curDay++
-                        } else {
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .border(0.2.dp, Color(0xFFF1F5F9))
-                                    .background(Color(0xFFF8FAFC))
-                            )
-                        }
-                    }
-                }
-            }
-        }
-
-        // Striscia Legenda Turni in calce
-        Spacer(modifier = Modifier.height(2.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(1.5.dp))
-                .background(Color(0xFFF1F5F9))
-                .border(0.25.dp, Color(0xFFCBD5E1))
-                .padding(horizontal = 4.dp, vertical = 1.2.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text("LEGENDA:", fontSize = 2.6.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
-            ShiftRepository.shiftDefinitions.take(6).forEach { def ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(3.dp).clip(CircleShape).background(Color(def.colorHex)))
-                    Spacer(modifier = Modifier.width(1.dp))
-                    Text(def.shortCode, fontSize = 2.4.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.SemiBold)
-                }
-            }
-        }
+private fun PdfPreviewDialog(preview:PdfPreview,onClose:()->Unit) {
+    var scale by remember(preview){mutableStateOf(1f)}
+    var offset by remember(preview){mutableStateOf(Offset.Zero)}
+    val gestures=rememberTransformableState{zoom,pan,_->
+        scale=(scale*zoom).coerceIn(1f,4f)
+        offset=if(scale==1f)Offset.Zero else offset+pan
     }
-}
-
-// Miniatura per Anteprima Anno: tutti i 31 giorni a piena pagina
-@Composable
-private fun PreviewAnnoContent(options: PdfExportOptions) {
-    val year = options.selectedYear
-    val months = listOf("Gen", "Feb", "Mar", "Apr", "Mag", "Giu", "Lug", "Ago", "Set", "Ott", "Nov", "Dic")
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .padding(4.dp)
-    ) {
-        // Header Fascia Anno
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(2.dp))
-                .background(Color(0xFF0F172A))
-                .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(2.dp))
-                .padding(horizontal = 4.dp, vertical = 2.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Text("CALENDARIO TURNI • PIANO ANNUALE $year", fontSize = 3.6.sp, fontWeight = FontWeight.Bold, color = Color.White)
-                Text("12 Mesi Completi", fontSize = 2.8.sp, color = Color(0xFF38BDF8))
-            }
-        }
-
-        Spacer(modifier = Modifier.height(1.5.dp))
-
-        // Intestazione Mesi
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(1.dp))
-                .background(Color(0xFF1E293B))
-                .padding(vertical = 0.8.dp)
-        ) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                months.forEach { m ->
-                    Text(m, fontSize = 2.6.sp, fontWeight = FontWeight.Bold, color = Color.White, textAlign = TextAlign.Center, modifier = Modifier.weight(1f))
+    Dialog(onDismissRequest=onClose,properties=DialogProperties(usePlatformDefaultWidth=false)) {
+        Surface(Modifier.fillMaxWidth(.94f).fillMaxHeight(.88f),shape=RoundedCornerShape(20.dp),color=ObsidianSurface) {
+            Column(Modifier.padding(12.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    Text("Anteprima · 1 pagina",Modifier.weight(1f),color=TextPrimary,fontWeight=FontWeight.Bold)
+                    IconButton(onClick=onClose){SiteIcon("x","Chiudi anteprima")}
                 }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(1.dp))
-
-        // Tabellone 31 giorni a tutta altezza
-        Column(modifier = Modifier.weight(1f)) {
-            for (day in 1..31) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f)
-                ) {
-                    for (m in 1..12) {
-                        val date = try { LocalDate.of(year, m, day) } catch (_: Exception) { null }
-                        val shifts = date?.let { ShiftRepository.getShiftsForDate(it) } ?: emptyList()
-                        val def = shifts.firstOrNull()?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
-                        val isSunday = date?.dayOfWeek == java.time.DayOfWeek.SUNDAY
-
-                        Box(
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight()
-                                .border(0.15.dp, Color(0xFFE2E8F0))
-                                .background(
-                                    when {
-                                        date == null -> Color(0xFFF1F5F9)
-                                        def != null -> Color(def.colorHex).copy(alpha = 0.65f)
-                                        isSunday -> Color(0xFFFEF2F2)
-                                        else -> Color.White
-                                    }
-                                ),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            if (date != null) {
-                                Text(
-                                    text = if (def != null) def.shortCode.take(2) else "$day",
-                                    fontSize = 1.9.sp,
-                                    fontWeight = if (def != null) FontWeight.Bold else FontWeight.Normal,
-                                    color = if (def != null) Color.White else if (isSunday) Color(0xFFDC2626) else Color(0xFF475569)
-                                )
-                            }
-                        }
-                    }
+                Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(androidx.compose.ui.graphics.Color.White),contentAlignment=Alignment.Center) {
+                    Image(preview.bitmap.asImageBitmap(),"Documento PDF",Modifier.fillMaxSize().transformable(gestures).graphicsLayer{scaleX=scale;scaleY=scale;translationX=offset.x;translationY=offset.y},contentScale=ContentScale.Fit)
                 }
+                Text("Allarga con due dita per leggere i dettagli",fontSize=11.sp,color=TextSecondary,modifier=Modifier.padding(top=10.dp,bottom=4.dp))
             }
-        }
-
-        // Striscia Legenda Turni in calce
-        Spacer(modifier = Modifier.height(1.5.dp))
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(1.dp))
-                .background(Color(0xFFF8FAFC))
-                .border(0.2.dp, Color(0xFFCBD5E1))
-                .padding(horizontal = 4.dp, vertical = 1.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text("LEGENDA:", fontSize = 2.4.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
-            ShiftRepository.shiftDefinitions.take(7).forEach { def ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(2.8.dp).clip(CircleShape).background(Color(def.colorHex)))
-                    Spacer(modifier = Modifier.width(1.dp))
-                    Text(def.shortCode, fontSize = 2.2.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-    }
-}
-
-// Miniatura per Anteprima Personalizzato Dinamico
-@Composable
-private fun PreviewPersonalizzatoContent(options: PdfExportOptions) {
-    val daysBetween = java.time.temporal.ChronoUnit.DAYS.between(options.startDate, options.endDate)
-    if (daysBetween <= 35) {
-        PreviewMeseContent(options)
-    } else {
-        // Multi-mese adattivo a colonne
-        var curYm = java.time.YearMonth.from(options.startDate)
-        val endYm = java.time.YearMonth.from(options.endDate)
-        val monthsList = mutableListOf<java.time.YearMonth>()
-        while (!curYm.isAfter(endYm) && monthsList.size < 12) {
-            monthsList.add(curYm)
-            curYm = curYm.plusMonths(1)
-        }
-        val numMonths = monthsList.size.coerceAtLeast(1)
-
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(4.dp)
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(2.5.dp))
-                    .background(Color(0xFF0F172A))
-                    .border(0.5.dp, Color(0xFF0284C7), RoundedCornerShape(2.5.dp))
-                    .padding(horizontal = 4.dp, vertical = 2.dp)
-            ) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text(
-                        "PROSPETTO DINAMICO • ${options.startDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))} - ${options.endDate.format(DateTimeFormatter.ofPattern("dd/MM/yy"))}",
-                        fontSize = 3.6.sp,
-                        fontWeight = FontWeight.Bold,
-                        color = Color.White
-                    )
-                    Text("$numMonths Mesi", fontSize = 2.8.sp, color = Color(0xFF38BDF8))
-                }
-            }
-
-            Spacer(modifier = Modifier.height(1.5.dp))
-
-            // Intestazione Mesi Selezionati
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(Color(0xFF1E293B))
-                    .padding(vertical = 0.8.dp)
-            ) {
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    monthsList.forEach { ym ->
-                        val mName = ym.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN).uppercase(Locale.ITALIAN)
-                        Text(
-                            "$mName '${ym.year % 100}",
-                            fontSize = 2.4.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = Color.White,
-                            textAlign = TextAlign.Center,
-                            modifier = Modifier.weight(1f)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(1.dp))
-
-            // Griglia 31 giorni a colonne larghe adattive
-            Column(modifier = Modifier.weight(1f)) {
-                for (day in 1..31) {
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .weight(1f)
-                    ) {
-                        monthsList.forEach { ym ->
-                            val date = try { ym.atDay(day) } catch (_: Exception) { null }
-                            val isInRange = date != null && !date.isBefore(options.startDate) && !date.isAfter(options.endDate)
-                            val shifts = if (isInRange) ShiftRepository.getShiftsForDate(date!!) else emptyList()
-                            val def = shifts.firstOrNull()?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
-                            val isSunday = date?.dayOfWeek == java.time.DayOfWeek.SUNDAY
-
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight()
-                                    .border(0.15.dp, Color(0xFFE2E8F0))
-                                    .background(
-                                        when {
-                                            !isInRange -> Color(0xFFF1F5F9)
-                                            def != null -> Color(def.colorHex).copy(alpha = 0.65f)
-                                            isSunday -> Color(0xFFFEF2F2)
-                                            else -> Color.White
-                                        }
-                                    ),
-                                contentAlignment = Alignment.Center
-                            ) {
-                                if (isInRange) {
-                                    Text(
-                                        text = if (def != null) def.shortCode.take(3) else "$day",
-                                        fontSize = 1.9.sp,
-                                        fontWeight = if (def != null) FontWeight.Bold else FontWeight.Normal,
-                                        color = if (def != null) Color.White else if (isSunday) Color(0xFFDC2626) else Color(0xFF475569)
-                                    )
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            // Striscia Legenda Turni in calce
-            Spacer(modifier = Modifier.height(1.5.dp))
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(RoundedCornerShape(1.dp))
-                    .background(Color(0xFFF8FAFC))
-                .border(0.2.dp, Color(0xFFCBD5E1))
-                .padding(horizontal = 4.dp, vertical = 1.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(4.dp)
-        ) {
-            Text("LEGENDA:", fontSize = 2.4.sp, fontWeight = FontWeight.Bold, color = Color(0xFF475569))
-            ShiftRepository.shiftDefinitions.take(7).forEach { def ->
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Box(modifier = Modifier.size(2.8.dp).clip(CircleShape).background(Color(def.colorHex)))
-                    Spacer(modifier = Modifier.width(1.dp))
-                    Text(def.shortCode, fontSize = 2.2.sp, color = Color(0xFF1E293B), fontWeight = FontWeight.Bold)
-                }
-            }
-        }
         }
     }
 }

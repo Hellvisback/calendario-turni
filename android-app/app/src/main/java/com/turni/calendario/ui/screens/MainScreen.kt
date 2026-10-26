@@ -2,6 +2,11 @@ package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.layout.layout
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.zIndex
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -36,18 +41,22 @@ fun MainScreen() {
     var subScreen by remember { mutableStateOf(false) }
     var rotation by remember { mutableStateOf<ShiftRotation?>(null) }
     val savedScreens=rememberSaveableStateHolder()
+    var reportVisited by remember { mutableStateOf(false) }
+    if(route=="report")reportVisited=true
+    LaunchedEffect(com.turni.calendario.repository.ShiftRepository.selectedDateFromWidget) {
+        if(com.turni.calendario.repository.ShiftRepository.selectedDateFromWidget!=null){route="calendar";subScreen=false}
+    }
     BackHandler(route != "calendar" && !subScreen) { route = "calendar" }
     Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
         AnimatedContent(route, transitionSpec = {
-            (slideInHorizontally(spring(.95f, 400f)) { it / 12 } + fadeIn(tween(180))) with
-                fadeOut(tween(100)) using SizeTransform(clip = false)
+            // Destinations fill the same viewport: avoid remeasuring both trees on every slide frame.
+            fadeIn(tween(220)) with fadeOut(tween(140)) using null
         }) { destination ->
             savedScreens.SaveableStateProvider(destination) {
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
                 when (destination) {
-                    "calendar" -> CalendarDestination(editRequest = editRequest,
-                        onEditModeActiveChanged = { editMode.value = it; if(!it)editRequest.value=0 }, onOpenSettings = { route = "altro" })
-                    "report" -> ReportScreen(onOpenSettings = { route = "altro" })
+                    "calendar" -> Unit
+                    "report" -> Unit // Report composition is retained outside the transition tree.
                     "turni" -> TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
                         initialTab = if (rotation != null) 2 else 0, initialEditingRotation = rotation,
                         onClearInitialRotation = { rotation = null },
@@ -57,6 +66,17 @@ fun MainScreen() {
                         onDismiss = { route = "calendar"; subScreen = false })
                 }
             }
+            }
+        }
+        RetainedDestination(visible=route=="calendar") {
+            savedScreens.SaveableStateProvider("retained-calendar") {
+                CalendarDestination(active=route=="calendar",editRequest=editRequest,
+                    onEditModeActiveChanged={editMode.value=it;if(!it)editRequest.value=0},onOpenSettings={route="altro"})
+            }
+        }
+        if(reportVisited) {
+            RetainedDestination(visible=route=="report") {
+                ReportScreen(active=route=="report",onOpenSettings={route="altro"})
             }
         }
         var loadWarning by remember { mutableStateOf(com.turni.calendario.repository.LocalDatabaseStore.loadError) }
@@ -78,10 +98,21 @@ fun MainScreen() {
 
 /** Editing state invalidates its destination and dock, never the root navigation tree. */
 @Composable
-private fun CalendarDestination(editRequest:State<Int>,onEditModeActiveChanged:(Boolean)->Unit,onOpenSettings:()->Unit){
-    CalendarScreen(editRequest=editRequest.value,onEditModeActiveChanged=onEditModeActiveChanged,onOpenSettings=onOpenSettings)
+private fun CalendarDestination(active:Boolean,editRequest:State<Int>,onEditModeActiveChanged:(Boolean)->Unit,onOpenSettings:()->Unit){
+    CalendarScreen(active=active,editRequest=editRequest.value,onEditModeActiveChanged=onEditModeActiveChanged,onOpenSettings=onOpenSettings)
 }
 @Composable
 private fun MainDockVisibility(visible:()->Boolean,enter:EnterTransition,exit:ExitTransition,modifier:Modifier,content:@Composable AnimatedVisibilityScope.()->Unit){
     AnimatedVisibility(visible=visible(),enter=enter,exit=exit,modifier=modifier,content=content)
+}
+
+/** Retain composition while moving inactive content outside the hit-test and semantics viewport. */
+@Composable
+private fun RetainedDestination(visible:Boolean,content:@Composable ()->Unit) {
+    val opacity=animateFloatAsState(if(visible)1f else 0f,tween(220))
+    val hiddenSemantics=if(visible)Modifier else Modifier.clearAndSetSemantics{}
+    Box(Modifier.fillMaxSize().then(hiddenSemantics).zIndex(if(visible)0f else -1f).graphicsLayer{alpha=opacity.value}.layout{measurable,constraints->
+        val child=measurable.measure(constraints)
+        layout(child.width,child.height){child.place(if(visible||opacity.value>.001f)0 else child.width*2,0)}
+    }) { content() }
 }

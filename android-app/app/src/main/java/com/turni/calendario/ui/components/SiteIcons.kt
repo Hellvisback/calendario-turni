@@ -1,5 +1,10 @@
 package com.turni.calendario.ui.components
 
+import androidx.compose.foundation.Canvas
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.*
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.foundation.layout.size
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
@@ -12,6 +17,7 @@ import kotlin.math.*
 
 /** Original 24-unit outline artwork and articulated motion from the approved prototype. */
 private val sitePaths = mapOf(
+    "message" to listOf("M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"),
     "pipette" to listOf("m16 3 5 5M17.5 1.5l5 5-4 4-5-5ZM14 7 3 18v3h3L17 10M5 17l2 2"),
     "circle-plus" to listOf("M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM12 8v8M8 12h8"),
     "calendar" to listOf("M5 5h14a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7a2 2 0 0 1 2-2ZM3 10h18", "M8 3v4M16 3v4", "M8 14h3M14 14h2M8 17h2"),
@@ -45,10 +51,11 @@ private val sitePaths = mapOf(
     "truck" to listOf("M1 3h14v14H1ZM15 8h4l4 5v4h-8M8 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0ZM22 18a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z"),
     "train" to listOf("M8 3h8a4 4 0 0 1 4 4v10a3 3 0 0 1-3 3H7a3 3 0 0 1-3-3V7a4 4 0 0 1 4-4ZM4 11h16M8 3v8M16 3v8M8 16h.01M16 16h.01M7 20l-2 3M17 20l2 3"),
     "star" to listOf("m12 3 2.8 5.7 6.3.9-4.5 4.4 1 6.2L12 17.3l-5.6 2.9 1-6.2L3 9.6l6.2-.9Z"),
+    "smartphone" to listOf("M7 2h10a2 2 0 0 1 2 2v16a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2ZM10 18h4"),
     "moon" to listOf("M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"),
     "sun" to listOf("M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0ZM12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"),
     "timer" to listOf("M9 2h6M12 6v6l3 2M19 5l2 2M20 14a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"),
-    "alarm-clock" to listOf("M18 13a6 6 0 1 1-12 0 6 6 0 0 1 12 0ZM12 9v4l2 2M2 5l4-3M18 2l4 3M6 18l-2 3M18 18l2 3"),
+    "alarm-clock" to listOf("M19 13a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z", "M12 9v4l2.5 1.5", "M2.5 5 6 2.5M18 2.5 21.5 5M7 19l-2 2M17 19l2 2"),
     "file-text" to listOf("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6M8 13h8M8 17h6"),
     "shield-alert" to listOf("M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6ZM12 8v5M12 16h.01"),
     "database-backup" to listOf("M21 5c0 2.2-4 4-9 4S3 7.2 3 5s4-4 9-4 9 1.8 9 4ZM3 5v12c0 2.2 4 4 9 4M3 11c0 2.2 4 4 9 4M21 5v5M16 14a4 4 0 1 1-2 6M14 16v4h4"),
@@ -97,6 +104,7 @@ private fun buildSiteVector(name:String,progress:Float):ImageVector {
                 "report"->{sy=1f+(listOf(.3f,-.2f,-.12f)[i])*wave;py=20f}
                 "edit"->{rotation=-11f*wave;if(i==0){tx=-.8f*wave;ty=.8f*wave};if(i==2){tx=-1.2f*wave;ty=1.2f*wave}}
                 "clock"->rotation=if(i==1)60f*wave else if(i==2)17f*wave else 0f
+                "alarm-clock"->{rotation=if(i==1)35f*wave else if(i==2)sin(p*4*PI).toFloat()*5f*(1-p) else 0f}
                 "swap"->tx=if(i==0)4f*wave else -4f*wave
                 "layers"->ty=if(i==0)-2f*wave else 2f*wave
                 "rotation"->rotation=-360f*p
@@ -115,9 +123,49 @@ private fun buildSiteVector(name:String,progress:Float):ImageVector {
         }
     }.build()
 }
+private val artworkCache=mutableMapOf<String,List<Path>>()
+private fun artwork(name:String)=artworkCache.getOrPut(name){
+    (sitePaths[name]?:sitePaths.getValue("briefcase")).map{PathParser().parsePathString(it).toPath()}
+}
+
+/** Path geometry is immutable; articulated motion changes only draw transforms. */
 @Composable
 fun SiteIcon(name:String,contentDescription:String?=null,modifier:Modifier=Modifier.size(24.dp),tint:Color=TextPrimary,progress:Float=0f){
+    SiteIconMotion(name,contentDescription,modifier,tint){progress}
+}
+
+@Composable
+fun SiteIconMotion(name:String,description:String?=null,modifier:Modifier=Modifier.size(24.dp),tint:Color=TextPrimary,progress:()->Float){
     val canonical=canonicalSiteIcon(name)
-    val vector=remember(canonical,progress){if(progress==0f)siteVector(canonical)else buildSiteVector(canonical,progress)}
-    Icon(vector,contentDescription,modifier,tint=tint)
+    val parts=remember(canonical){artwork(canonical)}
+    val stroke=remember(canonical){Stroke(if(canonical=="report")4.5f else 1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round)}
+    Canvas(modifier.semantics{if(description!=null)contentDescription=description}) {
+        val p=progress().coerceIn(0f,1f);val wave=sin(p*PI).toFloat()
+        scale(size.width/24f,size.height/24f,pivot=Offset.Zero){
+            parts.forEachIndexed{i,path->
+                var rotation=0f;var tx=0f;var ty=0f;var sx=1f;var sy=1f;var py=12f;var alpha=1f
+                when(canonical){
+                    "calendar"->when(i){0->{sx=1f+sin(p*2*PI).toFloat()*-.015f;sy=sx};1->ty=-wave;2->{sy=1f-.4f*wave;py=10f;alpha=1f-.28f*wave}}
+                    "report"->{sy=1f+(when(i){0->.3f;1->-.2f;else->-.12f})*wave;py=20f}
+                    "edit"->{rotation=-11f*wave;if(i==0){tx=-.8f*wave;ty=.8f*wave};if(i==2){tx=-1.2f*wave;ty=1.2f*wave}}
+                    "clock"->rotation=if(i==1)60f*wave else if(i==2)17f*wave else 0f
+                "alarm-clock"->{rotation=if(i==1)35f*wave else if(i==2)sin(p*4*PI).toFloat()*5f*(1-p) else 0f}
+                    "swap"->tx=if(i==0)4f*wave else -4f*wave
+                    "layers"->ty=if(i==0)-2f*wave else 2f*wave
+                    "rotation"->rotation=-360f*p
+                    "settings"->rotation=90f*p
+                    "bell"->{rotation=sin(p*4*PI).toFloat()*14f*(1-p);py=4f}
+                    "plane"->{tx=if(p<.5f)12f*p else -10f*(1-p);ty=-tx;alpha=abs(2*p-1).coerceIn(0f,1f)}
+                    "eraser"->{tx=sin(p*2*PI).toFloat()*2f;rotation=-12f*wave}
+                    "undo"->rotation=-26f*wave
+                    "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
+                    "chevron-left"->tx=-2.5f*wave
+                    "chevron-right"->tx=2.5f*wave
+                }
+                translate(tx,ty){rotate(rotation,Offset(12f,py)){scale(sx,sy,Offset(12f,py)){
+                    drawPath(path,tint.copy(alpha=tint.alpha*alpha),style=stroke)
+                }}}
+            }
+        }
+    }
 }
