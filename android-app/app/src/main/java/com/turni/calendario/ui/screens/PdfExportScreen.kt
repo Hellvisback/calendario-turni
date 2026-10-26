@@ -14,7 +14,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -75,7 +75,7 @@ fun PdfExportScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            imageVector = Icons.Default.ArrowBack,
+                            imageVector = Icons.Outlined.ArrowBack,
                             contentDescription = "Indietro",
                             tint = TextPrimary,
                             modifier = Modifier.size(22.dp)
@@ -234,7 +234,7 @@ fun PdfExportScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             modifier = Modifier.weight(1f, fill = false)
                         ) {
-                            Icon(Icons.Default.DateRange, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Outlined.DateRange, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Text("Periodo di Stampa", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Bold)
                         }
@@ -242,7 +242,7 @@ fun PdfExportScreen(
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Text(intervalText, color = ObsidianPrimary, fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
                         }
                     }
 
@@ -262,7 +262,7 @@ fun PdfExportScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
+                            Icon(Icons.Outlined.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
                             Spacer(modifier = Modifier.width(10.dp))
                             Text("Filtro Turni", color = TextPrimary, fontSize = 14.5.sp, fontWeight = FontWeight.Bold)
                         }
@@ -278,7 +278,7 @@ fun PdfExportScreen(
                             }
                             Text(currentShiftFilterName, color = TextSecondary, fontSize = 13.5.sp)
                             Spacer(modifier = Modifier.width(6.dp))
-                            Icon(Icons.Default.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
@@ -464,7 +464,7 @@ fun PdfExportScreen(
                     shape = RoundedCornerShape(16.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                 ) {
-                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, tint = ObsidianBackground, modifier = Modifier.size(20.dp))
+                    Icon(Icons.Outlined.PictureAsPdf, contentDescription = null, tint = ObsidianBackground, modifier = Modifier.size(20.dp))
                     Spacer(modifier = Modifier.width(10.dp))
                     Text(
                         text = "Genera e Condividi PDF",
@@ -497,7 +497,7 @@ fun PdfExportScreen(
                     ) {
                         Text("Tutti i turni", color = TextPrimary, fontSize = 14.5.sp)
                         if (options.filterShiftId == null) {
-                            Icon(Icons.Default.Check, contentDescription = null, tint = ObsidianPrimary)
+                            Icon(Icons.Outlined.Check, contentDescription = null, tint = ObsidianPrimary)
                         }
                     }
                     Divider(color = ObsidianBorderSubtle)
@@ -525,7 +525,7 @@ fun PdfExportScreen(
                                 Text(def.name, color = TextPrimary, fontSize = 14.sp)
                             }
                             if (options.filterShiftId == def.id) {
-                                Icon(Icons.Default.Check, contentDescription = null, tint = ObsidianPrimary)
+                                Icon(Icons.Outlined.Check, contentDescription = null, tint = ObsidianPrimary)
                             }
                         }
                         Divider(color = ObsidianBorderSubtle)
@@ -565,7 +565,7 @@ fun PdfExportScreen(
                             onClick = { pickerYear-- },
                             modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(Icons.Default.ChevronLeft, contentDescription = "Anno precedente", tint = TextPrimary)
+                            Icon(Icons.Outlined.ChevronLeft, contentDescription = "Anno precedente", tint = TextPrimary)
                         }
                         Text(
                             text = pickerYear.toString(),
@@ -577,7 +577,7 @@ fun PdfExportScreen(
                             onClick = { pickerYear++ },
                             modifier = Modifier.size(32.dp)
                         ) {
-                            Icon(Icons.Default.ChevronRight, contentDescription = "Anno successivo", tint = TextPrimary)
+                            Icon(Icons.Outlined.ChevronRight, contentDescription = "Anno successivo", tint = TextPrimary)
                         }
                     }
                 }

@@ -59,7 +59,7 @@ import kotlin.math.roundToInt
 
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class)
 @Composable
-fun TurniModelsScreen(
+private fun LegacyTurniModelsScreen(
     onEditorActiveChanged: ((Boolean) -> Unit)? = null,
     initialTab: Int = 0,
     initialEditingRotation: ShiftRotation? = null,

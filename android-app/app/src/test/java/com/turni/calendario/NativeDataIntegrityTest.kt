@@ -117,7 +117,9 @@ class NativeDataIntegrityTest {
         val assigned = AssignedShift("test-id", day, def.id, originalShiftDefId = "notte", isModifiedFromRotation = true,
             customStartTime = "07:00", customEndTime = "14:00", actualEndTime = "14:15", notes = "Note", tags = listOf("x"), isOvertime = true,
             overtimeHours = .25f, isTrasferta = true, isOnCallManual = false, hideExShift = true)
-        val state = baseline.copy(definitions = listOf(def), profiles = listOf(profile), activeWorkProfileId = profile.id,
+        // Keep all models referenced by the original shift and retained rotation cycles.
+        val models = baseline.definitions.map { if (it.id == def.id) def else it.copy(workProfileId = profile.id) }
+        val state = baseline.copy(definitions = models, profiles = listOf(profile), activeWorkProfileId = profile.id,
             shifts = mapOf(day to listOf(assigned)), extras = mapOf(day to DayExtraInfo(day, .25f, true, true, rotationCleared = true, notes = "Day", actualEndTime = "14:15")),
             defaultRotationId = "", alarms = SmartAlarmsConfig(false, listOf(ShiftAlarmRule(def.id, false, 35, "05:00")), setOf("disabled")),
             onCall = ReperibilitaConfig(ReperibilitaMode.MANUALE, listOf(def.id), manualDates = setOf(day)), holidayIds = emptySet())
@@ -134,7 +136,11 @@ class NativeDataIntegrityTest {
     }
 
     @Test fun oldVersionTwoBackupKeepsOmittedConfigurationAndParsesExtraFields() {
-        val baseline = DatabaseSnapshot.capture()
+        val captured = DatabaseSnapshot.capture()
+        val baseline = captured.copy(
+            definitions = captured.definitions.map { it.copy(workProfileId = "old") },
+            profiles = listOf(WorkProfile("old", "Legacy")), activeWorkProfileId = "old"
+        )
         val parsed = DatabaseRestore.parse("""{"version":2,"calendarShifts":[],"dayExtraInfo":[],"workProfiles":[{"id":"old","name":"Legacy","colorHex":4281554286}],"activeWorkProfileId":"old"}""", baseline)
         assertEquals("old", parsed.activeWorkProfileId)
         assertEquals(baseline.onCall, parsed.onCall)

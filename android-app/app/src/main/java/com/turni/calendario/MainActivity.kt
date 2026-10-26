@@ -38,7 +38,7 @@ class MainActivity : ComponentActivity() {
         if (ShiftRepository.appPreferences.autoBackupDaily) {
             lifecycleScope.launch(Dispatchers.IO) {
                 val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
-                try { snapshot.enter { com.turni.calendario.sync.GoogleDriveBackupHelper.saveCloudBackupDirect(applicationContext) } }
+                try { snapshot.enter { com.turni.calendario.sync.GoogleDriveBackupHelper.saveLocalBackupDirect(applicationContext) } }
                 finally { snapshot.dispose() }
             }
         }

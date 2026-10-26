@@ -23,6 +23,21 @@ object DatabaseRestore {
         return (0 until array.length()).map { map(array.getJSONObject(it)) }
     }
 
+    private fun validateReferences(definitions: List<ShiftDefinition>, profiles: List<WorkProfile>,
+                                   shifts: List<AssignedShift>, rotations: List<ShiftRotation>) {
+        val modelIds = definitions.map { it.id }.toSet()
+        val profileIds = profiles.map { it.id }.toSet()
+        require(profiles.isNotEmpty() && profiles.none { it.id.isBlank() } && profileIds.size == profiles.size) { "Identificativi lavoro vuoti o duplicati" }
+        require(definitions.none { it.id.isBlank() } && modelIds.size == definitions.size) { "Identificativi modello vuoti o duplicati" }
+        require(definitions.all { it.workProfileId in profileIds }) { "Il backup contiene un modello senza un lavoro valido" }
+        require(shifts.none { it.id.isBlank() } && shifts.map { it.id }.distinct().size == shifts.size) { "Identificativi turno vuoti o duplicati" }
+        require(shifts.all { it.shiftDefId in modelIds }) { "Il backup contiene un turno senza un modello valido" }
+        require(shifts.all { it.originalShiftDefId == null || it.originalShiftDefId in modelIds }) { "Il backup contiene un turno originale non più definito" }
+        require(rotations.none { it.id.isBlank() } && rotations.map { it.id }.distinct().size == rotations.size) { "Identificativi rotazione vuoti o duplicati" }
+        // Empty cycle slots intentionally mean that no shift is assigned on that day.
+        require(rotations.all { rotation -> rotation.daySequence.all { it.isBlank() || it in modelIds } }) { "Il backup contiene una rotazione con un modello non definito" }
+    }
+
     fun parse(text: String, previous: DatabaseSnapshot = DatabaseSnapshot.capture()): DatabaseSnapshot {
         require(text.length <= 24 * 1024 * 1024) { "Backup troppo grande" }
         val root = JSONObject(text)
@@ -69,10 +84,7 @@ object DatabaseRestore {
             isDefault = o.optBoolean("isDefault"), enableAdvancedCalc = o.optBoolean("enableAdvancedCalc"),
             ccnlDocumentName = o.optional("ccnlDocumentName"), ccnlDocumentUri = o.optional("ccnlDocumentUri")
         ) }
-        require(profiles.isNotEmpty()) { "Nessun profilo lavoro" }
-        require(definitions.map { it.id }.distinct().size == definitions.size && definitions.none { it.id.isBlank() }) { "Modelli duplicati" }
-        require(profiles.map { it.id }.distinct().size == profiles.size) { "Lavori duplicati" }
-        require(shifts.map { it.id }.distinct().size == shifts.size) { "Turni duplicati" }
+        validateReferences(definitions, profiles, shifts, rotations)
         require(shifts.all { it.overtimeHours.isFinite() && it.overtimeHours >= 0f }) { "Straordinario non valido" }
         require(extras.all { it.overtimeHours.isFinite() && it.overtimeHours >= 0f }) { "Straordinario non valido" }
         val pref = root.optJSONObject("appPreferences")
@@ -119,6 +131,7 @@ object DatabaseRestore {
     }
 
     fun apply(snapshot: DatabaseSnapshot) {
+        validateReferences(snapshot.definitions, snapshot.profiles, snapshot.shifts.values.flatten(), snapshot.rotations)
         Snapshot.withMutableSnapshot {
             ShiftRepository.shiftDefinitions.clear(); ShiftRepository.shiftDefinitions.addAll(snapshot.definitions)
             ShiftRepository.rotations.clear(); ShiftRepository.rotations.addAll(snapshot.rotations)
@@ -134,12 +147,12 @@ object DatabaseRestore {
             ShiftRepository.smartAlarmsConfig = snapshot.alarms
             ShiftRepository.enabledHolidayIds = snapshot.holidayIds
         }
+        ShiftRepository.clearCalendarUndoHistory()
         ShiftRepository.notifyDataChanged()
     }
 
     fun restore(text: String): RestoreResult = try {
         val parsed = parse(text)
-        ShiftRepository.saveSnapshot()
         LocalDatabaseStore.allowPersistenceAfterRestore()
         apply(parsed)
         RestoreResult(true, "Ripristino completato", parsed.shifts.values.sumOf { it.size }, parsed.definitions.size, parsed.rotations.size)

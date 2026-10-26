@@ -5,13 +5,16 @@
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="com.android.alarm.permission.SET_ALARM" />
     <uses-permission android:name="android.permission.SCHEDULE_EXACT_ALARM" />
-    <uses-permission android:name="android.permission.USE_EXACT_ALARM" />
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
     <uses-permission android:name="android.permission.VIBRATE" />
     <uses-permission android:name="android.permission.RECEIVE_BOOT_COMPLETED" />
     <uses-permission android:name="android.permission.READ_CALENDAR" />
     <uses-permission android:name="android.permission.WRITE_CALENDAR" />
-    <uses-permission android:name="android.permission.GET_ACCOUNTS" />
+
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
+    <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
     <application
         android:name=".TurniSyncApplication"
@@ -32,6 +35,10 @@
             </intent-filter>
         </activity>
 
+        <service android:name=".sync.DriveBackupJobService" android:exported="false" android:permission="android.permission.BIND_JOB_SERVICE" />
+        <service android:name=".alarm.ShiftAlarmService" android:exported="false" android:foregroundServiceType="mediaPlayback" />
+        <activity android:name=".alarm.ShiftAlarmActivity" android:exported="false" android:excludeFromRecents="true" android:showWhenLocked="true" android:turnScreenOn="true" android:theme="@style/Theme.CalendarioTurni" />
+
         <receiver
             android:name=".alarm.ShiftAlarmReceiver"
             android:exported="false">
@@ -39,6 +46,9 @@
                 <action android:name="com.turni.calendario.alarm.TRIGGER_SHIFT_ALARM" />
                 <action android:name="android.intent.action.BOOT_COMPLETED" />
                 <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
+                <action android:name="android.app.action.SCHEDULE_EXACT_ALARM_PERMISSION_STATE_CHANGED" />
             </intent-filter>
         </receiver>
 
@@ -47,6 +57,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_NEXT" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_PREV" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_RESET" />
@@ -61,6 +76,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_NEXT" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_PREV" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_RESET" />
@@ -75,6 +95,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_NEXT" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_PREV" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_RESET" />
@@ -89,6 +114,11 @@
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+                <action android:name="android.intent.action.BOOT_COMPLETED" />
+                <action android:name="android.intent.action.MY_PACKAGE_REPLACED" />
+                <action android:name="android.intent.action.DATE_CHANGED" />
+                <action android:name="android.intent.action.TIME_SET" />
+                <action android:name="android.intent.action.TIMEZONE_CHANGED" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_NEXT" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_PREV" />
                 <action android:name="com.turni.calendario.widget.ACTION_NAV_RESET" />

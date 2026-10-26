@@ -1,74 +1,85 @@
 package com.turni.calendario.ui.components
 
+import android.content.Context
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.*
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
-import androidx.compose.material3.Icon
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.graphics.*
-import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.unit.dp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.*
+import androidx.compose.ui.zIndex
+import com.turni.calendario.R
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import kotlinx.coroutines.launch
-import kotlin.math.sin
+import java.io.DataInputStream
+import kotlin.math.*
 
-/** Union geometry avoids overlapping seams while the satellites merge horizontally. */
+private class DockContours(val frames:Array<FloatArray>,val step:Float){
+    private val heights=FloatArray(frames[0].size)
+    /** Interpolate baked samples, without distance searches, square roots or frame allocations. */
+    fun path(progress:Float,width:Float,target:Path){
+        val position=progress.coerceIn(0f,1f)*(frames.size-1);val a=position.toInt();val b=min(a+1,frames.lastIndex);val mix=position-a
+        val scale=width/380f
+        for(i in heights.indices)heights[i]=(frames[a][i]+(frames[b][i]-frames[a][i])*mix)*scale
+        target.reset();var start=-1
+        fun close(end:Int){if(start>=0){for(j in end downTo start)target.lineTo(j*step*scale,46f+heights[j]);target.close();start=-1}}
+        for(i in heights.indices){val x=i*step*scale;val h=heights[i]
+            if(h>.001f){if(start<0){start=i;target.moveTo(x,46f-h)}else target.lineTo(x,46f-h)}else close(i-1)
+        };close(heights.lastIndex)
+    }
+}
+private object DockContourAssets{
+    @Volatile var cache:DockContours?=null
+    fun load(context:Context):DockContours=cache?:synchronized(this){cache?:context.resources.openRawResource(R.raw.dock_contours).use{raw->
+        DataInputStream(raw.buffered()).use{input->val count=input.readInt();val samples=input.readInt();val step=input.readFloat();input.readFloat();DockContours(Array(count){FloatArray(samples){input.readFloat()}},step).also{cache=it}}
+    }}
+}
+private fun smooth(a:Float,b:Float,value:Float):Float {val p=((value-a)/(b-a)).coerceIn(0f,1f);return p*p*(3-2*p)}
+
+/** Original contour, baked off-device. Animation state is read only in draw/placement phases. */
 @Composable
-fun TurniDock(calendarSelected: Boolean, onCalendar: () -> Unit, onStatistics: () -> Unit,
-    onEdit: () -> Unit, onModels: () -> Unit, modifier: Modifier = Modifier, primarySelected:Boolean=true) {
-    val progress by animateFloatAsState(if (calendarSelected) 1f else 0f, spring(.9f, 220f))
-    val selected by animateFloatAsState(if (calendarSelected) 1f else 0f, spring(.9f, 360f))
-    val activeAlpha by animateFloatAsState(if(primarySelected)1f else 0f,spring(1f,400f))
-    val body=ObsidianSurfaceHigh;val active=ObsidianPrimary
-    Box(modifier.width(260.dp).height(72.dp),contentAlignment=Alignment.Center) {
-        Canvas(Modifier.fillMaxSize()) {
-            val cx=size.width/2;val cy=size.height/2;val p=progress.coerceIn(0f,1f)
-            val r=(32f+sin(p*Math.PI).toFloat()*.8f).dp.toPx();val gap=29.dp.toPx()
-            var shape=Path().apply {
-                addOval(Rect(cx-gap-r,cy-r,cx-gap+r,cy+r));addOval(Rect(cx+gap-r,cy-r,cx+gap+r,cy+r))
-                addRect(Rect(cx-gap,cy-r,cx+gap,cy+r))
+fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit,onEdit:()->Unit,onModels:()->Unit,modifier:Modifier=Modifier,primarySelected:Boolean=true){
+    // A timed material response leaves enough frames for the neck to form and pinch off.
+    // Only the baked contour, placement and icon opacity observe this animation.
+    val progress=animateFloatAsState(if(calendarSelected)1f else 0f,
+        tween(if(calendarSelected)740 else 660,easing=FastOutSlowInEasing))
+    val selected=animateFloatAsState(if(calendarSelected)1f else 0f,spring(.9f,360f))
+    val activeAlpha=animateFloatAsState(if(primarySelected)1f else 0f)
+    val context=LocalContext.current.applicationContext
+    val contours by produceState(DockContourAssets.cache,context){if(value==null)value=withContext(Dispatchers.IO){DockContourAssets.load(context)}}
+    val showSatellites by remember{derivedStateOf{progress.value>.015f}}
+    val body=DockBody;val active=ObsidianPrimary
+    val path=remember{Path()}
+    BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal=8.dp).height(92.dp),contentAlignment=Alignment.Center){
+        val width=maxWidth.value;val scale=width/380f;val left=width*.425f;val right=width*.575f
+        Canvas(Modifier.fillMaxSize()){
+            val unit=size.width/width
+            drawContext.canvas.save();drawContext.canvas.scale(unit,unit)
+            if(contours!=null){contours!!.path(progress.value,width,path);drawPath(path,body)}else{
+                // Brief first-frame fallback while the tiny asset is read on IO.
+                drawRoundRect(body,Offset(left-34*scale,46-34*scale),androidx.compose.ui.geometry.Size(right-left+68*scale,68*scale),androidx.compose.ui.geometry.CornerRadius(34*scale))
+                if(calendarSelected)listOf(left-71*scale,right+71*scale).forEach{drawCircle(body,23*scale,Offset(it,46f))}
             }
-            if(p>.001f) for(sign in listOf(-1,1)) {
-                val x=cx+sign*(60f+40f*p).dp.toPx();val radius=(18f+4f*p).dp.toPx()
-                shape=Path.combine(PathOperation.Union,shape,Path().apply{addOval(Rect(x-radius,cy-radius,x+radius,cy+radius))})
-                if(p<.98f) {
-                    val a=cx+sign*55.dp.toPx();val b=x-sign*radius*.6f;val neck=(12f*(1f-p)).dp.toPx()
-                    val bridge=Path().apply {
-                        moveTo(a,cy-20.dp.toPx());cubicTo((a+b)/2,cy-neck,b,cy-neck,b,cy-radius*.65f)
-                        lineTo(b,cy+radius*.65f);cubicTo(b,cy+neck,(a+b)/2,cy+neck,a,cy+20.dp.toPx());close()
-                    }
-                    shape=Path.combine(PathOperation.Union,shape,bridge)
-                }
-            }
-            drawPath(shape,body);drawCircle(active.copy(alpha=activeAlpha),29.dp.toPx(),Offset(cx+gap*(selected*2-1),cy))
+            drawCircle(active.copy(alpha=activeAlpha.value),34*scale-3f,Offset(left+(right-left)*selected.value,46f));drawContext.canvas.restore()
         }
-        DockAction(Icons.Default.BarChart,"Statistiche",Modifier.offset(x=(-29).dp).size(58.dp),!calendarSelected&&primarySelected,onStatistics)
-        DockAction(Icons.Default.CalendarMonth,"Calendario",Modifier.offset(x=29.dp).size(58.dp),calendarSelected&&primarySelected,onCalendar)
-        if(progress>.02f) {
-            DockAction(Icons.Default.Edit,"Modifica turni",Modifier.offset(x=(-(60+40*progress)).dp).size(48.dp)
-                .graphicsLayer{alpha=progress},false,onEdit)
-            DockAction(Icons.Default.Schedule,"Turni e lavori",Modifier.offset(x=(60+40*progress).dp).size(48.dp)
-                .graphicsLayer{alpha=progress},false,onModels)
+        DockAction("report","Statistiche",Modifier.offset(x=(left-width/2).dp).size(44.dp).zIndex(1f),!calendarSelected&&primarySelected,onStatistics)
+        DockAction("calendar","Calendario",Modifier.offset(x=(right-width/2).dp).size(44.dp).zIndex(1f),calendarSelected&&primarySelected,onCalendar)
+        if(showSatellites){
+            DockAction("edit","Modifica turni",Modifier.offset{IntOffset(((left-width/2-71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onEdit)
+            DockAction("clock","Turni e lavori",Modifier.offset{IntOffset(((right-width/2+71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onModels)
         }
     }
 }
-
 @Composable
-private fun DockAction(icon:ImageVector,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit) {
+private fun DockAction(name:String,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit){
     val motion=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-    Box(modifier.bouncyClickable {
-        scope.launch{motion.snapTo(0f);motion.animateTo(1f,tween(660));motion.snapTo(0f)};onClick()
-    },contentAlignment=Alignment.Center) {
-        Icon(icon,label,tint=if(selected) ObsidianBackground else TextPrimary,
-            modifier=Modifier.size(25.dp).graphicsLayer {
-                rotationZ=sin(motion.value*Math.PI).toFloat()*if(label=="Turni e lavori")22f else 3f
-                translationY=-sin(motion.value*Math.PI).toFloat()*1.dp.toPx()
-            })
+    Box(modifier.bouncyClickable{scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
+        SiteIcon(name,label,Modifier.size(23.dp),if(selected)OnBrand else DockInk,motion.value)
     }
 }

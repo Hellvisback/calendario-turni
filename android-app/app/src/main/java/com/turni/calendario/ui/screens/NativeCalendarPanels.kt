@@ -1,116 +1,213 @@
-@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class,androidx.compose.ui.ExperimentalComposeUiApi::class)
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class,androidx.compose.animation.ExperimentalAnimationApi::class)
 package com.turni.calendario.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.*
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.*
-import androidx.compose.ui.draw.*
-import androidx.compose.ui.graphics.*
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
-import androidx.compose.ui.text.style.*
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
-import kotlinx.coroutines.launch
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
-import java.time.format.TextStyle
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle as DateTextStyle
 import java.util.Locale
-import kotlin.math.sin
-import kotlin.math.roundToInt
 
-private val danger=Color(0xFFC84458)
-private val overtime=Color(0xFF94C4EF)
-private fun contrast(color:Color)=catalogInk(color)
+private val panelEasing = CubicBezierEasing(.3f, .08f, .3f, 1f)
+private val panelDanger get() = if (TurniThemeState.dark) Color(0xFFEC9C9C) else Color(0xFFA33144)
+private val panelOvertime get() = if (TurniThemeState.dark) Color(0xFFB5E3FF) else Color(0xFF164967)
+private val panelOvertimeSurface get() = if (TurniThemeState.dark) Color(0xFF173F58) else Color(0xFFC2E7FF)
+private val panelOvertimeInk get() = if (TurniThemeState.dark) Color(0xFFC0E7FF) else Color(0xFF164967)
+private val panelOncallSurface get() = if (TurniThemeState.dark) Color(0xFF3D3115) else Color(0xFFFFF0B5)
+private val panelOncallInk get() = if (TurniThemeState.dark) Color(0xFFFFDA77) else Color(0xFF785000)
+private val panelTravelSurface get() = if (TurniThemeState.dark) Color(0xFF163A31) else Color(0xFFD8F2E5)
+private val panelTravelInk get() = if (TurniThemeState.dark) Color(0xFF8FE1C0) else Color(0xFF185D48)
+private val panelInfoSurface get() = if (TurniThemeState.dark) Color(0xFF3B301D) else Color(0xFFFFF0D2)
+private val panelInfoInk get() = if (TurniThemeState.dark) Color(0xFFFFDA90) else Color(0xFF755010)
+private fun panelDate(date: LocalDate, weekday: Boolean = false): String =
+    date.format(DateTimeFormatter.ofPattern(if (weekday) "EEEE d MMMM" else "d MMMM", Locale.ITALIAN))
+        .replaceFirstChar { it.titlecase(Locale.ITALIAN) }
 
+private fun panelGlyph(icon: ImageVector): String = when (icon.name.substringAfterLast('.')) {
+    "ArrowBack" -> "arrow-left"
+    "ChevronLeft" -> "chevron-left"
+    "ChevronRight" -> "chevron-right"
+    "Notifications", "NotificationsActive" -> "bell"
+    "Flight", "AirplanemodeActive" -> "plane"
+    "Settings", "Tune" -> "settings"
+    "SwapHoriz" -> "swap"
+    "DateRange", "CalendarMonth" -> "calendar"
+    "Layers", "AddCircleOutline" -> "layers"
+    "Cached", "Loop", "Repeat" -> "rotation"
+    "Delete", "DeleteOutline" -> "trash"
+    "Check" -> "check"
+    "Close" -> "x"
+    "Add" -> "plus"
+    "Undo" -> "undo"
+    "Notes", "EditNote", "NoteAdd" -> "notebook"
+    "Edit" -> "pencil"
+    "Eraser", "AutoFixNormal" -> "eraser"
+    else -> "clock"
+}
+
+/** Targets stay fixed; only the site's outline artwork receives motion. */
 @Composable
-internal fun CalendarAction(icon:ImageVector,label:String,onClick:()->Unit,modifier:Modifier=Modifier,
-    tint:Color=TextPrimary,background:Color=Color.Transparent) {
-    val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-    Box(modifier.size(40.dp).clip(RoundedCornerShape(12.dp)).background(background).bouncyClickable{
-        scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(620));phase.snapTo(0f)};onClick()
-    },contentAlignment=Alignment.Center) {
-        Icon(icon,label,tint=tint,modifier=Modifier.size(22.dp).graphicsLayer{
-            val p=phase.value;val pulse=sin(p*Math.PI).toFloat()
-            rotationZ=when(icon){Icons.Default.Notifications->sin(p*Math.PI*5).toFloat()*13f
-                Icons.Default.Settings,Icons.Default.Cached->p*360f
-                Icons.Default.SwapHoriz->0f;else->pulse*4f}
-            translationX=if(icon==Icons.Default.Flight)sin(p*Math.PI*2).toFloat()*7.dp.toPx() else if(icon==Icons.Default.SwapHoriz)sin(p*Math.PI*2).toFloat()*3.dp.toPx() else 0f
-            alpha=if(icon==Icons.Default.Flight)1f-pulse*.55f else 1f
-        })
+private fun PanelIcon(name: String, label: String, onClick: () -> Unit,
+    modifier: Modifier = Modifier, width: Dp = 30.dp, height: Dp = 34.dp,
+    glyphSize: Dp = 16.dp, tint: Color = TextPrimary, background: Color = Color.Transparent,
+    activeDot: Boolean = false) {
+    val phase = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var replay by remember { mutableStateOf<Job?>(null) }
+    Box(modifier.size(width, height).clip(RoundedCornerShape(10.dp)).background(background)
+        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null,
+            role = Role.Button, onClickLabel = label) {
+            replay?.cancel()
+            replay = scope.launch { phase.snapTo(0f); phase.animateTo(1f, tween(620, easing = panelEasing)); phase.snapTo(0f) }
+            onClick()
+        }, contentAlignment = Alignment.Center) {
+        SiteIcon(name, label, Modifier.size(glyphSize), tint = tint, progress = phase.value)
+        if (activeDot) Box(Modifier.align(Alignment.TopEnd).padding(4.dp).size(4.dp)
+            .clip(RoundedCornerShape(2.dp)).background(tint))
     }
 }
 
 @Composable
-internal fun NativeEditToolbar(mode:CalendarEditMode,brush:String,rotationId:String,
-    onMode:(CalendarEditMode)->Unit,onBrush:(String)->Unit,onRotation:(String)->Unit,
-    onUndo:()->Unit,onClose:()->Unit) {
-    Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(24.dp)).background(ObsidianSurface).padding(8.dp)) {
-        Row(Modifier.fillMaxWidth().height(32.dp),verticalAlignment=Alignment.CenterVertically) {
-            Text("Modifica dei turni",color=TextSecondary,fontSize=12.sp,modifier=Modifier.weight(1f).padding(start=8.dp))
-            CalendarAction(Icons.Default.Undo,"Annulla modifica",onUndo,Modifier.size(32.dp),TextSecondary)
-            CalendarAction(Icons.Default.Close,"Chiudi modifica",onClose,Modifier.size(32.dp),danger)
+internal fun CalendarAction(icon: ImageVector, label: String, onClick: () -> Unit,
+    modifier: Modifier = Modifier, tint: Color = TextPrimary, background: Color = Color.Transparent) {
+    PanelIcon(panelGlyph(icon), label, onClick, modifier, 40.dp, 40.dp, 22.dp, tint, background)
+}
+
+@Composable
+private fun PanelButton(label: String, glyph: String? = null, primary: Boolean = false,
+    modifier: Modifier = Modifier, height: Dp = 36.dp, onClick: () -> Unit) {
+    val phase = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var replay by remember { mutableStateOf<Job?>(null) }
+    val ink = if (primary) catalogInk(ObsidianPrimary) else TextPrimary
+    Row(modifier.heightIn(min = height).clip(RoundedCornerShape(12.dp))
+        .background(if (primary) ObsidianPrimary else ObsidianSurfaceContainer)
+        .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Button) {
+            replay?.cancel(); replay = scope.launch { phase.snapTo(0f); phase.animateTo(1f, tween(480, easing = panelEasing)); phase.snapTo(0f) }
+            onClick()
+        }.padding(horizontal = 7.dp, vertical = 7.dp),
+        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+        if (glyph != null) { SiteIcon(glyph, null, Modifier.size(16.dp), ink, phase.value); Spacer(Modifier.width(5.dp)) }
+        Text(label, color = ink, fontSize = 11.sp, lineHeight = 15.sp,
+            fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+    }
+}
+
+@Composable
+internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId: String,
+    onMode: (CalendarEditMode) -> Unit, onBrush: (String) -> Unit, onRotation: (String) -> Unit,
+    onUndo: () -> Unit, onClose: () -> Unit) {
+    Column(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(24.dp))
+        .background(ObsidianSurface)
+        .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
+        Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
+            Text("Modifica dei turni", color = TextPrimary, fontSize = 14.sp, lineHeight = 18.sp,
+                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            PanelIcon("undo", "Annulla modifica", onUndo, width = 36.dp, height = 36.dp,
+                glyphSize = 18.dp, background = ObsidianSurfaceContainer)
+            Spacer(Modifier.width(4.dp))
+            PanelIcon("x", "Chiudi modifica", onClose, width = 36.dp, height = 36.dp, glyphSize = 18.dp,
+                tint = if (TurniThemeState.dark) Color(0xFFFF9BA5) else Color(0xFFB02B43),
+                background = if (TurniThemeState.dark) Color(0xFF442330) else Color(0xFFFCE7EC))
         }
-        BoxWithConstraints(Modifier.fillMaxWidth().height(52.dp).clip(RoundedCornerShape(18.dp)).background(ObsidianSurfaceContainer)) {
-            val unit=maxWidth/4;val offset by animateDpAsState(unit*mode.ordinal,spring(.9f,380f))
-            Box(Modifier.offset(x=offset).width(unit).fillMaxHeight().padding(3.dp).clip(RoundedCornerShape(15.dp)).background(ObsidianPrimary))
-            Row(Modifier.fillMaxSize()) {CalendarEditMode.values().forEach{item->
-                val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-                Column(Modifier.weight(1f).fillMaxHeight().clickable{
-                    scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(780));phase.snapTo(0f)};onMode(item)
-                },horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-                    Icon(item.icon,item.label,tint=if(mode==item)ObsidianBackground else TextPrimary,
-                        modifier=Modifier.size(24.dp).graphicsLayer{
-                            rotationZ=if(item==CalendarEditMode.ROTATION)phase.value*360 else 0f
-                            translationX=if(item==CalendarEditMode.REPLACE)sin(phase.value*Math.PI*2).toFloat()*4.dp.toPx()else 0f
-                            translationY=if(item==CalendarEditMode.ADD||item==CalendarEditMode.RANGE)-sin(phase.value*Math.PI).toFloat()*3.dp.toPx()else 0f
-                        })
-                    Text(item.label,fontSize=10.sp,fontWeight=FontWeight.Medium,color=if(mode==item)ObsidianBackground else TextPrimary,textAlign=TextAlign.Center)
+        Spacer(Modifier.height(6.dp))
+        BoxWithConstraints(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(13.dp)).background(ObsidianSurfaceContainer)) {
+            val width = maxWidth / 4
+            val selectedX by animateDpAsState(width * mode.ordinal, spring(.95f, 380f))
+            Box(Modifier.offset(x = selectedX).width(width).fillMaxHeight().padding(3.dp)
+                .clip(RoundedCornerShape(10.dp)).background(ObsidianPrimary))
+            Row(Modifier.fillMaxSize()) {
+                CalendarEditMode.values().forEach { item ->
+                    val glyph = when (item) { CalendarEditMode.REPLACE -> "swap"; CalendarEditMode.RANGE -> "calendar"; CalendarEditMode.ADD -> "layers"; CalendarEditMode.ROTATION -> "rotation" }
+                    val phase = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
+                    var replay by remember { mutableStateOf<Job?>(null) }
+                    val ink = if (mode == item) catalogInk(ObsidianPrimary) else TextPrimary
+                    Column(Modifier.weight(1f).fillMaxHeight().clickable(
+                        interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab) {
+                        replay?.cancel(); replay = scope.launch { phase.snapTo(0f); phase.animateTo(1f, tween(620, easing = panelEasing)); phase.snapTo(0f) }; onMode(item)
+                    }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+                        SiteIcon(glyph, item.label, Modifier.size(14.dp), ink, phase.value)
+                        Spacer(Modifier.height(2.dp))
+                        Text(item.label, color = ink, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                    }
                 }
-            }}
+            }
         }
-        Row(Modifier.fillMaxWidth().height(58.dp).horizontalScroll(rememberScrollState()),verticalAlignment=Alignment.CenterVertically,
-            horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-            if(mode==CalendarEditMode.ROTATION) {
-                ShiftRepository.getRotationsSortedByDefault().forEach{rotation->
-                    Surface(shape=RoundedCornerShape(14.dp),color=if(rotation.id==rotationId)ObsidianPrimary else ObsidianSurfaceHigh,
-                        modifier=Modifier.height(44.dp).bouncyClickable{onRotation(rotation.id)}) {
-                        Row(Modifier.padding(horizontal=14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                            if(ShiftRepository.defaultRotationId==rotation.id)Icon(Icons.Default.Star,null,Modifier.size(15.dp),tint=if(rotation.id==rotationId)ObsidianBackground else ObsidianPrimary)
-                            Text(rotation.name,color=if(rotation.id==rotationId)ObsidianBackground else TextPrimary,fontSize=13.sp)
+        Spacer(Modifier.height(6.dp))
+        Row(Modifier.fillMaxWidth().weight(1f).horizontalScroll(rememberScrollState()),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(7.dp)) {
+            if (mode == CalendarEditMode.ROTATION) {
+                ShiftRepository.getRotationsSortedByDefault().forEach { rotation ->
+                    val selected = rotation.id == rotationId
+                    Column(Modifier.width(144.dp).height(48.dp).clip(RoundedCornerShape(13.dp))
+                        .background(if (selected) ObsidianPrimary else ObsidianSurfaceContainer)
+                        .clickable { onRotation(rotation.id) }.padding(horizontal = 9.dp, vertical = 7.dp)) {
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Text(rotation.name, color = if (selected) catalogInk(ObsidianPrimary) else TextPrimary,
+                                fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                            if (ShiftRepository.defaultRotationId == rotation.id) SiteIcon("star", null, Modifier.size(12.dp), if (TurniThemeState.dark) Color(0xFFFFD56B) else Color(0xFF8A5900))
+                            if (selected) SiteIcon("check", null, Modifier.size(12.dp), catalogInk(ObsidianPrimary))
+                        }
+                        Spacer(Modifier.height(4.dp))
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                            rotation.daySequence.take(7).forEach { id -> Box(Modifier.width(8.dp).height(5.dp).clip(RoundedCornerShape(2.dp)).background(ShiftRepository.getShiftDefinition(id)?.color ?: ObsidianBorder)) }
+                            Text("${rotation.daySequence.size} g", color = if (selected) catalogInk(ObsidianPrimary) else TextSecondary,
+                                fontSize = 9.sp, modifier = Modifier.padding(start = 4.dp))
                         }
                     }
                 }
-                if(ShiftRepository.rotations.isEmpty())Text("Crea una rotazione in Turni",color=TextSecondary,fontSize=12.sp)
-            }else{
-                Box(Modifier.size(46.dp).clip(RoundedCornerShape(13.dp)).background(if(brush=="eraser")ObsidianPrimary else ObsidianSurfaceHigh),contentAlignment=Alignment.Center) {
-                    CalendarAction(TurniEraserIcon,"Gomma",{onBrush("eraser")},tint=if(brush=="eraser")ObsidianBackground else TextPrimary)
-                }
-                ShiftRepository.shiftDefinitions.filter{it.workProfileId==ShiftRepository.activeWorkProfileId}.forEach{def->
-                    val selected=brush==def.id;var tapped by remember{mutableStateOf(false)}
-                    val pulse by animateFloatAsState(if(tapped)1f else 0f,spring(.85f,300f))
-                    LaunchedEffect(tapped){if(tapped){delay(180);tapped=false}}
-                    Box(Modifier.size(48.dp).padding(2.dp).clip(RoundedCornerShape(12.dp))
-                        .background(if(selected)def.color else lerp(ObsidianSurface,def.color,.3f))
-                        .then(if(selected)Modifier.border(2.dp,TextPrimary.copy(alpha=.7f),RoundedCornerShape(12.dp))else Modifier)
-                        .clickable{tapped=true;onBrush(def.id)},contentAlignment=Alignment.Center) {
-                        Text(getCompactShiftCode(def.id,def.shortCode),color=if(selected)contrast(def.color)else TextPrimary,
-                            fontWeight=FontWeight.Bold,fontSize=(13+pulse*1.5f).sp,maxLines=1,textAlign=TextAlign.Center)
+                if (ShiftRepository.rotations.isEmpty()) Text("Crea una rotazione in Turni", color = TextSecondary, fontSize = 12.sp)
+            } else {
+                PanelIcon("eraser", "Gomma", { onBrush("eraser") },
+                    width = 42.dp, height = 44.dp, glyphSize = 22.dp,
+                    tint = TextPrimary, background = if (brush == "eraser") lerp(ObsidianSurfaceContainer, ObsidianPrimary, .2f) else ObsidianSurfaceContainer)
+                ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.forEach { def ->
+                    val selected = brush == def.id
+                    val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
+                    var replay by remember{mutableStateOf<Job?>(null)}
+                    val pulse=kotlin.math.sin(phase.value*Math.PI).toFloat()
+                    Box(Modifier.size(48.dp, 44.dp).clip(RoundedCornerShape(12.dp))
+                        .background(if (selected) lerp(ObsidianSurfaceContainer, def.color, .2f) else ObsidianSurfaceContainer)
+                        .then(if (selected) Modifier.border(2.dp, def.color, RoundedCornerShape(12.dp)) else Modifier)
+                        .clickable { replay?.cancel();replay=scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(660));phase.snapTo(0f)};onBrush(def.id) }, contentAlignment = Alignment.Center) {
+                        Box(Modifier.size(38.dp, 32.dp).clip(RoundedCornerShape(9.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                            Text(def.shortCode.ifBlank { getCompactShiftCode(def.id, def.shortCode) }, color = catalogInk(def.color),
+                                fontSize = (12f+1.4f*pulse).sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
+                        }
                     }
                 }
             }
@@ -119,179 +216,331 @@ internal fun NativeEditToolbar(mode:CalendarEditMode,brush:String,rotationId:Str
 }
 
 @Composable
-internal fun NativeDayCard(date:LocalDate,onClose:()->Unit,onSelectShift:(Boolean)->Unit,onFeedback:(ActionFeedback)->Unit) {
-    val shifts=ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}
-    var detailShift by remember(date){mutableStateOf<AssignedShift?>(null)}
-    val oncall=ShiftRepository.isOnCall(date)
-    val bellTint=if(TurniThemeState.dark)Color(0xFFF4CA70)else Color(0xFF805100)
-    Surface(shape=RoundedCornerShape(22.dp),color=ObsidianSurface,shadowElevation=12.dp) {
-        Column(Modifier.fillMaxWidth().heightIn(max=410.dp).verticalScroll(rememberScrollState()).animateContentSize(spring(.95f,400f)).padding(11.dp)) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                Text("${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN)}",color=TextPrimary,
-                    fontWeight=FontWeight.Bold,fontSize=17.sp,modifier=Modifier.weight(1f))
-                CalendarAction(Icons.Default.Notifications,"Reperibilità",{
-                    ShiftRepository.setDayOnCallManual(date,!oncall)
-                    onFeedback(ActionFeedback(if(oncall)"Reperibilità rimossa" else "Reperibilità attivata",oncall))
-                },tint=if(oncall)bellTint else TextSecondary,background=if(oncall)bellTint.copy(alpha=.14f)else Color.Transparent)
-                CalendarAction(Icons.Default.Close,"Chiudi giorno",onClose)
-            }
-            shifts.forEach{shift->key(shift.id){
-                val def=ShiftRepository.getShiftDefinition(shift.shiftDefId)
-                if(def!=null)Column(Modifier.fillMaxWidth().animateContentSize(spring(.95f,400f)).padding(top=6.dp)) {
-                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                        Box(Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(def.color),contentAlignment=Alignment.Center){
-                            Text(def.shortCode.take(4),color=contrast(def.color),fontSize=13.sp,fontWeight=FontWeight.Bold,maxLines=1)
-                        }
-                        Column(Modifier.weight(1f)) {
-                            Text(def.name,color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)
-                            Text(if(def.isAllDay)"Tutto il giorno" else "${shift.customStartTime?:def.startTime} – ${shift.actualEndTime?:shift.customEndTime?:def.endTime}",color=TextSecondary,fontSize=12.sp,maxLines=1)
-                        }
-                        CalendarAction(Icons.Default.Flight,"Trasferta",{ShiftRepository.toggleShiftTrasferta(date,shift.id)
-                            onFeedback(ActionFeedback(if(shift.isTrasferta)"Trasferta rimossa" else "Trasferta aggiunta",shift.isTrasferta))},
-                            modifier=Modifier.size(34.dp),tint=if(shift.isTrasferta)Color(0xFF64B99E)else TextSecondary)
-                        CalendarAction(Icons.Default.Settings,"Impostazioni turno ${def.name}",{detailShift=shift},Modifier.size(34.dp))
-                    }
-                    AnimatedVisibility(shift.isTrasferta||shift.overtimeHours>0||shift.notes.isNotBlank(),
-                        enter=expandVertically(spring(.95f,400f))+fadeIn(),exit=shrinkVertically()+fadeOut()) {
-                        Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                            if(shift.overtimeHours>0)DetailPill("+${formatOvertime(shift.overtimeHours)}",overtime)
-                            if(shift.isTrasferta)DetailPill("TR · Trasferta",Color(0xFF83CDB7))
-                            if(shift.notes.isNotBlank())Icon(Icons.Default.Notes,"Note presenti",Modifier.size(16.dp),tint=TextSecondary)
-                        }
-                    }
+internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: (Boolean) -> Unit,
+    onFeedback: (ActionFeedback) -> Unit, onDateChange: (LocalDate) -> Unit = {},
+    onDetailsActive: (Boolean) -> Unit = {}) {
+    val shifts = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
+    var detailShift by remember(date) { mutableStateOf<AssignedShift?>(null) }
+    var dayNotes by remember(date) { mutableStateOf(false) }
+    val oncall = ShiftRepository.isOnCall(date)
+    val note = ShiftRepository.getDayExtraInfo(date).notes
+    val subPanel = detailShift != null || dayNotes
+    LaunchedEffect(subPanel) { onDetailsActive(subPanel) }
+    DisposableEffect(Unit) { onDispose { onDetailsActive(false) } }
+    AnimatedVisibility(!subPanel, enter = fadeIn(tween(260)) + slideInVertically(tween(360, easing = panelEasing)) { it / 14 }, exit = fadeOut(tween(160))) {
+        Surface(shape = RoundedCornerShape(23.dp), color = ObsidianSurface, border = BorderStroke(1.dp, ObsidianBorder), shadowElevation = 12.dp) {
+            Column(Modifier.fillMaxWidth().heightIn(max = (LocalConfiguration.current.screenHeightDp - 146).coerceAtLeast(240).dp)
+                .animateContentSize(tween(440, easing = panelEasing)).padding(10.dp)) {
+                Row(Modifier.fillMaxWidth().heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically) {
+                    PanelIcon("chevron-left", "Giorno precedente", { onDateChange(date.minusDays(1)) })
+                    Text(panelDate(date, true), color = TextPrimary, fontSize = 14.sp, lineHeight = 18.sp,
+                        fontWeight = FontWeight.Bold, textAlign = TextAlign.Center, maxLines = 1,
+                        overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
+                    PanelIcon("chevron-right", "Giorno successivo", { onDateChange(date.plusDays(1)) })
+                    PanelIcon("x", "Chiudi dettaglio", onClose)
                 }
-            }}
-            Row(Modifier.fillMaxWidth().padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick={onSelectShift(false)},shape=RoundedCornerShape(12.dp),modifier=Modifier.weight(1f)){
-                    Icon(Icons.Default.Edit,null,Modifier.size(16.dp));Spacer(Modifier.width(5.dp));Text("Cambia",fontSize=12.sp)
+                Text("${shifts.size} ${if (shifts.size == 1) "turno" else "turni"}", color = TextSecondary,
+                    fontSize = 10.sp, lineHeight = 14.sp, modifier = Modifier.padding(start = 2.dp, bottom = 5.dp))
+                Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).weight(1f, fill = false).verticalScroll(rememberScrollState())) {
+                    if (shifts.isEmpty()) Text("Nessun turno assegnato", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 2.dp, vertical = 12.dp))
+                    shifts.forEach { shift -> key(shift.id) {
+                        NativeDayShiftRow(date, shift, onDetails = { detailShift = shift }, onFeedback = onFeedback)
+                    } }
                 }
-                Button(onClick={onSelectShift(true)},shape=RoundedCornerShape(12.dp),modifier=Modifier.weight(1f)){
-                    Icon(Icons.Default.Add,null,Modifier.size(16.dp));Spacer(Modifier.width(5.dp));Text("Aggiungi",fontSize=12.sp)
+                Row(Modifier.fillMaxWidth().padding(top = 6.dp).heightIn(min = 34.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text("Giornata", color = TextSecondary, fontSize = 10.sp, modifier = Modifier.weight(1f).padding(start = 3.dp))
+                    PanelIcon("bell", "Reperibilità della giornata", {
+                        ShiftRepository.setDayOnCallManual(date, !oncall)
+                        onFeedback(ActionFeedback(if (oncall) "Reperibilità rimossa" else "Reperibilità attivata", oncall))
+                    }, width = 44.dp, height = 36.dp, glyphSize = 18.dp,
+                        tint = if (oncall) panelOncallInk else TextPrimary,
+                        background = if (oncall) panelOncallSurface else ObsidianSurfaceContainer)
+                    PanelIcon("notebook", "Note comuni alla giornata", { dayNotes = true }, width = 44.dp, height = 36.dp,
+                        glyphSize = 18.dp, tint = if (note.isNotBlank()) ObsidianPrimary else TextPrimary,
+                        background = ObsidianSurfaceContainer, activeDot = note.isNotBlank())
                 }
-            }
-        }
-    }
-    detailShift?.let{shift->NativeShiftDetails(date,shift,onClose={detailShift=null},onFeedback=onFeedback)}
-}
-
-@Composable
-private fun DetailPill(text:String,color:Color){
-    Text(text,color=contrast(color),fontSize=10.sp,modifier=Modifier.clip(RoundedCornerShape(7.dp)).background(color).padding(horizontal=7.dp,vertical=3.dp))
-}
-
-/** One real, opaque dialog surface; closing retains its contents through the exit. */
-@Composable
-internal fun NativeBottomDialog(onClose:()->Unit,bottomInset:Dp=0.dp,content:@Composable ColumnScope.(close:()->Unit)->Unit) {
-    var visible by remember{mutableStateOf(false)};val scope=rememberCoroutineScope()
-    val close={scope.launch{visible=false;delay(260);onClose()};Unit}
-    LaunchedEffect(Unit){visible=true}
-    Dialog(onDismissRequest=close,properties=DialogProperties(usePlatformDefaultWidth=false)) {
-        Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {
-            Box(Modifier.fillMaxSize().clickable(onClick=close))
-            AnimatedVisibility(visible,enter=slideInVertically(spring(.95f,380f)){it}+fadeIn(),exit=slideOutVertically(tween(240)){it}+fadeOut(),modifier=Modifier.padding(bottom=bottomInset)) {
-                Surface(Modifier.fillMaxWidth().heightIn(max=620.dp).navigationBarsPadding(),shape=RoundedCornerShape(topStart=26.dp,topEnd=26.dp),color=ObsidianSurface) {
-                    Column(Modifier.padding(18.dp).verticalScroll(rememberScrollState()).imePadding()){content(close)}
+                Row(Modifier.fillMaxWidth().padding(top = 13.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    if (shifts.isNotEmpty()) PanelButton(if (shifts.size > 1) "Cambia turni" else "Cambia turno", "swap",
+                        modifier = Modifier.weight(1f), onClick = { onSelectShift(false) })
+                    PanelButton("Aggiungi turno", "circle-plus", true, Modifier.weight(1f)) { onSelectShift(true) }
                 }
             }
         }
     }
+    detailShift?.let { NativeShiftDetails(date, it, onClose = { detailShift = null }, onFeedback = onFeedback) }
+    if (dayNotes) NativeDayNotes(date, onClose = { dayNotes = false }, onFeedback = onFeedback)
 }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun NativeShiftDetails(date:LocalDate,shift:AssignedShift,onClose:()->Unit,onFeedback:(ActionFeedback)->Unit) {
-    val def=ShiftRepository.getShiftDefinition(shift.shiftDefId)?:return
-    val baseEnd=shift.customEndTime?:def.endTime
-    var end by remember(shift.id){mutableStateOf(shift.actualEndTime?:baseEnd)}
-    var notes by remember(shift.id){mutableStateOf(shift.notes)}
-    var noteTab by remember{mutableStateOf(false)}
-    var deleting by remember{mutableStateOf(false)}
-    val parsed=runCatching{LocalTime.parse(end)}.getOrNull()
-    val hours=if(parsed!=null)ShiftRepository.calculateOvertimeFromEndTime(baseEnd,end)else 0f
-    val valid=parsed!=null&&hours<=16f
-    NativeBottomDialog(onClose,bottomInset=84.dp){close->
-        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+private fun NativeDayShiftRow(date: LocalDate, shift: AssignedShift, onDetails: () -> Unit, onFeedback: (ActionFeedback) -> Unit) {
+    val def = ShiftRepository.getShiftDefinition(shift.shiftDefId) ?: return
+    val narrow = LocalConfiguration.current.screenWidthDp <= 310
+    val hasInfo = shift.overtimeHours > 0 || shift.actualEndTime != null || shift.notes.isNotBlank()
+    val gearColor = if (shift.overtimeHours > 0) panelOvertimeInk else if (hasInfo) panelInfoInk else TextPrimary
+    val gearBackground = if (shift.overtimeHours > 0) panelOvertimeSurface else if (hasInfo) panelInfoSurface else ObsidianSurface
+    val tools: @Composable () -> Unit = {
+        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
+            PanelIcon("settings", "Informazioni turno ${def.name}", onDetails, tint = gearColor, background = gearBackground, activeDot = hasInfo)
+            PanelIcon("plane", "Trasferta turno ${def.name}", {
+                ShiftRepository.toggleShiftTrasferta(date, shift.id)
+                onFeedback(ActionFeedback(if (shift.isTrasferta) "Trasferta rimossa" else "Trasferta aggiunta", shift.isTrasferta))
+            }, tint = if (shift.isTrasferta) panelTravelInk else TextPrimary, background = if (shift.isTrasferta) panelTravelSurface else ObsidianSurface)
+            PanelIcon("trash", "Elimina turno ${def.name}", {
+                ShiftRepository.removeAssignedShift(date, shift.id); onFeedback(ActionFeedback("Turno eliminato", true))
+            }, tint = panelDanger, background = ObsidianSurface)
+        }
+    }
+    Column(Modifier.fillMaxWidth().padding(bottom = 6.dp).clip(RoundedCornerShape(14.dp))
+        .background(ObsidianSurfaceContainer).animateContentSize(tween(440, easing = panelEasing)).padding(10.dp)) {
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+            Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Box(Modifier.size(32.dp).clip(RoundedCornerShape(9.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                    Text(def.shortCode.ifBlank { getCompactShiftCode(def.id, def.shortCode) }, color = catalogInk(def.color),
+                        fontSize = 10.sp, lineHeight = 11.sp, fontWeight = FontWeight.Bold, maxLines = 2, textAlign = TextAlign.Center)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(def.name, color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp,
+                        fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    Text(if (def.isAllDay) "Tutto il giorno" else "${shift.customStartTime ?: def.startTime} – ${shift.customEndTime ?: def.endTime}",
+                        color = TextSecondary, fontSize = 11.sp, lineHeight = 15.sp, maxLines = 1)
+                }
+            }
+            if (!narrow) tools()
+        }
+        if (narrow) Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
+            NativeShiftExtraChips(shift, Modifier.weight(1f), vertical = true)
+            tools()
+        } else NativeShiftExtraChips(shift, Modifier.fillMaxWidth())
+    }
+}
+
+@Composable
+private fun NativeShiftExtraChips(shift: AssignedShift, modifier: Modifier = Modifier, vertical: Boolean = false) {
+    val hasExtra = shift.overtimeHours > 0 || shift.actualEndTime != null
+    AnimatedVisibility(hasExtra, enter = expandVertically(tween(440, easing = panelEasing)) + fadeIn(tween(440)),
+        exit = shrinkVertically(tween(440, easing = panelEasing)) + fadeOut(tween(260)), modifier = modifier) {
+        val contents: @Composable () -> Unit = {
+            if (shift.overtimeHours > 0) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
+            shift.actualEndTime?.let { DetailPill("Stacco $it", ObsidianPrimary, ObsidianSurface) }
+        }
+        if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
+        else Row(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp)) { contents() }
+    }
+}
+
+@Composable
+private fun DetailPill(text: String, color: Color, background: Color) {
+    Text(text, color = color, fontSize = 10.sp, lineHeight = 14.sp, fontWeight = FontWeight.Medium,
+        modifier = Modifier.clip(RoundedCornerShape(8.dp)).background(background).padding(horizontal = 6.dp, vertical = 4.dp))
+}
+
+/** One floating, opaque surface; the existing day surface is hidden while this is open. */
+@Composable
+internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp,
+    content: @Composable ColumnScope.(close: () -> Unit) -> Unit) {
+    var visible by remember { mutableStateOf(false) }; var closing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val close = { if (!closing) { closing = true; scope.launch { visible = false; delay(260); onClose() } }; Unit }
+    LaunchedEffect(Unit) { visible = true }
+    Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
+        val view = LocalView.current
+        SideEffect { (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f) }
+        Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
+            Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = close))
+            AnimatedVisibility(visible,
+                enter = slideInVertically(tween(520, easing = CubicBezierEasing(.2f, .85f, .2f, 1f))) { it / 3 } + fadeIn(tween(380)),
+                exit = slideOutVertically(tween(240, easing = panelEasing)) { it / 3 } + fadeOut(tween(220)),
+                modifier = Modifier.navigationBarsPadding().padding(start = 14.dp, end = 14.dp, bottom = bottomInset)) {
+                Surface(Modifier.fillMaxWidth().heightIn(max = minOf(620, (LocalConfiguration.current.screenHeightDp - 100).coerceAtLeast(240)).dp),
+                    shape = RoundedCornerShape(28.dp), color = ObsidianSurface, border = BorderStroke(1.dp, ObsidianBorder), shadowElevation = 12.dp) {
+                    Column(Modifier.padding(14.dp).verticalScroll(rememberScrollState())) { content(close) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: () -> Unit, onFeedback: (ActionFeedback) -> Unit) {
+    val def = ShiftRepository.getShiftDefinition(shift.shiftDefId) ?: return
+    val baseEnd = shift.customEndTime ?: def.endTime
+    var end by remember(shift.id) { mutableStateOf(shift.actualEndTime ?: baseEnd) }
+    var notes by remember(shift.id) { mutableStateOf(shift.notes) }
+    var hours by remember(shift.id) { mutableStateOf(shift.overtimeHours) }
+    var noteTab by remember(shift.id) { mutableStateOf(false) }
+    val parsed = runCatching { LocalTime.parse(end) }.getOrNull()
+    val base = runCatching { LocalTime.parse(baseEnd) }.getOrNull()
+    val extraMinutes = if (parsed != null && base != null) (parsed.toSecondOfDay() / 60 - base.toSecondOfDay() / 60 + 1440) % 1440 else -1
+    val valid = def.isAllDay || (parsed != null && extraMinutes in 0..960)
+    val updateEnd: (String) -> Unit = { value -> end = value; hours = if (value.isBlank()) 0f else ShiftRepository.calculateOvertimeFromEndTime(baseEnd, value) }
+    NativeBottomDialog(onClose, bottomInset = 86.dp) { close ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            PanelIcon("arrow-left", "Torna al dettaglio giorno", close, width = 40.dp, height = 40.dp, glyphSize = 20.dp)
             Column(Modifier.weight(1f)) {
-                Text("${date.dayOfMonth} ${date.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN)}",color=TextSecondary,fontSize=12.sp)
-                Text(def.name,color=TextPrimary,fontSize=21.sp,fontWeight=FontWeight.Bold)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    SiteIcon("settings", null, Modifier.size(12.dp), TextSecondary)
+                    Text(panelDate(date), color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+                }
+                Text(def.name, color = TextPrimary, fontSize = 20.sp, lineHeight = 26.sp,
+                    fontWeight = FontWeight.Bold, modifier = Modifier.padding(vertical = 3.dp))
+                Text(if (def.isAllDay) "Tutto il giorno" else "${shift.customStartTime ?: def.startTime} – $baseEnd",
+                    color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
             }
-            CalendarAction(Icons.Default.Close,"Chiudi dettagli",close)
+            Box(Modifier.size(42.dp).clip(RoundedCornerShape(13.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                Text(def.shortCode, color = catalogInk(def.color), fontSize = 12.sp, fontWeight = FontWeight.Bold, maxLines = 2, textAlign = TextAlign.Center)
+            }
         }
         Spacer(Modifier.height(14.dp))
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(lerp(ObsidianSurface,def.color,.18f)).padding(12.dp),
-            verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-            Box(Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(def.color),contentAlignment=Alignment.Center){Text(def.shortCode.take(4),color=contrast(def.color),fontWeight=FontWeight.Bold,fontSize=13.sp)}
-            Text(def.timeRangeFormatted,color=TextPrimary,fontSize=14.sp)
-        }
-        Spacer(Modifier.height(12.dp))
         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).padding(3.dp)) {
-            listOf("Straordinario","Note turno").forEachIndexed{index,label->
-                Surface(Modifier.weight(1f).clickable{noteTab=index==1},shape=RoundedCornerShape(11.dp),color=if(noteTab==(index==1))ObsidianPrimary else Color.Transparent){
-                    Text(label,color=if(noteTab==(index==1))ObsidianBackground else TextPrimary,fontSize=13.sp,textAlign=TextAlign.Center,modifier=Modifier.padding(vertical=11.dp))
+            listOf("Straordinario" to "timer", "Note turno" to "notebook").forEachIndexed { index, (label, glyph) ->
+                val selected = noteTab == (index == 1)
+                val accent = if (index == 0) Color(0xFF9FD7FB) else ObsidianPrimary
+                val ink = if (selected) if (index == 0) Color(0xFF10364E) else catalogInk(ObsidianPrimary) else TextPrimary
+                Row(Modifier.weight(1f).heightIn(min = 40.dp).clip(RoundedCornerShape(11.dp))
+                    .background(if (selected) accent else Color.Transparent).clickable { noteTab = index == 1 }
+                    .padding(horizontal = 5.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.Center) {
+                    SiteIcon(glyph, null, Modifier.size(16.dp), ink); Spacer(Modifier.width(5.dp))
+                    Text(label, color = ink, fontSize = 12.sp, fontWeight = FontWeight.SemiBold, maxLines = 1)
                 }
             }
         }
-        AnimatedContent(noteTab,transitionSpec={fadeIn(tween(180)) with fadeOut(tween(100))}){showNotes->
-            if(showNotes)OutlinedTextField(value=notes,onValueChange={notes=it},label={Text("Note di questo turno")},modifier=Modifier.fillMaxWidth().padding(top=12.dp).heightIn(min=100.dp))
-            else Column(Modifier.fillMaxWidth().padding(top=12.dp)) {
-                if(def.isAllDay)Text("Questo turno è impostato su tutto il giorno.",color=TextSecondary,fontSize=13.sp)
-                else {
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                        OutlinedTextField(end,{end=it.take(5)},label={Text("Stacco effettivo")},singleLine=true,isError=!valid,
-                            keyboardOptions=KeyboardOptions(keyboardType=KeyboardType.Ascii),modifier=Modifier.weight(1f))
-                        CalendarAction(Icons.Default.Undo,"Azzera straordinario",{end=baseEnd},tint=danger)
+        Spacer(Modifier.height(14.dp))
+        AnimatedContent(noteTab, transitionSpec = {
+            (fadeIn(tween(260)) + slideInVertically(tween(260, easing = panelEasing)) { 4 }) with fadeOut(tween(100))
+        }) { showNotes ->
+            if (showNotes) Column {
+                Text("Note del turno", color = TextSecondary, fontSize = 11.sp)
+                BasicTextField(notes, { notes = it.take(500) }, textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp),
+                    cursorBrush = SolidColor(ObsidianPrimary), modifier = Modifier.fillMaxWidth().padding(top = 7.dp).height(130.dp)
+                        .clip(RoundedCornerShape(15.dp)).background(ObsidianSurfaceContainer).border(1.dp, ObsidianBorder, RoundedCornerShape(15.dp)).padding(12.dp),
+                    decorationBox = { field -> if (notes.isBlank()) Text("Scrivi una nota…", color = TextSecondary, fontSize = 14.sp); field() })
+            } else Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(ObsidianSurfaceContainer)
+                .border(1.dp, ObsidianBorder, RoundedCornerShape(18.dp)).padding(10.dp)) {
+                if (def.isAllDay) Text("Per calcolare lo straordinario serve un turno con orario di fine.", color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                else Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                        Text("Fine prevista", color = TextSecondary, fontSize = 11.sp)
+                        Text(baseEnd, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
                     }
-                    Text(if(valid&&hours>0)"Straordinario: ${formatOvertime(hours)}" else if(!valid)"Inserisci HH:mm, massimo 16 ore extra" else "Fine prevista $baseEnd",color=if(!valid)danger else TextSecondary,fontSize=12.sp,modifier=Modifier.padding(top=7.dp))
-                    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(top=10.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                        listOf(15,30,45,60,90,120).forEach{mins->
-                            Surface(Modifier.height(38.dp).bouncyClickable{end=LocalTime.parse(baseEnd).plusMinutes(mins.toLong()).toString()},shape=RoundedCornerShape(11.dp),color=ObsidianSurfaceHigh){
-                                Box(Modifier.padding(horizontal=11.dp),contentAlignment=Alignment.Center){Text(if(mins<60)"+${mins}m" else if(mins%60==0)"+${mins/60}h" else "+1h30",color=TextPrimary,fontSize=12.sp)}
-                            }
+                    Column(Modifier.widthIn(max = 125.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                        Text("Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
+                        BasicTextField(end, { updateEnd(it.filter { char -> char.isDigit() || char == ':' }.take(5)) }, singleLine = true,
+                            textStyle = TextStyle(color = if (valid) panelOvertime else panelDanger, fontSize = 20.sp, fontWeight = FontWeight.SemiBold),
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii), cursorBrush = SolidColor(panelOvertime),
+                            modifier = Modifier.fillMaxWidth().heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(ObsidianSurface).padding(7.dp))
+                    }
+                }
+                Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(if (hours > 0) "+${formatOvertime(hours)}" else "Nessuno straordinario", color = panelOvertime,
+                        fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
+                    Text("Azzera", color = if (TurniThemeState.dark) Color(0xFFFF9198) else Color(0xFFAB2131),
+                        fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.clip(RoundedCornerShape(9.dp)).clickable { end = baseEnd; hours = 0f }.padding(horizontal = 8.dp, vertical = 10.dp))
+                }
+                if (!def.isAllDay) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                    listOf(15, 30, 45, 60, 90, 120).forEach { minutes ->
+                        val label = if (minutes < 60) "+${minutes}m" else if (minutes == 90) "+1,5h" else "+${minutes / 60}h"
+                        Box(Modifier.widthIn(min = 43.dp).height(44.dp).clip(RoundedCornerShape(11.dp)).background(ObsidianSurface)
+                            .clickable { val current = runCatching { LocalTime.parse(end) }.getOrNull() ?: base
+                                if (current != null) updateEnd(current.plusMinutes(minutes.toLong()).format(DateTimeFormatter.ofPattern("HH:mm"))) }
+                            .padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
+                            Text(label, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
                         }
                     }
                 }
+                if (!valid) Text("Controlla l’orario di stacco: massimo 16 ore dopo la fine prevista", color = panelDanger,
+                    fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
             }
         }
+        Spacer(Modifier.height(14.dp))
+        PanelButton("Salva", "check", true, Modifier.fillMaxWidth(), 44.dp) {
+            if (valid) {
+                ShiftRepository.setShiftExtraDetails(date, shift.id, if (def.isAllDay || end == baseEnd) null else end,
+                    if (def.isAllDay) 0f else hours, notes)
+                onFeedback(ActionFeedback("Informazioni salvate", false)); close()
+            } else onFeedback(ActionFeedback("Controlla l’orario di stacco", true))
+        }
+    }
+}
+
+@Composable
+private fun NativeDayNotes(date: LocalDate, onClose: () -> Unit, onFeedback: (ActionFeedback) -> Unit) {
+    var notes by remember(date) { mutableStateOf(ShiftRepository.getDayExtraInfo(date).notes) }
+    NativeBottomDialog(onClose) { close ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            PanelIcon("arrow-left", "Torna al dettaglio giorno", close, width = 40.dp, height = 40.dp, glyphSize = 20.dp)
+            Text("Note e tag", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(start = 8.dp))
+        }
+        BasicTextField(notes, { notes = it.take(500) }, textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp),
+            cursorBrush = SolidColor(ObsidianPrimary), modifier = Modifier.fillMaxWidth().padding(top = 16.dp).height(130.dp)
+                .clip(RoundedCornerShape(15.dp)).background(ObsidianSurfaceContainer).border(1.dp, ObsidianBorder, RoundedCornerShape(15.dp)).padding(12.dp),
+            decorationBox = { field -> if (notes.isBlank()) Text("Formazione, condotta, visite…", color = TextSecondary, fontSize = 14.sp); field() })
         Spacer(Modifier.height(18.dp))
-        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.CenterVertically) {
-            CalendarAction(Icons.Default.DeleteOutline,"Elimina turno",{deleting=true},tint=danger)
-            Button(onClick={ShiftRepository.setShiftExtraDetails(date,shift.id,if(def.isAllDay)null else end,if(def.isAllDay)0f else hours,notes)
-                onFeedback(ActionFeedback("Informazioni salvate",false));close()},enabled=def.isAllDay||valid,modifier=Modifier.weight(1f),shape=RoundedCornerShape(14.dp)){
-                Icon(Icons.Default.Check,null,Modifier.size(18.dp));Spacer(Modifier.width(8.dp));Text("Salva",modifier=Modifier.padding(vertical=5.dp))
-            }
+        PanelButton("Salva nota", "check", true, Modifier.fillMaxWidth(), 44.dp) {
+            ShiftRepository.setDayNotes(date, notes); onFeedback(ActionFeedback("Nota aggiornata", false)); close()
         }
-        if(deleting)AlertDialog(onDismissRequest={deleting=false},title={Text("Eliminare questo turno?")},
-            confirmButton={TextButton(onClick={ShiftRepository.removeAssignedShift(date,shift.id);onFeedback(ActionFeedback("Turno eliminato",true));close()}){Text("Elimina",color=danger)}},
-            dismissButton={TextButton(onClick={deleting=false}){Text("Annulla")}},containerColor=ObsidianSurface)
     }
 }
 
 @Composable
-internal fun NativeElementEraser(date:LocalDate,extrasOnly:Boolean,onClose:()->Unit,onRemove:(String)->Unit) {
-    NativeBottomDialog(onClose){close->
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Cosa vuoi eliminare?",color=TextPrimary,fontSize=19.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));CalendarAction(Icons.Default.Close,"Chiudi gomma",close)}
-        ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}.drop(if(extrasOnly)1 else 0).forEach{shift->
-            val def=ShiftRepository.getShiftDefinition(shift.shiftDefId)
-            Row(Modifier.fillMaxWidth().padding(vertical=7.dp).clip(RoundedCornerShape(13.dp)).background(ObsidianSurfaceContainer).clickable{
-                onRemove(shift.id)
-                val remaining=ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}
-                if((extrasOnly&&remaining.size<=1)||(remaining.isEmpty()&&!ShiftRepository.isOnCall(date)))close()
-            }.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(12.dp).background(def?.color?:ObsidianPrimary,CircleShape));Spacer(Modifier.width(10.dp));Text(def?.name?:"Turno",color=TextPrimary,modifier=Modifier.weight(1f));Icon(Icons.Default.DeleteOutline,"Elimina",tint=danger)
+internal fun NativeElementEraser(date: LocalDate, extrasOnly: Boolean, onClose: () -> Unit, onRemove: (String) -> Unit) {
+    NativeBottomDialog(onClose) { close ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)) {
+                Text("Cosa vuoi rimuovere?", color = TextPrimary, fontSize = 17.sp, fontWeight = FontWeight.Bold)
+                Text(panelDate(date, true), color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(top = 3.dp))
+            }
+            PanelIcon("x", "Chiudi senza altre modifiche", close, width = 36.dp, height = 36.dp, glyphSize = 18.dp)
+        }
+        Text("Rimuovi i singoli elementi. Gli altri turni e le note del giorno restano.", color = TextSecondary, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(vertical = 10.dp))
+        val shifts = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
+        shifts.drop(if (extrasOnly) 1 else 0).forEach { shift ->
+            val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
+            Row(Modifier.fillMaxWidth().padding(bottom = 7.dp).clip(RoundedCornerShape(15.dp)).background(ObsidianSurfaceContainer).padding(10.dp),
+                verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+                if (def != null) Box(Modifier.size(38.dp, 35.dp).clip(RoundedCornerShape(9.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                    Text(def.shortCode, color = catalogInk(def.color), fontWeight = FontWeight.Bold, fontSize = 11.sp, maxLines = 2)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text(def?.name ?: "Turno", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+                    Text("Turno ${shifts.indexOf(shift) + 1} · ${def?.timeRangeFormatted ?: ""}", color = TextSecondary, fontSize = 10.sp)
+                }
+                PanelIcon("trash", "Rimuovi ${def?.name ?: "turno"}", {
+                    onRemove(shift.id)
+                    val remaining = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
+                    if ((extrasOnly && remaining.size <= 1) || (remaining.isEmpty() && !ShiftRepository.isOnCall(date))) close()
+                }, width = 44.dp, height = 44.dp, glyphSize = 18.dp, tint = panelDanger, background = ObsidianSurface)
             }
         }
-        if(!extrasOnly&&ShiftRepository.isOnCall(date))TextButton(onClick={onRemove("oncall");if(ShiftRepository.getShiftsForDate(date).isEmpty())close()}){Icon(Icons.Default.Notifications,null);Spacer(Modifier.width(10.dp));Text("Rimuovi reperibilità")}
+        if (!extrasOnly && ShiftRepository.isOnCall(date)) Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(15.dp)).background(ObsidianSurfaceContainer).padding(10.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(9.dp)) {
+            Box(Modifier.size(38.dp, 35.dp).clip(RoundedCornerShape(9.dp)).background(panelOncallSurface), contentAlignment = Alignment.Center) { Text("R", color = panelOncallInk, fontSize = 11.sp, fontWeight = FontWeight.Bold) }
+            Column(Modifier.weight(1f)) { Text("Reperibilità", color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold); Text("Solo per questa giornata", color = TextSecondary, fontSize = 10.sp) }
+            PanelIcon("trash", "Rimuovi solo la reperibilità", { onRemove("oncall"); if (ShiftRepository.getShiftsForDate(date).isEmpty()) close() },
+                width = 44.dp, height = 44.dp, glyphSize = 18.dp, tint = panelDanger, background = ObsidianSurface)
+        }
     }
 }
 
 @Composable
-internal fun NativeShiftChooser(onDismiss:()->Unit,onChoose:(String)->Unit) {
-    NativeBottomDialog(onDismiss){close->
-        Row(verticalAlignment=Alignment.CenterVertically){Text("Scegli turno",color=TextPrimary,fontSize=20.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f));CalendarAction(Icons.Default.Close,"Chiudi selezione",close)}
-        ShiftRepository.shiftDefinitions.filter{it.workProfileId==ShiftRepository.activeWorkProfileId}.forEach{def->
-            Row(Modifier.fillMaxWidth().padding(top=7.dp).clip(RoundedCornerShape(14.dp)).background(lerp(ObsidianSurface,def.color,.15f)).bouncyClickable{onChoose(def.id);close()}.padding(12.dp),verticalAlignment=Alignment.CenterVertically){
-                Box(Modifier.size(42.dp).clip(RoundedCornerShape(11.dp)).background(def.color),contentAlignment=Alignment.Center){Text(def.shortCode.take(4),color=contrast(def.color),fontWeight=FontWeight.Bold,fontSize=13.sp)}
-                Column(Modifier.padding(start=12.dp)){Text(def.name,color=TextPrimary,fontWeight=FontWeight.SemiBold);Text(def.timeRangeFormatted,color=TextSecondary,fontSize=12.sp)}
+internal fun NativeShiftChooser(onDismiss: () -> Unit, onChoose: (String) -> Unit) {
+    NativeBottomDialog(onDismiss) { close ->
+        Row(verticalAlignment = Alignment.CenterVertically) {
+            Text("Scegli turno", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+            PanelIcon("x", "Chiudi selezione", close, width = 36.dp, height = 36.dp, glyphSize = 18.dp)
+        }
+        ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.forEach { def ->
+            Row(Modifier.fillMaxWidth().padding(top = 7.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer)
+                .clickable { onChoose(def.id); close() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(39.dp).clip(RoundedCornerShape(12.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                    Text(def.shortCode, color = catalogInk(def.color), fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+                }
+                Column(Modifier.padding(start = 12.dp)) {
+                    Text(def.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                    Text(def.timeRangeFormatted, color = TextSecondary, fontSize = 12.sp)
+                }
             }
         }
     }

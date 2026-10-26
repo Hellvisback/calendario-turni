@@ -19,7 +19,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -148,7 +148,7 @@ fun ImportShiftsScreen(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.ArrowBack,
+                        Icons.Outlined.ArrowBack,
                         contentDescription = "Indietro",
                         tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
@@ -183,7 +183,7 @@ fun ImportShiftsScreen(
             Column(modifier = Modifier.padding(16.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.AutoFixHigh,
+                        Icons.Outlined.AutoFixHigh,
                         contentDescription = null,
                         tint = ObsidianPrimary,
                         modifier = Modifier.size(22.dp)
@@ -234,7 +234,7 @@ fun ImportShiftsScreen(
                     placeholder = { Text("Es. Marcozzi, Raglione, Luca, Eros, Tardivo...", fontSize = 12.sp, color = TextMuted) },
                     leadingIcon = {
                         Icon(
-                            Icons.Default.PersonSearch,
+                            Icons.Outlined.PersonSearch,
                             contentDescription = null,
                             tint = ObsidianPrimary,
                             modifier = Modifier.size(20.dp)
@@ -246,7 +246,7 @@ fun ImportShiftsScreen(
                                 workerNameFilter = ""
                                 employeeSearchQuery = ""
                             }) {
-                                Icon(Icons.Default.Clear, contentDescription = "Pulisci", tint = TextMuted, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.Clear, contentDescription = "Pulisci", tint = TextMuted, modifier = Modifier.size(18.dp))
                             }
                         }
                     },
@@ -269,7 +269,7 @@ fun ImportShiftsScreen(
                         .fillMaxWidth()
                         .height(42.dp)
                 ) {
-                    Icon(Icons.Default.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                    Icon(Icons.Outlined.UploadFile, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
                     Spacer(modifier = Modifier.width(8.dp))
                     Text("Sfoglia File (PDF, Excel, CSV, TXT)", fontSize = 12.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                 }
@@ -342,7 +342,7 @@ fun ImportShiftsScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Analisi in corso...", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     } else {
-                        Icon(Icons.Default.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.Bolt, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Analizza Tabellone Turni", color = MaterialTheme.colorScheme.onPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
                     }
@@ -365,7 +365,7 @@ fun ImportShiftsScreen(
             ) {
                 Column(modifier = Modifier.padding(14.dp)) {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.DateRange, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.DateRange, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text(
                             text = if (result.validityStart != null && result.validityEnd != null) {
@@ -424,7 +424,7 @@ fun ImportShiftsScreen(
                                     feedbackMessage = "Orari turni sincronizzati con successo (${result.detectedHours.size} fasce)!"
                                 }
                             ) {
-                                Icon(Icons.Default.Sync, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+                                Icon(Icons.Outlined.Sync, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
                                 Spacer(modifier = Modifier.width(4.dp))
                                 Text("Aggiorna Orari", fontSize = 11.sp, color = ObsidianPrimary, fontWeight = FontWeight.Bold)
                             }
@@ -476,7 +476,7 @@ fun ImportShiftsScreen(
                                     modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+                                    Icon(Icons.Outlined.FilterList, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(5.dp))
                                     Text(
                                         text = "Filtro impostato a monte: \"$activeQuery\"",
@@ -568,7 +568,7 @@ fun ImportShiftsScreen(
                                 contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                             ) {
                                 Icon(
-                                    imageVector = if (showAllEmployees) Icons.Default.ExpandLess else Icons.Default.ExpandMore,
+                                    imageVector = if (showAllEmployees) Icons.Outlined.ExpandLess else Icons.Outlined.ExpandMore,
                                     contentDescription = null,
                                     tint = ObsidianPrimary,
                                     modifier = Modifier.size(16.dp)
@@ -751,7 +751,7 @@ fun ImportShiftsScreen(
                                     shape = RoundedCornerShape(12.dp),
                                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
                                 ) {
-                                    Icon(Icons.Default.DoneAll, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Outlined.DoneAll, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimary, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text(
                                         text = "Applica i Miei Turni al Calendario",
@@ -900,7 +900,7 @@ fun ImportShiftsScreen(
                                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimaryContainer),
                                 modifier = Modifier.weight(1.3f).height(40.dp)
                             ) {
-                                Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
+                                Icon(Icons.Outlined.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(16.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Salva nel catalogo", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                             }
@@ -921,7 +921,7 @@ fun ImportShiftsScreen(
                                 border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
                                 modifier = Modifier.weight(1f).height(40.dp)
                             ) {
-                                Icon(Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
+                                Icon(Icons.Outlined.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(15.dp))
                                 Spacer(modifier = Modifier.width(6.dp))
                                 Text("Modifica", fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                             }
@@ -944,7 +944,7 @@ fun ImportShiftsScreen(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        Icons.Default.Info,
+                        Icons.Outlined.Info,
                         contentDescription = null,
                         tint = ObsidianPrimary,
                         modifier = Modifier.size(20.dp)
@@ -1009,7 +1009,7 @@ fun ImportShiftsScreen(
                                 .weight(1.3f)
                                 .height(44.dp)
                         ) {
-                            Icon(Icons.Default.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(17.dp))
+                            Icon(Icons.Outlined.BookmarkAdded, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(17.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Salva nel catalogo", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                         }
@@ -1034,7 +1034,7 @@ fun ImportShiftsScreen(
                                 .weight(1f)
                                 .height(44.dp)
                         ) {
-                            Icon(Icons.Default.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                            Icon(Icons.Outlined.Edit, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
                             Spacer(modifier = Modifier.width(6.dp))
                             Text("Modifica", fontSize = 12.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                         }
@@ -1053,7 +1053,7 @@ fun ImportShiftsScreen(
             title = {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Icon(
-                        Icons.Default.WarningAmber,
+                        Icons.Outlined.WarningAmber,
                         contentDescription = null,
                         tint = ColorReperibilita,
                         modifier = Modifier.size(22.dp)
@@ -1168,7 +1168,7 @@ private fun ElasticStarButton(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
+                imageVector = if (isDefault) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                 contentDescription = if (isDefault) "Revoca predefinito" else "Imposta come predefinito",
                 tint = if (isDefault) ColorReperibilita else TextSecondary,
                 modifier = Modifier

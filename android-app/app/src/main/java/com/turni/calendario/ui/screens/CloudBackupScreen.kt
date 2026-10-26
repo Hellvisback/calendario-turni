@@ -1,622 +1,193 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.turni.calendario.ui.screens
 
-import android.content.Intent
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
+import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.background
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
+import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.bouncyClickable
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.turni.calendario.repository.ShiftRepository
-import com.turni.calendario.sync.GoogleDriveBackupHelper
+import com.turni.calendario.repository.*
+import com.turni.calendario.sync.*
 import com.turni.calendario.ui.components.ActionFeedback
-import com.turni.calendario.ui.components.MagicalActionFeedbackHUD
 import com.turni.calendario.ui.theme.*
-import java.time.LocalDate
-import java.time.LocalDateTime
+import kotlinx.coroutines.*
+import java.io.File
+import java.time.Instant
+import java.time.ZoneId
 import java.time.format.DateTimeFormatter
 
-/**
- * Local database backups plus provider-independent JSON export/import through SAF.
- * A selected account is a profile reference, not a Drive authentication session.
- */
-@Composable
-fun CloudBackupScreen(
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
-    val autoBackupEnabled = ShiftRepository.appPreferences.autoBackupDaily
-    var lastBackupTime by remember { mutableStateOf(GoogleDriveBackupHelper.getCloudBackupInfo(context) ?: "Nessun backup") }
-    var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
-
-    val totalShifts = ShiftRepository.calendarShifts.values.sumOf { it.size }
-    val totalRotations = ShiftRepository.rotations.size
-    val totalModels = ShiftRepository.shiftDefinitions.size
-
-    // Launcher per Salvare Backup su Google Drive / File
-    val createBackupLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.CreateDocument("application/json")
-    ) { uri ->
-        if (uri != null) {
-            val ok = GoogleDriveBackupHelper.writeBackupToUri(context, uri)
-            if (ok) {
-                actionFeedback = ActionFeedback(
-                    message = "File backup esportato",
-                    timestamp = System.currentTimeMillis(),
-                    isDestructive = false
-                )
-            } else {
-                actionFeedback = ActionFeedback(
-                    message = "Impossibile esportare il backup",
-                    timestamp = System.currentTimeMillis(),
-                    isDestructive = true
-                )
-            }
-        }
-    }
-
-    // Launcher per Ripristinare da Google Drive / File
-    val restoreBackupLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.OpenDocument()
-    ) { uri ->
-        if (uri != null) {
-            val result = GoogleDriveBackupHelper.restoreDatabaseFromUri(context, uri)
-            if (result.success) {
-                actionFeedback = ActionFeedback(
-                    message = "Ripristino completato con successo",
-                    timestamp = System.currentTimeMillis(),
-                    isDestructive = false
-                )
-            } else {
-                actionFeedback = ActionFeedback(
-                    message = result.message,
-                    timestamp = System.currentTimeMillis(),
-                    isDestructive = true
-                )
-            }
-        }
-    }
-
-    BackHandler(onBack = onDismiss)
-
-    // Wrap in Box for overlay popup
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-            .verticalScroll(rememberScrollState())
-            .padding(16.dp)
-    ) {
-        // Top Bar
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            IconButton(
-                onClick = onDismiss,
-                modifier = Modifier
-                    .size(40.dp)
-                    .clip(CircleShape)
-                    .background(ObsidianSurfaceContainer)
-            ) {
-                Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = TextPrimary)
-            }
-
-            Text(
-                text = "Backup e ripristino",
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-                color = TextPrimary
-            )
-
-            Box(modifier = Modifier.size(40.dp))
-        }
-
-        Spacer(modifier = Modifier.height(18.dp))
-
-        var showAccountPicker by remember { mutableStateOf(false) }
-        val currentAccount = ShiftRepository.googleAccountProfile
-
-        // Card Profilo / Account Google Reale
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-            border = CardDefaults.outlinedCardBorder()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(52.dp)
-                            .clip(CircleShape)
-                            .background(if (currentAccount != null) ObsidianPrimary else ObsidianBorder),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(
-                            imageVector = if (currentAccount != null) Icons.Default.AccountCircle else Icons.Default.PersonOff,
-                            contentDescription = null,
-                            tint = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
-                            modifier = Modifier.size(34.dp)
-                        )
-                    }
-
-                    Spacer(modifier = Modifier.width(16.dp))
-
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = if (currentAccount != null) currentAccount.displayName else "Nessun Account Collegato",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = currentAccount?.email ?: "Profilo facoltativo per i tuoi dati",
-                            color = TextSecondary,
-                            fontSize = 13.sp
-                        )
-                        Spacer(modifier = Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Box(
-                                modifier = Modifier
-                                    .size(8.dp)
-                                    .clip(CircleShape)
-                                    .background(if (currentAccount != null) ObsidianTertiary else ColorNegative)
-                            )
-                            Spacer(modifier = Modifier.width(6.dp))
-                            Text(
-                                text = if (currentAccount != null) "Profilo selezionato" else "Nessun profilo selezionato",
-                                color = if (currentAccount != null) ObsidianTertiary else ColorNegative,
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.SemiBold
-                            )
-                        }
-                    }
-                }
-
-                Spacer(modifier = Modifier.height(14.dp))
-                Divider(color = ObsidianSurfaceContainer, thickness = 1.dp)
-                Spacer(modifier = Modifier.height(10.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.End,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    if (currentAccount != null) {
-                        TextButton(
-                            onClick = {
-                                ShiftRepository.disconnectGoogleAccount()
-                                actionFeedback = ActionFeedback(
-                                    message = "Profilo rimosso",
-                                    timestamp = System.currentTimeMillis(),
-                                    isDestructive = true
-                                )
-                            }
-                        ) {
-                            Text("Rimuovi profilo", color = ColorNegative, fontSize = 13.sp)
-                        }
-                        Spacer(modifier = Modifier.width(8.dp))
-                    }
-                    Button(
-                        onClick = { showAccountPicker = true },
-                        colors = ButtonDefaults.buttonColors(containerColor = if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
-                        shape = RoundedCornerShape(10.dp)
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.SwitchAccount,
-                            contentDescription = null,
-                            tint = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
-                            modifier = Modifier.size(16.dp)
-                        )
-                        Spacer(modifier = Modifier.width(6.dp))
-                        Text(
-                            text = if (currentAccount != null) "Cambia profilo" else "Profilo di riferimento",
-                            color = catalogInk(if (currentAccount != null) ObsidianSurfaceHigh else ObsidianPrimary),
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 13.sp
-                        )
-                    }
-                }
-            }
-        }
-
-        // Dialog Selezione Account Google Reale
-        if (showAccountPicker) {
-            var customEmailInput by remember { mutableStateOf("") }
-            AlertDialog(
-                onDismissRequest = { showAccountPicker = false },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.AccountCircle, contentDescription = null, tint = ObsidianPrimary)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Account Google", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 18.sp)
-                    }
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Scegli il profilo di riferimento. Il backup automatico rimane sul dispositivo.",
-                            color = TextSecondary,
-                            fontSize = 13.sp
-                        )
-
-                        ShiftRepository.deviceGoogleAccounts.forEach { acc ->
-                            val isSelected = currentAccount?.email == acc.email
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = if (isSelected) ObsidianPrimary.copy(alpha = 0.2f) else ObsidianSurfaceContainer,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, if (isSelected) ObsidianPrimary else ObsidianBorder),
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clickable {
-                                        ShiftRepository.setGoogleAccount(acc.email, acc.displayName)
-                                        actionFeedback = ActionFeedback(
-                                            message = "Profilo selezionato: ${acc.email}",
-                                            timestamp = System.currentTimeMillis(),
-                                            isDestructive = false
-                                        )
-                                        showAccountPicker = false
-                                    }
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(
-                                        Icons.Default.Mail,
-                                        contentDescription = null,
-                                        tint = if (isSelected) ObsidianPrimary else TextPrimary,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column(modifier = Modifier.weight(1f)) {
-                                        Text(acc.email, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 13.5.sp)
-                                        Text(acc.displayName, color = TextSecondary, fontSize = 11.5.sp)
-                                    }
-                                    if (isSelected) {
-                                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = ObsidianTertiary, modifier = Modifier.size(18.dp))
-                                    }
-                                }
-                            }
-                        }
-
-                        Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 4.dp))
-
-                        Text("Oppure inserisci un altro account Google:", color = TextSecondary, fontSize = 12.sp)
-
-                        OutlinedTextField(
-                            value = customEmailInput,
-                            onValueChange = { customEmailInput = it },
-                            label = { Text("email@gmail.com") },
-                            singleLine = true,
-                            modifier = Modifier.fillMaxWidth()
-                        )
-                    }
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            if (customEmailInput.isNotBlank() && customEmailInput.contains("@")) {
-                                ShiftRepository.setGoogleAccount(customEmailInput.trim(), customEmailInput.substringBefore("@"))
-                                actionFeedback = ActionFeedback(
-                                    message = "Profilo selezionato: ${customEmailInput.trim()}",
-                                    timestamp = System.currentTimeMillis(),
-                                    isDestructive = false
-                                )
-                                showAccountPicker = false
-                            }
-                        },
-                        enabled = customEmailInput.isNotBlank() && customEmailInput.contains("@"),
-                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
-                    ) {
-                        Text("Seleziona", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showAccountPicker = false }) {
-                        Text("Annulla", color = TextSecondary)
-                    }
-                },
-                containerColor = ObsidianSurface,
-                shape = RoundedCornerShape(20.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Statistiche Dati Archiviati
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-            border = CardDefaults.outlinedCardBorder()
-        ) {
-            Column(modifier = Modifier.padding(16.dp)) {
-                Text(
-                    text = "Dati del tuo Profilo",
-                    color = TextPrimary,
-                    fontWeight = FontWeight.SemiBold,
-                    fontSize = 14.sp
-                )
-                Spacer(modifier = Modifier.height(12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceAround
-                ) {
-                    StatItem(title = "Turni Assegnati", value = "$totalShifts")
-                    StatItem(title = "Modelli Turno", value = "$totalModels")
-                    StatItem(title = "Cicli Rotazione", value = "$totalRotations")
-                }
-
-                Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 12.dp))
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Text("Ultimo backup locale:", color = TextSecondary, fontSize = 12.sp)
-                    Text(lastBackupTime, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Opzione Backup Automatico
-        Card(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(20.dp),
-            colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-            border = CardDefaults.outlinedCardBorder()
-        ) {
-            Row(
-                modifier = Modifier
-                    .padding(16.dp)
-                    .fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text("Backup automatico locale", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                    Spacer(modifier = Modifier.height(2.dp))
-                    Text("Salva una copia all’avvio dell’app. Esporta un file per conservarlo anche altrove.", color = TextSecondary, fontSize = 11.sp)
-                }
-                Switch(
-                    checked = autoBackupEnabled,
-                    onCheckedChange = { isChecked ->
-                        ShiftRepository.appPreferences = ShiftRepository.appPreferences.copy(autoBackupDaily = isChecked)
-                        if (isChecked) {
-                            val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
-                            if (ok) {
-                                lastBackupTime = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                                actionFeedback = ActionFeedback(
-                                    message = "Backup locale automatico attivato",
-                                    timestamp = System.currentTimeMillis(),
-                                    isDestructive = false
-                                )
-                            }
-                        } else {
-                            actionFeedback = ActionFeedback(
-                                message = "Backup automatico disattivato",
-                                timestamp = System.currentTimeMillis(),
-                                isDestructive = false
-                            )
-                        }
-                    },
-                    colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(20.dp))
-
-
-        var showConfirmRestoreDialog by remember { mutableStateOf(false) }
-
-        // Tasto Principale 1-Tap: Salva backup sul dispositivo Diretto
-        Button(
-            onClick = {
-                try {
-                    val ok = GoogleDriveBackupHelper.saveCloudBackupDirect(context)
-                    if (ok) {
-                        val now = LocalDateTime.now().format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
-                        lastBackupTime = now
-                        actionFeedback = ActionFeedback(
-                            message = "Backup locale salvato",
-                            timestamp = System.currentTimeMillis(),
-                            isDestructive = false
-                        )
-                    } else {
-                        actionFeedback = ActionFeedback(
-                            message = "Impossibile salvare il backup locale",
-                            timestamp = System.currentTimeMillis(),
-                            isDestructive = true
-                        )
-                    }
-                } catch (e: Throwable) {
-                    actionFeedback = ActionFeedback(
-                        message = "Errore: ${e.localizedMessage ?: "Impossibile salvare il backup"}",
-                        timestamp = System.currentTimeMillis(),
-                        isDestructive = true
-                    )
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(52.dp),
-            shape = RoundedCornerShape(14.dp),
-            colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
-        ) {
-            Icon(Icons.Default.CloudUpload, contentDescription = null, tint = ObsidianBackground)
-            Spacer(modifier = Modifier.width(10.dp))
-            Text("Salva backup sul dispositivo", color = ObsidianBackground, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-        }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Tasto Rapido: Ripristina Ultimo Backup da Google Drive
-        OutlinedButton(
-            onClick = {
-                if (GoogleDriveBackupHelper.hasCloudBackup(context)) {
-                    showConfirmRestoreDialog = true
-                } else {
-                    Toast.makeText(context, "Nessun backup locale disponibile", Toast.LENGTH_SHORT).show()
-                }
-            },
-            modifier = Modifier.fillMaxWidth().height(48.dp),
-            shape = RoundedCornerShape(14.dp),
-            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-        ) {
-            Icon(Icons.Default.CloudDownload, contentDescription = null, tint = ObsidianPrimary)
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Ripristina backup locale", color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Sezione Avanzata Opzionale: Condivisione o Selezione Manuale File
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            OutlinedButton(
-                onClick = {
-                    val filename = "turni_backup_${LocalDate.now()}.json"
-                    createBackupLauncher.launch(filename)
-                },
-                modifier = Modifier.weight(1f).height(42.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle)
-            ) {
-                Text("Esporta File...", color = TextSecondary, fontSize = 12.sp)
-            }
-
-            OutlinedButton(
-                onClick = {
-                    restoreBackupLauncher.launch(arrayOf("application/json", "text/*"))
-                },
-                modifier = Modifier.weight(1f).height(42.dp),
-                shape = RoundedCornerShape(12.dp),
-                border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle)
-            ) {
-                Text("Sfoglia File...", color = TextSecondary, fontSize = 12.sp)
-            }
-        }
-
-        // Dialog di Conferma Ripristino
-        if (showConfirmRestoreDialog) {
-            val backupDate = GoogleDriveBackupHelper.getCloudBackupInfo(context) ?: "recente"
-            AlertDialog(
-                onDismissRequest = { showConfirmRestoreDialog = false },
-                title = { Text("Ripristina backup locale", color = TextPrimary, fontWeight = FontWeight.Bold) },
-                text = {
-                    Text(
-                        text = "Vuoi ripristinare il backup del $backupDate?\nI turni, le rotazioni e i modelli verranno sostituiti con quelli della copia locale.",
-                        color = TextSecondary,
-                        fontSize = 13.5.sp
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showConfirmRestoreDialog = false
-                            try {
-                                val res = GoogleDriveBackupHelper.restoreCloudBackupDirect(context)
-                                if (res.success) {
-                                    actionFeedback = ActionFeedback(
-                                        message = "Ripristino completato con successo (${res.shiftsCount} turni)",
-                                        timestamp = System.currentTimeMillis(),
-                                        isDestructive = false
-                                    )
-                                } else {
-                                    actionFeedback = ActionFeedback(
-                                        message = res.message,
-                                        timestamp = System.currentTimeMillis(),
-                                        isDestructive = true
-                                    )
-                                }
-                            } catch (e: Throwable) {
-                                actionFeedback = ActionFeedback(
-                                    message = "Errore durante il ripristino: ${e.localizedMessage ?: "Errore"}",
-                                    timestamp = System.currentTimeMillis(),
-                                    isDestructive = true
-                                )
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
-                    ) {
-                        Text("Conferma Ripristino", color = ObsidianBackground, fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showConfirmRestoreDialog = false }) {
-                        Text("Annulla", color = TextMuted)
-                    }
-                },
-                containerColor = ObsidianSurfaceContainer,
-                shape = RoundedCornerShape(18.dp)
-            )
-        }
-
-        Spacer(modifier = Modifier.height(80.dp))
-    }
-
-    MagicalActionFeedbackHUD(
-        feedback = actionFeedback,
-        onDismiss = { actionFeedback = null },
-        modifier = Modifier
-            .align(Alignment.TopCenter)
-            .statusBarsPadding()
-            .padding(top = 16.dp)
-    )
-    }
-}
+private data class BackupRestorePreview(val data:DatabaseSnapshot,val source:String)
 
 @Composable
-private fun StatItem(title: String, value: String) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally) {
-        Text(
-            text = value,
-            fontSize = 20.sp,
-            fontWeight = FontWeight.Bold,
-            color = ObsidianPrimary
-        )
-        Spacer(modifier = Modifier.height(2.dp))
-        Text(
-            text = title,
-            fontSize = 11.sp,
-            color = TextSecondary
-        )
+fun CloudBackupScreen(onDismiss:()->Unit){
+    val context=LocalContext.current;val scope=rememberCoroutineScope()
+    var feedback by remember{mutableStateOf<ActionFeedback?>(null)}
+    var busy by remember{mutableStateOf(false)}
+    val access=rememberGoogleAccess{feedback=ActionFeedback(it,true)}
+    var remoteInfo by remember{mutableStateOf<String?>(null)}
+    var localInfo by remember{mutableStateOf(GoogleDriveBackupHelper.getLocalBackupInfo(context))}
+    var preview by remember{mutableStateOf<BackupRestorePreview?>(null)}
+    var exportSnapshot by remember{mutableStateOf<DatabaseSnapshot?>(null)}
+    val email=ShiftRepository.googleAccountProfile?.email
+    val automatic by DriveAutomaticBackup.statusFlow.collectAsState()
+    var otherCopies by remember{mutableStateOf(false)}
+    fun refreshAutomatic(){DriveAutomaticBackup.refresh(context)}
+    LaunchedEffect(email){
+        remoteInfo=null
+        refreshAutomatic()
+    }
+    fun failed(error:Exception){feedback=ActionFeedback(error.message?:"Operazione non riuscita. Riprova.",true)}
+    fun prepareRestore(source:String,reader:()->String){
+        val previous=DatabaseSnapshot.capture();busy=true
+        scope.launch{
+            try{val parsed=withContext(Dispatchers.IO){DatabaseRestore.parse(reader(),previous)};preview=BackupRestorePreview(parsed,source)}
+            catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}
+        }
+    }
+    val export=rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/json")){uri->
+        if(uri!=null){val snapshot=exportSnapshot?:DatabaseSnapshot.capture();busy=true
+            scope.launch{try{withContext(Dispatchers.IO){val json=GoogleDriveBackupHelper.exportDatabaseToJson(snapshot);val stream=context.contentResolver.openOutputStream(uri)?:error("File non accessibile.");stream.use{it.write(json.toByteArray(Charsets.UTF_8))}};feedback=ActionFeedback("File backup esportato")}
+                catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false;exportSnapshot=null}}
+        }else exportSnapshot=null
+    }
+    val import=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->if(uri!=null)prepareRestore("File selezionato"){readBackupDocument(context,uri)}}
+    val enabled=!busy&&!access.busy
+    fun saveRemote(token:String,enableAutomatic:Boolean=false){
+        if(LocalDatabaseStore.loadError!=null){feedback=ActionFeedback("Dati locali non leggibili: ripristina una copia valida prima di salvare su Drive.",true);return}
+        val owner=ShiftRepository.googleAccountProfile?.email?:return
+        if(enableAutomatic){DriveAutomaticBackup.configure(context,true,automatic.intervalHours,owner);refreshAutomatic()}
+        val snapshot=DatabaseSnapshot.capture();busy=true
+        scope.launch{try{
+            val saved=withContext(Dispatchers.IO){GoogleDriveRemote.upload(token,GoogleDriveBackupHelper.exportDatabaseToJson(snapshot))}
+            if(ShiftRepository.googleAccountProfile?.email==owner){
+                DriveAutomaticBackup.recordManualSuccess(context,owner,saved.modifiedTime)
+                refreshAutomatic();remoteInfo=formatBackupTime(saved.modifiedTime)
+                feedback=ActionFeedback(if(enableAutomatic)"Backup salvato · automatico attivato" else "Backup salvato su Google Drive")
+            }
+        }catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
+    }
+    fun enableAutomatic(hours:Int){
+        access.authorize(GoogleFeature.DRIVE){
+            val owner=ShiftRepository.googleAccountProfile?.email?:return@authorize
+            DriveAutomaticBackup.configure(context,true,hours,owner);refreshAutomatic()
+            DriveAutomaticBackup.runNow(context)
+            feedback=ActionFeedback("Backup automatico attivato")
+        }
+    }
+    CloudFeatureScaffold("Backup e ripristino",onDismiss,feedback,{feedback=null}){
+        GoogleAccountCard(access,{feedback=it},enabled=!busy,feature=GoogleFeature.DRIVE,
+            explanation="Accedi con il tuo account per salvare una copia privata su Drive e attivare il backup giornaliero.",
+            onConnected={token->saveRemote(token,true)})
+        CloudCard("Backup su Google Drive"){
+            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                Column(Modifier.weight(1f)){
+                    Text("Salvataggio automatico",color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.Medium)
+                    Text(if(automatic.running)"Salvataggio in corso…" else if(automatic.enabled)"In background, quando c’è connessione" else "Attivalo per proteggere le modifiche",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)
+                }
+                Switch(checked=automatic.enabled,enabled=enabled,onCheckedChange={on->
+                    if(on)enableAutomatic(automatic.intervalHours) else {DriveAutomaticBackup.disable(context);refreshAutomatic();feedback=ActionFeedback("Backup automatico disattivato")}
+                })
+            }
+            AnimatedVisibility(automatic.enabled,enter=expandVertically(spring(stiffness=450f))+fadeIn(),exit=shrinkVertically(spring(stiffness=550f))+fadeOut()){
+                Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
+                    Text("Ogni quanto salvare",color=TextSecondary,fontSize=12.sp)
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)){
+                        listOf(6,12,24,168).forEach{hours->
+                            val selected=automatic.intervalHours==hours
+                            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if(selected)ObsidianPrimary else ObsidianSurfaceHigh)
+                                .bouncyClickable(enabled){enableAutomatic(hours)}.padding(vertical=10.dp),contentAlignment=Alignment.Center){
+                                Text(when(hours){24->"1 giorno";168->"7 giorni";else->"${hours}h"},fontSize=11.sp,fontWeight=FontWeight.Medium,color=if(selected)catalogInk(ObsidianPrimary)else TextPrimary)
+                            }
+                        }
+                    }
+                }
+            }
+            val last=remoteInfo?:automatic.lastSuccessAt.takeIf{it>0L}?.let{formatBackupInstant(it)}
+            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
+                SiteIcon(if(last==null)"cloud" else "check",null,Modifier.size(16.dp),TextSecondary)
+                Text(last?.let{"Ultimo backup · $it"}?:"Nessun salvataggio Drive confermato",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)
+            }
+            if(automatic.needsConsent)TextButton(onClick={enableAutomatic(automatic.intervalHours)},enabled=enabled){Text("Ricollega Google per riprendere i backup",color=ObsidianPrimary,fontSize=12.sp)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                CloudButton(if(busy)"Salvataggio…" else "Salva ora","upload",{access.authorize(GoogleFeature.DRIVE){saveRemote(it)}},enabled,modifier=Modifier.weight(1f))
+                CloudButton("Ripristina","download",{
+                    access.authorize(GoogleFeature.DRIVE){token->prepareRestore("Google Drive · ${ShiftRepository.googleAccountProfile?.email.orEmpty()}"){
+                        val latest=GoogleDriveRemote.latest(token)?:error("Nessun backup TurniSync trovato in questo account Google.")
+                        GoogleDriveRemote.download(token,latest.id)
+                    }}
+                },enabled,modifier=Modifier.weight(1f),secondary=true)
+            }
+            Text("Android può posticipare il salvataggio per risparmiare batteria. La data si aggiorna solo dopo la conferma di Drive.",color=TextMuted,fontSize=10.sp,lineHeight=15.sp)
+        }
+        CloudCard("Altre copie"){
+            Row(Modifier.fillMaxWidth().bouncyClickable{otherCopies=!otherCopies}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+                SiteIcon("folder",null,Modifier.size(20.dp),ObsidianPrimary)
+                Column(Modifier.weight(1f)){Text("Dispositivo e file",fontSize=14.sp,color=TextPrimary,fontWeight=FontWeight.Medium);Text("Copia locale, importa ed esporta",fontSize=11.sp,color=TextSecondary)}
+                val rotation by androidx.compose.animation.core.animateFloatAsState(if(otherCopies)180f else 0f,spring(stiffness=450f))
+                SiteIcon("chevron-down",null,Modifier.size(20.dp).rotate(rotation),TextSecondary)
+            }
+            AnimatedVisibility(otherCopies,enter=expandVertically(spring(stiffness=450f))+fadeIn(),exit=shrinkVertically()+fadeOut()){
+                Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
+                        Column(Modifier.weight(1f)){Text("Copia locale automatica",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium);Text("All’apertura dell’app · resta su questo telefono",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)}
+                        Switch(checked=ShiftRepository.appPreferences.autoBackupDaily,enabled=enabled,onCheckedChange={ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(autoBackupDaily=it);ShiftRepository.notifyDataChanged()})
+                    }
+                    localInfo?.let{Text("Ultima copia locale · $it",color=TextSecondary,fontSize=11.sp)}
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        CloudButton("Salva locale","database-backup",{
+                            val snapshot=DatabaseSnapshot.capture();busy=true
+                            scope.launch{try{val ok=withContext(Dispatchers.IO){GoogleDriveBackupHelper.saveLocalBackupDirect(context,snapshot)};check(ok){"Impossibile salvare la copia sul dispositivo."};localInfo=GoogleDriveBackupHelper.getLocalBackupInfo(context);feedback=ActionFeedback("Copia locale salvata")}
+                                catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
+                        },enabled,modifier=Modifier.weight(1f),secondary=true)
+                        CloudButton("Ripristina locale","undo",{prepareRestore("Copia locale sul dispositivo"){
+                            val file=File(context.filesDir,"cloud_backups/turni_cloud_backup_latest.json")
+                            check(file.isFile&&file.length() in 1..16L*1024*1024){"Copia locale assente o non valida."};file.readText(Charsets.UTF_8)
+                        }},enabled&&localInfo!=null,modifier=Modifier.weight(1f),secondary=true)
+                    }
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+                        CloudButton("Esporta file","upload",{exportSnapshot=DatabaseSnapshot.capture();export.launch("TurniSync-backup-${java.time.LocalDate.now()}.json")},enabled,modifier=Modifier.weight(1f),secondary=true)
+                        CloudButton("Importa file","download",{import.launch(arrayOf("application/json","text/json","text/plain"))},enabled,modifier=Modifier.weight(1f),secondary=true)
+                    }
+                }
+            }
+        }
+    }
+    preview?.let{candidate->
+        AlertDialog(onDismissRequest={preview=null},containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),
+            title={Text("Ripristinare il backup?",color=TextPrimary)},
+            text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
+                Text(candidate.source,color=TextSecondary,fontSize=12.sp)
+                Text("${candidate.data.shifts.values.sumOf{it.size}} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if(candidate.data.profiles.size==1)"lavoro" else "lavori"}",color=TextPrimary,fontSize=14.sp)
+                Text("I dati attuali verranno sostituiti con quelli del backup selezionato.",color=TextSecondary,fontSize=13.sp,lineHeight=19.sp)
+            }},
+            confirmButton={TextButton(onClick={
+                try{LocalDatabaseStore.allowPersistenceAfterRestore();DatabaseRestore.apply(candidate.data);preview=null;feedback=ActionFeedback("Backup ripristinato")}
+                catch(e:Exception){preview=null;failed(e)}
+            }){Text("Conferma ripristino",color=ObsidianPrimary)}},dismissButton={TextButton(onClick={preview=null}){Text("Annulla",color=TextSecondary)}})
     }
 }
+private fun readBackupDocument(context:android.content.Context,uri:Uri):String{
+    val input=context.contentResolver.openInputStream(uri)?:error("File non accessibile.")
+    return input.use{stream->val output=java.io.ByteArrayOutputStream();val bytes=ByteArray(8192)
+        while(true){val count=stream.read(bytes);if(count<0)break;check(output.size()+count<=16*1024*1024){"Il backup supera il limite di 16 MB."};output.write(bytes,0,count)}
+        output.toString("UTF-8").also{check(it.isNotBlank()){"Il file selezionato è vuoto."}}
+    }
+}
+private fun formatBackupTime(value:String):String=runCatching{Instant.parse(value).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}.getOrDefault("appena salvato")
+
+private fun formatBackupInstant(value:Long):String=Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))

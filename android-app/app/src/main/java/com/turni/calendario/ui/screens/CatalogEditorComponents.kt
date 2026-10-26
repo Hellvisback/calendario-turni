@@ -10,6 +10,7 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -19,6 +20,9 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
@@ -32,6 +36,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -41,6 +50,7 @@ import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.components.TurniEraserIcon
+import com.turni.calendario.ui.components.SiteIcon
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.io.File
@@ -58,10 +68,12 @@ internal fun catalogInk(color: Color): Color {
 }
 
 @Composable
-internal fun CatalogGroup(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Surface(shape = RoundedCornerShape(20.dp), color = MaterialTheme.colorScheme.surface, modifier = Modifier.fillMaxWidth()) {
-        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
+internal fun CatalogGroup(title: String, outlined: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
+    Surface(shape = RoundedCornerShape(if (outlined) 19.dp else 16.dp), color = MaterialTheme.colorScheme.surface,
+        border = if(outlined) androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha=.3f)) else null,
+        modifier = Modifier.fillMaxWidth()) {
+        Column(Modifier.padding(horizontal=if(outlined)13.dp else 10.dp,vertical=10.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            Text(title, color = MaterialTheme.colorScheme.onSurface, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
             content()
         }
     }
@@ -69,18 +81,66 @@ internal fun CatalogGroup(title: String, content: @Composable ColumnScope.() -> 
 
 @Composable
 internal fun CatalogToggle(label: String, checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
-    Row(Modifier.fillMaxWidth().heightIn(min = 44.dp), verticalAlignment = Alignment.CenterVertically) {
-        Text(label, Modifier.weight(1f).padding(end = 12.dp), fontSize = 14.sp)
-        Switch(checked = checked, onCheckedChange = onCheckedChange)
+    val color by animateColorAsState(if(checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.surfaceVariant)
+    val offset by androidx.compose.animation.core.animateDpAsState(if(checked)18.dp else 2.dp,spring(.9f,450f))
+    Row(Modifier.fillMaxWidth().heightIn(min = 38.dp).toggleable(value=checked,role=Role.Switch,onValueChange=onCheckedChange), verticalAlignment = Alignment.CenterVertically) {
+        Text(label, Modifier.weight(1f).padding(end = 12.dp), fontSize = 12.sp)
+        Box(Modifier.width(40.dp).height(24.dp).clip(CircleShape).background(color)) {
+            Box(Modifier.offset(x=offset,y=2.dp).size(20.dp).background(if(checked) MaterialTheme.colorScheme.onPrimary else MaterialTheme.colorScheme.onSurfaceVariant,CircleShape))
+        }
     }
+}
+
+/** Matches the site's external label, compact filled input and square typography. */
+@Composable
+private fun CatalogField(label:String,value:String,change:(String)->Unit,modifier:Modifier=Modifier,
+    numeric:Boolean=false,error:Boolean=false,height:androidx.compose.ui.unit.Dp=40.dp,centered:Boolean=false) {
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(5.dp)) {
+        Text(label,fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        BasicTextField(value=value,onValueChange=change,singleLine=true,
+            textStyle=TextStyle(color=MaterialTheme.colorScheme.onSurface,fontFamily=MaterialTheme.typography.bodyMedium.fontFamily,
+                fontSize=if(centered)17.sp else 13.sp,fontWeight=if(centered)FontWeight.SemiBold else FontWeight.Normal,
+                textAlign=if(centered)TextAlign.Center else TextAlign.Start),
+            keyboardOptions=KeyboardOptions(keyboardType=if(numeric)KeyboardType.Number else KeyboardType.Text),
+            cursorBrush=androidx.compose.ui.graphics.SolidColor(MaterialTheme.colorScheme.primary),
+            modifier=Modifier.fillMaxWidth().height(height).clip(RoundedCornerShape(12.dp))
+                .background(MaterialTheme.colorScheme.surfaceVariant)
+                .border(1.dp,if(error)MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline.copy(alpha=.25f),RoundedCornerShape(12.dp))
+                .padding(horizontal=10.dp).semantics{contentDescription=label},
+            decorationBox={inner->Box(Modifier.fillMaxSize(),contentAlignment=if(centered)Alignment.Center else Alignment.CenterStart){inner()}})
+    }
+}
+
+@Composable
+internal fun CatalogButton(label:String,action:()->Unit,modifier:Modifier=Modifier,primary:Boolean=false,enabled:Boolean=true,icon:String?=null) {
+    val colors=MaterialTheme.colorScheme
+    val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
+    Box(modifier.height(44.dp).clip(RoundedCornerShape(12.dp)).background(if(primary)colors.primary else colors.surfaceVariant)
+        .bouncyClickable(enabled=enabled,onClick={scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(620));phase.snapTo(0f)};action()}).padding(horizontal=10.dp),contentAlignment=Alignment.Center) {
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+        if(icon!=null)SiteIcon(icon,null,Modifier.size(17.dp),if(primary)colors.onPrimary else colors.onSurface,phase.value)
+        Text(label,fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=(if(primary)colors.onPrimary else colors.onSurface).copy(alpha=if(enabled)1f else .4f))
+        }
+    }
+}
+
+@Composable
+internal fun CatalogIconAction(name:String,label:String,action:()->Unit,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.onSurface) {
+    val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
+    Box(modifier.width(40.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
+        scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(620));phase.snapTo(0f)};action()
+    },contentAlignment=Alignment.Center) { SiteIcon(name,label,Modifier.size(20.dp),tint,phase.value) }
 }
 
 /** One real sheet, with finite spring entry/exit and stable independent scrolling. */
 @Composable
-internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit, content: @Composable ColumnScope.((() -> Unit) -> Unit) -> Unit) {
+internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit,heightFraction:Float=.82f,
+    subtitle:String="Modello per il tuo calendario",fullPage:Boolean=false,
+    content: @Composable ColumnScope.((() -> Unit) -> Unit) -> Unit) {
     var visible by remember { mutableStateOf(false) }
     var closing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
+    val headerProgress=remember{Animatable(0f)}
     val finish: (() -> Unit) -> Unit = { action ->
         if (!closing) {
             closing = true
@@ -88,20 +148,25 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit, content: @
             scope.launch { delay(280); action() }
         }
     }
-    LaunchedEffect(Unit) { visible = true }
+    LaunchedEffect(Unit) { visible = true;headerProgress.animateTo(1f,tween(720));headerProgress.snapTo(0f) }
     BackHandler { finish(onDismiss) }
-    Box(Modifier.fillMaxSize().background(MaterialTheme.colorScheme.background)) {
+    Box(Modifier.fillMaxSize()) {
         AnimatedVisibility(visible, enter = fadeIn(), exit = fadeOut(), modifier = Modifier.fillMaxSize()) {
             Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = .24f)).clickable(enabled = !closing) { finish(onDismiss) })
         }
         AnimatedVisibility(visible, modifier = Modifier.align(Alignment.BottomCenter),
             enter = slideInVertically(spring(dampingRatio = .88f, stiffness = Spring.StiffnessLow)) { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()) {
-            Surface(Modifier.fillMaxWidth().fillMaxHeight(.93f), shape = RoundedCornerShape(topStart = 26.dp, topEnd = 26.dp), color = MaterialTheme.colorScheme.background) {
+            Surface(Modifier.fillMaxWidth().fillMaxHeight(heightFraction), shape = RoundedCornerShape(topStart = if(fullPage)0.dp else 24.dp, topEnd = if(fullPage)0.dp else 24.dp), color = MaterialTheme.colorScheme.background) {
                 Column(Modifier.navigationBarsPadding().imePadding()) {
-                    Row(Modifier.fillMaxWidth().padding(start = 20.dp, end = 8.dp, top = 10.dp, bottom = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                        Text(title, Modifier.weight(1f), fontWeight = FontWeight.Bold, fontSize = 22.sp)
-                        IconButton(onClick = { finish(onDismiss) }, enabled = !closing) { Icon(Icons.Default.Close, "Chiudi", tint = MaterialTheme.colorScheme.error) }
+                    Row(Modifier.fillMaxWidth().background(if(heightFraction>.9f)MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background).padding(horizontal=14.dp,vertical=14.dp), verticalAlignment = Alignment.CenterVertically) {
+                        if(fullPage || heightFraction>.9f)CatalogIconAction("arrow-left","Indietro",{finish(onDismiss)},Modifier.size(40.dp))
+                        else SiteIcon("pencil",null,Modifier.size(28.dp),MaterialTheme.colorScheme.onSurfaceVariant,headerProgress.value)
+                        Column(Modifier.weight(1f).padding(start=8.dp)) {
+                            Text(title, fontWeight = FontWeight.Bold, fontSize = if(fullPage)25.sp else if(heightFraction>.9f)21.sp else 18.sp)
+                            if(subtitle.isNotBlank())Text(subtitle,fontSize=if(heightFraction>.9f)11.sp else 10.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=3.dp))
+                        }
+                        if(!fullPage&&heightFraction<.9f)CatalogIconAction("x","Chiudi",{finish(onDismiss)},Modifier.size(38.dp))
                     }
                     content(finish)
                 }
@@ -112,25 +177,47 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit, content: @
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UniversalColorPickerRow(selectedColorHex: Long, onColorSelected: (Long) -> Unit) {
+fun UniversalColorPickerRow(selectedColorHex: Long, showNames:Boolean=false, onColorSelected: (Long) -> Unit) {
     var showPicker by remember { mutableStateOf(false) }
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(9.dp)) {
-            catalogPastelColors.forEach { value ->
-                Box(Modifier.weight(1f).aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(Color(value)).bouncyClickable { onColorSelected(value) }, contentAlignment = Alignment.Center) {
-                    if (value == selectedColorHex) Icon(Icons.Default.Check, "Selezionato", tint = catalogInk(Color(value)), modifier = Modifier.size(19.dp))
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+            catalogPastelColors.forEachIndexed { index,value ->
+                Column(Modifier.weight(1f).bouncyClickable{onColorSelected(value)},horizontalAlignment=Alignment.CenterHorizontally) {
+                    Box(Modifier.size(if(showNames)34.dp else 32.dp).clip(RoundedCornerShape(if(showNames)11.dp else 9.dp)).background(Color(value)),contentAlignment=Alignment.Center) {
+                        if(value==selectedColorHex)SiteIcon("check","Selezionato",Modifier.size(16.dp),catalogInk(Color(value)))
+                    }
+                    if(showNames)Text(listOf("Ambra","Corallo","Lavanda","Menta","Azzurro","Perla")[index],fontSize=9.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=5.dp))
                 }
             }
         }
+        if(showNames) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             Text("Colore personalizzato", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
             Text(colorToHex(Color(selectedColorHex)), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         }
         Box(Modifier.fillMaxWidth().height(44.dp).clip(RoundedCornerShape(12.dp)).background(Color(selectedColorHex)).bouncyClickable { showPicker = true }, contentAlignment = Alignment.Center) {
-            Icon(Icons.Default.Colorize, "Scegli colore personalizzato", tint = catalogInk(Color(selectedColorHex)), modifier = Modifier.size(22.dp))
+            SiteIcon("pipette", "Scegli colore personalizzato",Modifier.size(17.dp),catalogInk(Color(selectedColorHex)))
+        }
+        } else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.Bottom) {
+            Column(Modifier.width(58.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                Text("Colore",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                Box(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(10.dp)).background(Color(selectedColorHex)).bouncyClickable{showPicker=true},contentAlignment=Alignment.Center) {
+                    SiteIcon("pipette","Scegli colore",Modifier.size(17.dp),catalogInk(Color(selectedColorHex)))
+                }
+            }
+            var hexDraft by remember(selectedColorHex){mutableStateOf(colorToHex(Color(selectedColorHex)))}
+            CatalogField("HEX",hexDraft,{hexDraft=it.take(7).uppercase();if(Regex("#[0-9A-F]{6}").matches(hexDraft))parseHexToColor(hexDraft)?.let{value->onColorSelected(colorToLong(value))}},Modifier.weight(1f),error=!Regex("#[0-9A-F]{6}").matches(hexDraft))
         }
     }
     if (showPicker) CustomColorPickerDialog(selectedColorHex, { showPicker = false }) { onColorSelected(it); showPicker = false }
+}
+
+@Composable
+internal fun CatalogWorkIcon(key:String,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.onSurfaceVariant) {
+    val scale=remember{Animatable(1f)}
+    LaunchedEffect(key){scale.snapTo(.82f);scale.animateTo(1.12f,tween(220));scale.animateTo(1f,spring(.8f,350f))}
+    val name=when(key){"business"->"building";"people","groups"->"users";"computer","laptop"->"laptop";"factory","build","wrench"->"wrench";"hospital","medical","health"->"hospital";"shipping","truck","local_shipping"->"truck";"transit","train"->"train";"security"->"shield";"store"->"store";else->"briefcase-business"}
+    SiteIcon(name,null,modifier.graphicsLayer{scaleX=scale.value;scaleY=scale.value},tint)
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -156,12 +243,22 @@ fun CustomColorPickerDialog(initialColorHex: Long, onDismiss: () -> Unit, onColo
     LaunchedEffect(Unit) { visible = true }
     fun updateHex() { hex = colorToHex(hsvToColor(hue, saturation, brightness)) }
     Dialog(onDismissRequest = { finish(onDismiss) }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        AnimatedVisibility(visible, enter = slideInVertically(spring(dampingRatio = .9f, stiffness = Spring.StiffnessLow)) { it / 4 } + fadeIn(), exit = slideOutVertically { it / 4 } + fadeOut()) {
-        Surface(Modifier.fillMaxWidth().padding(16.dp), shape = RoundedCornerShape(26.dp), color = MaterialTheme.colorScheme.surface) {
-            Column(Modifier.padding(18.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.fillMaxSize(),contentAlignment=Alignment.BottomCenter) {
+        Box(Modifier.fillMaxSize().clickable{finish(onDismiss)})
+        AnimatedVisibility(visible, enter = slideInVertically(spring(dampingRatio = .9f, stiffness = Spring.StiffnessLow)) { it } + fadeIn(), exit = slideOutVertically { it } + fadeOut()) {
+        Surface(Modifier.fillMaxWidth().heightIn(max=560.dp), shape = RoundedCornerShape(topStart=24.dp,topEnd=24.dp), color = MaterialTheme.colorScheme.background) {
+            Column(Modifier.navigationBarsPadding().padding(start=16.dp,end=16.dp,top=16.dp,bottom=26.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text("Scegli colore", Modifier.weight(1f), fontSize = 22.sp, fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { finish(onDismiss) }, enabled = !closing) { Icon(Icons.Default.Close, "Chiudi") }
+                    Column(Modifier.weight(1f)) {
+                        Text("Colore personalizzato",fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+                        Text("Palette e personalizzazione",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=3.dp))
+                    }
+                    IconButton(onClick = { finish(onDismiss) }, enabled = !closing,modifier=Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) { SiteIcon("x", "Chiudi",Modifier.size(18.dp)) }
+                }
+                Row(Modifier.fillMaxWidth().padding(bottom=4.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    catalogPastelColors.forEach { value->Box(Modifier.weight(1f).heightIn(max=42.dp).aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(Color(value)).bouncyClickable {
+                        val hsv=FloatArray(3);android.graphics.Color.colorToHSV(value.toInt(),hsv);hue=hsv[0];saturation=hsv[1];brightness=hsv[2];updateHex()
+                    },contentAlignment=Alignment.Center){if(colorToLong(selected)==value)SiteIcon("check",null,Modifier.size(17.dp),catalogInk(Color(value)))} }
                 }
                 NativeColorPlane(hue,saturation,brightness){s,v->saturation=s;brightness=v;updateHex()}
                 Text("Tonalità", fontSize = 12.sp)
@@ -171,7 +268,7 @@ fun CustomColorPickerDialog(initialColorHex: Long, onDismiss: () -> Unit, onColo
                         colors=SliderDefaults.colors(activeTrackColor=Color.Transparent,inactiveTrackColor=Color.Transparent))
                 }
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                OutlinedTextField(hex, {
+                CatalogField("HEX",hex, {
                     hex = it.take(7).uppercase()
                     if (Regex("#[0-9A-F]{6}").matches(hex)) {
                         val hsv = FloatArray(3)
@@ -179,14 +276,16 @@ fun CustomColorPickerDialog(initialColorHex: Long, onDismiss: () -> Unit, onColo
                         if (hsv[1] > 0f) hue = hsv[0]
                         saturation = hsv[1]; brightness = hsv[2]
                     }
-                }, label = { Text("HEX") }, isError = !valid, singleLine = true, modifier = Modifier.weight(1f))
-                Box(Modifier.size(56.dp).clip(RoundedCornerShape(12.dp)).background(selected))
+                },Modifier.weight(1f),error=!valid,height=42.dp)
+                Box(Modifier.width(58.dp).height(42.dp).clip(RoundedCornerShape(12.dp)).background(selected))
                 }
+                Text(if(valid)"" else "Inserisci un colore HEX valido",fontSize=10.sp,color=MaterialTheme.colorScheme.error,modifier=Modifier.height(19.dp))
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    TextButton({ finish(onDismiss) }, Modifier.weight(1f), enabled = !closing) { Text("Annulla") }
-                    Button({ parseHexToColor(hex)?.let { value -> finish { onColorSelected(colorToLong(value)) } } }, Modifier.weight(1f), enabled = valid && !closing) { Text("Imposta") }
+                    CatalogButton("Annulla",{finish(onDismiss)},Modifier.weight(1f),enabled=!closing)
+                    CatalogButton("Imposta",{parseHexToColor(hex)?.let{value->finish{onColorSelected(colorToLong(value))}}},Modifier.weight(1f),primary=true,enabled=valid&&!closing)
                 }
             }
+        }
         }
         }
     }
@@ -214,14 +313,16 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
     val valid = name.isNotBlank() && validCode && (allDay || (validTime(start) && validTime(end) && (!hasBreak || (validTime(breakStart) && (pause.toIntOrNull() ?: -1) in 0..720))))
     fun draft() = shift.copy(name = name.trim(), shortCode = code, startTime = start, endTime = end, colorHex = color, workProfileId = workId, category = category, isAllDay = allDay, breakMinutes = if (hasBreak && !allDay) pause.toIntOrNull() ?: 0 else 0, breakStartTime = if (hasBreak && !allDay) breakStart else null)
     CatalogEditorSheet(if (existing) "Modifica turno" else "Nuovo turno", onDismiss) { finish ->
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(Color(color).copy(alpha = .16f)).padding(14.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(56.dp).clip(RoundedCornerShape(14.dp)).background(Color(color)), contentAlignment = Alignment.Center) { Text(code, color = catalogInk(Color(color)), fontWeight = FontWeight.Bold) }
-                Column(Modifier.padding(start = 12.dp)) { Text(name.ifBlank { "Il tuo turno" }, fontWeight = FontWeight.Bold); Text(if (allDay) "Tutto il giorno" else "$start – $end", fontSize = 13.sp) }
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,Color(color),.10f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(color)), contentAlignment = Alignment.Center) { Text(code, color = catalogInk(Color(color)), fontWeight = FontWeight.Bold,fontSize=11.sp) }
+                Column(Modifier.padding(start = 9.dp)) { Text(name.ifBlank { "Il tuo turno" }, fontWeight = FontWeight.Bold,fontSize=14.sp); Text(if (allDay) "Tutto il giorno" else "$start – $end", fontSize = 11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=4.dp)) }
             }
             CatalogGroup("Identità") {
-                OutlinedTextField(name, { name = it.take(60) }, label = { Text("Nome del turno") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                OutlinedTextField(code, { code = it.uppercase().filter { ch -> ch in 'A'..'Z' || ch in '0'..'9' }.take(4) }, label = { Text("Sigla · massimo 4 caratteri") }, modifier = Modifier.fillMaxWidth(), singleLine = true, isError = !validCode)
+                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    CatalogField("Nome del turno",name,{name=it.take(60)},Modifier.weight(2f))
+                    CatalogField("Sigla",code,{code=it.uppercase().filter{ch->ch in 'A'..'Z'||ch in '0'..'9'}.take(4)},Modifier.weight(1f),error=!validCode)
+                }
                 if (ShiftRepository.workProfiles.size > 1) Box {
                     OutlinedButton(onClick = { workMenu = !workMenu }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                         Icon(getWorkProfileIcon(ShiftRepository.workProfiles.firstOrNull { it.id == workId }?.iconKey ?: "work"), null, Modifier.size(18.dp))
@@ -235,7 +336,7 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                 Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     listOf(ShiftCategory.LAVORO to "Lavoro", ShiftCategory.RIPOSO to "Riposo", ShiftCategory.ASSENZA to "Assenza", ShiftCategory.ALTRO to "Altro").forEach { (value, label) ->
                         Surface(shape = RoundedCornerShape(10.dp), color = if (category == value) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background, modifier = Modifier.bouncyClickable { category = value }) {
-                            Text(label, Modifier.padding(horizontal = 12.dp, vertical = 10.dp), color = if (category == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
+                            Text(label, Modifier.padding(horizontal = 8.dp, vertical = 6.dp), color = if (category == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
                         }
                     }
                 }
@@ -255,7 +356,12 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                     AnimatedVisibility(hasBreak) {
                         Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                             CatalogTimeField("Dalle", breakStart, { breakStart = it }, Modifier.weight(1f))
-                            OutlinedTextField(pause, { pause = it.filter(Char::isDigit).take(3) }, label = { Text("Minuti") }, singleLine = true, modifier = Modifier.weight(1f))
+                            CatalogField("Minuti",pause,{pause=it.filter(Char::isDigit).take(3)},Modifier.weight(1f),numeric=true)
+                        }
+                    }
+                    AnimatedVisibility(hasBreak) {
+                        Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                            listOf(15,30,60).forEach { value->CatalogButton("$value min",{pause=value.toString()},Modifier.weight(1f)) }
                         }
                     }
                 }
@@ -263,19 +369,19 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
             CatalogGroup("Colore") { UniversalColorPickerRow(color) { color = it } }
             Spacer(Modifier.height(8.dp))
         }
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(12.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal=14.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             if (existing) {
-                IconButton(onClick = {
+                CatalogIconAction("copy","Duplica turno",{
                     val base = code.ifBlank { "TUR" }
                     var suffix = 2
                     var candidate: String
                     do { val tail = (suffix++).toString(); candidate = base.take((4 - tail.length).coerceAtLeast(0)) + tail } while (ShiftRepository.shiftDefinitions.any { it.shortCode.equals(candidate, true) })
                     val copy = draft().copy(id = UUID.randomUUID().toString(), name = "$name copia", shortCode = candidate.take(4))
                     finish { onSave(copy) }
-                }, enabled = valid) { Icon(Icons.Default.ContentCopy, "Duplica turno") }
-                IconButton(onClick = { deleteConfirm = true }) { Icon(Icons.Default.DeleteOutline, "Elimina turno", tint = MaterialTheme.colorScheme.error) }
+                })
+                CatalogIconAction("trash-2","Elimina turno",{deleteConfirm=true},tint=MaterialTheme.colorScheme.error)
             }
-            Button(onClick = { if (valid) finish { onSave(draft()) } }, enabled = valid, modifier = Modifier.weight(1f).height(48.dp)) { Icon(Icons.Default.Check, null, Modifier.size(18.dp)); Spacer(Modifier.width(8.dp)); Text("Salva turno") }
+            CatalogButton("Salva turno",{if(valid)finish{onSave(draft())}},Modifier.weight(1f),primary=true,enabled=valid,icon="check")
         }
         if (deleteConfirm) CatalogDeleteDialog("Eliminare questo turno?", { deleteConfirm = false }) { deleteConfirm = false; finish { onDelete(shift.id) } }
     }
@@ -285,17 +391,38 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
 @Composable
 private fun CatalogTimeField(label: String, value: String, change: (String) -> Unit, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    OutlinedButton(onClick = {
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(5.dp)) {
+    Text(label,fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+    Box(modifier = Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).border(1.dp,MaterialTheme.colorScheme.outline.copy(alpha=.25f),RoundedCornerShape(12.dp)).bouncyClickable {
         val current = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(6, 0))
         android.app.TimePickerDialog(context, { _, h, m -> change(String.format(java.util.Locale.ROOT, "%02d:%02d", h, m)) }, current.hour, current.minute, true).show()
-    }, modifier = modifier.height(68.dp), shape = RoundedCornerShape(14.dp), contentPadding = PaddingValues(8.dp)) {
-        Column(horizontalAlignment = Alignment.CenterHorizontally) { Text(label, fontSize = 11.sp); Text(value, fontSize = 19.sp, fontWeight = FontWeight.SemiBold) }
+    },contentAlignment=Alignment.Center) { Text(value,fontSize=13.sp) }
+    Row(horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+        listOf(-15,15).forEach { delta->
+            Box(Modifier.weight(1f).height(28.dp).clip(RoundedCornerShape(9.dp)).background(MaterialTheme.colorScheme.surfaceVariant).bouncyClickable {
+                runCatching{LocalTime.parse(value).plusMinutes(delta.toLong())}.onSuccess{change(it.toString())}
+            },contentAlignment=Alignment.Center) { Icon(if(delta<0)Icons.Default.Remove else Icons.Default.Add,if(delta<0)"Anticipa $label di 15 minuti" else "Posticipa $label di 15 minuti",Modifier.size(14.dp)) }
+        }
+    }
     }
 }
 
 @Composable
 private fun CatalogDeleteDialog(title: String, dismiss: () -> Unit, confirm: () -> Unit) {
-    AlertDialog(onDismissRequest = dismiss, title = { Text(title) }, text = { Text("Questa operazione non può essere annullata.") }, confirmButton = { TextButton(confirm) { Text("Elimina", color = MaterialTheme.colorScheme.error) } }, dismissButton = { TextButton(dismiss) { Text("Annulla") } })
+    NativeBottomDialog(dismiss,bottomInset=24.dp){close->
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){
+            SiteIcon("trash",null,Modifier.size(24.dp),MaterialTheme.colorScheme.error)
+            Text(title,Modifier.weight(1f).padding(start=10.dp),fontSize=18.sp,fontWeight=FontWeight.SemiBold)
+            CatalogIconAction("x","Chiudi",close,Modifier.size(32.dp))
+        }
+        Text("Questa operazione non può essere annullata.",Modifier.padding(vertical=16.dp),fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+        Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
+            CatalogButton("Annulla",close,Modifier.weight(1f))
+            Box(Modifier.weight(1f).height(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.error).bouncyClickable{close();confirm()},contentAlignment=Alignment.Center){
+                Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)){SiteIcon("trash",null,Modifier.size(17.dp),MaterialTheme.colorScheme.onError);Text("Elimina",fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=MaterialTheme.colorScheme.onError)}
+            }
+        }
+    }
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -308,55 +435,70 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
     val starMotion = remember { Animatable(0f) }
     val starScope = rememberCoroutineScope()
     var deleteConfirm by remember { mutableStateOf(false) }
-    CatalogEditorSheet("Modifica rotazione", onDismiss) { finish ->
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CatalogGroup("Rotazione") {
-                OutlinedTextField(title, { title = it.take(60) }, label = { Text("Nome") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                Row(Modifier.fillMaxWidth().heightIn(min = 48.dp).bouncyClickable {
-                    favorite = !favorite
-                    starScope.launch {
-                        starMotion.snapTo(-18f)
-                        starMotion.animateTo(0f, spring(dampingRatio = .4f, stiffness = Spring.StiffnessLow))
-                    }
-                }, verticalAlignment = Alignment.CenterVertically) {
-                    Icon(if (favorite) Icons.Default.Star else Icons.Default.StarBorder, "Rotazione predefinita", tint = if (favorite) Color(0xFFB37A13) else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp).graphicsLayer { rotationZ = starMotion.value })
-                    Text("Rotazione predefinita", Modifier.padding(10.dp), fontSize = 14.sp)
+    val existing=ShiftRepository.rotations.any{it.id==rotation.id}
+    CatalogEditorSheet(if(existing)"Modifica rotazione" else "Nuova rotazione", onDismiss,heightFraction=1f,
+        subtitle="Scegli un turno e componi la sequenza",fullPage=true) { finish ->
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal=14.dp),verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            CatalogGroup("Nome della rotazione",outlined=true) { CatalogField("Nome",title,{title=it.take(60)},Modifier.fillMaxWidth()) }
+            CatalogGroup("Lunghezza del ciclo",outlined=true) {
+                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically) {
+                    Text("${sequence.size}",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)
+                    Text(if(sequence.size==1)" giorno" else " giorni",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+                listOf(listOf(-1,1),listOf(-7,7)).forEach { row->Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                    row.forEach { delta->CatalogButton((if(delta<0)"− " else "+ ")+(if(kotlin.math.abs(delta)==7)"1 settimana" else "1 giorno"),{
+                        val target=(sequence.size+delta).coerceIn(1,70)
+                        while(sequence.size<target)sequence.add("")
+                        while(sequence.size>target)sequence.removeAt(sequence.lastIndex)
+                    },Modifier.weight(1f),enabled=if(delta<0)sequence.size>1 else sequence.size<70) }
+                } }
             }
-            CatalogGroup("Sequenza") {
-                for (week in 0 until (sequence.size + 6) / 7) {
-                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                        for (day in 0..6) {
-                            val index = week * 7 + day
-                            val def = sequence.getOrNull(index)?.let { ShiftRepository.getShiftDefinition(it) }
-                            Box(Modifier.weight(1f).aspectRatio(.78f).clip(RoundedCornerShape(12.dp)).background(def?.color?.copy(alpha = .28f) ?: MaterialTheme.colorScheme.background).bouncyClickable {
-                                if (index < sequence.size) sequence[index] = brush
-                                else { while (sequence.size <= index && sequence.size < 70) sequence.add(""); if (index < sequence.size) sequence[index] = brush }
-                            }, contentAlignment = Alignment.Center) {
-                                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                    Text("${index + 1}", fontSize = 10.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                                    Text(def?.shortCode?.take(4) ?: "–", fontSize = 10.sp, fontWeight = FontWeight.Bold, textAlign = TextAlign.Center)
+            CatalogStep(1,"Scegli il turno")
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical=4.dp),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+                CatalogPaintChip("","",MaterialTheme.colorScheme.surfaceVariant,brush.isEmpty()){brush=""}
+                ShiftRepository.shiftDefinitions.forEach { def->CatalogPaintChip(def.shortCode,def.name,def.color,brush==def.id){brush=def.id} }
+            }
+            CatalogStep(2,"Tocca i giorni da compilare")
+            Surface(shape=RoundedCornerShape(15.dp),color=MaterialTheme.colorScheme.surface) {
+                Column(Modifier.fillMaxWidth().heightIn(max=330.dp).verticalScroll(rememberScrollState()).padding(7.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Spacer(Modifier.width(19.dp))
+                        listOf("L","M","M","G","V","S","D").forEach { day->Text(day,Modifier.weight(1f),fontSize=10.sp,textAlign=TextAlign.Center,color=MaterialTheme.colorScheme.onSurfaceVariant) }
+                    }
+                    for(week in 0 until (sequence.size+6)/7)Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
+                        Text("S${week+1}",Modifier.width(19.dp),fontSize=9.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+                        for(day in 0..6) {
+                            val index=week*7+day
+                            val def=sequence.getOrNull(index)?.let{ShiftRepository.getShiftDefinition(it)}
+                            if(index>=sequence.size)Spacer(Modifier.weight(1f).height(38.dp))
+                            else {
+                                val fill by animateColorAsState(def?.color?:MaterialTheme.colorScheme.surfaceVariant,spring(1f,420f))
+                                Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(7.dp)).background(fill)
+                                    .then(if(index==sequence.lastIndex)Modifier.border(1.5.dp,MaterialTheme.colorScheme.primary,RoundedCornerShape(7.dp))else Modifier)
+                                    .bouncyClickable{sequence[index]=brush},contentAlignment=Alignment.Center) {
+                                    Text(def?.shortCode?.take(4)?:"—",fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=if(def!=null)catalogInk(fill) else MaterialTheme.colorScheme.onSurfaceVariant,textAlign=TextAlign.Center,maxLines=1)
                                 }
                             }
                         }
                     }
                 }
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                    TextButton(onClick = { if (sequence.size > 1) sequence.removeAt(sequence.lastIndex) }, enabled = sequence.size > 1) { Text("− Giorno") }
-                    TextButton(onClick = { if (sequence.size < 70) sequence.add("") }, enabled = sequence.size < 70) { Text("+ Giorno") }
-                }
             }
+            Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {
+                favorite=!favorite
+                starScope.launch{starMotion.snapTo(0f);starMotion.animateTo(1f,tween(720));starMotion.snapTo(0f)}
+            },verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(if(favorite)Color(0xFFE4A52E).copy(alpha=.15f)else MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center) {
+                    CatalogDefaultStar(favorite,"Rotazione predefinita",Modifier.size(21.dp),starMotion.value)
+                }
+                Text("Rotazione predefinita",Modifier.padding(start=10.dp),fontSize=12.sp,fontWeight=FontWeight.Medium)
+            }
+            if(existing&&onDelete!=null)CatalogButton("Elimina rotazione",{deleteConfirm=true},Modifier.fillMaxWidth())
         }
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CatalogPaintChip("", "Gomma", MaterialTheme.colorScheme.surfaceVariant, brush.isEmpty()) { brush = "" }
-            ShiftRepository.shiftDefinitions.forEach { def -> CatalogPaintChip(def.shortCode, def.name, def.color, brush == def.id) { brush = def.id } }
-        }
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (onDelete != null) IconButton(onClick = { deleteConfirm = true }) { Icon(Icons.Default.DeleteOutline, "Elimina rotazione", tint = MaterialTheme.colorScheme.error) }
-            Button(onClick = {
+        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(14.dp)) {
+            CatalogButton("Salva",{
                 val saved = rotation.copy(name = title.trim(), totalDays = sequence.size, daySequence = sequence.toList())
                 finish { onSave(saved); if (favorite) ShiftRepository.setDefaultRotation(saved.id) else if (ShiftRepository.defaultRotationId == saved.id) ShiftRepository.setDefaultRotation("") }
-            }, enabled = title.isNotBlank() && sequence.any { it.isNotEmpty() }, modifier = Modifier.weight(1f).height(48.dp)) { Text("Salva rotazione") }
+            },Modifier.weight(1f),primary=true,enabled=title.isNotBlank()&&sequence.any{it.isNotEmpty()},icon="check")
         }
         if (deleteConfirm && onDelete != null) CatalogDeleteDialog("Eliminare la rotazione?", { deleteConfirm = false }) { deleteConfirm = false; finish { onDelete(rotation.id) } }
     }
@@ -364,11 +506,27 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
 
 @Composable
 private fun CatalogPaintChip(code: String, name: String, color: Color, selected: Boolean, action: () -> Unit) {
-    Column(Modifier.width(70.dp).bouncyClickable(onClick = action), horizontalAlignment = Alignment.CenterHorizontally) {
-        Box(Modifier.size(50.dp).border(if (selected) 2.dp else 0.dp, if (selected) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(15.dp)).padding(4.dp).clip(RoundedCornerShape(11.dp)).background(color), contentAlignment = Alignment.Center) {
-            if (code.isEmpty()) Icon(TurniEraserIcon, "Gomma", tint = catalogInk(color), modifier = Modifier.size(22.dp)) else Text(code.take(4), color = catalogInk(color), fontSize = 12.sp, fontWeight = FontWeight.Bold)
+    val font=remember{Animatable(12f)};val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
+    Column(Modifier.width(if(code.isEmpty())42.dp else 76.dp).height(66.dp).clip(RoundedCornerShape(12.dp))
+        .background(MaterialTheme.colorScheme.surfaceVariant).border(2.dp,if(selected)color else Color.Transparent,RoundedCornerShape(12.dp))
+        .clickable {
+            scope.launch{font.snapTo(13.5f);font.animateTo(12f,spring(.8f,300f))}
+            scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(720));phase.snapTo(0f)}
+            action()
+        }.padding(5.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
+        Box(Modifier.width(36.dp).height(32.dp).clip(RoundedCornerShape(9.dp)).background(if(code.isEmpty())Color.Transparent else color),contentAlignment=Alignment.Center) {
+            if(code.isEmpty())SiteIcon("eraser","Gomma",Modifier.size(24.dp),MaterialTheme.colorScheme.onSurface,phase.value)
+            else Text(code.take(4),color=catalogInk(color),fontSize=font.value.sp,fontWeight=FontWeight.Bold,maxLines=1,textAlign=TextAlign.Center)
         }
-        Text(name, fontSize = 10.sp, maxLines = 2, textAlign = TextAlign.Center, modifier = Modifier.padding(top = 4.dp))
+        if(code.isNotEmpty())Text(name,fontSize=10.sp,maxLines=1,textAlign=TextAlign.Center,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=5.dp))
+    }
+}
+
+@Composable
+private fun CatalogStep(number:Int,label:String) {
+    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+        Box(Modifier.size(23.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){Text("$number",fontSize=11.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}
+        Text(label,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
     }
 }
 
@@ -418,44 +576,57 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
         }.onFailure { documentError = "Impossibile aprire il documento. Riprova." }
     }
     val iconKeys = listOf("work", "business", "people", "computer", "factory", "hospital", "shipping", "transit")
-    CatalogEditorSheet(if (isNew) "Nuovo lavoro" else "Modifica lavoro", onDismiss) { finish ->
-        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            CatalogGroup("Identità") {
-                OutlinedTextField(name, { name = it.take(60) }, label = { Text("Nome lavoro") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                OutlinedTextField(department, { department = it.take(100) }, label = { Text("Reparto o settore · facoltativo") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+    CatalogEditorSheet(if (isNew) "Nuovo lavoro" else "Modifica lavoro", onDismiss,heightFraction=.96f,subtitle="Calendario e impostazioni del profilo") { finish ->
+        Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 13.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface).border(1.dp,MaterialTheme.colorScheme.outline.copy(alpha=.25f),RoundedCornerShape(18.dp)).padding(13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(11.dp)) {
+                Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(color).copy(alpha=.17f)),contentAlignment=Alignment.Center) {
+                    CatalogWorkIcon(icon,Modifier.size(24.dp),MaterialTheme.colorScheme.onSurface)
+                }
+                Column {Text(name.ifBlank{"Il tuo lavoro"},fontSize=16.sp,fontWeight=FontWeight.SemiBold);Text(department.ifBlank{"Un calendario dedicato"},fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=4.dp))}
+            }
+            CatalogGroup("Identità",outlined=true) {
+                CatalogField("Nome lavoro",name,{name=it.take(60)},Modifier.fillMaxWidth(),height=44.dp)
+                CatalogField("Reparto o settore",department,{department=it.take(80)},Modifier.fillMaxWidth(),height=44.dp)
                 Text("Icona del lavoro", fontSize = 12.sp)
                 iconKeys.chunked(4).forEach { row ->
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { key ->
-                            Box(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(14.dp)).background(if (icon == key) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background).border(if (icon == key) 2.dp else 0.dp, if (icon == key) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(14.dp)).bouncyClickable { icon = key }, contentAlignment = Alignment.Center) {
-                                Icon(getWorkProfileIcon(key), when (key) { "work" -> "Valigetta"; "business" -> "Edificio"; "people" -> "Persone"; "computer" -> "Computer"; "factory" -> "Strumenti"; "hospital" -> "Salute"; "shipping" -> "Trasporto"; else -> "Treno" }, tint = if (icon == key) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant, modifier = Modifier.size(24.dp))
+                            Box(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(14.dp)).background(if (icon == key) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background).border(if (icon == key) 2.dp else 0.dp, if (icon == key) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(14.dp)).semantics { contentDescription=when(key){"work"->"Valigetta";"business"->"Edificio";"people"->"Persone";"computer"->"Computer";"factory"->"Strumenti";"hospital"->"Salute";"shipping"->"Trasporto";else->"Treno"} }.bouncyClickable { icon = key }, contentAlignment = Alignment.Center) {
+                                CatalogWorkIcon(key,Modifier.size(22.dp),if(icon==key)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
                 }
             }
-            CatalogGroup("Colore del lavoro") { UniversalColorPickerRow(color) { color = it } }
-            CatalogGroup("Contratto e orario") {
-                OutlinedButton(onClick = { showContracts = true }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
-                    Text(contract.name, Modifier.weight(1f), fontSize = 13.sp); Icon(Icons.Default.ExpandMore, null)
+            CatalogGroup("Colore del lavoro",outlined=true) { UniversalColorPickerRow(color,showNames=true) { color = it } }
+            CatalogGroup("Orario e riposo",outlined=true) {
+                Row(horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                    CatalogField("Ore settimanali",hours.toString(),{it.toIntOrNull()?.takeIf{n->n in 1..60}?.let{n->hours=n}},Modifier.weight(1f),numeric=true,height=44.dp,centered=true)
+                    CatalogField("Riposo minimo · ore",rest.toString(),{it.toIntOrNull()?.takeIf{n->n in 1..24}?.let{n->rest=n}},Modifier.weight(1f),numeric=true,height=44.dp,centered=true)
                 }
-                CatalogNumberRow("Ore settimanali", hours, 1..60) { hours = it }
-                CatalogNumberRow("Riposo minimo · ore", rest, 1..24) { rest = it }
+            }
+            CatalogGroup("Parametri CCNL",outlined=true) {
+                CatalogButton(contract.name,{showContracts=true},Modifier.fillMaxWidth())
                 CatalogToggle("Parametri CCNL avanzati", advanced) { advanced = it }
+                Text(if(advanced)"Maggiorazioni personalizzate attive" else "Modalità semplice · le maggiorazioni restano conservate",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 AnimatedVisibility(advanced, enter = expandVertically(spring()) + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        CatalogNumberRow("Notturno · %", night, 0..200, 5) { night = it }
-                        CatalogNumberRow("Festivo · %", holiday, 0..200, 5) { holiday = it }
-                        CatalogNumberRow("Notte e festivo · %", nightHoliday, 0..200, 5) { nightHoliday = it }
-                        CatalogNumberRow("Straordinario diurno · %", overtime, 0..200, 5) { overtime = it }
-                        CatalogNumberRow("Straordinario notturno · %", overtimeNight, 0..200, 5) { overtimeNight = it }
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            CatalogField("Notturno (%)",night.toString(),{it.toIntOrNull()?.takeIf{n->n in 0..200}?.let{n->night=n}},Modifier.weight(1f),numeric=true,centered=true)
+                            CatalogField("Festivo (%)",holiday.toString(),{it.toIntOrNull()?.takeIf{n->n in 0..200}?.let{n->holiday=n}},Modifier.weight(1f),numeric=true,centered=true)
+                        }
+                        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                            CatalogField("Notturno festivo (%)",nightHoliday.toString(),{it.toIntOrNull()?.takeIf{n->n in 0..200}?.let{n->nightHoliday=n}},Modifier.weight(1f),numeric=true,centered=true)
+                            CatalogField("Straordinario diurno (%)",overtime.toString(),{it.toIntOrNull()?.takeIf{n->n in 0..200}?.let{n->overtime=n}},Modifier.weight(1f),numeric=true,centered=true)
+                        }
+                        CatalogField("Straordinario notturno/festivo (%)",overtimeNight.toString(),{it.toIntOrNull()?.takeIf{n->n in 0..200}?.let{n->overtimeNight=n}},Modifier.fillMaxWidth(),numeric=true,centered=true)
                     }
                 }
             }
-            CatalogGroup("Documento CCNL") {
+            CatalogGroup("Documento CCNL",outlined=true) {
                 Text(documentName ?: "Nessun documento selezionato", fontSize = 13.sp)
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    OutlinedButton(onClick = { documentPicker.launch(arrayOf("application/pdf")) }, modifier = Modifier.weight(1f)) { Icon(Icons.Default.AttachFile, null, Modifier.size(18.dp)); Text(if (documentUri == null) "Allega PDF" else "Sostituisci", fontSize = 12.sp) }
+                    CatalogButton(if(documentUri==null)"Scegli PDF" else "Sostituisci PDF",{documentPicker.launch(arrayOf("application/pdf"))},Modifier.weight(1f))
                     if (documentUri != null) {
                         IconButton(onClick = { openWorkProfilePdf(context, profile.copy(ccnlDocumentUri = documentUri, ccnlDocumentName = documentName)) }) { Icon(Icons.Default.OpenInNew, "Apri documento") }
                         IconButton(onClick = { stagedDocument?.delete(); stagedDocument = null; documentName = null; documentUri = null }) { Icon(Icons.Default.DeleteOutline, "Rimuovi documento", tint = MaterialTheme.colorScheme.error) }
@@ -463,12 +634,12 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
                 }
                 if (documentError != null) Text(documentError!!, color = MaterialTheme.colorScheme.error, fontSize = 12.sp)
             }
-            CatalogGroup("Calendario") { CatalogToggle("Imposta come lavoro attivo", active) { active = it } }
+            CatalogGroup("Calendario",outlined=true) { CatalogToggle("Imposta come lavoro attivo", active) { active = it } }
+            if(!isNew&&onDelete!=null&&ShiftRepository.workProfiles.size>1)CatalogButton("Elimina lavoro",{deleteConfirm=true},Modifier.fillMaxWidth())
             Spacer(Modifier.height(8.dp))
         }
-        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            if (!isNew && onDelete != null && ShiftRepository.workProfiles.size > 1) IconButton(onClick = { deleteConfirm = true }) { Icon(Icons.Default.DeleteOutline, "Elimina lavoro", tint = MaterialTheme.colorScheme.error) }
-            Button(onClick = {
+        Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.surface).padding(horizontal=14.dp,vertical=12.dp), horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            CatalogButton("Salva lavoro",{
                 runCatching {
                     var savedUri = documentUri
                     stagedDocument?.let { staged ->
@@ -479,7 +650,7 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
                     val saved = profile.copy(name = name.trim(), companyOrDepartment = department.trim(), iconKey = icon, colorHex = color, enableAdvancedCalc = advanced, isDefault = active, ccnlCode = contract.code, ccnlName = contract.name, weeklyHours = hours, minRestHoursBetweenShifts = rest, nightSurchargePercent = night, holidaySurchargePercent = holiday, nightHolidaySurchargePercent = nightHoliday, overtimeDaySurchargePercent = overtime, overtimeNightSurchargePercent = overtimeNight, ccnlDocumentName = documentName, ccnlDocumentUri = savedUri)
                     finish { onSave(saved) }
                 }.onFailure { documentError = "Impossibile salvare il documento. Riprova." }
-            }, enabled = name.isNotBlank(), modifier = Modifier.weight(1f).height(48.dp)) { Text(if (isNew) "Crea lavoro" else "Salva lavoro") }
+            },Modifier.weight(1f),primary=true,enabled=name.isNotBlank())
         }
         if (deleteConfirm && onDelete != null) CatalogDeleteDialog("Eliminare questo lavoro?", { deleteConfirm = false }) { deleteConfirm = false; finish { onDelete(profile.id) } }
         if (showContracts) AlertDialog(onDismissRequest = { showContracts = false }, title = { Text("Contratto di riferimento") }, text = {
@@ -505,4 +676,17 @@ private fun CatalogNumberRow(label: String, value: Int, range: IntRange, step: I
         Text("$value", Modifier.widthIn(min = 28.dp), textAlign = TextAlign.Center, fontWeight = FontWeight.SemiBold)
         IconButton(onClick = { update((value + step).coerceIn(range)) }, enabled = value < range.last, modifier = Modifier.size(40.dp)) { Icon(Icons.Default.Add, "Aumenta $label", Modifier.size(18.dp)) }
     }
+}
+
+/** Filled gold is reserved for a default rotation; the unselected state stays outline. */
+@Composable
+internal fun CatalogDefaultStar(selected: Boolean, description: String, modifier: Modifier = Modifier.size(21.dp), progress: Float = 0f) {
+    if (selected) {
+        val wave = kotlin.math.sin(progress.coerceIn(0f, 1f) * kotlin.math.PI).toFloat()
+        Icon(Icons.Filled.Star, description, modifier.graphicsLayer {
+            scaleX = 1f + .18f * wave
+            scaleY = scaleX
+            rotationZ = 10f * kotlin.math.sin(progress * 2f * kotlin.math.PI).toFloat()
+        }, tint = Color(0xFFF2BC3B))
+    } else SiteIcon("star", description, modifier, MaterialTheme.colorScheme.onSurfaceVariant, progress)
 }

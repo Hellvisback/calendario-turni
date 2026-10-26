@@ -5,7 +5,6 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.os.Build
-import android.provider.AlarmClock
 import android.util.Log
 import androidx.core.content.ContextCompat
 import com.turni.calendario.MainActivity
@@ -30,6 +29,7 @@ data class UpcomingAlarmInfo(
 object ShiftAlarmScheduler {
     private const val TAG = "ShiftAlarmScheduler"
     private const val ALARM_REQUEST_CODE = 4040
+    private const val TEST_REQUEST_CODE = 4042
 
     /**
      * Risolve l'orario effettivo di sveglia per una specifica regola
@@ -44,11 +44,12 @@ object ShiftAlarmScheduler {
                     return LocalTime.of(h, m)
                 }
             }
+            return null
         }
         val def = ShiftRepository.getShiftDefinition(rule.shiftDefId) ?: return null
         return try {
             val startTime = LocalTime.parse(def.startTime)
-            startTime.minusMinutes(rule.minutesBefore.toLong())
+            startTime.minusMinutes(rule.minutesBefore.coerceIn(0, 10080).toLong())
         } catch (_: Exception) {
             null
         }
@@ -65,7 +66,11 @@ object ShiftAlarmScheduler {
         if (daysAhead < 0) return emptyList()
         val config = ShiftRepository.smartAlarmsConfig
         val startDate = now.toLocalDate()
-        val endDate = startDate.plusDays(daysAhead.toLong())
+        // A shift shortly after midnight may need its alarm on the previous day.
+        // Include tomorrow's assignments, then constrain the result by trigger date.
+        val lastTriggerDate = startDate.plusDays(daysAhead.toLong())
+        val leadDays = (config.rules.maxOfOrNull { it.minutesBefore.coerceIn(0, 10080) } ?: 0) / 1440 + 1
+        val endDate = lastTriggerDate.plusDays(leadDays.toLong())
 
         val repRule = config.rules.firstOrNull { it.shiftDefId == "reperibilita" }
         val candidates = mutableListOf<UpcomingAlarmInfo>()
@@ -76,9 +81,10 @@ object ShiftAlarmScheduler {
             val nextDay = curr.plusDays(1)
             val isNextDayOnCall = ShiftRepository.isOnCall(nextDay)
             if (isNextDayOnCall && repRule != null) {
-                val repTime = getResolvedAlarmTime(repRule) ?: LocalTime.of(20, 0)
-                val alarmDt = LocalDateTime.of(curr, repTime)
-                if (alarmDt.isAfter(now)) {
+                val repTime = getResolvedAlarmTime(repRule)
+                    ?: if (repRule.customTime.isNullOrBlank()) LocalTime.of(20, 0) else null
+                val alarmDt = repTime?.let { LocalDateTime.of(curr, it) }
+                if (alarmDt != null && alarmDt.isAfter(now)) {
                     val alarmId = "${curr}_rep"
                     val isAlarmDisabled = !config.isGlobalEnabled || !repRule.isEnabled || config.disabledAlarmIds.contains(alarmId)
                     candidates.add(
@@ -113,7 +119,7 @@ object ShiftAlarmScheduler {
                                     LocalDateTime.of(curr, LocalTime.parse(rule.customTime.trim()))
                                 } else {
                                     LocalDateTime.of(curr, LocalTime.parse(shift.customStartTime ?: shiftDef.startTime))
-                                        .minusMinutes(rule.minutesBefore.coerceAtLeast(0).toLong())
+                                        .minusMinutes(rule.minutesBefore.coerceIn(0, 10080).toLong())
                                 }
                             } catch (_: Exception) { null }
                         }.filter { it.isAfter(now) }.minOrNull()
@@ -140,16 +146,16 @@ object ShiftAlarmScheduler {
             curr = curr.plusDays(1)
         }
 
-        return candidates.sortedBy { it.triggerDateTime }
+        return candidates.filter { !it.triggerDateTime.toLocalDate().isAfter(lastTriggerDate) }.sortedBy { it.triggerDateTime }
     }
 
     /**
-     * Calcola la prima sveglia futura utile e abilitata nei prossimi 30 giorni
+     * Finds the next enabled alarm in the next twelve months.
      */
     fun getNextUpcomingAlarm(context: Context): UpcomingAlarmInfo? {
         val config = ShiftRepository.smartAlarmsConfig
         if (!config.isGlobalEnabled) return null
-        val all = getAllUpcomingAlarms(context, 30)
+        val all = getAllUpcomingAlarms(context, 365)
         return all.firstOrNull { it.isEnabled }
     }
 
@@ -183,7 +189,13 @@ object ShiftAlarmScheduler {
             return null
         }
 
-        val epochMillis = next.triggerDateTime.atZone(ZoneId.systemDefault()).toInstant().toEpochMilli()
+        // Never report success when Android cannot deliver a visible, exact alarm.
+        if (!canScheduleExactAlarms(context) || !hasNotificationPermission(context)) {
+            alarmManager.cancel(pendingIntent)
+            return null
+        }
+
+        val epochMillis = resolveEpochMillis(next.triggerDateTime, ZoneId.systemDefault())
 
         val showIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
@@ -200,7 +212,11 @@ object ShiftAlarmScheduler {
             alarmManager.setAlarmClock(clockInfo, pendingIntent)
             Log.d(TAG, "Sveglia programmata con successo per ${next.triggerDateTime}: ${next.shiftName}")
         } catch (e: SecurityException) {
-            Log.e(TAG, "Errore permessi allarme esatto: ${e.message}")
+            Log.e(TAG, "Exact alarm permission denied", e)
+            return null
+        } catch (e: RuntimeException) {
+            Log.e(TAG, "Exact alarm registration failed", e)
+            return null
         }
 
         return next
@@ -249,11 +265,8 @@ object ShiftAlarmScheduler {
             )
             return scheduleNextAlarm(context)
         } else {
-            val all = getAllUpcomingAlarms(context, 30)
-            val allIds = all.map { it.id }.toSet()
-            ShiftRepository.smartAlarmsConfig = config.copy(
-                disabledAlarmIds = config.disabledAlarmIds + allIds
-            )
+            // A global off switch must remain off beyond the current thirty-day view.
+            ShiftRepository.smartAlarmsConfig = config.copy(isGlobalEnabled = false)
             cancelScheduledAlarm(context)
             return null
         }
@@ -265,7 +278,7 @@ object ShiftAlarmScheduler {
     fun canScheduleExactAlarms(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
             val am = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager
-            am?.canScheduleExactAlarms() ?: true
+            am?.canScheduleExactAlarms() ?: false
         } else {
             true
         }
@@ -275,6 +288,9 @@ object ShiftAlarmScheduler {
      * Verifica autorizzazione per mostrare notifiche (Android 13+)
      */
     fun hasNotificationPermission(context: Context): Boolean {
+        val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager ?: return false
+        if (!manager.areNotificationsEnabled()) return false
+        if (manager.getNotificationChannel(ShiftAlarmReceiver.CHANNEL_ID)?.importance == android.app.NotificationManager.IMPORTANCE_NONE) return false
         return if (Build.VERSION.SDK_INT >= 33) {
             ContextCompat.checkSelfPermission(
                 context,
@@ -284,4 +300,37 @@ object ShiftAlarmScheduler {
             true
         }
     }
+
+    /** Uses the same receiver/service as production alarms without changing any shift rule. */
+    fun scheduleTestAlarm(context: Context, delaySeconds: Int = 10): Boolean {
+        ShiftAlarmService.ensureChannel(context)
+        if (!canScheduleExactAlarms(context) || !hasNotificationPermission(context)) return false
+        val manager = context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager ?: return false
+        val intent = Intent(context, ShiftAlarmReceiver::class.java).apply {
+            action = ShiftAlarmReceiver.ACTION_TRIGGER_SHIFT_ALARM
+            putExtra("shift_name", "Sveglia di prova")
+            putExtra("message", "Prova reale di suono, vibrazione e notifica TurniSync")
+            putExtra("is_test", true)
+        }
+        val operation = PendingIntent.getBroadcast(context, TEST_REQUEST_CODE, intent, PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        val show = PendingIntent.getActivity(context, TEST_REQUEST_CODE, Intent(context, MainActivity::class.java), PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+        return try {
+            manager.setAlarmClock(AlarmManager.AlarmClockInfo(System.currentTimeMillis() + delaySeconds.coerceIn(5, 60) * 1000L, show), operation)
+            true
+        } catch (error: RuntimeException) {
+            Log.e(TAG, "Test alarm registration failed", error)
+            false
+        }
+    }
+
+    fun cancelTestAlarm(context: Context) {
+        val intent = Intent(context, ShiftAlarmReceiver::class.java).setAction(ShiftAlarmReceiver.ACTION_TRIGGER_SHIFT_ALARM)
+        val operation = PendingIntent.getBroadcast(context, TEST_REQUEST_CODE, intent, PendingIntent.FLAG_NO_CREATE or PendingIntent.FLAG_IMMUTABLE) ?: return
+        (context.getSystemService(Context.ALARM_SERVICE) as? AlarmManager)?.cancel(operation)
+        operation.cancel()
+        context.stopService(Intent(context, ShiftAlarmService::class.java))
+    }
+
+    /** Resolve DST gaps/overlaps using the user's current time zone at scheduling. */
+    fun resolveEpochMillis(dateTime: LocalDateTime, zone: ZoneId): Long = dateTime.atZone(zone).toInstant().toEpochMilli()
 }

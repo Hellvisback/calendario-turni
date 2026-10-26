@@ -22,7 +22,7 @@ internal fun NativeColorPlane(hue:Float,saturation:Float,brightness:Float,onChan
     var width by remember{mutableStateOf(1f)};var height by remember{mutableStateOf(1f)}
     val update by rememberUpdatedState(onChange)
     fun select(point:Offset){update((point.x/width).coerceIn(0f,1f),(1-point.y/height).coerceIn(0f,1f))}
-    Canvas(Modifier.fillMaxWidth().height(132.dp).clip(RoundedCornerShape(14.dp)).onSizeChanged{width=it.width.toFloat();height=it.height.toFloat()}
+    Canvas(Modifier.fillMaxWidth().height(154.dp).clip(RoundedCornerShape(16.dp)).onSizeChanged{width=it.width.toFloat();height=it.height.toFloat()}
         .semantics {
             contentDescription="Saturazione e luminosità"
             stateDescription="Saturazione ${(saturation*100).toInt()}%, luminosità ${(brightness*100).toInt()}%"

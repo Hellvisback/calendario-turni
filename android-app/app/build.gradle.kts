@@ -11,8 +11,8 @@ android {
         applicationId = "com.turni.calendario"
         minSdk = 26
         targetSdk = 32
-        versionCode = 16
-        versionName = "1.3.0"
+        versionCode = 22
+        versionName = "1.4.1"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {
@@ -41,6 +41,7 @@ android {
     }
     composeOptions {
         kotlinCompilerExtensionVersion = "1.2.0"
+        useLiveLiterals = false
     }
     packagingOptions {
         resources {
@@ -50,6 +51,7 @@ android {
 }
 
 dependencies {
+    implementation("com.google.android.gms:play-services-auth:21.3.0")
     implementation("androidx.core:core-ktx:1.8.0")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.5.1")
     implementation("androidx.activity:activity-compose:1.5.1")

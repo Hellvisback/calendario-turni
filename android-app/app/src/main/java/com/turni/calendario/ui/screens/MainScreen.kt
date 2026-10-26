@@ -31,8 +31,8 @@ sealed class NavItem(val route: String, val label: String, val icon: ImageVector
 @Composable
 fun MainScreen() {
     var route by rememberSaveable { mutableStateOf("calendar") }
-    var editMode by remember { mutableStateOf(false) }
-    var editRequest by remember { mutableStateOf(0) }
+    val editMode = remember { mutableStateOf(false) }
+    val editRequest = remember { mutableStateOf(0) }
     var subScreen by remember { mutableStateOf(false) }
     var rotation by remember { mutableStateOf<ShiftRotation?>(null) }
     val savedScreens=rememberSaveableStateHolder()
@@ -45,8 +45,8 @@ fun MainScreen() {
             savedScreens.SaveableStateProvider(destination) {
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
                 when (destination) {
-                    "calendar" -> CalendarScreen(editRequest = editRequest,
-                        onEditModeActiveChanged = { editMode = it; if(!it)editRequest=0 }, onOpenSettings = { route = "altro" })
+                    "calendar" -> CalendarDestination(editRequest = editRequest,
+                        onEditModeActiveChanged = { editMode.value = it; if(!it)editRequest.value=0 }, onOpenSettings = { route = "altro" })
                     "report" -> ReportScreen(onOpenSettings = { route = "altro" })
                     "turni" -> TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
                         initialTab = if (rotation != null) 2 else 0, initialEditingRotation = rotation,
@@ -63,15 +63,25 @@ fun MainScreen() {
         com.turni.calendario.ui.components.AnimatedStatusPopup(message=loadWarning,
             type=com.turni.calendario.ui.components.PopupType.ERROR,onDismiss={loadWarning=null},
             modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding())
-        AnimatedVisibility(visible = (route == "calendar" || route == "report" || (route=="altro"&&!subScreen)) && !editMode,
+        MainDockVisibility(visible = { (route == "calendar" || route == "report" || (route=="altro"&&!subScreen)) && !editMode.value },
             enter = slideInVertically(spring(.92f, 380f)) { it } + fadeIn(tween(220)),
             exit = slideOutVertically(spring(1f, 520f)) { it } + fadeOut(tween(160)),
             modifier = Modifier.align(Alignment.BottomCenter)) {
             TurniDock(calendarSelected = route == "calendar",primarySelected=route!="altro",
                 onCalendar = { route = "calendar"; subScreen = false },
-                onStatistics = { route = "report"; subScreen = false }, onEdit = { editMode=true;editRequest++ },
+                onStatistics = { route = "report"; subScreen = false }, onEdit = { editMode.value=true;editRequest.value++ },
                 onModels = { route = "turni"; subScreen = false },
-                modifier = Modifier.navigationBarsPadding().padding(bottom = 8.dp))
+                modifier = Modifier.navigationBarsPadding().padding(bottom = 0.dp))
         }
     }
+}
+
+/** Editing state invalidates its destination and dock, never the root navigation tree. */
+@Composable
+private fun CalendarDestination(editRequest:State<Int>,onEditModeActiveChanged:(Boolean)->Unit,onOpenSettings:()->Unit){
+    CalendarScreen(editRequest=editRequest.value,onEditModeActiveChanged=onEditModeActiveChanged,onOpenSettings=onOpenSettings)
+}
+@Composable
+private fun MainDockVisibility(visible:()->Boolean,enter:EnterTransition,exit:ExitTransition,modifier:Modifier,content:@Composable AnimatedVisibilityScope.()->Unit){
+    AnimatedVisibility(visible=visible(),enter=enter,exit=exit,modifier=modifier,content=content)
 }

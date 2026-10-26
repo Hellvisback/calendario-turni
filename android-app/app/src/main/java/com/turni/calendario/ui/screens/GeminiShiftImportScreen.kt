@@ -25,7 +25,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -299,7 +299,7 @@ fun GeminiShiftImportScreen(
                         .border(1.dp, ObsidianBorderSubtle, CircleShape)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.ArrowBack,
+                        imageVector = Icons.Outlined.ArrowBack,
                         contentDescription = "Indietro",
                         tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
@@ -361,7 +361,7 @@ fun GeminiShiftImportScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.AutoAwesome,
+                                    imageVector = Icons.Outlined.AutoAwesome,
                                     contentDescription = null,
                                     tint = ObsidianPrimary,
                                     modifier = Modifier.size(22.dp)
@@ -452,7 +452,7 @@ fun GeminiShiftImportScreen(
                                 .bouncyClickable(onClick = copyPromptToClipboard)
                         ) {
                             Icon(
-                                imageVector = Icons.Default.ContentCopy,
+                                imageVector = Icons.Outlined.ContentCopy,
                                 contentDescription = null,
                                 tint = MaterialTheme.colorScheme.onPrimaryContainer,
                                 modifier = Modifier.size(20.dp)
@@ -577,7 +577,7 @@ fun GeminiShiftImportScreen(
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
                     Icon(
-                        imageVector = if (showDirectApiSection) Icons.Default.KeyboardArrowUp else Icons.Default.KeyboardArrowDown,
+                        imageVector = if (showDirectApiSection) Icons.Outlined.KeyboardArrowUp else Icons.Outlined.KeyboardArrowDown,
                         contentDescription = null,
                         tint = TextMuted,
                         modifier = Modifier.size(16.dp)
@@ -690,7 +690,7 @@ fun GeminiShiftImportScreen(
                                 contentAlignment = Alignment.Center
                             ) {
                                 Icon(
-                                    imageVector = Icons.Default.PersonSearch,
+                                    imageVector = Icons.Outlined.PersonSearch,
                                     contentDescription = null,
                                     tint = ObsidianPrimary,
                                     modifier = Modifier.size(20.dp)
@@ -734,12 +734,12 @@ fun GeminiShiftImportScreen(
                             placeholder = { Text("Es: Mario Rossi (oppure solo Rossi)", fontSize = 13.sp, color = TextMuted) },
                             singleLine = true,
                             leadingIcon = {
-                                Icon(Icons.Default.Badge, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(18.dp))
+                                Icon(Icons.Outlined.Badge, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(18.dp))
                             },
                             trailingIcon = {
                                 if (userNameInput.isNotBlank()) {
                                     IconButton(onClick = { userNameInput = "" }) {
-                                        Icon(Icons.Default.Close, contentDescription = "Cancella", tint = TextMuted, modifier = Modifier.size(16.dp))
+                                        Icon(Icons.Outlined.Close, contentDescription = "Cancella", tint = TextMuted, modifier = Modifier.size(16.dp))
                                     }
                                 }
                             },
@@ -777,7 +777,7 @@ fun GeminiShiftImportScreen(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.ContentPaste,
+                                        imageVector = Icons.Outlined.ContentPaste,
                                         contentDescription = null,
                                         tint = ObsidianTertiary,
                                         modifier = Modifier.size(20.dp)
@@ -805,7 +805,7 @@ fun GeminiShiftImportScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.ContentPaste,
+                                        imageVector = Icons.Outlined.ContentPaste,
                                         contentDescription = null,
                                         tint = ObsidianPrimary,
                                         modifier = Modifier.size(14.dp)
@@ -863,7 +863,7 @@ fun GeminiShiftImportScreen(
                                     color = TextSecondary
                                 )
                                 TextButton(onClick = { pastedAiText = "" }) {
-                                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                                    Icon(Icons.Outlined.DeleteOutline, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
                                     Spacer(modifier = Modifier.width(4.dp))
                                     Text("Cancella", fontSize = 11.sp, color = TextMuted)
                                 }
@@ -885,7 +885,7 @@ fun GeminiShiftImportScreen(
                         .bouncyClickable(onClick = processPastedText)
                 ) {
                     Icon(
-                        imageVector = Icons.Default.AutoAwesome,
+                        imageVector = Icons.Outlined.AutoAwesome,
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.onPrimaryContainer,
                         modifier = Modifier.size(20.dp)
@@ -910,7 +910,7 @@ fun GeminiShiftImportScreen(
                         .fillMaxWidth()
                         .height(44.dp)
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(16.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("← Torna alle Istruzioni e Prompt", fontSize = 12.5.sp, color = TextSecondary)
                 }
@@ -935,7 +935,7 @@ fun GeminiShiftImportScreen(
                         ) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Icon(
-                                    imageVector = Icons.Default.CheckCircle,
+                                    imageVector = Icons.Outlined.CheckCircle,
                                     contentDescription = null,
                                     tint = ObsidianTertiary,
                                     modifier = Modifier.size(20.dp)
@@ -976,7 +976,7 @@ fun GeminiShiftImportScreen(
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
                                     Icon(
-                                        imageVector = Icons.Default.Star,
+                                        imageVector = Icons.Outlined.Star,
                                         contentDescription = null,
                                         tint = ColorReperibilita,
                                         modifier = Modifier.size(16.dp)
@@ -1016,7 +1016,7 @@ fun GeminiShiftImportScreen(
                         onClick = { showAddShiftDialog = true },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Outlined.Add, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("+ Aggiungi Turno", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = ObsidianPrimary)
                     }
@@ -1106,7 +1106,7 @@ fun GeminiShiftImportScreen(
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Edit,
+                                                imageVector = Icons.Outlined.Edit,
                                                 contentDescription = "Modifica turno",
                                                 tint = ObsidianPrimary,
                                                 modifier = Modifier.size(16.dp)
@@ -1122,7 +1122,7 @@ fun GeminiShiftImportScreen(
                                             modifier = Modifier.size(32.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.DeleteOutline,
+                                                imageVector = Icons.Outlined.DeleteOutline,
                                                 contentDescription = "Elimina turno",
                                                 tint = TextMuted,
                                                 modifier = Modifier.size(16.dp)
@@ -1165,7 +1165,7 @@ fun GeminiShiftImportScreen(
                         onClick = { showAddSquadDialog = true },
                         contentPadding = PaddingValues(horizontal = 8.dp, vertical = 2.dp)
                     ) {
-                        Icon(Icons.Default.Add, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
+                        Icon(Icons.Outlined.Add, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(14.dp))
                         Spacer(modifier = Modifier.width(4.dp))
                         Text("+ Aggiungi Squadra", fontSize = 11.5.sp, fontWeight = FontWeight.Bold, color = ObsidianPrimary)
                     }
@@ -1260,7 +1260,7 @@ fun GeminiShiftImportScreen(
                                             modifier = Modifier.size(34.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.Edit,
+                                                imageVector = Icons.Outlined.Edit,
                                                 contentDescription = "Modifica rotazione",
                                                 tint = ObsidianPrimary,
                                                 modifier = Modifier.size(16.dp)
@@ -1276,7 +1276,7 @@ fun GeminiShiftImportScreen(
                                             modifier = Modifier.size(34.dp)
                                         ) {
                                             Icon(
-                                                imageVector = Icons.Default.DeleteOutline,
+                                                imageVector = Icons.Outlined.DeleteOutline,
                                                 contentDescription = "Elimina squadra",
                                                 tint = TextMuted,
                                                 modifier = Modifier.size(16.dp)
@@ -1320,7 +1320,7 @@ fun GeminiShiftImportScreen(
                                         modifier = Modifier.fillMaxWidth()
                                     ) {
                                         Icon(
-                                            imageVector = Icons.Default.Groups,
+                                            imageVector = Icons.Outlined.Groups,
                                             contentDescription = null,
                                             tint = TextMuted,
                                             modifier = Modifier.size(14.dp)
@@ -1356,7 +1356,7 @@ fun GeminiShiftImportScreen(
                         verticalAlignment = Alignment.CenterVertically
                     ) {
                         Icon(
-                            imageVector = Icons.Default.Info,
+                            imageVector = Icons.Outlined.Info,
                             contentDescription = null,
                             tint = ObsidianPrimary,
                             modifier = Modifier.size(18.dp)
@@ -1421,7 +1421,7 @@ fun GeminiShiftImportScreen(
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Salvataggio in corso...", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     } else {
-                        Icon(Icons.Default.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
+                        Icon(Icons.Outlined.CheckCircle, contentDescription = null, tint = MaterialTheme.colorScheme.onPrimaryContainer, modifier = Modifier.size(18.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Salva nel Catalogo", fontSize = 13.5.sp, fontWeight = FontWeight.Bold, color = MaterialTheme.colorScheme.onPrimaryContainer)
                     }
@@ -1444,7 +1444,7 @@ fun GeminiShiftImportScreen(
                             .fillMaxWidth()
                             .height(44.dp)
                     ) {
-                        Icon(Icons.Default.EditCalendar, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
+                        Icon(Icons.Outlined.EditCalendar, contentDescription = null, tint = TextPrimary, modifier = Modifier.size(16.dp))
                         Spacer(modifier = Modifier.width(6.dp))
                         Text("Modifica Avanzata Turni", fontSize = 12.5.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     }
@@ -1457,7 +1457,7 @@ fun GeminiShiftImportScreen(
                     onClick = { currentStep = 2 },
                     modifier = Modifier.align(Alignment.CenterHorizontally)
                 ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Outlined.ArrowBack, contentDescription = null, tint = TextMuted, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("← Modifica risposta incollata", fontSize = 11.5.sp, color = TextMuted)
                 }
@@ -1542,7 +1542,7 @@ fun GeminiShiftImportScreen(
                 onDismissRequest = { showExitToEditDialog = false },
                 title = {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.WarningAmber, contentDescription = null, tint = ColorReperibilita, modifier = Modifier.size(22.dp))
+                        Icon(Icons.Outlined.WarningAmber, contentDescription = null, tint = ColorReperibilita, modifier = Modifier.size(22.dp))
                         Spacer(modifier = Modifier.width(8.dp))
                         Text("Salvataggio e Modifica", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 16.sp)
                     }
@@ -1636,7 +1636,7 @@ private fun StepProgressHeader(
             )
 
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = Icons.Outlined.ChevronRight,
                 contentDescription = null,
                 tint = if (currentStep > 1) ObsidianPrimary else TextMuted,
                 modifier = Modifier.size(16.dp)
@@ -1651,7 +1651,7 @@ private fun StepProgressHeader(
             )
 
             Icon(
-                imageVector = Icons.Default.ChevronRight,
+                imageVector = Icons.Outlined.ChevronRight,
                 contentDescription = null,
                 tint = if (currentStep > 2) ObsidianPrimary else TextMuted,
                 modifier = Modifier.size(16.dp)
@@ -1700,7 +1700,7 @@ private fun StepPillItem(
         ) {
             if (isCompleted) {
                 Icon(
-                    imageVector = Icons.Default.Check,
+                    imageVector = Icons.Outlined.Check,
                     contentDescription = null,
                     tint = ObsidianTertiary,
                     modifier = Modifier.size(13.dp)
@@ -2122,7 +2122,7 @@ private fun DirectApiCard(
                     trailingIcon = {
                         IconButton(onClick = onApiKeyVisibilityToggle) {
                             Icon(
-                                imageVector = if (isApiKeyVisible) Icons.Default.VisibilityOff else Icons.Default.Visibility,
+                                imageVector = if (isApiKeyVisible) Icons.Outlined.VisibilityOff else Icons.Outlined.Visibility,
                                 contentDescription = null,
                                 modifier = Modifier.size(16.dp)
                             )
@@ -2150,7 +2150,7 @@ private fun DirectApiCard(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f).height(40.dp)
                 ) {
-                    Icon(Icons.Default.Image, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Outlined.Image, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("Foto / Gallery", fontSize = 11.sp)
                 }
@@ -2160,7 +2160,7 @@ private fun DirectApiCard(
                     shape = RoundedCornerShape(10.dp),
                     modifier = Modifier.weight(1f).height(40.dp)
                 ) {
-                    Icon(Icons.Default.PictureAsPdf, contentDescription = null, modifier = Modifier.size(14.dp))
+                    Icon(Icons.Outlined.PictureAsPdf, contentDescription = null, modifier = Modifier.size(14.dp))
                     Spacer(modifier = Modifier.width(4.dp))
                     Text("PDF Turni", fontSize = 11.sp)
                 }
@@ -2237,7 +2237,7 @@ private fun ImportElasticStarButton(
     ) {
         Box(contentAlignment = Alignment.Center) {
             Icon(
-                imageVector = if (isDefault) Icons.Default.Star else Icons.Default.StarBorder,
+                imageVector = if (isDefault) Icons.Outlined.Star else Icons.Outlined.StarBorder,
                 contentDescription = if (isDefault) "Revoca predefinito" else "Imposta come predefinito",
                 tint = if (isDefault) ColorReperibilita else TextSecondary,
                 modifier = Modifier

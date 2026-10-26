@@ -1,766 +1,231 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
-
 package com.turni.calendario.ui.screens
 
-import android.Manifest
-import android.provider.CalendarContract
-import android.widget.Toast
-import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.turni.calendario.model.AssignedShift
+import androidx.compose.ui.window.Dialog
+import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.repository.ShiftRepository
-import com.turni.calendario.sync.DeviceCalendarInfo
-import com.turni.calendario.sync.GoogleCalendarSyncHelper
+import com.turni.calendario.sync.GoogleCalendarRemote
+import com.turni.calendario.sync.RemoteCalendarInfo
 import com.turni.calendario.ui.components.ActionFeedback
-import com.turni.calendario.ui.components.MagicalActionFeedbackHUD
-import com.turni.calendario.ui.theme.*
+import com.turni.calendario.ui.components.SiteIcon
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-/**
- * Schermata di Sincronizzazione Google Calendar Reale:
- * - Interroga il ContentProvider CalendarContract di Android per ottenere i veri account Google e calendari del device.
- * - Inserisce o rimuove eventi reali su Google Calendar con orari esatti, fusi orari e promemoria.
- * - Non intacca mai gli eventi personali: sincronizza solo i turni di lavoro.
- * - Cooldown di 5 minuti dopo ogni sincronizzazione/eliminazione per evitare spam.
- * - Operazioni in background su Dispatchers.IO.
- */
+/** Only fresh Google authorization and explicitly selected writable calendars are used. */
 @Composable
-fun GoogleCalendarSyncScreen(
-    onDismiss: () -> Unit
-) {
-    val context = LocalContext.current
+fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
-    var hasPermission by remember { mutableStateOf(GoogleCalendarSyncHelper.hasCalendarPermissions(context)) }
-    var deviceCalendars by remember { mutableStateOf(if (hasPermission) GoogleCalendarSyncHelper.getDeviceCalendars(context) else emptyList()) }
-    var selectedCalendarId by remember { mutableStateOf<Long?>(deviceCalendars.firstOrNull()?.id) }
-
-    val permissionLauncher = rememberLauncherForActivityResult(
-        contract = ActivityResultContracts.RequestMultiplePermissions()
-    ) { results ->
-        val granted = results.values.all { it }
-        hasPermission = granted
-        if (granted) {
-            deviceCalendars = GoogleCalendarSyncHelper.getDeviceCalendars(context)
-            if (selectedCalendarId == null) {
-                selectedCalendarId = deviceCalendars.firstOrNull()?.id
-            }
-        } else {
-            Toast.makeText(context, "Permessi Calendario necessari per la sincronizzazione Google", Toast.LENGTH_LONG).show()
-        }
+    var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
+    val access = rememberGoogleAccess { feedback = ActionFeedback(it, true) }
+    var apiBusy by remember { mutableStateOf(false) }
+    var operation by remember { mutableStateOf("") }
+    val busy = apiBusy || access.busy
+    val email = ShiftRepository.googleAccountProfile?.email
+    var calendarOwner by remember { mutableStateOf<String?>(null) }
+    var selectedCalendar by remember { mutableStateOf<RemoteCalendarInfo?>(null) }
+    var calendars by remember { mutableStateOf(emptyList<RemoteCalendarInfo>()) }
+    var picker by remember { mutableStateOf(false) }
+    var confirmDelete by remember { mutableStateOf(false) }
+    var confirmEmpty by remember { mutableStateOf(false) }
+    LaunchedEffect(email) {
+        selectedCalendar = null; calendarOwner = null; calendars = emptyList()
+        picker = false; confirmDelete = false; confirmEmpty = false
     }
-
     val today = remember { LocalDate.now() }
-    val currentMonthLabel = remember(today) {
-        val monthName = today.month.name.lowercase().replaceFirstChar { it.uppercase() }
-        "Mese Corrente ($monthName ${today.year})"
+    var range by remember { mutableStateOf(0) }
+    var exactHours by remember { mutableStateOf(true) }
+    var reminderEnabled by remember { mutableStateOf(true) }
+    var reminderMinutes by remember { mutableStateOf(60) }
+    var includeRest by remember { mutableStateOf(false) }
+    val start = if (range == 2) today.withDayOfYear(1) else today.withDayOfMonth(1)
+    val end = when (range) { 1 -> start.plusMonths(3).minusDays(1); 2 -> start.plusYears(1).minusDays(1); else -> start.plusMonths(1).minusDays(1) }
+    val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN) }
+    val work = ShiftRepository.activeWorkProfile
+    val definitions = ShiftRepository.shiftDefinitions.filter { it.workProfileId == work.id }
+    val selectedIds = definitions.filter { includeRest || it.category != ShiftCategory.RIPOSO }.map { it.id }.toSet()
+    val shiftCount = ShiftRepository.calendarShifts.entries.filter { it.key >= start && it.key <= end }.sumOf { entry -> entry.value.count { it.shiftDefId in selectedIds } }
+
+    fun chooseCalendar() {
+        if (apiBusy || access.busy) return
+        access.authorize(GoogleFeature.CALENDAR) { token ->
+            val owner = ShiftRepository.googleAccountProfile?.email
+            apiBusy = true; operation = "Caricamento dei calendari…"
+            scope.launch {
+                try {
+                    val available = withContext(Dispatchers.IO) { GoogleCalendarRemote.calendars(token) }
+                    if (ShiftRepository.googleAccountProfile?.email == owner) {
+                        calendars = available; calendarOwner = owner; picker = available.isNotEmpty()
+                        if (available.isEmpty()) feedback = ActionFeedback("Questo account non contiene calendari con permesso di scrittura.", true)
+                    }
+                } catch (error: CancellationException) { throw error
+                } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Impossibile caricare i calendari Google.", true)
+                } finally { apiBusy = false; operation = "" }
+            }
+        }
     }
-    val threeMonthsLabel = remember(today) {
-        val endM = today.plusMonths(2).month.name.lowercase().replaceFirstChar { it.uppercase() }
-        "Prossimi 3 Mesi (fino a $endM ${today.plusMonths(2).year})"
-    }
-    val wholeYearLabel = "Intero Anno Lavorativo (12 Mesi)"
-
-    var selectedRange by remember { mutableStateOf(currentMonthLabel) }
-    var syncExactHours by remember { mutableStateOf(true) }
-    var setReminderOneHourBefore by remember { mutableStateOf(true) }
-    var includeRestDays by remember { mutableStateOf(false) }
-
-    // Feedback animato HUD con particelle (stile Breccia e Liquid Glass)
-    var actionFeedback by remember { mutableStateOf<ActionFeedback?>(null) }
-    var showEventListPreview by remember { mutableStateOf(false) }
-
-    // Cooldown & loading states
-    var isSyncing by remember { mutableStateOf(false) }
-    var isDeleting by remember { mutableStateOf(false) }
-    var syncCooldownUntil by remember { mutableStateOf(0L) }
-    var cooldownRemainingSeconds by remember { mutableStateOf(0L) }
-
-    // Confirm delete dialog
-    var showConfirmDeleteDialog by remember { mutableStateOf(false) }
-
-    // Countdown timer for cooldown
-    LaunchedEffect(syncCooldownUntil) {
-        if (syncCooldownUntil > 0L) {
-            while (true) {
-                val remaining = (syncCooldownUntil - System.currentTimeMillis()) / 1000L
-                if (remaining <= 0) {
-                    cooldownRemainingSeconds = 0
-                    break
+    fun synchronize() {
+        if (apiBusy || access.busy) return
+        val selected = selectedCalendar ?: return
+        val owner = calendarOwner
+        access.authorize(GoogleFeature.CALENDAR) { token ->
+            if (owner == null || ShiftRepository.googleAccountProfile?.email != owner) {
+                selectedCalendar = null; feedback = ActionFeedback("L'account è cambiato. Scegli di nuovo il calendario Google.", true)
+            } else {
+                // Snapshot repository state on main, then perform all network work on IO.
+                val workId = ShiftRepository.activeWorkProfileId
+                val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == workId }.toList()
+                val modelIds = models.map { it.id }.toSet()
+                val shifts = ShiftRepository.calendarShifts.entries.filter { it.key >= start && it.key <= end }
+                    .flatMap { entry -> entry.value.toList().filter { it.shiftDefId in modelIds }.map { entry.key to it } }
+                val syncStart = start; val syncEnd = end; val hours = exactHours; val rest = includeRest
+                val reminder = if (reminderEnabled) reminderMinutes else null
+                apiBusy = true; operation = "Sincronizzazione in corso…"
+                scope.launch {
+                    try {
+                        val count = withContext(Dispatchers.IO) { GoogleCalendarRemote.sync(token, selected.id, shifts, models, syncStart, syncEnd, hours, reminder, rest, workId) }
+                        feedback = ActionFeedback(if (count == 1) "Un turno sincronizzato su Google Calendar" else "$count turni sincronizzati su Google Calendar")
+                    } catch (error: CancellationException) { throw error
+                    } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Sincronizzazione Google Calendar non riuscita.", true)
+                    } finally { apiBusy = false; operation = "" }
                 }
-                cooldownRemainingSeconds = remaining
-                delay(1000L)
+            }
+        }
+    }
+    fun deleteEvents() {
+        if (apiBusy || access.busy) return
+        val selected = selectedCalendar ?: return
+        val owner = calendarOwner
+        access.authorize(GoogleFeature.CALENDAR) { token ->
+            if (owner == null || ShiftRepository.googleAccountProfile?.email != owner) {
+                selectedCalendar = null; feedback = ActionFeedback("L'account è cambiato. Scegli di nuovo il calendario Google.", true)
+            } else {
+                apiBusy = true; operation = "Rimozione degli eventi TurniSync…"
+                scope.launch {
+                    try {
+                        val count = withContext(Dispatchers.IO) { GoogleCalendarRemote.deleteOwnedEvents(token, selected.id) }
+                        feedback = ActionFeedback(if (count == 1) "Un evento TurniSync rimosso" else "$count eventi TurniSync rimossi", true)
+                    } catch (error: CancellationException) { throw error
+                    } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Impossibile rimuovere gli eventi TurniSync.", true)
+                    } finally { apiBusy = false; operation = "" }
+                }
             }
         }
     }
 
-    val isCooldownActive = cooldownRemainingSeconds > 0
-
-    // Genera lista turni nel periodo per l'anteprima e la sincronizzazione
-    val shiftsToSync = remember(selectedRange, includeRestDays) {
-        val list = mutableListOf<Pair<LocalDate, AssignedShift>>()
-        val startDate = today.withDayOfMonth(1)
-        val endDate = when {
-            selectedRange.contains("3 Mesi") -> today.plusMonths(3).withDayOfMonth(1).minusDays(1)
-            selectedRange.contains("12 Mesi") || selectedRange.contains("Anno") -> today.plusMonths(12).withDayOfMonth(1).minusDays(1)
-            else -> today.plusMonths(1).withDayOfMonth(1).minusDays(1)
+    CloudFeatureScaffold("Google Calendar", onDismiss, feedback, { feedback = null }) {
+        GoogleAccountCard(access, { feedback = it }, enabled = !apiBusy)
+        CloudCard("Calendario di destinazione", "Scegli dove sincronizzare i turni di ${work.name}.") {
+            selectedCalendar?.let { selected ->
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SiteIcon("calendar", modifier = Modifier.size(25.dp), tint = MaterialTheme.colorScheme.primary)
+                    Column(Modifier.weight(1f)) {
+                        Text(selected.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
+                        Text(calendarOwner.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    }
+                }
+                Spacer(Modifier.height(12.dp))
+            }
+            CloudButton(if (selectedCalendar == null) "Scegli calendario" else "Cambia calendario", "calendar", ::chooseCalendar, enabled = !busy)
         }
-
-        var curr = startDate
-        while (!curr.isAfter(endDate)) {
-            val shifts = ShiftRepository.getShiftsForDate(curr)
-            shifts.forEach { s ->
-                val def = ShiftRepository.getShiftDefinition(s.shiftDefId)
-                if (def != null) {
-                    val isRest = def.category.name == "RIPOSO" || def.shortCode.uppercase() in listOf("RIP", "SMO", "R", "S")
-                    if (!isRest || includeRestDays) {
-                        list.add(Pair(curr, s))
+        CloudCard("Periodo", "${start.format(formatter)} – ${end.format(formatter)}") {
+            CalendarOptionTabs(listOf("Mese", "3 mesi", "Anno"), range, !busy) { range = it }
+            Spacer(Modifier.height(12.dp))
+            Text("$shiftCount ${if (shiftCount == 1) "turno" else "turni"} · ${work.name}", fontSize = 13.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        CloudCard("Opzioni degli eventi") {
+            CalendarOptionSwitch("Orari precisi", "Usa attacco, stacco effettivo e straordinario.", exactHours, !busy) { exactHours = it }
+            CalendarOptionSwitch("Includi i riposi", "Mostra anche i turni della categoria Riposo.", includeRest, !busy) { includeRest = it }
+            CalendarOptionSwitch("Promemoria", "Aggiunge un avviso nel calendario Google.", reminderEnabled, !busy) { reminderEnabled = it }
+            AnimatedVisibility(reminderEnabled, enter = expandVertically(tween(260)) + fadeIn(tween(220)), exit = shrinkVertically(tween(220)) + fadeOut(tween(180))) {
+                Row(Modifier.fillMaxWidth().padding(top = 8.dp), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    listOf(15, 30, 60).forEach { minutes ->
+                        FilterChip(selected = minutes == reminderMinutes, onClick = { reminderMinutes = minutes }, enabled = !busy,
+                            label = { Text(if (minutes == 60) "1 ora" else "$minutes min", fontSize = 12.sp) }, modifier = Modifier.weight(1f))
                     }
                 }
             }
-            curr = curr.plusDays(1)
         }
-        list
+        CloudButton(if (apiBusy) operation else "Sincronizza i turni", "upload", {
+            if (shiftCount == 0) confirmEmpty = true else synchronize()
+        }, enabled = !busy && selectedCalendar != null)
+        Text("La sincronizzazione aggiorna gli eventi TurniSync del lavoro e del periodo scelti. Gli eventi personali restano invariati.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        CloudCard("Gestione degli eventi", "Rimuove dal calendario scelto solo gli eventi creati da TurniSync, anche degli altri lavori e periodi. I turni nell'app restano salvati.") {
+            CloudButton("Rimuovi eventi TurniSync", "trash", { confirmDelete = true }, enabled = !busy && selectedCalendar != null, destructive = true)
+        }
     }
-
-    BackHandler(onBack = onDismiss)
-
-    // Wrap everything in a Box to allow overlay popup
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) {
-        Column(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(ObsidianBackground)
-                .verticalScroll(rememberScrollState())
-                .padding(16.dp)
-        ) {
-            // Top Bar
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                IconButton(
-                    onClick = onDismiss,
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(CircleShape)
-                        .background(ObsidianSurfaceContainer)
-                ) {
-                    Icon(Icons.Default.ArrowBack, contentDescription = "Indietro", tint = TextPrimary)
-                }
-
-                Text(
-                    text = "Google Calendar Sync",
-                    fontSize = 18.sp,
-                    fontWeight = FontWeight.Bold,
-                    color = TextPrimary
-                )
-
-                Box(modifier = Modifier.size(40.dp))
-            }
-
-            Spacer(modifier = Modifier.height(18.dp))
-
-            // Banner Richiesta Permessi se mancanti
-            if (!hasPermission) {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = ColorReperibilita.copy(alpha = 0.10f)),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ColorReperibilita)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.SecurityUpdateWarning, contentDescription = null, tint = ColorReperibilita, modifier = Modifier.size(24.dp))
-                            Spacer(modifier = Modifier.width(10.dp))
-                            Text("Permessi Calendario Richiesti", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                        }
-                        Spacer(modifier = Modifier.height(6.dp))
-                        Text(
-                            "Per sincronizzare i tuoi turni con Google Calendar sul tuo telefono, concedi i permessi di lettura e scrittura calendario.",
-                            color = ObsidianBorder,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Button(
-                            onClick = {
-                                permissionLauncher.launch(
-                                    arrayOf(
-                                        Manifest.permission.READ_CALENDAR,
-                                        Manifest.permission.WRITE_CALENDAR
-                                    )
-                                )
-                            },
-                            colors = ButtonDefaults.buttonColors(containerColor = ColorReperibilita),
-                            shape = RoundedCornerShape(10.dp)
-                        ) {
-                            Text("Autorizza Accesso Calendario", color = Color.Black, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                        }
-                    }
-                }
-                Spacer(modifier = Modifier.height(16.dp))
-            }
-
-            // Badge Garanzia di Sicurezza
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianPrimarySubtle),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Row(
-                    modifier = Modifier.padding(16.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(44.dp)
-                            .clip(CircleShape)
-                            .background(ObsidianPrimary),
-                        contentAlignment = Alignment.Center
-                    ) {
-                        Icon(Icons.Default.Security, contentDescription = null, tint = catalogInk(ObsidianPrimary))
-                    }
-
-                    Spacer(modifier = Modifier.width(14.dp))
-
-                    Column {
-                        Text(
-                            text = "Sincronizzazione Reale & Sicura",
-                            color = TextPrimary,
-                            fontWeight = FontWeight.Bold,
-                            fontSize = 15.sp
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = "Sincronizza direttamente con il tuo account Google e con l'app Google Calendar installata sul tuo smartphone.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Card Selezione Calendario Google Reale
-            val currentGoogleAccount = ShiftRepository.googleAccountProfile
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(40.dp)
-                                .clip(CircleShape)
-                                .background(ObsidianPrimary),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(Icons.Default.AccountCircle, contentDescription = null, tint = catalogInk(ObsidianPrimary), modifier = Modifier.size(26.dp))
-                        }
-                        Spacer(modifier = Modifier.width(12.dp))
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text(
-                                text = currentGoogleAccount?.email ?: "Account Google Principale",
-                                color = TextPrimary,
-                                fontWeight = FontWeight.Bold,
-                                fontSize = 14.sp
-                            )
-                            Text(
-                                text = if (deviceCalendars.isNotEmpty()) "${deviceCalendars.size} calendari rilevati sul dispositivo" else "Sincronizzazione nativa attiva",
-                                color = TextSecondary,
-                                fontSize = 11.5.sp
-                            )
-                        }
-                    }
-
-                    Spacer(modifier = Modifier.height(12.dp))
-                    Divider(color = ObsidianSurfaceContainer, thickness = 0.8.dp)
-                    Spacer(modifier = Modifier.height(8.dp))
-                    Text("Seleziona Calendario di Destinazione:", color = TextSecondary, fontSize = 11.5.sp, fontWeight = FontWeight.SemiBold)
-                    Spacer(modifier = Modifier.height(8.dp))
-
-                    if (deviceCalendars.isNotEmpty()) {
-                        deviceCalendars.forEach { cal ->
-                            val isSelected = cal.id == selectedCalendarId
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .clickable { selectedCalendarId = cal.id }
-                                    .padding(vertical = 6.dp, horizontal = 6.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(10.dp)
-                                            .clip(CircleShape)
-                                            .background(if (isSelected) ObsidianPrimary else TextMuted)
-                                    )
-                                    Spacer(modifier = Modifier.width(10.dp))
-                                    Column {
-                                        Text(cal.displayName, color = if (isSelected) TextPrimary else TextSecondary, fontSize = 13.sp, fontWeight = if (isSelected) FontWeight.Bold else FontWeight.Normal)
-                                        if (cal.accountName.isNotBlank()) {
-                                            Text(cal.accountName, color = TextMuted, fontSize = 10.5.sp)
-                                        }
-                                    }
-                                }
-                                if (isSelected) {
-                                    Surface(
-                                        shape = RoundedCornerShape(4.dp),
-                                        color = ObsidianPrimary.copy(alpha = 0.2f)
-                                    ) {
-                                        Text("Attivo", color = ObsidianPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                    }
-                                }
+    if (picker) Dialog(onDismissRequest = { picker = false }) {
+        Surface(shape = RoundedCornerShape(28.dp), color = MaterialTheme.colorScheme.surface, tonalElevation = 2.dp) {
+            Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("Scegli calendario", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = MaterialTheme.colorScheme.onSurface)
+                Text(calendarOwner.orEmpty(), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Column(Modifier.heightIn(max = 330.dp).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    calendars.forEach { calendar ->
+                        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
+                            .background(if (selectedCalendar?.id == calendar.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
+                            .clickable { selectedCalendar = calendar; picker = false }.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                            SiteIcon("calendar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                            Column(Modifier.weight(1f)) {
+                                Text(calendar.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                                if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        }
-                    } else {
-                        // Fallback se nessun calendario ancora sincronizzato
-                        listOf("Turni di Lavoro (Google)", "Calendario Principale").forEachIndexed { idx, name ->
-                            val isSelected = (idx == 0 && selectedCalendarId == null)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(RoundedCornerShape(8.dp))
-                                    .padding(vertical = 5.dp, horizontal = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    Box(modifier = Modifier.size(10.dp).clip(CircleShape).background(if (isSelected) ObsidianPrimary else TextMuted))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text(name, color = if (isSelected) TextPrimary else TextSecondary, fontSize = 12.5.sp)
-                                }
-                                if (isSelected) {
-                                    Surface(shape = RoundedCornerShape(4.dp), color = ObsidianPrimary.copy(alpha = 0.2f)) {
-                                        Text("Predefinito", color = ObsidianPrimary, fontSize = 10.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp))
-                                    }
-                                }
-                            }
+                            if (selectedCalendar?.id == calendar.id) SiteIcon("check", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
+                TextButton(onClick = { picker = false }, modifier = Modifier.align(Alignment.End)) { Text("Annulla") }
             }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Selettore Intervallo Temporale
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Periodo da Sincronizzare",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    listOf(
-                        currentMonthLabel,
-                        threeMonthsLabel,
-                        wholeYearLabel
-                    ).forEach { rangeOption ->
-                        val isSelected = selectedRange == rangeOption
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(12.dp))
-                                .background(if (isSelected) ObsidianSurfaceHigh else Color.Transparent)
-                                .clickable { selectedRange = rangeOption }
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
-                            RadioButton(
-                                selected = isSelected,
-                                onClick = { selectedRange = rangeOption },
-                                colors = RadioButtonDefaults.colors(selectedColor = ObsidianPrimary)
-                            )
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text(
-                                text = rangeOption,
-                                color = if (isSelected) TextPrimary else TextSecondary,
-                                fontSize = 13.sp,
-                                fontWeight = if (isSelected) FontWeight.SemiBold else FontWeight.Normal
-                            )
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Opzioni Avanzate Sincronizzazione
-            Card(
-                modifier = Modifier.fillMaxWidth(),
-                shape = RoundedCornerShape(18.dp),
-                colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                border = CardDefaults.outlinedCardBorder()
-            ) {
-                Column(modifier = Modifier.padding(16.dp)) {
-                    Text(
-                        text = "Parametri Eventi",
-                        color = TextPrimary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp
-                    )
-                    Spacer(modifier = Modifier.height(12.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Orari Esatti Turno", color = TextPrimary, fontSize = 14.sp)
-                            Text("Es. 06:00 - 13:36 invece di tutto il giorno", color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = syncExactHours,
-                            onCheckedChange = { syncExactHours = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
-                        )
-                    }
-
-                    Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Includi Riposi e Smonti", color = TextPrimary, fontSize = 14.sp)
-                            Text("Consigliato disattivato per non intasare il calendario", color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = includeRestDays,
-                            onCheckedChange = { includeRestDays = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
-                        )
-                    }
-
-                    Divider(color = ObsidianSurfaceContainer, modifier = Modifier.padding(vertical = 10.dp))
-
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.SpaceBetween,
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Column(modifier = Modifier.weight(1f)) {
-                            Text("Notifica e Promemoria", color = TextPrimary, fontSize = 14.sp)
-                            Text("Notifica 1 ora prima dell'inizio turno", color = TextSecondary, fontSize = 11.sp)
-                        }
-                        Switch(
-                            checked = setReminderOneHourBefore,
-                            onCheckedChange = { setReminderOneHourBefore = it },
-                            colors = SwitchDefaults.colors(checkedThumbColor = ObsidianPrimary)
-                        )
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(20.dp))
-
-            // Tasto Anteprima Turni
-            OutlinedButton(
-                onClick = { showEventListPreview = !showEventListPreview },
-                modifier = Modifier.fillMaxWidth().height(48.dp),
-                shape = RoundedCornerShape(14.dp)
-            ) {
-                Icon(
-                    if (showEventListPreview) Icons.Default.ExpandLess else Icons.Default.Visibility,
-                    contentDescription = null,
-                    tint = TextPrimary
-                )
-                Spacer(modifier = Modifier.width(8.dp))
-                Text(
-                    text = if (showEventListPreview) "Nascondi Anteprima (${shiftsToSync.size} turni)" else "Mostra Anteprima Turni (${shiftsToSync.size} turni)",
-                    color = TextPrimary
-                )
-            }
-
-            if (showEventListPreview) {
-                Spacer(modifier = Modifier.height(10.dp))
-                Card(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 220.dp),
-                    shape = RoundedCornerShape(14.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianSurface)
-                ) {
-                    LazyColumn(modifier = Modifier.padding(12.dp)) {
-                        items(shiftsToSync) { (date, assigned) ->
-                            val def = ShiftRepository.getShiftDefinition(assigned.shiftDefId)
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(vertical = 4.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween
-                            ) {
-                                Text(
-                                    text = date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),
-                                    color = TextSecondary,
-                                    fontSize = 12.sp,
-                                    fontWeight = FontWeight.Bold
-                                )
-                                Text(
-                                    text = "${def?.name ?: assigned.shiftDefId} (${def?.startTime ?: "00:00"} - ${def?.endTime ?: "00:00"})",
-                                    color = TextPrimary,
-                                    fontSize = 12.sp
-                                )
-                            }
-                            Divider(color = ObsidianSurfaceContainer, thickness = 0.5.dp)
-                        }
-                    }
-                }
-            }
-
-            Spacer(modifier = Modifier.height(16.dp))
-
-            // Pulsante Sincronizza Ora su Google Calendar (con cooldown e loading)
-            Button(
-                onClick = {
-                    if (!hasPermission) {
-                        permissionLauncher.launch(
-                            arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
-                        )
-                    } else {
-                        isSyncing = true
-                        scope.launch(Dispatchers.IO) {
-                            try {
-                                val count = GoogleCalendarSyncHelper.syncShiftsToCalendar(
-                                    context = context,
-                                    targetCalendarId = selectedCalendarId,
-                                    shiftsToSync = shiftsToSync,
-                                    syncExactHours = syncExactHours,
-                                    reminderMinutesBefore = if (setReminderOneHourBefore) 60 else null,
-                                    includeRestDays = includeRestDays
-                                )
-
-                                withContext(Dispatchers.Main) {
-                                    isSyncing = false
-                                    syncCooldownUntil = System.currentTimeMillis() + 300_000L
-                                    cooldownRemainingSeconds = 300L
-                                    actionFeedback = ActionFeedback(
-                                        message = "Sincronizzati con successo $count turni",
-                                        timestamp = System.currentTimeMillis(),
-                                        isDestructive = false
-                                    )
-                                }
-                            } catch (e: Throwable) {
-                                withContext(Dispatchers.Main) {
-                                    isSyncing = false
-                                    actionFeedback = ActionFeedback(
-                                        message = "Errore: ${e.localizedMessage ?: "Verifica permessi calendario"}",
-                                        timestamp = System.currentTimeMillis(),
-                                        isDestructive = true
-                                    )
-                                }
-                            }
-                        }
-                    }
-                },
-                modifier = Modifier.fillMaxWidth().height(52.dp),
-                shape = RoundedCornerShape(14.dp),
-                colors = ButtonDefaults.buttonColors(
-                    containerColor = if (isCooldownActive || isSyncing) ObsidianBorder else ObsidianPrimary,
-                    disabledContainerColor = ObsidianBorder
-                ),
-                enabled = !isCooldownActive && !isSyncing && !isDeleting
-            ) {
-                if (isSyncing) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(22.dp),
-                        color = catalogInk(ObsidianPrimary),
-                        strokeWidth = 2.5.dp
-                    )
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("Sincronizzazione in corso...", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold, fontSize = 14.sp)
-                } else if (isCooldownActive) {
-                    Icon(Icons.Default.Timer, contentDescription = null, tint = TextSecondary, modifier = Modifier.size(20.dp))
-                    Spacer(modifier = Modifier.width(8.dp))
-                    val minutes = cooldownRemainingSeconds / 60
-                    val seconds = cooldownRemainingSeconds % 60
-                    Text(
-                        "Attendi ${minutes}:${String.format("%02d", seconds)} prima della prossima sincronizzazione",
-                        color = TextSecondary,
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 12.sp
-                    )
-                } else {
-                    Icon(Icons.Default.Sync, contentDescription = null, tint = catalogInk(ObsidianPrimary))
-                    Spacer(modifier = Modifier.width(10.dp))
-                    Text("Sincronizza Ora con Google Calendar", color = catalogInk(ObsidianPrimary), fontWeight = FontWeight.Bold, fontSize = 15.sp)
-                }
-            }
-
-            Spacer(modifier = Modifier.height(12.dp))
-
-            // Tasto Pulizia Eventi App dal Calendario (con dialog di conferma)
-            TextButton(
-                onClick = {
-                    if (!hasPermission) {
-                        permissionLauncher.launch(
-                            arrayOf(Manifest.permission.READ_CALENDAR, Manifest.permission.WRITE_CALENDAR)
-                        )
-                    } else {
-                        showConfirmDeleteDialog = true
-                    }
-                },
-                modifier = Modifier.fillMaxWidth(),
-                enabled = !isCooldownActive && !isSyncing && !isDeleting
-            ) {
-                if (isDeleting) {
-                    CircularProgressIndicator(
-                        modifier = Modifier.size(14.dp),
-                        color = ColorNegative,
-                        strokeWidth = 2.dp
-                    )
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Eliminazione in corso...", color = ColorNegative, fontSize = 12.sp)
-                } else {
-                    Icon(Icons.Default.DeleteOutline, contentDescription = null, tint = ColorNegative, modifier = Modifier.size(16.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Rimuovi eventi dell'app dal Google Calendar", color = ColorNegative, fontSize = 12.sp)
-                }
-            }
-
-            // Spacer for popup clearance
-            Spacer(modifier = Modifier.height(80.dp))
         }
+    }
+    if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Rimuovere gli eventi TurniSync?") },
+        text = { Text("Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.") },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; deleteEvents() }, enabled = !busy) { Text("Rimuovi eventi", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annulla") } })
+    if (confirmEmpty) AlertDialog(onDismissRequest = { confirmEmpty = false }, title = { Text("Nessun turno nel periodo") },
+        text = { Text("La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?") },
+        confirmButton = { TextButton(onClick = { confirmEmpty = false; synchronize() }, enabled = !busy) { Text("Aggiorna calendario") } },
+        dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Annulla") } })
+}
 
-        // Feedback HUD dall'alto con particelle perimetrali
-        MagicalActionFeedbackHUD(
-            feedback = actionFeedback,
-            onDismiss = { actionFeedback = null },
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .statusBarsPadding()
-                .padding(top = 16.dp)
-        )
-
-        // Confirm Delete Dialog
-        if (showConfirmDeleteDialog) {
-            AlertDialog(
-                onDismissRequest = { showConfirmDeleteDialog = false },
-                title = {
-                    Row(verticalAlignment = Alignment.CenterVertically) {
-                        Icon(Icons.Default.Warning, contentDescription = null, tint = ColorReperibilita)
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text("Conferma Eliminazione", color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 16.sp)
-                    }
-                },
-                text = {
-                    Text(
-                        "Sei sicuro di voler rimuovere tutti i turni sincronizzati dal Google Calendar?\n\n" +
-                        "Questa operazione potrebbe richiedere alcuni secondi. Solo gli eventi creati da questa app verranno eliminati.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp
-                    )
-                },
-                confirmButton = {
-                    Button(
-                        onClick = {
-                            showConfirmDeleteDialog = false
-                            isDeleting = true
-                            scope.launch(Dispatchers.IO) {
-                                try {
-                                    val removed = GoogleCalendarSyncHelper.clearAppEventsFromCalendar(context, selectedCalendarId)
-
-                                    withContext(Dispatchers.Main) {
-                                        isDeleting = false
-                                        syncCooldownUntil = System.currentTimeMillis() + 300_000L
-                                        cooldownRemainingSeconds = 300L
-                                        actionFeedback = if (removed > 0) {
-                                            ActionFeedback(
-                                                message = "Rimossi $removed eventi sincronizzati",
-                                                timestamp = System.currentTimeMillis(),
-                                                isDestructive = true
-                                            )
-                                        } else {
-                                            ActionFeedback(
-                                                message = "Nessun evento da rimuovere",
-                                                timestamp = System.currentTimeMillis(),
-                                                isDestructive = false
-                                            )
-                                        }
-                                    }
-                                } catch (e: Throwable) {
-                                    withContext(Dispatchers.Main) {
-                                        isDeleting = false
-                                        actionFeedback = ActionFeedback(
-                                            message = "Errore durante la rimozione",
-                                            timestamp = System.currentTimeMillis(),
-                                            isDestructive = true
-                                        )
-                                    }
-                                }
-                            }
-                        },
-                        colors = ButtonDefaults.buttonColors(containerColor = ColorNegative)
-                    ) {
-                        Text("Elimina Tutto", color = catalogInk(ColorNegative), fontWeight = FontWeight.Bold)
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showConfirmDeleteDialog = false }) {
-                        Text("Annulla", color = TextSecondary)
-                    }
-                },
-                containerColor = ObsidianSurface,
-                shape = RoundedCornerShape(18.dp)
-            )
+@Composable
+private fun CalendarOptionSwitch(title: String, subtitle: String, value: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical = 7.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(Modifier.weight(1f)) {
+            Text(title, fontSize = 14.sp, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.Medium)
+            Text(subtitle, fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+        Switch(checked = value, onCheckedChange = onChange, enabled = enabled)
+    }
+}
+@Composable
+private fun CalendarOptionTabs(options: List<String>, selected: Int, enabled: Boolean, onSelect: (Int) -> Unit) {
+    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surfaceVariant).padding(4.dp), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        options.forEachIndexed { index, label ->
+            val color by animateColorAsState(if (selected == index) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant, tween(230))
+            Box(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(color).clickable(enabled = enabled) { onSelect(index) }.padding(vertical = 12.dp), contentAlignment = Alignment.Center) {
+                Text(label, fontSize = 13.sp, fontWeight = if (selected == index) FontWeight.SemiBold else FontWeight.Normal, color = MaterialTheme.colorScheme.onSurface)
+            }
         }
     }
 }

@@ -208,31 +208,13 @@ object ShiftRepository {
             return set
         }
 
-    // Gestione Account Google Reale (sincronizzato con il dispositivo dell'utente)
-    var googleAccountProfile by mutableStateOf<GoogleAccountProfile?>(
-        GoogleAccountProfile(
-            email = "grazianimarco2004@gmail.com",
-            displayName = "Marco Graziani",
-            isConnected = true
-        )
-    )
-
-    val deviceGoogleAccounts = listOf(
-        GoogleAccountProfile(email = "grazianimarco2004@gmail.com", displayName = "Marco Graziani (Principale)", isConnected = true),
-        GoogleAccountProfile(email = "marcograziani72@gmail.com", displayName = "Marco Graziani (Secondario)", isConnected = false)
-    )
-
-    fun setGoogleAccount(email: String, displayName: String = "Marco Graziani") {
-        googleAccountProfile = GoogleAccountProfile(
-            email = email,
-            displayName = displayName,
-            isConnected = true
-        )
+    // Identity is accepted only after Google consent and verified userinfo, never from a default profile.
+    var googleAccountProfile by mutableStateOf<GoogleAccountProfile?>(null)
+        private set
+    fun setVerifiedGoogleAccount(email:String,displayName:String){
+        googleAccountProfile=GoogleAccountProfile(email=email,displayName=displayName,isConnected=true)
     }
-
-    fun disconnectGoogleAccount() {
-        googleAccountProfile = null
-    }
+    fun disconnectGoogleAccount(){googleAccountProfile=null}
 
     // Opzioni correnti per Esportazione PDF & Stampa
     var pdfExportOptions by mutableStateOf(PdfExportOptions())
@@ -464,6 +446,9 @@ object ShiftRepository {
     }
 
     fun canUndo(): Boolean = undoHistory.isNotEmpty()
+
+    /** A full database restore changes model IDs; calendar-only undo must not cross that boundary. */
+    fun clearCalendarUndoHistory() { undoHistory.clear() }
 
     fun undo(): Boolean {
         if (undoHistory.isEmpty()) return false
@@ -832,9 +817,10 @@ object ShiftRepository {
         notifyDataChanged()
     }
 
-    fun clearWorkDayShifts(date: LocalDate, profileId: String = activeWorkProfileId) {
+    fun clearWorkDayShifts(date: LocalDate, profileId: String = activeWorkProfileId, clearOnCall: Boolean = false) {
         saveSnapshot()
         clearWorkDayWithoutSnapshot(date, profileId)
+        if (clearOnCall) dayExtraInfo[date] = getDayExtraInfo(date).copy(isOnCallManual = false)
         notifyDataChanged()
     }
 

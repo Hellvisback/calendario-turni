@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -70,7 +70,7 @@ fun ReperibilitaSettingsScreen(
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        Icons.Default.ArrowBack,
+                        Icons.Outlined.ArrowBack,
                         contentDescription = "Indietro",
                         tint = TextPrimary,
                         modifier = Modifier.size(20.dp)
@@ -175,7 +175,7 @@ fun ReperibilitaSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.TouchApp, contentDescription = null, tint = ColorReperibilita)
+                            Icon(Icons.Outlined.TouchApp, contentDescription = null, tint = ColorReperibilita)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Reperibilità Singola / Manuale", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                         }
@@ -211,7 +211,7 @@ fun ReperibilitaSettingsScreen(
                 ) {
                     Column(modifier = Modifier.padding(16.dp)) {
                         Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Default.Schedule, contentDescription = null, tint = ColorReperibilita)
+                            Icon(Icons.Outlined.Schedule, contentDescription = null, tint = ColorReperibilita)
                             Spacer(modifier = Modifier.width(8.dp))
                             Text("Seleziona i Turni di Reperibilità", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                         }
@@ -234,7 +234,7 @@ fun ReperibilitaSettingsScreen(
                                     modifier = Modifier.padding(12.dp),
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(Icons.Default.Info, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
+                                    Icon(Icons.Outlined.Info, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
                                     Spacer(modifier = Modifier.width(8.dp))
                                     Text("Nessun turno configurato. Crea prima i tuoi turni personalizzati nella sezione Turni.", color = TextMuted, fontSize = 12.sp)
                                 }
@@ -305,7 +305,7 @@ fun ReperibilitaSettingsScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.AcUnit, contentDescription = null, tint = ObsidianPrimary)
+                                Icon(Icons.Outlined.AcUnit, contentDescription = null, tint = ObsidianPrimary)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Inverno: Reperibilità su Turni (Data A ➜ Data B)", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                             }
@@ -473,7 +473,7 @@ fun ReperibilitaSettingsScreen(
                     ) {
                         Column(modifier = Modifier.padding(16.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Default.WbSunny, contentDescription = null, tint = ColorReperibilita)
+                                Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = ColorReperibilita)
                                 Spacer(modifier = Modifier.width(8.dp))
                                 Text("Estate: Rotazione a Settimane (Data B ➜ Data A)", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
                             }
@@ -633,7 +633,7 @@ fun ReperibilitaSettingsScreen(
                 .fillMaxWidth()
                 .height(48.dp)
         ) {
-            Icon(Icons.Default.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
+            Icon(Icons.Outlined.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
             Spacer(modifier = Modifier.width(8.dp))
             Text("Salva Regole Reperibilità", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
         }

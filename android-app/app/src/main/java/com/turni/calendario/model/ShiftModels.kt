@@ -430,10 +430,10 @@ object HolidaysCatalog {
 
 data class GoogleAccountProfile(
     val email: String,
-    val displayName: String = "Marco Graziani",
+    val displayName: String = "",
     val photoUrl: String? = null,
     val isConnected: Boolean = true,
-    val availableCalendars: List<String> = listOf("grazianimarco2004@gmail.com", "Famiglia", "Family", "Festività in Italia", "Turni di Lavoro")
+    val availableCalendars: List<String> = emptyList()
 )
 
 enum class PdfExportMode(val label: String) {

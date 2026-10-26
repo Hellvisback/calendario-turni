@@ -23,6 +23,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
@@ -97,18 +98,13 @@ fun Modifier.bouncyClickable(
     val interactionSource = remember { MutableInteractionSource() }
     val isPressed by interactionSource.collectIsPressedAsState()
 
-    val scale by animateFloatAsState(
-        targetValue = if (isPressed && enabled) 0.92f else 1.0f,
-        animationSpec = remember {
-            spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
-        }
-    )
-
-    this
-        .scale(scale)
+    // Keep labels at native rasterization. Only icon parts move; press feedback is a surface tint.
+    val pressAlpha by animateFloatAsState(if(isPressed&&enabled).075f else 0f,spring(.9f,500f))
+    val pressTint=ObsidianPrimary
+    this.drawWithContent {
+        drawContent()
+        if(pressAlpha>0f)drawRect(pressTint.copy(alpha=pressAlpha))
+    }
         .clickable(
             interactionSource = interactionSource,
             indication = null,
@@ -398,134 +394,10 @@ fun ParticleBurstEffect(
     }
 }
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+/** Shared action feedback follows the approved status overlay in every destination. */
 @Composable
-fun MagicalActionFeedbackHUD(
-    feedback: ActionFeedback?,
-    onDismiss: () -> Unit = {},
-    modifier: Modifier = Modifier
-) {
-    LaunchedEffect(feedback?.timestamp) {
-        if (feedback != null) {
-            kotlinx.coroutines.delay(2800)
-            onDismiss()
-        }
-    }
-
-    AnimatedVisibility(
-        visible = feedback != null,
-        enter = slideInVertically(
-            initialOffsetY = { -it - 80 },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
-        ) + scaleIn(
-            initialScale = 0.85f,
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioMediumBouncy,
-                stiffness = Spring.StiffnessMediumLow
-            )
-        ) + fadeIn(animationSpec = tween(180)),
-        exit = slideOutVertically(
-            targetOffsetY = { -it - 80 },
-            animationSpec = spring(
-                dampingRatio = Spring.DampingRatioNoBouncy,
-                stiffness = Spring.StiffnessMedium
-            )
-        ) + scaleOut(
-            targetScale = 0.85f,
-            animationSpec = tween(220)
-        ) + fadeOut(animationSpec = tween(200)),
-        modifier = modifier
-    ) {
-        if (feedback != null) {
-            val isDestructive = feedback.isDestructive
-            val primaryGlow = if (isDestructive) Color(0xFFEF4444) else Color(0xFF10B981)
-            val secondaryGlow = if (isDestructive) Color(0xFFF43F5E) else Color(0xFF38BDF8)
-            val containerBg = if (isDestructive) Color(0xF22A0A10) else Color(0xF2062418)
-
-            val shakeAnim = remember(feedback.timestamp) { androidx.compose.animation.core.Animatable(0f) }
-
-            LaunchedEffect(feedback.timestamp) {
-                if (isDestructive) {
-                    shakeAnim.snapTo(0f)
-                    shakeAnim.animateTo(
-                        targetValue = 1f,
-                        animationSpec = androidx.compose.animation.core.keyframes {
-                            durationMillis = 350
-                            0.0f at 0
-                            -9.0f at 50
-                            8.0f at 100
-                            -5.0f at 160
-                            4.0f at 220
-                            -2.0f at 280
-                            0.0f at 350
-                        }
-                    )
-                }
-            }
-
-            val shakeOffset = if (isDestructive) shakeAnim.value else 0f
-
-            Box(
-                modifier = Modifier
-                    .offset(x = shakeOffset.dp)
-                    .padding(horizontal = 16.dp),
-                contentAlignment = Alignment.Center
-            ) {
-                // Pillola compatta ed elegante: definisce la dimensione naturale stabile
-                Surface(
-                    shape = CircleShape,
-                    color = containerBg,
-                    border = androidx.compose.foundation.BorderStroke(
-                        1.2.dp,
-                        Brush.horizontalGradient(
-                            listOf(primaryGlow, Color.White.copy(alpha = 0.85f), secondaryGlow)
-                        )
-                    ),
-                    shadowElevation = 14.dp
-                ) {
-                    Row(
-                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 7.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(22.dp)
-                                .clip(CircleShape)
-                                .background(primaryGlow.copy(alpha = 0.28f))
-                                .border(1.dp, primaryGlow.copy(alpha = 0.85f), CircleShape),
-                            contentAlignment = Alignment.Center
-                        ) {
-                            Icon(
-                                imageVector = if (isDestructive) Icons.Default.DeleteForever else Icons.Default.Check,
-                                contentDescription = null,
-                                tint = if (isDestructive) Color(0xFFFCA5A5) else Color(0xFFA7F3D0),
-                                modifier = Modifier.size(14.dp)
-                            )
-                        }
-
-                        Spacer(modifier = Modifier.width(8.dp))
-
-                        Text(
-                            text = feedback.message,
-                            color = Color.White,
-                            fontSize = 12.sp,
-                            fontWeight = FontWeight.Bold
-                        )
-                    }
-                }
-
-                // Coriandoli / Particelle scintillanti in overlay centrato: NON alterano mai la posizione né l'altezza
-                ParticleBurstEffect(
-                    triggerKey = feedback.timestamp,
-                    isDestructive = isDestructive,
-                    modifier = Modifier.matchParentSize()
-                )
-            }
-        }
-    }
+fun MagicalActionFeedbackHUD(feedback:ActionFeedback?,onDismiss:()->Unit={},modifier:Modifier=Modifier) {
+    ActionStatusPopup(feedback,onDismiss,modifier)
 }
 
 /**

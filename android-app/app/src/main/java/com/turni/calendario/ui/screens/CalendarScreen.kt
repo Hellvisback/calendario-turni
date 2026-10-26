@@ -39,8 +39,8 @@ import kotlin.math.abs
 
 data class CalendarDayInfo(val date:LocalDate,val isCurrentMonth:Boolean)
 enum class CalendarEditMode(val label:String,val icon:ImageVector) {
-    REPLACE("Cambia",Icons.Default.SwapHoriz), RANGE("Periodo",Icons.Default.DateRange),
-    ADD("Più turni",Icons.Default.Layers), ROTATION("Rotazioni",Icons.Default.Cached)
+    REPLACE("Cambia",siteVector("swap")), RANGE("Periodo",siteVector("calendar")),
+    ADD("Più turni",siteVector("layers")), ROTATION("Rotazioni",siteVector("rotation"))
 }
 
 fun getCompactShiftCode(shiftDefId:String,fallback:String):String =
@@ -81,6 +81,8 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
     var addSecondary by remember{mutableStateOf(false)}
     var workMenu by remember{mutableStateOf(false)}
     var feedback by remember{mutableStateOf<ActionFeedback?>(null)}
+    var paintRequest by remember{mutableStateOf<CalendarPaintRequest?>(null)}
+    fun paintDay(date:LocalDate,definitionId:String){paintRequest=CalendarPaintRequest(date,definitionId,(paintRequest?.sequence?:0L)+1L)}
     val scope=rememberCoroutineScope();val drag=remember{mutableStateOf(0f)}
     var motion by remember{mutableStateOf<Job?>(null)}
     var width by remember{mutableStateOf(1f)}
@@ -109,8 +111,8 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
     fun removeAt(date:LocalDate,extrasOnly:Boolean=false){
         val shifts=ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}
         if(extrasOnly){if(shifts.size>1)eraseDate=date}
-        else if(shifts.size>1||(shifts.isNotEmpty()&&ShiftRepository.isOnCall(date)))eraseDate=date
-        else if(shifts.isNotEmpty()){ShiftRepository.clearWorkDayShifts(date);feedback=ActionFeedback("Turno eliminato",true)}
+        else if(calendarNeedsSelectiveEraser(shifts.size))eraseDate=date
+        else if(shifts.isNotEmpty()){ShiftRepository.clearWorkDayShifts(date,clearOnCall=true);paintDay(date,"");feedback=ActionFeedback("Turno eliminato",true)}
         else if(ShiftRepository.isOnCall(date)){ShiftRepository.setDayOnCallManual(date,false);feedback=ActionFeedback("Reperibilità rimossa",true)}
     }
     fun dayClick(date:LocalDate){
@@ -118,29 +120,39 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
         if(!editing){selectedDate=date;lastDate=date;return}
         when(mode){
             CalendarEditMode.REPLACE->if(brush=="eraser")removeAt(date)else{
-                ShiftRepository.replaceShift(date,brush);feedback=ActionFeedback("Turno aggiornato",false)
+                ShiftRepository.replaceShift(date,brush);paintDay(date,brush);feedback=ActionFeedback("Turno aggiornato",false)
             }
             CalendarEditMode.ADD->if(brush=="eraser")removeAt(date,true)else{
-                ShiftRepository.addSecondaryShift(date,brush);feedback=ActionFeedback("Turno aggiunto",false)
+                ShiftRepository.addSecondaryShift(date,brush);paintDay(date,brush);feedback=ActionFeedback("Turno aggiunto",false)
             }
             CalendarEditMode.RANGE->if(anchor==null){anchor=date;rangeEnd=null}else{
                 val start=minOf(anchor!!,date);val end=maxOf(anchor!!,date)
                 ShiftRepository.applyShiftRange(brush,start,end)
+                paintDay(date,if(brush=="eraser")"" else brush)
                 anchor=null;rangeEnd=null;feedback=ActionFeedback(if(brush=="eraser")"Turni eliminati" else "Periodo applicato",brush=="eraser")
             }
             CalendarEditMode.ROTATION->if(anchor==null||date.isBefore(anchor)){anchor=date}else{
-                ShiftRepository.applyRotation(rotationId,anchor!!,ChronoUnit.DAYS.between(anchor,date).toInt()+1)
+                val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
+                val offset=ChronoUnit.DAYS.between(anchor,date).toInt()
+                ShiftRepository.applyRotation(rotationId,anchor!!,offset+1)
+                rotation?.daySequence?.takeIf{it.isNotEmpty()}?.let{paintDay(date,it[offset%it.size])}
                 anchor=null;feedback=ActionFeedback("Rotazione applicata",false)
             }
         }
     }
     Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal=10.dp)) {
+        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(horizontal=8.dp)) {
             Row(Modifier.fillMaxWidth().height(56.dp),verticalAlignment=Alignment.CenterVertically) {
-                IconButton(onClick={changeMonth(-1)},modifier=Modifier.size(32.dp)){Icon(Icons.Default.ChevronLeft,"Mese precedente",tint=TextPrimary)}
-                Text(month.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN).replaceFirstChar{it.titlecase(Locale.ITALIAN)}+" "+month.year,
-                    color=TextPrimary,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,modifier=Modifier.weight(1f))
-                IconButton(onClick={changeMonth(1)},modifier=Modifier.size(32.dp)){Icon(Icons.Default.ChevronRight,"Mese successivo",tint=TextPrimary)}
+                Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically) {
+                    IconButton(onClick={changeMonth(-1)},modifier=Modifier.size(32.dp)){SiteIcon("chevron-left","Mese precedente",Modifier.size(21.dp))}
+                    Text(androidx.compose.ui.text.buildAnnotatedString {
+                        append(month.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN).replaceFirstChar{it.titlecase(Locale.ITALIAN)})
+                        pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=14.sp,fontWeight=FontWeight.Medium,color=TextSecondary))
+                        append(" "+month.year);pop()
+                    },color=TextPrimary,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,
+                        modifier=Modifier.weight(1f,fill=false))
+                    IconButton(onClick={changeMonth(1)},modifier=Modifier.size(32.dp)){SiteIcon("chevron-right","Mese successivo",Modifier.size(21.dp))}
+                }
                 if(!editing){
                     Row(Modifier.width(132.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End){
                     Box {
@@ -149,22 +161,18 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
                             Icon(workProfileIcon(ShiftRepository.activeWorkProfile.iconKey),null,tint=TextSecondary,modifier=Modifier.size(16.dp))
                             Text(ShiftRepository.activeWorkProfile.name,color=TextSecondary,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
                         }
-                        DropdownMenu(expanded=workMenu,onDismissRequest={workMenu=false},modifier=Modifier.background(ObsidianSurface)){
-                            ShiftRepository.workProfiles.forEach{work->DropdownMenuItem(text={Row(verticalAlignment=Alignment.CenterVertically){
-                                Icon(workProfileIcon(work.iconKey),null,Modifier.size(18.dp),tint=TextSecondary);Spacer(Modifier.width(8.dp));Text(work.name,color=TextPrimary)
-                            }},onClick={ShiftRepository.setActiveWorkProfile(work.id);workMenu=false;selectedDate=null})}
-                        }
+                        SiteWorkMenu(workMenu,onDismiss={workMenu=false},onChoose={id->ShiftRepository.setActiveWorkProfile(id);workMenu=false;selectedDate=null})
                     }
-                    IconButton(onClick=onOpenSettings,modifier=Modifier.size(36.dp)){Icon(Icons.Default.Settings,"Impostazioni",tint=TextPrimary,modifier=Modifier.size(22.dp))}
+                    IconButton(onClick=onOpenSettings,modifier=Modifier.size(36.dp)){SiteIcon("settings","Impostazioni",Modifier.size(21.dp))}
                     }
                 }else Spacer(Modifier.width(132.dp))
             }
-            Row(Modifier.fillMaxWidth().height(24.dp),verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().height(28.dp).background(CalendarSurface,RoundedCornerShape(topStart=20.dp,topEnd=20.dp)),verticalAlignment=Alignment.CenterVertically){
                 val days=if(ShiftRepository.appPreferences.weekStartMonday)listOf("L","M","M","G","V","S","D")else listOf("D","L","M","M","G","V","S")
                 days.forEach{Text(it,Modifier.weight(1f),color=TextSecondary,fontSize=12.sp,textAlign=TextAlign.Center)}
             }
-            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom=if(editing)158.dp else 62.dp)
-                .clip(RoundedCornerShape(22.dp)).onSizeChanged{width=it.width.toFloat()}
+            Box(Modifier.weight(1f).fillMaxWidth().padding(bottom=62.dp)
+                .clip(RoundedCornerShape(bottomStart=20.dp,bottomEnd=20.dp)).onSizeChanged{width=it.width.toFloat()}
                 .pointerInput(monthKey,editing){
                     val velocity=VelocityTracker()
                     var gestureDistance=0f
@@ -180,7 +188,7 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
                     key(month.plusMonths(delta.toLong())) {
                     NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,mode,brush,rotationId,anchor,rangeEnd,
                         Modifier.fillMaxSize().graphicsLayer{translationX=delta*width+drag.value},
-                        onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null)rangeEnd=it})
+                        paintRequest=paintRequest,animate=delta==0,onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null)rangeEnd=it})
                     }
                 }
             }
@@ -189,18 +197,18 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
             exit=slideOutVertically(spring(1f,440f)){it/2}+fadeOut(),
             modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start=17.dp,end=17.dp,bottom=86.dp)) {
             NativeDayCard(lastDate,onClose={selectedDate=null},onSelectShift={addSecondary=it;selectShift=lastDate},
-                onFeedback={feedback=it})
+                onFeedback={feedback=it},onDateChange={lastDate=it;selectedDate=it;if(YearMonth.from(it)!=month)monthKey=YearMonth.from(it).toString()})
         }
         AnimatedVisibility(editing,enter=slideInVertically(spring(.95f,380f)){it}+fadeIn(),
             exit=slideOutVertically(spring(1f,420f)){it}+fadeOut(),
-            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal=10.dp).padding(bottom=6.dp)) {
+            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal=8.dp).padding(bottom=6.dp)) {
             NativeEditToolbar(mode,brush,rotationId,onMode={mode=it;anchor=null;rangeEnd=null},onBrush={brush=it},
                 onRotation={rotationId=it},onUndo={if(ShiftRepository.undo()){anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()})
         }
         MagicalActionFeedbackHUD(feedback,onDismiss={feedback=null},modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top=8.dp))
         eraseDate?.let{date->
             NativeElementEraser(date,mode==CalendarEditMode.ADD,onClose={eraseDate=null},onRemove={id->
-                if(id=="oncall")ShiftRepository.setDayOnCallManual(date,false)else ShiftRepository.removeAssignedShift(date,id)
+                if(id=="oncall")ShiftRepository.setDayOnCallManual(date,false)else {ShiftRepository.removeAssignedShift(date,id);paintDay(date,"")}
                 feedback=ActionFeedback(if(id=="oncall")"Reperibilità rimossa" else "Turno eliminato",true)
             })
         }
@@ -211,11 +219,11 @@ fun CalendarScreen(onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,
     }
 }
 
-fun workProfileIcon(key:String):ImageVector=when(key){
-    "train","transit"->Icons.Default.Train;"hospital","medical","health"->Icons.Default.LocalHospital
-    "wrench","build"->Icons.Default.Build;"groups","people"->Icons.Default.People
-    "laptop","computer"->Icons.Default.Computer;"truck","local_shipping","shipping"->Icons.Default.LocalShipping
-    "factory"->Icons.Default.Business;"business","building"->Icons.Default.Business;else->Icons.Default.WorkOutline
-}
+fun workProfileIcon(key:String):ImageVector=siteVector(when(key){
+    "train","transit"->"train";"hospital","medical","health"->"hospital"
+    "wrench","build","factory"->"wrench";"groups","people"->"users"
+    "laptop","computer"->"laptop";"truck","local_shipping","shipping"->"truck"
+    "business","building"->"building";else->"briefcase"
+})
 
-internal fun formatOvertime(hours:Float):String {val mins=(hours*60).toInt();return if(mins%60==0)"${mins/60}h" else "${mins/60}h ${mins%60}m"}
+internal fun formatOvertime(hours:Float):String = calendarOvertimeLabel(hours).removePrefix("+")

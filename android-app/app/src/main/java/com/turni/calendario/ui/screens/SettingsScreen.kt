@@ -1,26 +1,30 @@
+@file:OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class,androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.spring
-import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.BuildConfig
 import com.turni.calendario.alarm.ShiftAlarmScheduler
 import com.turni.calendario.model.ShiftAlarmRule
@@ -29,135 +33,173 @@ import com.turni.calendario.model.ShiftRotation
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
+import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.launch
 
-private enum class SettingsSubScreen { NONE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS }
+private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS }
 
-@OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun SettingsScreen(
-    onSubScreenActiveChanged: (Boolean) -> Unit = {},
-    onNavigateToTurni: (ShiftRotation?) -> Unit = {},
-    onDismiss: () -> Unit = {}
-) {
-    val context = LocalContext.current
-    var screen by remember { mutableStateOf(SettingsSubScreen.NONE) }
-    var deleteStep by remember { mutableStateOf(0) }
-    var message by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(screen) { onSubScreenActiveChanged(screen != SettingsSubScreen.NONE) }
-    BackHandler { if(screen != SettingsSubScreen.NONE) screen=SettingsSubScreen.NONE else onDismiss() }
-    val close: () -> Unit = { screen=SettingsSubScreen.NONE }
+fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni:(ShiftRotation?)->Unit={},onDismiss:()->Unit={}) {
+    val context=LocalContext.current
+    val scope=rememberCoroutineScope()
+    val bellMotion=remember{Animatable(0f)}
+    var screen by remember{mutableStateOf(SettingsSubScreen.NONE)}
+    var deleteStep by remember{mutableStateOf(0)}
+    var message by remember{mutableStateOf<String?>(null)}
+    LaunchedEffect(screen){onSubScreenActiveChanged(screen!=SettingsSubScreen.NONE)}
+    BackHandler{if(screen!=SettingsSubScreen.NONE)screen=SettingsSubScreen.NONE else onDismiss()}
+    val close:()->Unit={screen=SettingsSubScreen.NONE}
     Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
-        Crossfade(targetState=screen,animationSpec=tween(320)) { destination ->
+        Crossfade(screen,animationSpec=tween(380)){destination->
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
-                when(destination) {
-                    SettingsSubScreen.CLOUD_BACKUP -> CloudBackupScreen(onDismiss=close)
-                    SettingsSubScreen.GOOGLE_CALENDAR_SYNC -> GoogleCalendarSyncScreen(onDismiss=close)
-                    SettingsSubScreen.IMPORT_SHIFTS -> GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={ rotation -> close(); onNavigateToTurni(rotation) })
-                    SettingsSubScreen.PDF_EXPORT -> PdfExportScreen(onDismiss=close)
-                    SettingsSubScreen.REPERIBILITA -> ReperibilitaSettingsScreen(onDismiss=close)
-                    SettingsSubScreen.SMART_ALARMS -> SmartAlarmsSettingsScreen(onDismiss=close)
-                    SettingsSubScreen.HOLIDAYS -> HolidaysSettingsScreen(onDismiss=close)
-                    SettingsSubScreen.NONE -> Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)) {
-                        Row(Modifier.fillMaxWidth().padding(top=8.dp,bottom=16.dp),verticalAlignment=Alignment.CenterVertically) {
-                            IconButton(onClick=onDismiss,modifier=Modifier.size(40.dp)) { Icon(Icons.Default.ArrowBack,"Indietro",tint=TextPrimary) }
-                            Text("Impostazioni",Modifier.padding(start=8.dp),fontSize=26.sp,fontWeight=FontWeight.Bold,color=TextPrimary)
+                when(destination){
+                    SettingsSubScreen.CLOUD_BACKUP->CloudBackupScreen(onDismiss=close)
+                    SettingsSubScreen.GOOGLE_CALENDAR_SYNC->GoogleCalendarSyncScreen(onDismiss=close)
+                    SettingsSubScreen.IMPORT_SHIFTS->GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={rotation->close();onNavigateToTurni(rotation)})
+                    SettingsSubScreen.PDF_EXPORT->PdfExportScreen(onDismiss=close)
+                    SettingsSubScreen.REPERIBILITA->ReperibilitaSettingsScreen(onDismiss=close)
+                    SettingsSubScreen.SMART_ALARMS->SmartAlarmsSettingsScreen(onDismiss=close)
+                    SettingsSubScreen.HOLIDAYS->HolidaysSettingsScreen(onDismiss=close)
+                    SettingsSubScreen.APPEARANCE->Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)) {
+                        PreferenceHeading("Aspetto e calendario","Preferenze di visualizzazione",close)
+                        PreferenceGroup("Calendario") {
+                            PreferenceToggle("Tema scuro","Scegli il contrasto più adatto a te",TurniThemeState.dark){TurniThemeState.setDark(context,it)}
+                            PreferenceDivider()
+                            PreferenceToggle("La settimana inizia lunedì","Disattiva per iniziare dalla domenica",ShiftRepository.appPreferences.weekStartMonday){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(weekStartMonday=it);ShiftRepository.notifyDataChanged()}
+                            PreferenceDivider()
+                            PreferenceToggle("Formato 24 ore","Orari compatti e leggibili",ShiftRepository.appPreferences.timeFormat24h){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(timeFormat24h=it);ShiftRepository.notifyDataChanged()}
+                            PreferenceDivider()
+                            PreferenceToggle("Mostra turno di provenienza","Mantieni visibile il turno originale dopo una sostituzione",ShiftRepository.appPreferences.showExShifts){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(showExShifts=it);ShiftRepository.notifyDataChanged()}
                         }
-                        SettingsGroup("Aspetto e calendario") {
-                            SettingsToggleRow(Icons.Default.DarkMode,"Tema scuro","Scegli il contrasto più adatto a te",TurniThemeState.dark) { TurniThemeState.setDark(context,it) }
-                            SettingsDivider()
-                            SettingsToggleRow(Icons.Default.CalendarToday,"La settimana inizia lunedì","Disattiva per iniziare dalla domenica",ShiftRepository.appPreferences.weekStartMonday) { ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(weekStartMonday=it); ShiftRepository.notifyDataChanged() }
-                            SettingsDivider()
-                            SettingsToggleRow(Icons.Default.Schedule,"Formato 24 ore","Orari compatti e leggibili",ShiftRepository.appPreferences.timeFormat24h) { ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(timeFormat24h=it); ShiftRepository.notifyDataChanged() }
-                            SettingsDivider()
-                            SettingsToggleRow(Icons.Default.History,"Mostra turno originario","Conserva il riferimento della rotazione",ShiftRepository.appPreferences.showExShifts) { ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(showExShifts=it); ShiftRepository.notifyDataChanged() }
-                            SettingsDivider()
-                            SettingsRow(Icons.Default.Flag,"Festività","Scegli i giorni da evidenziare") { screen=SettingsSubScreen.HOLIDAYS }
-                        }
-                        SettingsGroup("Sveglie e avvisi") {
+                        Text("TurniSync · ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",Modifier.padding(vertical=16.dp),fontSize=10.sp,color=TextMuted)
+                        Spacer(Modifier.height(116.dp))
+                    }
+                    SettingsSubScreen.NONE->Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)) {
+                        PreferenceHeading("Impostazioni",ShiftRepository.activeWorkProfile.name,onDismiss)
+                        PreferenceGroup("Notifiche","bell",bottom=16,iconProgress=bellMotion.value) {
                             val alarms=ShiftRepository.smartAlarmsConfig
-                            SettingsToggleRow(Icons.Default.NotificationsActive,"Avvisa prima dell'inizio di ogni turno","Sveglie collegate ai tuoi turni",alarms.isGlobalEnabled) {
-                                ShiftRepository.smartAlarmsConfig=alarms.copy(isGlobalEnabled=it)
-                                if(it) ShiftAlarmScheduler.scheduleNextAlarm(context) else ShiftAlarmScheduler.cancelScheduledAlarm(context)
+                            PreferenceToggle("Avvisa prima dell’inizio di ogni turno","Sveglie sonore per i turni con un orario",alarms.isGlobalEnabled){enabled->
+                                if(enabled&&(!ShiftAlarmScheduler.canScheduleExactAlarms(context)||!ShiftAlarmScheduler.hasNotificationPermission(context))){
+                                    screen=SettingsSubScreen.SMART_ALARMS
+                                }else{
+                                ShiftRepository.smartAlarmsConfig=alarms.copy(isGlobalEnabled=enabled)
+                                if(enabled){ShiftAlarmScheduler.scheduleNextAlarm(context);scope.launch{bellMotion.snapTo(0f);bellMotion.animateTo(1f,tween(580));bellMotion.snapTo(0f)}}else ShiftAlarmScheduler.cancelScheduledAlarm(context)
                                 ShiftRepository.notifyDataChanged()
+                                }
                             }
-                            AnimatedVisibility(alarms.isGlobalEnabled,enter=expandVertically(spring())+fadeIn(),exit=shrinkVertically(spring())+fadeOut()) {
-                                Column(Modifier.padding(start=16.dp,end=16.dp,bottom=14.dp)) {
-                                    Text("Preavviso per i turni di lavoro",color=TextSecondary,fontSize=12.sp,modifier=Modifier.padding(bottom=8.dp))
+                            AnimatedVisibility(alarms.isGlobalEnabled,enter=expandVertically(spring(dampingRatio=.9f,stiffness=160f))+fadeIn(tween(460)),exit=shrinkVertically(spring(dampingRatio=1f,stiffness=220f))+fadeOut(tween(320))) {
+                                Column(Modifier.padding(top=16.dp)) {
+                                    Text("Quanto prima vuoi essere avvisato?",Modifier.padding(bottom=9.dp),fontSize=11.sp,color=TextPrimary)
                                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                                        listOf(15,30,60).forEach { minutes ->
-                                            val workingIds=ShiftRepository.shiftDefinitions.filter { it.category==ShiftCategory.LAVORO && !it.isAllDay }.map { it.id }
-                                            val chosen=workingIds.isNotEmpty() && workingIds.all { id -> alarms.rules.any { it.shiftDefId==id && it.minutesBefore==minutes && it.customTime==null && it.isEnabled } }
-                                            Surface(Modifier.weight(1f).bouncyClickable {
-                                                val retained=alarms.rules.filter { it.shiftDefId !in workingIds }
-                                                ShiftRepository.smartAlarmsConfig=alarms.copy(rules=retained+workingIds.map { ShiftAlarmRule(it,true,minutes,null) })
-                                                ShiftAlarmScheduler.scheduleNextAlarm(context); ShiftRepository.notifyDataChanged(); message="Preavviso aggiornato"
-                                            },shape=RoundedCornerShape(13.dp),color=if(chosen) ObsidianPrimaryContainer else ObsidianSurfaceContainer) {
-                                                Text("$minutes min",Modifier.padding(vertical=12.dp),color=if(chosen) MaterialTheme.colorScheme.onPrimaryContainer else TextPrimary,fontSize=12.sp,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                                        listOf(5,15,30,60).forEach{minutes->
+                                            val workingIds=ShiftRepository.shiftDefinitions.filter{it.category==ShiftCategory.LAVORO&&!it.isAllDay}.map{it.id}
+                                            val chosen=workingIds.isNotEmpty()&&workingIds.all{id->alarms.rules.any{it.shiftDefId==id&&it.minutesBefore==minutes&&it.customTime==null&&it.isEnabled}}
+                                            val fill by animateColorAsState(if(chosen)ObsidianPrimary else ObsidianSurfaceHigh,tween(220))
+                                            Surface(shape=RoundedCornerShape(13.dp),color=fill,modifier=Modifier.weight(1f).height(47.dp).bouncyClickable{
+                                                ShiftRepository.smartAlarmsConfig=alarms.copy(rules=alarms.rules.filter{it.shiftDefId !in workingIds}+workingIds.map{ShiftAlarmRule(it,true,minutes,null)})
+                                                ShiftAlarmScheduler.scheduleNextAlarm(context);ShiftRepository.notifyDataChanged()
+                                            }) {
+                                                Column(horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center){
+                                                    val ink=if(chosen)MaterialTheme.colorScheme.onPrimary else TextPrimary
+                                                    Text(if(minutes==60)"1 ora" else "$minutes min",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=ink)
+                                                    Text("prima",Modifier.padding(top=3.dp),fontSize=9.sp,color=ink)
+                                                }
                                             }
                                         }
                                     }
-                                    SettingsRow(Icons.Default.Alarm,"Regole e sveglie programmate","Personalizza ciascun turno") { screen=SettingsSubScreen.SMART_ALARMS }
+                                    Text("Gli avvisi sul telefono richiedono il permesso notifiche. Controlla le regole in Sveglie intelligenti.",Modifier.padding(top=12.dp),fontSize=9.sp,lineHeight=14.sp,color=TextMuted)
                                 }
                             }
                         }
-                        SettingsGroup("Reperibilità") {
-                            SettingsRow(Icons.Default.Notifications,"Regole di reperibilità","Manuale, per turno o stagionale") { screen=SettingsSubScreen.REPERIBILITA }
+                        PreferenceGroup("Il tuo calendario") {
+                            PreferenceRow("palette","Aspetto e calendario","Settimana, orari e turno di provenienza"){screen=SettingsSubScreen.APPEARANCE}
+                            PreferenceDivider()
+                            PreferenceRow("bell-ring","Reperibilità","Giorni, turni e regole stagionali"){screen=SettingsSubScreen.REPERIBILITA}
+                            PreferenceDivider()
+                            PreferenceRow("calendar-heart","Festività","Nazionali, religiose e CCNL"){screen=SettingsSubScreen.HOLIDAYS}
+                            PreferenceDivider()
+                            PreferenceRow("bell-ring","Reperibilità","Regole e giorni di disponibilità"){screen=SettingsSubScreen.REPERIBILITA}
                         }
-                        SettingsGroup("Dati e sincronizzazione") {
-                            SettingsRow(Icons.Default.CloudSync,"Backup e ripristino","Copia locale ed esportazione su file") { screen=SettingsSubScreen.CLOUD_BACKUP }
-                            SettingsDivider()
-                            SettingsRow(Icons.Default.Event,"Google Calendar","Sincronizza gli eventi sul telefono") { screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC }
-                            SettingsDivider()
-                            SettingsRow(Icons.Default.AutoAwesome,"Importa turni","Da documenti, immagini e prospetti") { screen=SettingsSubScreen.IMPORT_SHIFTS }
-                            SettingsDivider()
-                            SettingsRow(Icons.Default.PictureAsPdf,"Esporta PDF","Condividi o stampa il calendario") { screen=SettingsSubScreen.PDF_EXPORT }
-                            SettingsDivider()
-                            SettingsToggleRow(Icons.Default.Backup,"Backup automatico","Salva una copia locale all’avvio dell’app",ShiftRepository.appPreferences.autoBackupDaily) { ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(autoBackupDaily=it); ShiftRepository.notifyDataChanged() }
+                        PreferenceGroup("Servizi") {
+                            PreferenceRow("alarm-clock","Sveglie intelligenti","Regole e prossimi avvisi"){screen=SettingsSubScreen.SMART_ALARMS}
+                            PreferenceDivider()
+                            PreferenceRow("calendar-sync","Google Calendar","Opzioni e anteprima eventi"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
+                            PreferenceDivider()
+                            PreferenceRow("scan-text","Importazione turni","Importa e controlla i turni"){screen=SettingsSubScreen.IMPORT_SHIFTS}
+                            PreferenceDivider()
+                            PreferenceRow("file-text","Prospetto e PDF","Contenuti, intervalli e anteprima"){screen=SettingsSubScreen.PDF_EXPORT}
                         }
-                        SettingsGroup("Gestione dati") {
-                            SettingsRow(Icons.Default.DeleteOutline,"Elimina tutti i turni","Apre una conferma prima di procedere",danger=true) { deleteStep=1 }
+                        PreferenceGroup("Gestione dati") {
+                            PreferenceRow("database-backup","Backup e ripristino","Conserva una copia del calendario"){screen=SettingsSubScreen.CLOUD_BACKUP}
+                            PreferenceDivider()
+                            Row(Modifier.padding(top=15.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) { SiteIcon("shield-alert",null,Modifier.size(14.dp),tint=TextMuted);Text("Zona pericolosa",fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=TextMuted) }
+                            PreferenceRow("trash-2","Elimina tutti i turni","Da tutti i calendari · richiede conferma",true){deleteStep=1}
                         }
-                        Text("TurniSync · ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",Modifier.fillMaxWidth().padding(vertical=16.dp),textAlign=androidx.compose.ui.text.style.TextAlign.Center,color=TextMuted,fontSize=11.sp)
-                        Spacer(Modifier.height(105.dp))
+                        Spacer(Modifier.height(116.dp))
                     }
                 }
             }
         }
-        if(deleteStep>0) AlertDialog(
-            onDismissRequest={deleteStep=0},
-            icon={Icon(Icons.Default.DeleteOutline,null,tint=MaterialTheme.colorScheme.error)},
-            title={Text(if(deleteStep==1) "Eliminare tutti i turni?" else "Conferma eliminazione",color=TextPrimary)},
-            text={Text(if(deleteStep==1) "Tutti i turni del calendario e i relativi dettagli verranno rimossi. I modelli e i lavori resteranno disponibili." else "Sei sicuro di voler eliminare definitivamente tutti i turni? Questa azione è irreversibile.",color=TextSecondary)},
-            confirmButton={TextButton(onClick={if(deleteStep==1) deleteStep=2 else { ShiftRepository.clearAllShifts(); deleteStep=0; message="Turni eliminati" }}) {Text(if(deleteStep==1) "Continua" else "Conferma eliminazione",color=MaterialTheme.colorScheme.error)}},
-            dismissButton={TextButton(onClick={deleteStep=0}) {Text("Annulla")}},containerColor=ObsidianSurface,shape=RoundedCornerShape(26.dp)
-        )
-        AnimatedStatusPopup(message=message,type=if(message=="Turni eliminati") PopupType.ERROR else PopupType.SUCCESS,onDismiss={message=null})
+        if(deleteStep>0)PreferenceDeleteDialog(deleteStep,{deleteStep=0},{deleteStep=2}){ShiftRepository.clearAllShifts();deleteStep=0;message="Turni eliminati"}
+        AnimatedStatusPopup(message,type=if(message=="Turni eliminati")PopupType.ERROR else PopupType.SUCCESS,onDismiss={message=null})
     }
 }
 
 @Composable
-private fun SettingsGroup(title:String, content:@Composable ColumnScope.()->Unit) {
-    Text(title,Modifier.padding(start=4.dp,top=6.dp,bottom=8.dp),fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=TextSecondary)
-    Surface(Modifier.fillMaxWidth().padding(bottom=14.dp),shape=RoundedCornerShape(24.dp),color=ObsidianSurface) { Column(content=content) }
-}
-@Composable
-private fun SettingsDivider() { Divider(Modifier.padding(horizontal=16.dp),color=ObsidianBorderSubtle) }
-@Composable
-fun SettingsRow(icon:ImageVector,title:String,subtitle:String,danger:Boolean=false,onClick:()->Unit) {
-    val tint=if(danger) MaterialTheme.colorScheme.error else ObsidianPrimary
-    Row(Modifier.fillMaxWidth().bouncyClickable(onClick=onClick).padding(16.dp),verticalAlignment=Alignment.CenterVertically) {
-        Icon(icon,null,Modifier.size(24.dp),tint=tint)
-        Column(Modifier.weight(1f).padding(horizontal=12.dp)) { Text(title,color=if(danger) tint else TextPrimary,fontWeight=FontWeight.SemiBold,fontSize=14.sp); Text(subtitle,color=TextSecondary,fontSize=12.sp,modifier=Modifier.padding(top=3.dp)) }
-        Icon(Icons.Default.ChevronRight,null,Modifier.size(18.dp),tint=TextMuted)
+private fun PreferenceHeading(title:String,subtitle:String,onBack:()->Unit) {
+    Row(Modifier.fillMaxWidth().padding(top=8.dp,bottom=20.dp).heightIn(min=48.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+        Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurface).bouncyClickable(onClick=onBack),contentAlignment=Alignment.Center){SiteIcon("arrow-left","Indietro",Modifier.size(20.dp),tint=TextPrimary)}
+        Column{Text(title,fontSize=24.sp,letterSpacing=(-.7).sp,fontWeight=FontWeight.Bold,color=TextPrimary);Text(subtitle,Modifier.padding(top=4.dp),fontSize=10.sp,color=TextMuted)}
     }
 }
 @Composable
-fun SettingsToggleRow(icon:ImageVector,title:String,subtitle:String,checked:Boolean,onCheckedChange:(Boolean)->Unit) {
-    Row(Modifier.fillMaxWidth().padding(horizontal=16.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
-        Icon(icon,null,Modifier.size(24.dp),tint=ObsidianPrimary)
-        Column(Modifier.weight(1f)) { Text(title,color=TextPrimary,fontWeight=FontWeight.SemiBold,fontSize=14.sp); Text(subtitle,color=TextSecondary,fontSize=12.sp,modifier=Modifier.padding(top=3.dp)) }
-        Switch(checked=checked,onCheckedChange=onCheckedChange,colors=SwitchDefaults.colors(checkedThumbColor=MaterialTheme.colorScheme.onPrimary,checkedTrackColor=ObsidianPrimary))
+private fun PreferenceGroup(title:String,icon:String?=null,bottom:Int=6,iconProgress:Float=0f,content:@Composable ColumnScope.()->Unit) {
+    Surface(Modifier.fillMaxWidth().padding(bottom=16.dp),shape=RoundedCornerShape(24.dp),color=ObsidianSurface){Column(Modifier.padding(start=16.dp,end=16.dp,top=18.dp,bottom=bottom.dp)){
+        Row(Modifier.padding(bottom=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){if(icon!=null)SiteIcon(icon,null,Modifier.size(18.dp),tint=ObsidianPrimary,progress=iconProgress);Text(title,fontSize=13.sp,fontWeight=FontWeight.Bold,color=TextPrimary)}
+        content()
+    }}
+}
+@Composable
+private fun PreferenceDivider(){Divider(color=ObsidianBorderSubtle)}
+@Composable
+private fun PreferenceRow(icon:String,title:String,subtitle:String,danger:Boolean=false,onClick:()->Unit){
+    val tint=if(danger)ColorNegative else ObsidianPrimary
+    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable(onClick=onClick).padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+        Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tint.copy(alpha=.10f)),contentAlignment=Alignment.Center){SiteIcon(icon,null,Modifier.size(18.dp),tint=tint)}
+        Column(Modifier.weight(1f)){Text(title,color=if(danger)tint else TextPrimary,fontSize=12.sp,lineHeight=17.sp,fontWeight=FontWeight.SemiBold);Text(subtitle,Modifier.padding(top=3.dp),color=TextMuted,fontSize=10.sp,lineHeight=15.sp)}
+        SiteIcon("chevron-right",null,Modifier.size(16.dp),tint=TextMuted)
+    }
+}
+@Composable
+private fun PreferenceToggle(title:String,subtitle:String,checked:Boolean,onChange:(Boolean)->Unit){
+    Row(Modifier.fillMaxWidth().heightIn(min=58.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(16.dp)){
+        Column(Modifier.weight(1f)){Text(title,fontSize=12.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary);Text(subtitle,Modifier.padding(top=5.dp),fontSize=10.sp,lineHeight=15.sp,color=TextMuted)}
+        val thumb by animateDpAsState(if(checked)19.dp else 3.dp,spring(dampingRatio=.82f,stiffness=280f))
+        val fill by animateColorAsState(if(checked)ObsidianPrimary else ObsidianSurfaceHigh,tween(240))
+        Box(Modifier.size(44.dp,28.dp).clip(CircleShape).background(fill).toggleable(checked,role=Role.Switch,onValueChange=onChange),contentAlignment=Alignment.CenterStart){Box(Modifier.offset(x=thumb).size(18.dp).clip(CircleShape).background(if(checked)MaterialTheme.colorScheme.onPrimary else TextMuted))}
+    }
+}
+@Composable
+private fun PreferenceDeleteDialog(step:Int,onClose:()->Unit,onContinue:()->Unit,onDelete:()->Unit){
+    var acknowledged by remember{mutableStateOf(false)}
+    val progress=remember{Animatable(0f)};val scope=rememberCoroutineScope()
+    LaunchedEffect(Unit){progress.animateTo(1f,spring(dampingRatio=.88f,stiffness=170f))}
+    fun dismiss(){scope.launch{progress.animateTo(0f,tween(260));onClose()}}
+    Dialog(onDismissRequest={dismiss()},properties=DialogProperties(usePlatformDefaultWidth=false)){
+        Box(Modifier.fillMaxSize().padding(horizontal=16.dp),contentAlignment=Alignment.BottomCenter){
+            Surface(shape=RoundedCornerShape(24.dp),color=ObsidianSurface,modifier=Modifier.padding(bottom=112.dp).fillMaxWidth().graphicsLayer{alpha=progress.value;translationY=(1-progress.value)*130;scaleX=.96f+.04f*progress.value;scaleY=scaleX}){
+                Column(Modifier.verticalScroll(rememberScrollState()).padding(22.dp)){
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically){Box(Modifier.size(46.dp).clip(RoundedCornerShape(16.dp)).background(ColorNegative.copy(alpha=.12f)),contentAlignment=Alignment.Center){SiteIcon("trash-2",null,Modifier.size(25.dp),tint=ColorNegative)};Spacer(Modifier.weight(1f));Text("Passaggio $step di 2",fontSize=10.sp,color=TextMuted);Box(Modifier.size(36.dp).bouncyClickable{dismiss()},contentAlignment=Alignment.Center){SiteIcon("x","Chiudi",Modifier.size(19.dp),tint=TextPrimary)}}
+                    Text(if(step==1)"Eliminare tutti i turni?" else "Conferma eliminazione",Modifier.padding(top=8.dp,bottom=12.dp),fontSize=22.sp,lineHeight=26.sp,letterSpacing=(-.5).sp,fontWeight=FontWeight.Bold,color=TextPrimary)
+                    Text("Sei sicuro di voler eliminare definitivamente tutti i turni? Questa azione è irreversibile.",fontSize=12.sp,lineHeight=20.sp,color=TextPrimary)
+                    Surface(shape=RoundedCornerShape(16.dp),color=ObsidianSurfaceHigh,modifier=Modifier.fillMaxWidth().padding(top=16.dp)){Text("Tutti i calendari\nI modelli di turno e i lavori restano disponibili.",Modifier.padding(14.dp),fontSize=11.sp,lineHeight=18.sp,color=TextMuted)}
+                    if(step==2)Row(Modifier.padding(vertical=18.dp),verticalAlignment=Alignment.CenterVertically){Checkbox(acknowledged,{acknowledged=it});Text("Ho capito che i turni e i relativi dettagli verranno eliminati.",fontSize=11.sp,lineHeight=18.sp,color=TextPrimary)}
+                    Box(Modifier.fillMaxWidth().padding(top=20.dp).height(46.dp).clip(RoundedCornerShape(15.dp)).background(if(step==1||acknowledged)Color(0xFFB92C40)else Color(0xFFB92C40).copy(alpha=.38f)).bouncyClickable(enabled=step==1||acknowledged){if(step==1)onContinue()else scope.launch{progress.animateTo(0f,tween(260));onDelete()}},contentAlignment=Alignment.Center){Text(if(step==1)"Continua" else "Conferma eliminazione",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=Color.White)}
+                    Box(Modifier.fillMaxWidth().padding(top=8.dp).height(46.dp).bouncyClickable{dismiss()},contentAlignment=Alignment.Center){Text("Annulla",fontSize=12.sp,color=TextPrimary)}
+                }
+            }
+        }
     }
 }

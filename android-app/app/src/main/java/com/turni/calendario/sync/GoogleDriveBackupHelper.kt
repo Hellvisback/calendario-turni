@@ -205,12 +205,12 @@ object GoogleDriveBackupHelper {
     }
 
     /**
-     * Esegue il salvataggio automatico diretto nel cloud storage dell'app per Google Drive
+     * Saves an on-device copy only; remote Drive operations use GoogleDriveRemote.
      * senza richiedere all'utente di selezionare cartelle o confermare dialoghi esterni.
      */
-    fun saveCloudBackupDirect(context: Context): Boolean {
+    fun saveLocalBackupDirect(context: Context, snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): Boolean {
         return try {
-            val json = exportDatabaseToJson()
+            val json = exportDatabaseToJson(snapshot)
             val dir = File(context.filesDir, "cloud_backups")
             if (!dir.exists()) dir.mkdirs()
             val file = File(dir, "turni_cloud_backup_latest.json")
@@ -222,12 +222,12 @@ object GoogleDriveBackupHelper {
         }
     }
 
-    fun hasCloudBackup(context: Context): Boolean {
+    fun hasLocalBackup(context: Context): Boolean {
         val file = File(File(context.filesDir, "cloud_backups"), "turni_cloud_backup_latest.json")
         return file.exists() && file.length() > 0
     }
 
-    fun getCloudBackupInfo(context: Context): String? {
+    fun getLocalBackupInfo(context: Context): String? {
         val file = File(File(context.filesDir, "cloud_backups"), "turni_cloud_backup_latest.json")
         if (!file.exists()) return null
         return try {
@@ -240,13 +240,13 @@ object GoogleDriveBackupHelper {
     }
 
     /**
-     * Ripristina direttamente l'ultimo backup cloud salvato senza aprire selettori di file.
+     * Restores the legacy on-device copy; it does not contact Google Drive.
      */
-    fun restoreCloudBackupDirect(context: Context): RestoreResult {
+    fun restoreLocalBackupDirect(context: Context): RestoreResult {
         return try {
             val file = File(File(context.filesDir, "cloud_backups"), "turni_cloud_backup_latest.json")
             if (!file.exists() || file.length() == 0L) {
-                return RestoreResult(false, "Nessun backup trovato su Google Drive.")
+                return RestoreResult(false, "Nessuna copia locale disponibile.")
             }
             val json = file.readText(Charsets.UTF_8)
             restoreFromJsonString(json)

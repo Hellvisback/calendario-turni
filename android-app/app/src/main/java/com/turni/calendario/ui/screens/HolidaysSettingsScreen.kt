@@ -11,7 +11,7 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.filled.*
+import androidx.compose.material.icons.outlined.*
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -71,7 +71,7 @@ fun HolidaysSettingsScreen(
                 ) {
                     Box(contentAlignment = Alignment.Center) {
                         Icon(
-                            Icons.Default.ArrowBack,
+                            Icons.Outlined.ArrowBack,
                             contentDescription = "Indietro",
                             tint = TextPrimary,
                             modifier = Modifier.size(20.dp)
@@ -145,7 +145,7 @@ fun HolidaysSettingsScreen(
                     border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Default.Refresh, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Outlined.Refresh, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Ripristina", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 }
