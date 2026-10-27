@@ -213,6 +213,27 @@ object GoogleCalendarRemote {
         return results
     }
 
+    fun importCalendars(token:String):List<ImportCalendar> {
+        val results=mutableListOf<ImportCalendar>()
+        pages(token,"$ROOT/users/me/calendarList",mapOf("minAccessRole" to "reader","maxResults" to "250")) { item ->
+            if(item.optString("accessRole") in listOf("reader","writer","owner"))results+=ImportCalendar(item.getString("id"),item.optString("summaryOverride").ifBlank { item.optString("summary","Calendario") },item.optString("timeZone","UTC"),item.optString("backgroundColor"))
+        }
+        return results
+    }
+
+    fun importEvents(token:String,calendar:ImportCalendar,start:LocalDate,end:LocalDate):List<ImportShiftEvent> {
+        require(!end.isBefore(start) && java.time.temporal.ChronoUnit.DAYS.between(start,end)<=3660) { "Scegli un periodo non superiore a dieci anni." }
+        val zone=ZoneId.of(calendar.zone)
+        val results=mutableListOf<ImportShiftEvent>()
+        pages(token,eventsUrl(calendar.id),mapOf("singleEvents" to "true","showDeleted" to "false","maxResults" to "2500",
+            "timeMin" to start.atStartOfDay(zone).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME),
+            "timeMax" to end.plusDays(1).atStartOfDay(zone).format(DateTimeFormatter.ISO_OFFSET_DATE_TIME))) { event ->
+            require(results.size<100000) { "Troppi eventi: riduci il periodo." }
+            if(event.optString("status")!="cancelled")results+=SuperShiftCalendarAdapter.googleEvent(event,calendar)
+        }
+        return results.filter { it.date>=start && it.date<=end }
+    }
+
     private fun eventsUrl(calendarId: String) = "$ROOT/calendars/${encoded(calendarId)}/events"
     private fun validateCalendar(token: String, calendarId: String) {
         require(calendarId.isNotBlank()) { "Seleziona il calendario Google da utilizzare." }

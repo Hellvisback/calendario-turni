@@ -30,6 +30,7 @@ import java.net.URLEncoder
 
 internal enum class GoogleFeature(val dataScopes:List<String>){
     PROFILE(emptyList()),
+    CALENDAR_IMPORT(listOf("https://www.googleapis.com/auth/calendar.calendarlist.readonly","https://www.googleapis.com/auth/calendar.events.readonly")),
     DRIVE(listOf("https://www.googleapis.com/auth/drive.appdata")),
     CALENDAR(listOf("https://www.googleapis.com/auth/calendar.calendarlist.readonly","https://www.googleapis.com/auth/calendar.events"));
     val scopes get()=listOf("openid","https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/userinfo.profile")+dataScopes

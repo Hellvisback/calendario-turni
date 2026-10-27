@@ -34,7 +34,7 @@ import java.time.format.DateTimeFormatter
 private data class BackupRestorePreview(val data:DatabaseSnapshot,val source:String)
 
 @Composable
-fun CloudBackupScreen(onDismiss:()->Unit){
+fun CloudBackupScreen(onDismiss:()->Unit,onImportSuperShift:()->Unit={}){
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var feedback by remember{mutableStateOf<ActionFeedback?>(null)}
     var busy by remember{mutableStateOf(false)}
@@ -43,6 +43,7 @@ fun CloudBackupScreen(onDismiss:()->Unit){
     var localInfo by remember{mutableStateOf(GoogleDriveBackupHelper.getLocalBackupInfo(context))}
     var preview by remember{mutableStateOf<BackupRestorePreview?>(null)}
     var exportSnapshot by remember{mutableStateOf<DatabaseSnapshot?>(null)}
+    val importRecovery=remember { File(context.filesDir,"import_recovery").listFiles()?.filter { it.name.startsWith("before-supershift-")&&it.extension=="json" }?.maxByOrNull { it.lastModified() } }
     val email=ShiftRepository.googleAccountProfile?.email
     val automatic by DriveAutomaticBackup.statusFlow.collectAsState()
     var otherCopies by remember{mutableStateOf(false)}
@@ -134,6 +135,9 @@ fun CloudBackupScreen(onDismiss:()->Unit){
             }
             Text("Android può posticipare il salvataggio per risparmiare batteria. La data si aggiorna solo dopo la conferma di Drive.",color=TextMuted,fontSize=10.sp,lineHeight=15.sp)
         }
+        CloudCard("Passa da SuperShift","Importa i turni in un calendario dedicato, senza sostituire quelli che hai già.") {
+            CloudButton("Importa da SuperShift","download",onImportSuperShift,enabled,secondary=true)
+        }
         CloudCard("Altre copie"){
             Row(Modifier.fillMaxWidth().bouncyClickable{otherCopies=!otherCopies}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 SiteIcon("folder",null,Modifier.size(20.dp),ObsidianPrimary)
@@ -146,6 +150,10 @@ fun CloudBackupScreen(onDismiss:()->Unit){
                     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
                         Column(Modifier.weight(1f)){Text("Copia locale automatica",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium);Text("All’apertura dell’app · resta su questo telefono",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)}
                         Switch(checked=ShiftRepository.appPreferences.autoBackupDaily,enabled=enabled,onCheckedChange={ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(autoBackupDaily=it);ShiftRepository.notifyDataChanged()})
+                    }
+                    importRecovery?.let { recovery ->
+                        Text("Prima dell’ultima importazione · ${formatBackupInstant(recovery.lastModified())}",color=TextSecondary,fontSize=11.sp)
+                        CloudButton("Ripristina prima dell’importazione","undo",{prepareRestore("Copia precedente all’importazione SuperShift"){check(recovery.length() in 1..24L*1024*1024){"Copia di sicurezza non valida."};recovery.readText(Charsets.UTF_8)}},enabled,secondary=true)
                     }
                     localInfo?.let{Text("Ultima copia locale · $it",color=TextSecondary,fontSize=11.sp)}
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){

@@ -1,3 +1,5 @@
+> Aggiornamento 27/10/2026: APK 1.6.0 (32) installato sul Realme. Regole statistiche generiche persistite (backup schema 4); importazione calendario SuperShift con anteprima, deduplicazione e recupero. Il backup proprietario completo non è ancora supportato senza un file originale accessibile. Verifiche, limiti e sorgenti in [docs/VERIFICA_v1.6.0.md](docs/VERIFICA_v1.6.0.md). 375 test per variante superati.
+
 # Handover Tecnico e Guida di Progetto: Calendario Turni (RFI Pro)
 
 Benvenuto! Questo documento contiene tutto ciò che serve a un agente AI (Antigravity) o a uno sviluppatore per continuare lo sviluppo di questa applicazione Android senza perdere il contesto, le scelte architetturali e i requisiti dell'utente.

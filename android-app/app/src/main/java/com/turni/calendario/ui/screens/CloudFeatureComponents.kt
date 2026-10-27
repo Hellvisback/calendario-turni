@@ -28,10 +28,12 @@ import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
 
 @Composable
-internal fun CloudFeatureScaffold(title:String,onDismiss:()->Unit,feedback:ActionFeedback?,onDismissFeedback:()->Unit,content:@Composable ColumnScope.()->Unit){
+internal fun CloudFeatureScaffold(title:String,onDismiss:()->Unit,feedback:ActionFeedback?,onDismissFeedback:()->Unit,scrollResetKey:Any?=null,content:@Composable ColumnScope.()->Unit){
     BackHandler(onBack=onDismiss)
+    val scroll=rememberScrollState()
+    LaunchedEffect(scrollResetKey){scroll.scrollTo(0)}
     Box(Modifier.fillMaxSize().background(ObsidianBackground).statusBarsPadding().navigationBarsPadding()){
-        Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
+        Column(Modifier.fillMaxSize().verticalScroll(scroll).padding(horizontal=16.dp),verticalArrangement=Arrangement.spacedBy(12.dp)){
             Row(Modifier.fillMaxWidth().padding(top=8.dp,bottom=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
                 Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurface).bouncyClickable(onClick=onDismiss),contentAlignment=Alignment.Center){SiteIcon("arrow-left","Indietro",Modifier.size(22.dp))}
                 Text(title,color=TextPrimary,fontSize=22.sp,lineHeight=26.sp,fontWeight=FontWeight.Bold,modifier=Modifier.weight(1f))

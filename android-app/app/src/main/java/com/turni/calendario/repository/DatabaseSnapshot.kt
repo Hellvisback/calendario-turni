@@ -16,7 +16,8 @@ data class DatabaseSnapshot(
     val preferences: AppPreferences,
     val onCall: ReperibilitaConfig,
     val alarms: SmartAlarmsConfig,
-    val holidayIds: Set<String>
+    val holidayIds: Set<String>,
+    val statisticsRules: List<StatisticsRule> = emptyList()
 ) {
     companion object {
         fun capture() = DatabaseSnapshot(
@@ -31,7 +32,8 @@ data class DatabaseSnapshot(
             ShiftRepository.appPreferences,
             ShiftRepository.reperibilitaConfig,
             ShiftRepository.smartAlarmsConfig,
-            ShiftRepository.enabledHolidayIds.toSet()
+            ShiftRepository.enabledHolidayIds.toSet(),
+            ShiftRepository.statisticsRules.toList()
         )
     }
 }

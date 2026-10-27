@@ -38,7 +38,7 @@ import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.launch
 
-private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS }
+private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS, STATISTICS_RULES, SUPERSHIFT }
 
 @Composable
 fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni:(ShiftRotation?)->Unit={},onDismiss:()->Unit={}) {
@@ -55,7 +55,9 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
         Crossfade(screen,animationSpec=tween(380)){destination->
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
                 when(destination){
-                    SettingsSubScreen.CLOUD_BACKUP->CloudBackupScreen(onDismiss=close)
+                    SettingsSubScreen.CLOUD_BACKUP->CloudBackupScreen(onDismiss=close,onImportSuperShift={screen=SettingsSubScreen.SUPERSHIFT})
+                    SettingsSubScreen.STATISTICS_RULES->StatisticsRulesScreen(onDismiss=close)
+                    SettingsSubScreen.SUPERSHIFT->SuperShiftImportScreen(onDismiss={screen=SettingsSubScreen.CLOUD_BACKUP})
                     SettingsSubScreen.GOOGLE_CALENDAR_SYNC->GoogleCalendarSyncScreen(onDismiss=close)
                     SettingsSubScreen.IMPORT_SHIFTS->GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={rotation->close();onNavigateToTurni(rotation)})
                     SettingsSubScreen.PDF_EXPORT->PdfExportScreen(onDismiss=close)
@@ -100,6 +102,8 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                         }
                         PreferenceGroup("Strumenti") {
+                            PreferenceRow("chart-no-axes-combined","Conteggio statistiche","Regole per i turni sostituiti"){screen=SettingsSubScreen.STATISTICS_RULES}
+                            PreferenceDivider()
                             PreferenceRow("calendar-sync","Google Calendar","Opzioni e anteprima eventi"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
                             PreferenceDivider()
                             PreferenceRow("scan-text","Importazione turni","Importa e controlla i turni"){screen=SettingsSubScreen.IMPORT_SHIFTS}

@@ -30,7 +30,8 @@ object GoogleDriveBackupHelper {
      */
     fun exportDatabaseToJson(snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): String {
         val root = JSONObject()
-        root.put("version", 3)
+        root.put("version", 4)
+        root.put("statisticsRules", JSONArray().apply { snapshot.statisticsRules.forEach { rule -> put(JSONObject().put("id",rule.id).put("displayedShiftId",rule.displayedShiftId).put("originalShiftIds",JSONArray(rule.originalShiftIds.toList())).put("enabled",rule.enabled)) } })
         root.put("exportDate", LocalDate.now().toString())
         root.put("activeWorkProfileId", snapshot.activeWorkProfileId)
         root.put("activeRotationId", snapshot.activeRotationId)

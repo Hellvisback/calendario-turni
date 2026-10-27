@@ -126,6 +126,16 @@ object ShiftRepository {
     // Rotazioni cicliche disponibili
     val rotations = mutableStateListOf<ShiftRotation>()
 
+    val statisticsRules = mutableStateListOf<StatisticsRule>()
+
+    fun saveStatisticsRule(rule: StatisticsRule) {
+        val updated=statisticsRules.filterNot { it.id==rule.id }+rule
+        validateStatisticsRules(updated, shiftDefinitions.toList())
+        statisticsRules.clear(); statisticsRules.addAll(updated); notifyDataChanged()
+    }
+
+    fun removeStatisticsRule(id: String) { statisticsRules.removeAll { it.id==id }; notifyDataChanged() }
+
     // Rotazione attiva corrente (inizializzata PRIMA di init)
     var activeRotationId by mutableStateOf("turno_a")
 
@@ -402,10 +412,16 @@ object ShiftRepository {
         } else {
             shiftDefinitions.add(def)
         }
+        val byId=shiftDefinitions.associateBy { it.id }
+        val cleaned=statisticsRules.map { rule -> rule.copy(originalShiftIds=rule.originalShiftIds.filter { byId[it]?.workProfileId==byId[rule.displayedShiftId]?.workProfileId }.toSet()) }.filter { it.originalShiftIds.isNotEmpty() }
+        statisticsRules.clear(); statisticsRules.addAll(cleaned)
     }
 
     fun deleteShiftDefinition(id: String) = synchronized(this) {
         shiftDefinitions.removeAll { it.id == id }
+        val remainingRules=statisticsRules.filterNot { it.displayedShiftId==id }
+            .map { it.copy(originalShiftIds=it.originalShiftIds-id) }.filter { it.originalShiftIds.isNotEmpty() }
+        statisticsRules.clear(); statisticsRules.addAll(remainingRules)
         calendarShifts.keys.toList().forEach { date ->
             val retained = getShiftsForDate(date).filter { it.shiftDefId != id }.map { assigned ->
                 if (assigned.originalShiftDefId == id) assigned.copy(originalShiftDefId = null, isModifiedFromRotation = false)
@@ -1274,10 +1290,13 @@ object ShiftRepository {
     // Statistiche Report Compatibili
     fun getReportStats(start: LocalDate, end: LocalDate): Map<String, Int> {
         val counts = mutableMapOf<String, Int>()
+        val definitions=shiftDefinitions.associateBy { it.id }
+        val rules=statisticsRules.toList()
         var d = start
         while (!d.isAfter(end)) {
             val shifts = calendarShifts[d] ?: emptyList()
-            for (s in shifts) {
+            for (assigned in shifts) {
+                val s=statisticsAssignment(assigned, definitions, rules)
                 counts[s.shiftDefId] = (counts[s.shiftDefId] ?: 0) + 1
             }
             d = d.plusDays(1)
@@ -1298,10 +1317,12 @@ object ShiftRepository {
         var reperibilitaCount = 0
         val counts = mutableMapOf<String, Int>()
 
+        val statisticsModels=shiftDefinitions.associateBy { it.id }
+        val countRules=statisticsRules.toList()
         var curr = start
         while (!curr.isAfter(end)) {
             val extra = dayExtraInfo[curr]
-            val dayShifts = getShiftsForDate(curr)
+            val dayShifts = getShiftsForDate(curr).map { statisticsAssignment(it, statisticsModels, countRules) }
             val shiftOvertime = dayShifts.sumOf { it.overtimeHours.toDouble() }.toFloat()
             val overtime = if (dayShifts.any { it.isOvertime || it.overtimeHours > 0f || it.actualEndTime != null }) {
                 shiftOvertime
@@ -1321,49 +1342,17 @@ object ShiftRepository {
             for (s in dayShifts) {
                 val def = getShiftDefinition(s.shiftDefId)
                 if (def != null) {
-                    // Regola fondamentale richiesta dall'utente:
-                    // Se l'utente ha segnato Ferie sopra uno Smonto o Riposo,
-                    // nel report contali come smonto e riposo, NON come giorni di ferie usati!
-                    if (s.shiftDefId == "ferie") {
-                        val planned = getPlannedRotationShift(curr)
-                        val origId = s.originalShiftDefId ?: if (s.isFromRotation) planned?.id else null
-                        val origDef = origId?.let { getShiftDefinition(it) } ?: if (s.isFromRotation) planned else null
-                        val isSmonto = origId == "smonto_notte" || origDef?.id == "smonto_notte"
-                        val isRiposo = origId == "riposo" || origDef?.id == "riposo" || origDef?.category == ShiftCategory.RIPOSO
-
-                        if (isSmonto) {
-                            smonti++
-                            counts["smonto_notte"] = (counts["smonto_notte"] ?: 0) + 1
-                        } else if (isRiposo) {
-                            riposi++
-                            counts["riposo"] = (counts["riposo"] ?: 0) + 1
-                        } else {
-                            // Giorno lavorativo effettivo convertito in ferie
-                            ferie++
-                            counts["ferie"] = (counts["ferie"] ?: 0) + 1
+                    counts[s.shiftDefId] = (counts[s.shiftDefId] ?: 0) + 1
+                    when (def.category) {
+                        ShiftCategory.LAVORO -> {
+                            workedToday = true
+                            hoursSum += def.copy(startTime=s.customStartTime?:def.startTime,
+                                endTime=s.customEndTime?:def.endTime).durationHoursFloat
+                            if (def.id=="notte" || def.name.contains("Notte",ignoreCase=true)) notti++
                         }
-                    } else {
-                        counts[s.shiftDefId] = (counts[s.shiftDefId] ?: 0) + 1
-
-                        when (def.category) {
-                            ShiftCategory.LAVORO -> {
-                                workedToday = true
-                                hoursSum += def.copy(
-                                    startTime = s.customStartTime ?: def.startTime,
-                                    endTime = s.customEndTime ?: def.endTime
-                                ).durationHoursFloat
-                                if (def.id == "notte" || def.name.contains("Notte", ignoreCase = true)) {
-                                    notti++
-                                }
-                            }
-                            ShiftCategory.RIPOSO -> {
-                                if (def.id == "smonto_notte") smonti++ else riposi++
-                            }
-                            ShiftCategory.ASSENZA -> {
-                                // ferie gestite sopra, malattia/donazione qui
-                            }
-                            else -> {}
-                        }
+                        ShiftCategory.RIPOSO -> if(def.id=="smonto_notte") smonti++ else riposi++
+                        ShiftCategory.ASSENZA -> if(def.id=="ferie") ferie++
+                        else -> {}
                     }
                 }
             }

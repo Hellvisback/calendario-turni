@@ -17,6 +17,8 @@ import kotlin.math.*
 
 /** Original 24-unit outline artwork and articulated motion from the approved prototype. */
 private val sitePaths = mapOf(
+    "folder-open" to listOf("M3 8V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v2M2 10h20l-3 10H5L2 10Z"),
+    "search" to listOf("M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0ZM15 15l6 6"),
     "message" to listOf("M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"),
     "pipette" to listOf("m16 3 5 5M17.5 1.5l5 5-4 4-5-5ZM14 7 3 18v3h3L17 10M5 17l2 2"),
     "circle-plus" to listOf("M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM12 8v8M8 12h8"),
@@ -67,9 +69,10 @@ private val sitePaths = mapOf(
 )
 private fun canonicalSiteIcon(name:String)=when(name){
     "calendar-days","calendar-heart","calendar-sync","date-range","period"->"calendar"
-    "bar-chart","bar-chart-3","statistics"->"report"
+    "chart-no-axes-combined","bar-chart","bar-chart-3","statistics"->"report"
     "pencil","pencil-line"->"edit"
     "models","schedule","history"->"clock"
+    "folder"->"folder-open"
     "layers-2","multiple"->"layers"
     "repeat","rotate-cw","rotate-ccw"->"rotation"
     "arrow-left-right"->"swap"

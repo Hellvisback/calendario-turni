@@ -11,6 +11,7 @@ class ShiftRepositoryTest {
 
     @Before
     fun setup() {
+        ShiftRepository.statisticsRules.clear()
         ShiftRepository.dayExtraInfo.clear()
         ShiftRepository.calendarShifts.clear()
         ShiftRepository.reperibilitaConfig = ReperibilitaConfig()
@@ -113,6 +114,7 @@ class ShiftRepositoryTest {
 
     @Test
     fun testCcnlFerieOverSmontoAndRiposoRule() {
+        ShiftRepository.statisticsRules.add(StatisticsRule("test-rule", "ferie", setOf("smonto_notte", "riposo")))
         // Regola fondamentale CCNL:
         // Se si inseriscono Ferie sopra uno Smonto Notte o Riposo,
         // nel report NON devono scalare le ferie usate, ma contare come Smonto / Riposo!

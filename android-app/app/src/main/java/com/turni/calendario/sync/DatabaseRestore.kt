@@ -41,7 +41,7 @@ object DatabaseRestore {
     fun parse(text: String, previous: DatabaseSnapshot = DatabaseSnapshot.capture()): DatabaseSnapshot {
         require(text.length <= 24 * 1024 * 1024) { "Backup troppo grande" }
         val root = JSONObject(text)
-        require(root.optInt("version", 1) in 1..3) { "Versione backup non supportata" }
+        require(root.optInt("version", 1) in 1..4) { "Versione backup non supportata" }
         require(root.has("shiftDefinitions") || root.has("calendarShifts")) { "File backup non valido" }
         val definitions = root.items("shiftDefinitions", previous.definitions) { o -> ShiftDefinition(
             id = o.getString("id"), name = o.getString("name"), shortCode = o.getString("shortCode"),
@@ -125,13 +125,18 @@ object DatabaseRestore {
                 }
             }
         }
+        val statisticsRules=root.items("statisticsRules", legacyStatisticsRules(definitions)) { o ->
+            StatisticsRule(o.getString("id"),o.getString("displayedShiftId"),o.strings("originalShiftIds").toSet(),o.optBoolean("enabled",true))
+        }
+        validateStatisticsRules(statisticsRules,definitions)
         return DatabaseSnapshot(definitions, rotations, migratedShifts, extraByDate, profiles,
             activeWork, root.optString("activeRotationId", previous.activeRotationId), root.optString("defaultRotationId", previous.defaultRotationId),
-            preferences, onCall, alarms, if (root.has("enabledHolidayIds")) root.strings("enabledHolidayIds").toSet() else previous.holidayIds)
+            preferences, onCall, alarms, if (root.has("enabledHolidayIds")) root.strings("enabledHolidayIds").toSet() else previous.holidayIds, statisticsRules)
     }
 
     fun apply(snapshot: DatabaseSnapshot) {
         validateReferences(snapshot.definitions, snapshot.profiles, snapshot.shifts.values.flatten(), snapshot.rotations)
+        validateStatisticsRules(snapshot.statisticsRules,snapshot.definitions)
         Snapshot.withMutableSnapshot {
             ShiftRepository.shiftDefinitions.clear(); ShiftRepository.shiftDefinitions.addAll(snapshot.definitions)
             ShiftRepository.rotations.clear(); ShiftRepository.rotations.addAll(snapshot.rotations)
@@ -146,6 +151,7 @@ object DatabaseRestore {
             ShiftRepository.reperibilitaConfig = snapshot.onCall
             ShiftRepository.smartAlarmsConfig = snapshot.alarms
             ShiftRepository.enabledHolidayIds = snapshot.holidayIds
+            ShiftRepository.statisticsRules.clear(); ShiftRepository.statisticsRules.addAll(snapshot.statisticsRules)
         }
         ShiftRepository.clearCalendarUndoHistory()
         ShiftRepository.notifyDataChanged()
