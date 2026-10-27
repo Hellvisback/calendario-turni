@@ -114,7 +114,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val todayDate=LocalDate.now()
     val mediumTypeface=remember{Typeface.create("sans-serif-medium",Typeface.NORMAL)}
     val bellOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M10.27 21a2 2 0 0 0 3.46 0M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33").toPath()}
-    val messageOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5").toPath()}
+    val messageOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M4 4h16v16l-5-4H4V4ZM8 8h8M8 12h5").toPath()}
     val rangeArrowOutline=remember{Path().apply{
         moveTo(-12f,0f);lineTo(-8.8f,-3f)
         lineTo(-8.8f,-1.2f);lineTo(-3f,-1.2f)

@@ -154,28 +154,44 @@ internal object TurniWidgetRenderer {
             paint.textAlign = if (centered) Paint.Align.CENTER else Paint.Align.LEFT
             canvas.drawText(measured, x, baseline, paint)
         }
-        fun dayNumber(x:Float,baseline:Float,size:Float,maxWidth:Float,box:RectF) {
-            // A tight, shared date capsule leaves a gap to the shift chip and bell.
-            val halfWidth=(size*fontScale*.28f*summary.dayNumber.toString().length+1f).coerceAtMost((box.width()-1f)/2f)
-            val top=maxOf(box.top,baseline-size*fontScale-1f)
-            val bottom=minOf(box.bottom,baseline+2f)
-            val capsule=RectF(x-halfWidth,top,x+halfWidth,bottom)
-            if(summary.isToday) rect(capsule.left,capsule.top,capsule.right,capsule.bottom,4f,palette.brand)
+        fun dayNumber(x:Float,size:Float,maxWidth:Float,box:RectF) {
+            val value=summary.dayNumber.toString()
+            // One shared center for today's fill, the holiday outline and the actual glyph ink.
+            // The caller already leaves room below this date lane for the shift chip.
+            val safe=RectF(box.left+.5f,box.top+2f,box.right-.5f,box.bottom-.5f)
+            val side=minOf(size*fontScale+3f,safe.width(),safe.height()).coerceAtLeast(1f)
+            val centerX=x.coerceIn(safe.left+side/2f,safe.right-side/2f)
+            val centerY=safe.centerY()
+            val frame=RectF(centerX-side/2f,centerY-side/2f,centerX+side/2f,centerY+side/2f)
+            if(summary.isToday)rect(frame.left,frame.top,frame.right,frame.bottom,3f,palette.brand)
             if(summary.holidayName!=null){
                 paint.color=palette.holiday;paint.style=Paint.Style.STROKE;paint.strokeWidth=1f
-                // Account for the stroke itself: no edge can touch the top of the day tile.
-                // Match today's compact badge while retaining a genuinely square outline.
-                val side=minOf(size*fontScale+2f,(box.height()-4f).coerceAtLeast(4f),(width-18f).coerceAtLeast(4f))
-                val holidayTop=((top+bottom-side)/2f).coerceIn(box.top+2f,box.bottom-2f-side)
-                val holidayBox=RectF(x-side/2f,holidayTop,x+side/2f,holidayTop+side)
-                canvas.drawRoundRect(holidayBox,3f,3f,paint);paint.style=Paint.Style.FILL
+                canvas.drawRoundRect(frame,3f,3f,paint)
+                paint.style=Paint.Style.FILL
             }
             val ink=when {
-                summary.isOnCall -> if(summary.isToday) color(if(palette.dark) "#493000" else "#FFF0BA") else palette.onCall
-                summary.isToday -> if(palette.dark) color("#211D38") else Color.WHITE
+                summary.isOnCall -> if(summary.isToday)color(if(palette.dark)"#493000" else "#FFF0BA")else palette.onCall
+                summary.isToday -> if(palette.dark)color("#211D38")else Color.WHITE
                 else -> palette.text
             }
-            text(summary.dayNumber.toString(),x,baseline,size,ink,true,maxWidth)
+            paint.typeface=medium
+            paint.textSize=size*fontScale
+            paint.textAlign=Paint.Align.LEFT
+            val glyphPath=Path()
+            val glyphBounds=RectF()
+            fun measureGlyph(){
+                glyphPath.rewind()
+                paint.getTextPath(value,0,value.length,0f,0f,glyphPath)
+                glyphPath.computeBounds(glyphBounds,true)
+            }
+            measureGlyph()
+            val allowedWidth=minOf(maxWidth,side-1.5f).coerceAtLeast(1f)
+            val allowedHeight=(side-1.5f).coerceAtLeast(1f)
+            val fit=minOf(1f,allowedWidth/glyphBounds.width().coerceAtLeast(1f),allowedHeight/glyphBounds.height().coerceAtLeast(1f))
+            if(fit<1f){paint.textSize*=fit;measureGlyph()}
+            paint.color=if(faded)mix(ink,palette.surface,.48f)else ink
+            // Font ascent and advance width are not the visible bounds of digits (notably 1/27).
+            canvas.drawText(value,centerX-glyphBounds.centerX(),centerY-glyphBounds.centerY(),paint)
         }
         val background = when {
             summary.isToday -> palette.today
@@ -188,7 +204,7 @@ internal object TurniWidgetRenderer {
             // At legacy two-row host heights, use one horizontal line rather than tiny stacked labels.
             val baseline = height / 2f + 4f
             val numberX = 9f
-            dayNumber(numberX,baseline,10.5f,17f,RectF(1f,height/2f-8f,18f,height/2f+8f))
+            dayNumber(numberX,10.5f,17f,RectF(1f,height/2f-8f,18f,height/2f+8f))
             val shift = summary.shifts.firstOrNull()
             if (shift != null && !invalidData) {
                 val tint = mix(shift.definition.colorHex.toInt(), background, if (palette.dark) .62f else .26f)
@@ -208,7 +224,7 @@ internal object TurniWidgetRenderer {
             // A compact month uses one readable code, without squeezing two illegible text lines.
             val numberSize = if (height < 25f) 10f else 11f
             val numberBaseline = if (height < 25f) 10f else 12f
-            dayNumber(width/2f,numberBaseline,numberSize,22f,RectF(width/2f-11f,1f,width/2f+11f,numberBaseline+3f))
+            dayNumber(width/2f,numberSize,22f,RectF(width/2f-11f,1f,width/2f+11f,numberBaseline+3f))
             if(showWeekday)text(summary.dayNameShort,1f,10f,8f,palette.muted,maxWidth=8f)
             if (summary.isOnCall) drawBell(canvas, paint, width - 6f, 7f, 8f, palette.onCall)
             val shift = summary.shifts.firstOrNull()
@@ -226,18 +242,17 @@ internal object TurniWidgetRenderer {
             }
             return bitmap
         }
-        val headerHeight = if(wide)widgetDateHeaderHeight(true) else if(height<48f)18f else 21f
+        val headerHeight = if(wide)widgetDateHeaderHeight(true) else if(height<48f)20f else 21f
         if (wide) {
             val label = if (summary.isToday) "Oggi" else "Domani"
             val numberX=if(summary.isToday)53f else 78f
             text(label,9f,19f,12f,if(summary.isToday)palette.brand else palette.muted,maxWidth=numberX-15f)
-            dayNumber(numberX+6f,19f,14.5f,24f,RectF(numberX-6f,2f,numberX+18f,23f))
+            dayNumber(numberX+6f,14.5f,24f,RectF(numberX-6f,2f,numberX+18f,23f))
         } else {
             // The weekday and today's number never share a fixed-width highlight.
             val numberX = width / 2f
             val numberSize = if(height<48f)12.5f else 13.5f
-            val baseline = if(height<48f)14f else 17f
-            dayNumber(numberX,baseline,numberSize,width-12f,RectF(numberX-13f,1f,numberX+13f,headerHeight-1f))
+            dayNumber(numberX,numberSize,width-12f,RectF(numberX-13f,1f,numberX+13f,headerHeight-1f))
         }
         if (summary.isOnCall) drawBell(canvas, paint, width - (if (wide) 17f else 6f),
             if (wide) 14f else headerHeight/2f, if (wide) 12f else 8f, if (faded) mix(palette.onCall, background, .4f) else palette.onCall)
