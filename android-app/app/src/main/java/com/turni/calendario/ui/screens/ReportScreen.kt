@@ -87,10 +87,16 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
     val assignments = remember(start, end, calendarSnapshot) {
         calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten()
     }
-    val stats = remember(start, end, calendarSnapshot, extrasSnapshot, definitions,
+    val computedStats by produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null,start, end, calendarSnapshot, extrasSnapshot, definitions,
         ShiftRepository.reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationId) {
-        ShiftRepository.getComprehensiveReportStats(start, end)
+        val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
+        try {
+            value=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
+                snapshot.enter{ShiftRepository.getComprehensiveReportStats(start,end)}
+            }
+        } finally {snapshot.dispose()}
     }
+    val stats=computedStats?:com.turni.calendario.repository.ComprehensiveReportStats(0,0f,0f,0,0,0,0,0,0,emptyMap())
     val metrics = remember(assignments, definitions) { reportMetrics(assignments,definitions) }
     val profiles = ShiftRepository.workProfiles.toList()
     val workSummaries = remember(assignments, definitions, metrics, profiles, extrasSnapshot, ShiftRepository.reperibilitaConfig) {
@@ -108,7 +114,10 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
         }
     }
     val progress = remember(mode, start, end) { Animatable(0f) }
-    LaunchedEffect(progress) { progress.animateTo(1f, spring(dampingRatio = 1f, stiffness = 55f)) }
+    LaunchedEffect(progress,active,computedStats) {
+        if(active&&computedStats!=null){progress.snapTo(0f);progress.animateTo(1f,spring(dampingRatio=1f,stiffness=55f))}
+        else progress.snapTo(1f)
+    }
     val periodKey = "$mode/$start/$end"
     val shapeKeys = metrics.map { "model:"+it.definition.id } + if(stats.countReperibilita>0) listOf("oncall") else emptyList()
     val shapePlan = remember(shapeKeys) { reportShapePlan(shapeKeys) }

@@ -67,7 +67,8 @@ fun monthSwipeDirection(distance:Float,velocity:Float,width:Float,density:Float)
 @Composable
 fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={},editRequest:Int=0,onOpenSettings:()->Unit={}) {
     var monthKey by rememberSaveable{mutableStateOf(YearMonth.now().toString())}
-    val month=YearMonth.parse(monthKey)
+    val month=remember(monthKey){YearMonth.parse(monthKey)}
+    val todayMonth=YearMonth.now()
     var selectedDate by remember{mutableStateOf<LocalDate?>(null)}
     var lastDate by remember{mutableStateOf(LocalDate.now())}
     var editing by remember{mutableStateOf(false)}
@@ -159,6 +160,12 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                     },color=TextPrimary,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,
                         modifier=Modifier.weight(1f,fill=false))
                     IconButton(onClick={changeMonth(1)},modifier=Modifier.size(32.dp)){SiteIcon("chevron-right","Mese successivo",Modifier.size(21.dp))}
+                    AnimatedVisibility(month!=todayMonth,enter=fadeIn(tween(180))+expandHorizontally(),exit=fadeOut(tween(120))+shrinkHorizontally()) {
+                        Text("Oggi",fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=ObsidianPrimary,
+                            modifier=Modifier.clip(RoundedCornerShape(8.dp)).bouncyClickable {
+                                motion?.cancel();drag.value=0f;monthKey=todayMonth.toString();selectedDate=null
+                            }.padding(horizontal=5.dp,vertical=10.dp))
+                    }
                 }
                 if(!editing){
                     Row(Modifier.width(132.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End){

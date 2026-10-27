@@ -68,10 +68,10 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     brush:String,rotationId:String,anchor:LocalDate?,rangeEnd:LocalDate?,modifier:Modifier,
     paintRequest:CalendarPaintRequest?=null,animate:Boolean=true,onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit) {
     val days=remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
-    val defs=ShiftRepository.shiftDefinitions.associateBy{it.id}
+    val defs by remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}
     val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
     val profile=ShiftRepository.activeWorkProfileId
-    val data=days.map{day->
+    val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs){derivedStateOf{days.map{day->
         val actual=ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
         val period=editing&&mode==CalendarEditMode.RANGE&&calendarPeriodContains(anchor,rangeEnd,day.date)
@@ -80,7 +80,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
         val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&ShiftRepository.appPreferences.showExShifts&&previewId==null}
             ?.originalShiftDefId?.let{defs[it]?.shortCode}
         PaintedDay(day,shifts,previewId!=null,ShiftRepository.isOnCall(day.date),original,ShiftRepository.isHoliday(day.date)?.name,calendarHasNotes(ShiftRepository.getDayExtraInfo(day.date).notes,actual))
-    }
+    }}}
     val editReveal by animateFloatAsState(if(editing)1f else 0f,if(animate)tween(380,easing=FastOutSlowInEasing)else snap())
     val dark=TurniThemeState.dark;val surface=CalendarSurface;val text=TextPrimary;val muted=TextMuted;val brand=ObsidianPrimary
     val weekend=CalendarWeekend
@@ -168,7 +168,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     // No outer halo: it could collide with the adjacent on-call bell.
                     drawRoundRect(Color(holidayDayColor(dark)).copy(alpha=if(item.info.isCurrentMonth)1f else .6f),dateBox,dateSize,corner,style=Stroke(dp(1.35f)))
                 }
-                val dateInk=if(periodAnchor)onBrand else if(paintColor!=null)catalogInk(cellFill)else if(today&&!editing)onBrand else if(item.onCall||previousBells.contains(date))lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f)else if(item.holidayName!=null)Color(holidayDayColor(dark))else if(item.info.isCurrentMonth)text else muted
+                val dateInk=if(periodAnchor)onBrand else if(paintColor!=null)catalogInk(cellFill)else if(today&&!editing)onBrand else if(item.onCall||previousBells.contains(date))lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f)else if(item.info.isCurrentMonth)text else muted
                 label(date.dayOfMonth.toString(),center,y+dp(16f),14f,dateInk,true,if(item.info.isCurrentMonth)1f else .5f)
                 if(periodAnchor){
                     val cue=anchorReveal.value

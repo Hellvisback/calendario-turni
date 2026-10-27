@@ -2,11 +2,12 @@
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widget_root" android:layout_width="match_parent" android:layout_height="match_parent"
     android:orientation="vertical" android:background="@drawable/bg_widget_turnisync_dark" android:paddingStart="8dp" android:paddingEnd="8dp" android:paddingTop="4dp" android:paddingBottom="4dp">
-    <LinearLayout android:layout_width="match_parent" android:layout_height="32dp" android:orientation="horizontal" android:gravity="center_vertical">
-        <ImageView android:id="@+id/widget_previous" android:layout_width="32dp" android:layout_height="match_parent" android:padding="8dp" android:scaleType="fitCenter" android:src="@drawable/widget_chevron_left" android:contentDescription="Periodo precedente" />
+    <LinearLayout android:layout_width="match_parent" android:layout_height="22dp" android:orientation="horizontal" android:gravity="center_vertical">
+        <ImageView android:id="@+id/widget_previous" android:layout_width="32dp" android:layout_height="match_parent" android:padding="5dp" android:scaleType="fitCenter" android:src="@drawable/widget_chevron_left" android:contentDescription="Periodo precedente" />
         <TextView android:id="@+id/widget_title" android:layout_width="wrap_content" android:layout_height="match_parent" android:gravity="center_vertical" android:includeFontPadding="false" android:text="TurniSync" android:textSize="13sp" android:fontFamily="sans-serif-medium" android:singleLine="true" android:ellipsize="end" android:textColor="#F4F3F7" />
-        <ImageView android:id="@+id/widget_next" android:layout_width="32dp" android:layout_height="match_parent" android:padding="8dp" android:scaleType="fitCenter" android:src="@drawable/widget_chevron_right" android:contentDescription="Periodo successivo" />
+        <ImageView android:id="@+id/widget_next" android:layout_width="32dp" android:layout_height="match_parent" android:padding="5dp" android:scaleType="fitCenter" android:src="@drawable/widget_chevron_right" android:contentDescription="Periodo successivo" />
         <TextView android:id="@+id/widget_profile" android:layout_width="0dp" android:layout_weight="1" android:layout_height="match_parent" android:gravity="end|center_vertical" android:paddingStart="8dp" android:includeFontPadding="false" android:text="Il tuo calendario" android:textSize="11sp" android:singleLine="true" android:ellipsize="end" android:textColor="#BEC1CD" />
     </LinearLayout>
+    <ImageView android:id="@+id/widget_weekdays" android:layout_width="match_parent" android:layout_height="10dp" android:scaleType="fitXY" android:importantForAccessibility="no" />
     <LinearLayout android:id="@+id/widget_rows" android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:orientation="vertical" />
 </LinearLayout>

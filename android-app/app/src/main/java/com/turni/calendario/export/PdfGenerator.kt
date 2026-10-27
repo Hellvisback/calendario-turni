@@ -69,15 +69,25 @@ object PdfGenerator {
 
     fun writePdf(context: Context, snapshot: PdfExportSnapshot): File {
         val output = File(context.cacheDir, "turnisync-${System.currentTimeMillis()}.pdf")
-        val doc = PdfDocument()
-        try {
-            DocumentWriter(doc, snapshot).render()
-            output.outputStream().use(doc::writeTo)
-            return output
-        } catch (error: Exception) {
-            output.delete()
-            throw error
-        } finally { doc.close() }
+        val calendar=PdfExportPlan.presentation(snapshot.options)!=PdfPresentation.LIST
+        val months=snapshot.days.map{YearMonth.from(it.date)}.distinct().size
+        val first=if(calendar&&months>2)842 to 1191 else 595 to 842
+        val papers=if(calendar&&months>1)listOf(first,1191 to 1684)else listOf(first)
+        var lastError:IllegalArgumentException?=null
+        for((width,height) in papers.distinct()) {
+            val doc=PdfDocument()
+            try {
+                DocumentWriter(doc,snapshot,width.toFloat(),height.toFloat()).render()
+                output.outputStream().use(doc::writeTo)
+                return output
+            } catch(error:IllegalArgumentException) {
+                output.delete()
+                if(error.message?.startsWith("I dettagli selezionati")!=true)throw error
+                lastError=error
+            } catch(error:Exception){output.delete();throw error}
+            finally {doc.close()}
+        }
+        throw lastError?:IllegalArgumentException("Impossibile impaginare il documento")
     }
 
     fun sharePdf(context: Context, file: File) {
@@ -97,15 +107,13 @@ object PdfGenerator {
 
     private fun formatMinutes(minutes: Int) = "${minutes / 60} h ${minutes % 60} min"
 
-    private class DocumentWriter(val doc: PdfDocument, val data: PdfExportSnapshot) {
+    private class DocumentWriter(val doc: PdfDocument, val data: PdfExportSnapshot, val width:Float, val height:Float) {
         private val ink=Color.rgb(28,43,67)
         private val muted=Color.rgb(86,101,122)
         private val accent=Color.rgb(56,102,232)
         private val paper=Color.rgb(244,246,249)
         private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
         private lateinit var canvas:Canvas
-        private var width=595f
-        private var height=842f
         private val margin=26f
         private val format=DateTimeFormatter.ofPattern("d MMM yyyy",Locale.ITALIAN)
         private val crowded="I dettagli selezionati non entrano leggibili in una pagina. Riduci il periodo oppure disattiva note, durata o pause."
@@ -133,8 +141,7 @@ object PdfGenerator {
         }
         fun render() {
             val months=data.days.map{YearMonth.from(it.date)}.distinct()
-            val calendar=data.options.mode!=PdfExportMode.ELENCO
-            if(calendar&&months.size>2){width=842f;height=1191f}
+            val calendar=PdfExportPlan.presentation(data.options)!=PdfPresentation.LIST
             val page=doc.startPage(PdfDocument.PageInfo.Builder(width.toInt(),height.toInt(),1).create())
             try {
             canvas=page.canvas;canvas.drawColor(Color.WHITE)
@@ -142,7 +149,7 @@ object PdfGenerator {
                 PdfExportMode.ELENCO->"Elenco turni"
                 PdfExportMode.MESE->months.first().atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy",Locale.ITALIAN)).replaceFirstChar{it.uppercase()}
                 PdfExportMode.ANNO->"Calendario ${data.options.selectedYear}"
-                else->"Calendario del periodo"
+                else->if(calendar)"Calendario del periodo" else "Elenco del periodo"
             }
             text(if(data.options.includeLogo)"TurniSync" else "Prospetto turni",margin,29f,9f,accent,true)
             text(title,margin,55f,20f,ink,true)
@@ -168,7 +175,7 @@ object PdfGenerator {
                 if(day.shifts.isEmpty()) {
                     if(data.options.includeEmptyRows||day.details.isNotEmpty())listOf(ListBlock(date,"Nessun turno",day.details.joinToString(" · "),null)) else emptyList()
                 } else day.shifts.mapIndexed { index,shift ->
-                    ListBlock(date,if(shift.name.isBlank())shift.code else "${shift.code}  ${shift.name}",
+                    ListBlock(date,if(shift.name.isBlank())shift.code else shift.name,
                         (shift.details+if(index==0)day.details else emptyList()).joinToString(" · "),
                         if(data.options.includeIcon)shift.color else null)
                 }
@@ -242,9 +249,9 @@ object PdfGenerator {
                             row.shifts.forEach { shift ->
                                 val titleLine=if(compact||shift.name.isBlank())shift.code else shift.name
                                 lines(titleLine,cellW-6f,font).forEach{add(it to shift)}
-                                shift.details.forEach{detail->lines(if(compact)detail.replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                                shift.details.forEach{detail->lines(if(compact)detail.replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                             }
-                            row.details.forEach{detail->lines(if(compact)detail.replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                            row.details.forEach{detail->lines(if(compact)detail.replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                         }
                         if(content.size*(font+2f)<=cellH-if(compact)12f else 17f){selected=content;break}
                         font-=.5f

@@ -43,19 +43,20 @@ fun MainScreen() {
     val savedScreens=rememberSaveableStateHolder()
     var reportVisited by remember { mutableStateOf(false) }
     if(route=="report")reportVisited=true
+    LaunchedEffect(Unit){kotlinx.coroutines.delay(900);reportVisited=true}
     LaunchedEffect(com.turni.calendario.repository.ShiftRepository.selectedDateFromWidget) {
         if(com.turni.calendario.repository.ShiftRepository.selectedDateFromWidget!=null){route="calendar";subScreen=false}
     }
     BackHandler(route != "calendar" && !subScreen) { route = "calendar" }
     Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
-        AnimatedContent(route, transitionSpec = {
+        AnimatedContent(if(route=="calendar"||route=="report")"primary" else route, transitionSpec = {
             // Destinations fill the same viewport: avoid remeasuring both trees on every slide frame.
             fadeIn(tween(220)) with fadeOut(tween(140)) using null
         }) { destination ->
             savedScreens.SaveableStateProvider(destination) {
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
                 when (destination) {
-                    "calendar" -> Unit
+                    "primary", "calendar" -> Unit
                     "report" -> Unit // Report composition is retained outside the transition tree.
                     "turni" -> TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
                         initialTab = if (rotation != null) 2 else 0, initialEditingRotation = rotation,

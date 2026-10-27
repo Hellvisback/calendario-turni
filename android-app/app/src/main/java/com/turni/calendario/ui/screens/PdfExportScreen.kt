@@ -85,7 +85,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                             val bitmap=Bitmap.createBitmap(width,(width.toFloat()*page.height/page.width).toInt(),Bitmap.Config.ARGB_8888)
                             bitmap.eraseColor(android.graphics.Color.WHITE)
                             page.render(bitmap,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
-                            PdfPreview(file,bitmap)
+                            PdfPreview(file,bitmap,page.width,page.height)
                         }
                     }
                 }
@@ -119,18 +119,22 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                             }
                         }
                     }
-                    Text(if (options.mode == PdfExportMode.ELENCO) "Elenco compatto su una pagina, con tutti i dettagli selezionati." else "Calendario su una pagina, senza aggiungere un elenco separato.", color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
+                    Text(when(PdfExportPlan.presentation(options)) {
+                        com.turni.calendario.export.PdfPresentation.LIST -> "Elenco compatto su una pagina, con i dettagli selezionati."
+                        com.turni.calendario.export.PdfPresentation.MONTHS -> "Calendario mensile su una pagina."
+                        else -> "Panoramica dei mesi su una pagina. Il foglio si adatta ai dettagli."
+                    }, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
                 }
                 PdfSection("Periodo e turni") {
                     PdfAction("calendar", "${range.first.format(formatter)} - ${range.second.format(formatter)}", "Cambia periodo") { dateDialog = true }
                     Divider(color = ObsidianBorderSubtle, modifier = Modifier.padding(vertical = 9.dp))
                     PdfAction("layers", options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it)?.name } ?: "Tutti i turni", "Filtra modelli") { filterDialog = true }
                 }
-                PdfSection("Anteprima", "Lo stesso documento che verrà condiviso · 1 pagina") {
+                PdfSection("Anteprima",preview?.paperLabel?:"Lo stesso foglio che verrà condiviso") {
                     when {
                         previewLoading -> Box(Modifier.fillMaxWidth().height(220.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(26.dp),color=ObsidianPrimary,strokeWidth=2.dp)}
-                        preview!=null -> Surface(onClick={zoom=true},shape=RoundedCornerShape(12.dp),color=androidx.compose.ui.graphics.Color.White) {
-                            Image(preview!!.bitmap.asImageBitmap(),"Anteprima PDF, tocca per ingrandire",Modifier.fillMaxWidth().height(250.dp).padding(6.dp),contentScale=ContentScale.Fit)
+                        preview!=null -> Surface(onClick={zoom=true},shape=RoundedCornerShape(12.dp),color=ObsidianSurfaceContainer) {
+                            Image(preview!!.bitmap.asImageBitmap(),"Anteprima PDF, tocca per ingrandire",Modifier.fillMaxWidth().height(310.dp).padding(10.dp),contentScale=ContentScale.Fit)
                         }
                         else -> Text(previewError?:"Nessuna anteprima disponibile",color=TextSecondary,fontSize=12.sp)
                     }
@@ -292,7 +296,9 @@ private fun PdfDateGrid(month: YearMonth, selected: LocalDate, changeMonth: (Yea
     }
 }
 
-private data class PdfPreview(val file:File,val bitmap:Bitmap)
+private data class PdfPreview(val file:File,val bitmap:Bitmap,val width:Int,val height:Int) {
+    val paperLabel:String get() = "${when(width){595->"A4";842->"A3";1191->"A2";else->"Foglio"}} · ${if(height>=width)"verticale" else "orizzontale"} · 1 pagina"
+}
 
 @Composable
 private fun PdfPreviewDialog(preview:PdfPreview,onClose:()->Unit) {
@@ -306,10 +312,10 @@ private fun PdfPreviewDialog(preview:PdfPreview,onClose:()->Unit) {
         Surface(Modifier.fillMaxWidth(.94f).fillMaxHeight(.88f),shape=RoundedCornerShape(20.dp),color=ObsidianSurface) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
-                    Text("Anteprima · 1 pagina",Modifier.weight(1f),color=TextPrimary,fontWeight=FontWeight.Bold)
+                    Text(preview.paperLabel,Modifier.weight(1f),color=TextPrimary,fontWeight=FontWeight.Bold)
                     IconButton(onClick=onClose){SiteIcon("x","Chiudi anteprima")}
                 }
-                Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(androidx.compose.ui.graphics.Color.White),contentAlignment=Alignment.Center) {
+                Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(ObsidianSurfaceContainer),contentAlignment=Alignment.Center) {
                     Image(preview.bitmap.asImageBitmap(),"Documento PDF",Modifier.fillMaxSize().transformable(gestures).graphicsLayer{scaleX=scale;scaleY=scale;translationX=offset.x;translationY=offset.y},contentScale=ContentScale.Fit)
                 }
                 Text("Allarga con due dita per leggere i dettagli",fontSize=11.sp,color=TextSecondary,modifier=Modifier.padding(top=10.dp,bottom=4.dp))

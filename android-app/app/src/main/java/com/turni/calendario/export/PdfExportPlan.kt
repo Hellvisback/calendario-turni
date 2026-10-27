@@ -5,8 +5,24 @@ import com.turni.calendario.model.PdfExportOptions
 import java.time.LocalDate
 import java.time.YearMonth
 
+enum class PdfPresentation { LIST, MONTHS, OVERVIEW }
+
 /** Pure range planning shared by the screen and document renderer. */
 object PdfExportPlan {
+    fun presentation(options:PdfExportOptions):PdfPresentation = when(options.mode) {
+        PdfExportMode.ELENCO -> PdfPresentation.LIST
+        PdfExportMode.MESE -> PdfPresentation.MONTHS
+        PdfExportMode.ANNO -> PdfPresentation.OVERVIEW
+        PdfExportMode.PERSONALIZZATO -> {
+            val (start,end)=range(options)
+            when {
+                java.time.temporal.ChronoUnit.DAYS.between(start,end)<14 -> PdfPresentation.LIST
+                months(options).size<=3 -> PdfPresentation.MONTHS
+                else -> PdfPresentation.OVERVIEW
+            }
+        }
+    }
+
     fun range(options: PdfExportOptions): Pair<LocalDate, LocalDate> = when (options.mode) {
         PdfExportMode.MESE -> YearMonth.from(options.startDate).let { it.atDay(1) to it.atEndOfMonth() }
         PdfExportMode.ANNO -> LocalDate.of(options.selectedYear, 1, 1) to LocalDate.of(options.selectedYear, 12, 31)

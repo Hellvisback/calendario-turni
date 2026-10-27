@@ -2,7 +2,7 @@
 
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)
 
-**Versione Corrente**: v1.4.6 (versionCode 27, build/test e installazione sul Realme; nessuna release GitHub)
+**Versione Corrente**: v1.5.0 (versionCode 31, build/test e installazione sul Realme; nessuna release GitHub)
 
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)
 
@@ -563,3 +563,23 @@ Per ogni rilascio su GitHub:
 ## Aggiornamento v1.4.6 — sveglie e PDF
 
 Icona sveglia condivisa ridisegnata e animata. Anteprima PDF reale ingrandibile ripristinata; condivisione dello stesso file. Export a pagina unica, Elenco bilanciato, calendari senza elenco duplicato, anno A3. Overflow esplicito anziché taglio. Massimo 12 mesi per calendario. Build/test 350 per variante e collaudo Realme completati, database invariato. Dettagli e limiti in docs/VERIFICA_v1.4.6.md. APK finale nel workspace Codex outputs/TurniSync-v1.4.6.apk, installato e verificato con firma originale.
+
+
+## Aggiornamento v1.4.7 — leggibilità widget
+
+Date ingrandite, intestazione weekday unica separata, sigle/orari proporzionati e giornaliero più leggibile. Tutti i widget verificati sul Realme, anche il settimanale basso con orario. Build e 350 test per variante superati, database invariato, firma originale. Dettagli in docs/VERIFICA_v1.4.7.md. APK installato e disponibile nel workspace Codex outputs/TurniSync-v1.4.7.apk.
+
+
+## Aggiornamento v1.4.8 — proporzioni intermedie widget
+
+Ridotte date, sigle, orari e riquadri dopo feedback v1.4.7 troppo grande. Conservati weekday unici e orario nel settimanale basso. Verificati i quattro widget sul Realme; 350 test per variante superati, dati invariati, firma originale. Dettagli docs/VERIFICA_v1.4.8.md; APK outputs/TurniSync-v1.4.8.apk nel workspace Codex, già installato.
+
+
+## Aggiornamento v1.4.9 — festività
+
+Numero festivo con colore normale, solo quadratino rosso in calendario e widget. Verificato Realme, 350 test per variante superati, database invariato. APK v1.4.9 installato. Dettagli docs/VERIFICA_v1.4.9.md.
+
+
+## Aggiornamento v1.5.0 — widget, PDF, Oggi e festività
+
+Widget compatti con festività quadrata; pulsante Oggi; nome delle festività abilitate nel dettaglio, anche coincidenti. PDF con anteprima delle proporzioni vere, Periodo adattivo, tentativo A2 per calendari densi. Report precomposto e calcoli complessivi su Default con snapshot; celle calendario memorizzate. 355 test per variante superati, APK installato Realme, firma originale. Contenuto database preservato, cambiati data esportazione e ordine del set delle festività dopo prova toggle. Gfxinfo sequenza Calendario/Statistiche 46,35→22,48% janky, restano picchi. Limiti ed evidenze in docs/VERIFICA_v1.5.0.md. APK nel workspace Codex outputs/TurniSync-v1.5.0.apk.

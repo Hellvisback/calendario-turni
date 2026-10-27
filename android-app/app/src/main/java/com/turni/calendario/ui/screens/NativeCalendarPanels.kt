@@ -222,6 +222,7 @@ internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: 
     val shifts = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
     var detailShift by remember(date) { mutableStateOf<AssignedShift?>(null) }
     var dayNotes by remember(date) { mutableStateOf(false) }
+    val holidays = ShiftRepository.holidaysForDate(date)
     val oncall = ShiftRepository.isOnCall(date)
     val note = ShiftRepository.getDayExtraInfo(date).notes
     val subPanel = detailShift != null || dayNotes
@@ -241,6 +242,18 @@ internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: 
                 }
                 Text("${shifts.size} ${if (shifts.size == 1) "turno" else "turni"}", color = TextSecondary,
                     fontSize = 10.sp, lineHeight = 14.sp, modifier = Modifier.padding(start = 2.dp, bottom = 5.dp))
+                AnimatedVisibility(holidays.isNotEmpty(),enter=expandVertically(tween(280))+fadeIn(tween(220)),exit=shrinkVertically(tween(220))+fadeOut(tween(160))) {
+                    val tone=Color(holidayDayColor(TurniThemeState.dark))
+                    Row(Modifier.fillMaxWidth().padding(bottom=7.dp).clip(RoundedCornerShape(11.dp))
+                        .background(tone.copy(alpha=if(TurniThemeState.dark).09f else .06f)).padding(horizontal=9.dp,vertical=7.dp),
+                        verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        SiteIcon("calendar",null,Modifier.size(17.dp),tint=tone)
+                        Column(Modifier.weight(1f)) {
+                            Text("Festività",color=TextSecondary,fontSize=9.sp,lineHeight=12.sp)
+                            Text(holidays.joinToString(" · "){it.name},color=TextPrimary,fontSize=12.sp,lineHeight=16.sp,fontWeight=FontWeight.Medium)
+                        }
+                    }
+                }
                 Column(Modifier.fillMaxWidth().heightIn(max = 420.dp).weight(1f, fill = false).verticalScroll(rememberScrollState())) {
                     if (shifts.isEmpty()) Text("Nessun turno assegnato", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(horizontal = 2.dp, vertical = 12.dp))
                     shifts.forEach { shift -> key(shift.id) {

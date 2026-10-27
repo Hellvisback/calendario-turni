@@ -34,4 +34,15 @@ class PdfExportPlanTest {
     @Test(expected = IllegalArgumentException::class) fun unboundedExportIsRejectedBeforeAllocation() {
         PdfExportPlan.dates(PdfExportOptions(startDate = LocalDate.of(2000, 1, 1), endDate = LocalDate.of(2100, 1, 1)))
     }
+    @Test fun periodChoosesListForTwoWeeksIncludingBothEndpoints() {
+        val options=PdfExportOptions(mode=PdfExportMode.PERSONALIZZATO,startDate=LocalDate.of(2026,12,25),endDate=LocalDate.of(2027,1,7))
+        assertEquals(PdfPresentation.LIST,PdfExportPlan.presentation(options))
+        assertEquals(PdfPresentation.MONTHS,PdfExportPlan.presentation(options.copy(endDate=LocalDate.of(2027,1,8))))
+    }
+    @Test fun longPeriodUsesOverviewAndExplicitModesKeepTheirLayout() {
+        val options=PdfExportOptions(mode=PdfExportMode.PERSONALIZZATO,startDate=LocalDate.of(2026,1,1),endDate=LocalDate.of(2026,12,31))
+        assertEquals(PdfPresentation.OVERVIEW,PdfExportPlan.presentation(options))
+        assertEquals(PdfPresentation.LIST,PdfExportPlan.presentation(options.copy(mode=PdfExportMode.ELENCO)))
+        assertEquals(PdfPresentation.MONTHS,PdfExportPlan.presentation(options.copy(mode=PdfExportMode.MESE)))
+    }
 }

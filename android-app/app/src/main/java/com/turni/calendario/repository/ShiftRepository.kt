@@ -175,12 +175,12 @@ object ShiftRepository {
         HolidaysCatalog.allHolidays.filter { it.isDefaultEnabled }.map { it.id }.toSet()
     )
 
-    fun isHoliday(date: LocalDate): HolidayItem? {
-        if (!appPreferences.showHolidays) return null
-        return HolidaysCatalog.allHolidays.firstOrNull { holiday ->
-            enabledHolidayIds.contains(holiday.id) && holiday.getDateForYear(date.year) == date
-        }
+    fun holidaysForDate(date:LocalDate):List<HolidayItem> {
+        if(!appPreferences.showHolidays)return emptyList()
+        return HolidaysCatalog.allHolidays.filter { it.id in enabledHolidayIds && it.getDateForYear(date.year)==date }
     }
+
+    fun isHoliday(date:LocalDate):HolidayItem? = holidaysForDate(date).firstOrNull()
 
     fun toggleHoliday(holidayId: String) {
         enabledHolidayIds = if (enabledHolidayIds.contains(holidayId)) {

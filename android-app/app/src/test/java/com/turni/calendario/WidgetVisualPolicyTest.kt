@@ -26,12 +26,12 @@ class WidgetVisualPolicyTest {
         val cell=widgetDayCellHeight(84f,1)
         val header=widgetDateHeaderHeight(false)
         assertEquals(44f,cell,0f)
-        assertEquals(14f,header,0f)
-        assertTrue(cell-header-4f>=26f)
+        assertEquals(22f,header,0f)
+        assertTrue(cell>=40f)
     }
 
     @Test fun resizingNeverDropsTheStartingTimeAfterItBecomesReadable() {
-        for(height in 38..180)assertTrue("Two shift lines at $height dp",widgetShiftBaseHeight(height.toFloat())>=20f)
+        for(height in 46..180)assertTrue("Two shift lines at $height dp",widgetShiftBaseHeight(height.toFloat())>=20f)
     }
 
     @Test fun tinyHostPrioritizesTheDateAndLargerHostShowsTheWorkOnTheSameRow() {

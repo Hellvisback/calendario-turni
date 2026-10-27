@@ -11,12 +11,12 @@ internal fun widgetHeaderLayout(widthDp:Float,today:Boolean):WidgetHeaderLayout 
     return WidgetHeaderLayout((content-navigation-work).coerceAtLeast(24f),showWork)
 }
 
-internal fun widgetDayCellHeight(heightDp:Float,rows:Int):Float =
-    ((heightDp-8f-32f)/rows.coerceAtLeast(1)).coerceAtLeast(20f)
+internal fun widgetDayCellHeight(heightDp:Float,rows:Int,wide:Boolean=false):Float =
+    ((heightDp-8f-22f-(if(wide)0f else 10f))/rows.coerceAtLeast(1)).coerceAtLeast(20f)
 internal fun widgetDateHeaderHeight(wide:Boolean):Float =
-    if(wide)25f else 14f
+    if(wide)29f else 22f
 
 internal fun widgetShiftBaseHeight(heightDp:Float):Float {
     val remaining=heightDp-widgetDateHeaderHeight(false)-4f
-    return if(remaining<34f)remaining.coerceAtLeast(16f)else 35f
+    return remaining.coerceIn(16f,52f)
 }
