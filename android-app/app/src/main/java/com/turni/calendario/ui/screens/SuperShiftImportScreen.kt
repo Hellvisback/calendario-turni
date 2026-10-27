@@ -1,12 +1,20 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class,androidx.compose.animation.ExperimentalAnimationApi::class)
 package com.turni.calendario.ui.screens
 
+import android.content.Intent
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
+import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.*
 import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -30,12 +38,14 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun SuperShiftImportScreen(onDismiss:()->Unit) {
+fun SuperShiftImportScreen(onDismiss:()->Unit,onAssistedImport:()->Unit={}) {
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     var busy by remember { mutableStateOf(false) }
     var operation by remember { mutableStateOf("") }
-    var help by remember { mutableStateOf(false) }
+    var method by remember { mutableStateOf(0) }
+    var requestPreview by remember { mutableStateOf(false) }
+    var backupHelp by remember { mutableStateOf(false) }
     val access=rememberGoogleAccess { feedback=ActionFeedback(it,true) }
     var calendars by remember { mutableStateOf<List<ImportCalendar>>(emptyList()) }
     var owner by remember { mutableStateOf<String?>(null) }
@@ -112,21 +122,60 @@ fun SuperShiftImportScreen(onDismiss:()->Unit) {
             preview=null;feedback=ActionFeedback("${imported.importedCount} turni importati · ${imported.duplicateCount} già presenti")
         }catch(e:CancellationException){throw e}catch(e:Exception){fail(e)}finally{busy=false;operation=""} }
     }
-    CloudFeatureScaffold("Importa da SuperShift",::close,feedback,{feedback=null},scrollResetKey=preview!=null) {
+    fun openLink(url:String) {try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url)))}catch(_:Exception){feedback=ActionFeedback("Non è disponibile un’app per aprire il collegamento.",true)}}
+    fun openSuperShift() {
+        val intent=context.packageManager.getLaunchIntentForPackage("app.supershift")
+        if(intent==null)feedback=ActionFeedback("SuperShift non risulta installato su questo dispositivo.",true)
+        else try{context.startActivity(intent)}catch(_:Exception){feedback=ActionFeedback("Impossibile aprire SuperShift.",true)}
+    }
+    CloudFeatureScaffold("Trasferisci da SuperShift",::close,feedback,{feedback=null},scrollResetKey=Pair(preview!=null,method)) {
         AnimatedVisibility(busy||access.busy,enter=expandVertically(spring())+fadeIn(),exit=shrinkVertically()+fadeOut()) {
             Row(Modifier.fillMaxWidth().padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {CircularProgressIndicator(Modifier.size(22.dp),color=ObsidianPrimary,strokeWidth=2.dp);Text(operation.ifBlank { "Collegamento Google…" },fontSize=12.sp,color=TextSecondary)}
         }
         if(preview==null) {
-            CloudCard("Porta con te i turni","Scegli un calendario già esportato da SuperShift, oppure un file .ics su Drive o sul telefono.") {
-                Text("Il backup privato SuperShift non è accessibile da un’altra app. Qui importi i dati del calendario in un lavoro dedicato, conservando quelli esistenti.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
-                TextButton(onClick={help=!help}) { Text(if(help)"Chiudi la guida" else "Dove trovo i dati?",color=ObsidianPrimary,fontSize=12.sp) }
-                AnimatedVisibility(help,enter=expandVertically(spring())+fadeIn(),exit=shrinkVertically()+fadeOut()) {
-                    Text("In SuperShift apri Altro → Esportazione calendario e scegli un calendario Google dedicato. Questa funzione può richiedere SuperShift Pro. Poi seleziona qui lo stesso account e calendario. Se hai un file .ics, puoi selezionarlo direttamente da Drive. Il backup Android e SuperShift Cloud non sono file .ics.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
+            Text("Scegli il metodo disponibile nel tuo account",fontSize=13.sp,lineHeight=19.sp,color=TextSecondary)
+            BoxWithConstraints(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ObsidianSurfaceHigh).padding(4.dp)) {
+                val width=maxWidth/3
+                val offset by animateDpAsState(width*method,spring(dampingRatio=.88f,stiffness=350f))
+                Box(Modifier.offset(x=offset).width(width).height(44.dp).clip(RoundedCornerShape(12.dp)).background(ObsidianPrimary))
+                Row { listOf("Gratuita","Pro","File .ics").forEachIndexed { index,label ->
+                    Box(Modifier.width(width).height(44.dp).bouncyClickable(!busy&&!access.busy){method=index},contentAlignment=Alignment.Center) {
+                        Text(label,fontSize=13.sp,fontWeight=FontWeight.Medium,color=if(method==index)catalogInk(ObsidianPrimary)else TextPrimary)
+                    }
+                } }
+            }
+            AnimatedContent(method,transitionSpec={fadeIn()+slideInHorizontally(spring(stiffness=450f)){it/12} with fadeOut()}) { selectedMethod ->
+            Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            if(selectedMethod==0) {
+                CloudCard("Versione gratuita","La sincronizzazione dell’account conserva i dati dentro SuperShift. Non crea un file da selezionare in TurniSync.") {
+                    Text("Turni, modelli, rotazioni e widget sono funzioni di base. Nei menu verificati manca un’esportazione completa gratuita: non c’è un file da cercare in Download.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
+                    CloudButton("Apri SuperShift","calendar-days",{openSuperShift()},secondary=true)
+                }
+                CloudCard("Richiedi una copia dei dati","Chiedi a SuperShift se può fornirti i dati in un formato riutilizzabile. Disponibilità e formato devono essere confermati dalla loro assistenza.") {
+                    Text("1 · In SuperShift apri Altro → Account e controlla l’indirizzo collegato.\n2 · Invia la richiesta usando quell’indirizzo.\n3 · Conserva la risposta e l’eventuale file ricevuto: la compatibilità va verificata prima del trasferimento.",fontSize=12.sp,lineHeight=20.sp,color=TextPrimary)
+                    CloudButton("Prepara richiesta all’assistenza","message",{requestPreview=true},secondary=true)
+                    Text("Il trasferimento completo automatico dalla versione gratuita non è ancora disponibile in TurniSync. Non inserire qui la password SuperShift.",fontSize=11.sp,lineHeight=17.sp,color=TextMuted)
+                }
+                CloudCard("Puoi iniziare dalle schermate","L’importazione assistita aiuta a ricreare modelli e rotazioni dalle informazioni visibili. Richiede il tuo controllo: non trasferisce automaticamente tutto lo storico o i dati non mostrati.") {
+                    CloudButton("Importazione assistita","scan-text",onAssistedImport,secondary=true)
+                    Text("L’eventuale servizio AI viene scelto e autorizzato nella schermata successiva. Nessun invio parte da qui.",fontSize=11.sp,lineHeight=17.sp,color=TextMuted)
+                }
+                CloudCard("Il backup è nel tuo account Google?") {
+                    TextButton(onClick={backupHelp=!backupHelp}) {Text(if(backupHelp)"Chiudi le indicazioni" else "Come riconoscere il backup",color=ObsidianPrimary)}
+                    AnimatedVisibility(backupHelp,enter=expandVertically(spring())+fadeIn(),exit=shrinkVertically()+fadeOut()) {
+                        Text("Se è il backup Android/Google One, apri le impostazioni del telefono → Google → Backup → Dettagli backup: puoi controllare se SuperShift è incluso. I nomi possono variare. Quel backup serve al ripristino dell’app, non è un file calendario per TurniSync. Se vedi invece SuperShift Cloud dentro SuperShift, l’accesso Google identifica l’account SuperShift; non crea un file .ics su Drive.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
+                    }
+                    TextButton(onClick={openLink("https://support.google.com/android/answer/2819582?hl=it")}) {Text("Guida ufficiale Google",color=ObsidianPrimary,fontSize=12.sp)}
                 }
             }
+            if(selectedMethod==1) {
+                CloudCard("Hai già SuperShift Pro?","L’esportazione verso il calendario Android/Google, il PDF, gli eventi dei calendari esterni e la rimozione degli annunci sono funzioni Pro nei menu verificati.") {
+                    Text("Per trasferire i turni: in SuperShift apri Altro → Esportazione calendario e seleziona un calendario Google dedicato. Qui scegli lo stesso account e calendario. La sincronizzazione SuperShift Cloud, da sola, non esegue questa esportazione.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
+                    Text(SuperShiftCalendarAdapter.limitation,fontSize=11.sp,lineHeight=17.sp,color=TextMuted)
+                }
             GoogleAccountCard(access,{feedback=it},enabled=!busy,feature=GoogleFeature.CALENDAR_IMPORT,explanation="Usa l’account dove hai esportato i turni. L’accesso al calendario è in sola lettura.")
             CloudCard("Da Google Calendar","Scegli il calendario dove SuperShift esporta i tuoi turni. Verranno letti solo il calendario e il periodo che selezioni.") {
-                CloudButton("Scegli calendario Google","calendar-days",::chooseGoogle,enabled=!busy&&!access.busy,secondary=true)
+                CloudButton("Scegli calendario Google","calendar-days",{chooseGoogle()},enabled=!busy&&!access.busy,secondary=true)
                 calendars.forEach { calendar ->
                     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(if(selected?.id==calendar.id)ObsidianPrimary.copy(alpha=.12f)else ObsidianSurfaceHigh).bouncyClickable(!busy&&!access.busy){selected=calendar}.padding(horizontal=8.dp,vertical=4.dp),verticalAlignment=Alignment.CenterVertically) {
                         RadioButton(selected?.id==calendar.id,{selected=calendar},enabled=!busy&&!access.busy)
@@ -140,13 +189,19 @@ fun SuperShiftImportScreen(onDismiss:()->Unit) {
                             OutlinedTextField(toText,{toText=it},label={Text("Al · AAAA-MM-GG")},singleLine=true,enabled=!busy,modifier=Modifier.weight(1f))
                         }
                         if(!validRange)Text("Inserisci date valide, in ordine, entro dieci anni.",fontSize=11.sp,color=ColorNegative)
-                        CloudButton("Mostra anteprima","search",::readGoogle,enabled=validRange&&!busy&&!access.busy)
+                        CloudButton("Mostra anteprima","search",{readGoogle()},enabled=validRange&&!busy&&!access.busy)
                     }
                 }
             }
-            CloudCard("Da un file su Drive o sul telefono","Apri il selettore e scegli il file .ics. Non basta selezionare un backup Android o un file di formato sconosciuto.") {
-                CloudButton("Seleziona file calendario","folder-open",{document.launch(arrayOf("*/*"))},enabled=!busy&&!access.busy,secondary=true)
             }
+            if(selectedMethod==2)CloudCard("Hai già un calendario .ics?","Questo è un importatore di calendari standard. Non è un’esportazione gratuita del backup SuperShift.") {
+                Text("Se possiedi già un file .ics, selezionalo dal telefono o da Drive. Non cercare un comando “Esporta file” in SuperShift: non è presente nei menu verificati. Il backup Android e SuperShift Cloud non sono file .ics.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
+                CloudButton("Seleziona calendario .ics","folder-open",{document.launch(arrayOf("*/*"))},enabled=!busy&&!access.busy,secondary=true)
+            }
+            TextButton(onClick={openLink("https://play.google.com/store/apps/details?id=app.supershift")}) {Text("Funzioni e piani su Google Play",color=ObsidianPrimary,fontSize=12.sp)}
+            }
+            }
+
         } else {
             val plan=preview!!
             CloudCard("Controlla prima di importare",source) {
@@ -193,4 +248,21 @@ fun SuperShiftImportScreen(onDismiss:()->Unit) {
             }
         }
     }
+    if(requestPreview)AlertDialog(onDismissRequest={requestPreview=false},containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),
+        title={Text("Richiesta di copia dei dati",color=TextPrimary,fontSize=20.sp)},
+        text={Column(Modifier.heightIn(max=430.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+            Text("A: support@supershift.app",fontSize=12.sp,color=TextSecondary)
+            Text(SuperShiftMigrationHelp.requestText,fontSize=12.sp,lineHeight=18.sp,color=TextPrimary)
+            Text("La richiesta si apre come bozza. Controllala e scegli l’indirizzo del tuo account SuperShift prima di inviarla. La disponibilità della copia non è garantita.",fontSize=11.sp,lineHeight=17.sp,color=TextMuted)
+        }},
+        confirmButton={TextButton(onClick={
+            val uri=Uri.parse("mailto:support@supershift.app?subject="+Uri.encode(SuperShiftMigrationHelp.requestSubject)+"&body="+Uri.encode(SuperShiftMigrationHelp.requestText))
+            try{context.startActivity(Intent(Intent.ACTION_SENDTO,uri));requestPreview=false}catch(_:Exception){feedback=ActionFeedback("Nessuna app email disponibile. Puoi copiare la richiesta.",true)}
+        }){Text("Apri email",color=ObsidianPrimary)}},
+        dismissButton={TextButton(onClick={
+            val clipboard=context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager
+            clipboard?.setPrimaryClip(ClipData.newPlainText(SuperShiftMigrationHelp.requestSubject,SuperShiftMigrationHelp.requestText))
+            requestPreview=false;feedback=ActionFeedback("Richiesta copiata")
+        }){Text("Copia testo",color=TextSecondary)}})
+
 }

@@ -1,3 +1,9 @@
+> Aggiornamento 27/10/2026: APK 1.6.3 (35) installato sul Realme. Numero del ciclo rotazione separato dal bordo, dalla festività e dalla campanella; testata del widget a due settimane più grande; quadrati festivi dei widget leggermente ridotti e distanziati dai bordi. 375 test per variante superati; DB finale identico alla baseline. Vedere [docs/VERIFICA_v1.6.3.md](docs/VERIFICA_v1.6.3.md).
+
+> Aggiornamento 27/10/2026: APK 1.6.2 (34) installato sul Realme. Pulsante Oggi con bordo, feedback di pressione e transizioni coordinate; Periodo con frecce complete separate da data, campanella e bordo della cella. Verificati entrambi i temi e calendario a sei righe. 375 test per variante superati, DB identico. Vedere [docs/VERIFICA_v1.6.2.md](docs/VERIFICA_v1.6.2.md).
+
+> Aggiornamento 27/10/2026: APK 1.6.1 (33) installato. Corretta la guida SuperShift: Gratuita / Pro / file .ics esistente. La sincronizzazione Google di SuperShift Cloud non crea un file Drive esportabile; migrazione integrale gratuita ancora non disponibile. Nessun messaggio inviato o acquisto effettuato. Vedere [docs/VERIFICA_v1.6.1.md](docs/VERIFICA_v1.6.1.md). 375 test per variante superati; DB invariato.
+
 > Aggiornamento 27/10/2026: APK 1.6.0 (32) installato sul Realme. Regole statistiche generiche persistite (backup schema 4); importazione calendario SuperShift con anteprima, deduplicazione e recupero. Il backup proprietario completo non è ancora supportato senza un file originale accessibile. Verifiche, limiti e sorgenti in [docs/VERIFICA_v1.6.0.md](docs/VERIFICA_v1.6.0.md). 375 test per variante superati.
 
 # Handover Tecnico e Guida di Progetto: Calendario Turni (RFI Pro)

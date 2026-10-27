@@ -83,9 +83,10 @@ internal object TurniWidgetRenderer {
         views.setOnClickPendingIntent(R.id.widget_title, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_RESET, kind.provider))
         views.setOnClickPendingIntent(R.id.widget_profile, WidgetUpdateManager.createDayPendingIntent(context, today, id * 100 + 99))
         views.removeAllViews(R.id.widget_rows)
-        val headerHeight = if(kind == WidgetKind.TODAY)22f else 32f
+        val navigationHeight=if(kind==WidgetKind.PANORAMA)28f else 22f
+        val headerHeight = navigationHeight+if(kind == WidgetKind.TODAY)0f else 10f
         val cellWidth = (width - 16f) / columns
-        val cellHeight = widgetDayCellHeight(height.toFloat(),rowCount,kind == WidgetKind.TODAY)
+        val cellHeight = widgetDayCellHeight(height.toFloat(),rowCount,kind == WidgetKind.TODAY,navigationHeight)
         // Render at native density on normal hosts; cap the whole bitmap payload for oversized widgets.
         val area = ((width - 16f) * (height - 8f - headerHeight)).coerceAtLeast(1f)
         val density = min(context.resources.displayMetrics.density, sqrt(1_500_000f / area)).coerceAtLeast(1f)
@@ -162,8 +163,11 @@ internal object TurniWidgetRenderer {
             if(summary.isToday) rect(capsule.left,capsule.top,capsule.right,capsule.bottom,4f,palette.brand)
             if(summary.holidayName!=null){
                 paint.color=palette.holiday;paint.style=Paint.Style.STROKE;paint.strokeWidth=1f
-                val side=minOf(size*fontScale+5f,box.height(),width-16f)
-                val holidayBox=RectF(x-side/2f,(top+bottom-side)/2f,x+side/2f,(top+bottom+side)/2f)
+                // Account for the stroke itself: no edge can touch the top of the day tile.
+                // Match today's compact badge while retaining a genuinely square outline.
+                val side=minOf(size*fontScale+2f,(box.height()-4f).coerceAtLeast(4f),(width-18f).coerceAtLeast(4f))
+                val holidayTop=((top+bottom-side)/2f).coerceIn(box.top+2f,box.bottom-2f-side)
+                val holidayBox=RectF(x-side/2f,holidayTop,x+side/2f,holidayTop+side)
                 canvas.drawRoundRect(holidayBox,3f,3f,paint);paint.style=Paint.Style.FILL
             }
             val ink=when {

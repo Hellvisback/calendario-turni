@@ -2,7 +2,7 @@
 
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)
 
-**Versione Corrente**: v1.5.0 (versionCode 31, build/test e installazione sul Realme; nessuna release GitHub)
+**Versione Corrente**: v1.6.3 (versionCode 35, build/test e installazione sul Realme; nessuna release GitHub). Verifica: `docs/VERIFICA_v1.6.3.md`.
 
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)
 

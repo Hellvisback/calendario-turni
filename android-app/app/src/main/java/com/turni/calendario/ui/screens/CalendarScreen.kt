@@ -5,6 +5,8 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.*
 import androidx.compose.material.icons.Icons
@@ -22,6 +24,9 @@ import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.input.pointer.util.VelocityTracker
 import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.*
 import androidx.compose.ui.unit.*
@@ -69,6 +74,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     var monthKey by rememberSaveable{mutableStateOf(YearMonth.now().toString())}
     val month=remember(monthKey){YearMonth.parse(monthKey)}
     val todayMonth=YearMonth.now()
+    val todayButtonState=remember{MutableTransitionState(month!=todayMonth)}
+    todayButtonState.targetState=month!=todayMonth
     var selectedDate by remember{mutableStateOf<LocalDate?>(null)}
     var lastDate by remember{mutableStateOf(LocalDate.now())}
     var editing by remember{mutableStateOf(false)}
@@ -160,17 +167,31 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                     },color=TextPrimary,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,
                         modifier=Modifier.weight(1f,fill=false))
                     IconButton(onClick={changeMonth(1)},modifier=Modifier.size(32.dp)){SiteIcon("chevron-right","Mese successivo",Modifier.size(21.dp))}
-                    AnimatedVisibility(month!=todayMonth,enter=fadeIn(tween(180))+expandHorizontally(),exit=fadeOut(tween(120))+shrinkHorizontally()) {
-                        Text("Oggi",fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=ObsidianPrimary,
-                            modifier=Modifier.clip(RoundedCornerShape(8.dp)).bouncyClickable {
-                                motion?.cancel();drag.value=0f;monthKey=todayMonth.toString();selectedDate=null
-                            }.padding(horizontal=5.dp,vertical=10.dp))
+                    AnimatedVisibility(
+                        visibleState=todayButtonState,
+                        enter=fadeIn(tween(240))+expandHorizontally(spring(1f,550f),expandFrom=Alignment.Start)+slideInVertically(tween(280)){it/5},
+                        exit=fadeOut(tween(160))+shrinkHorizontally(tween(260),shrinkTowards=Alignment.Start)+slideOutVertically(tween(220)){it/5}
+                    ) {
+                        CalendarTodayButton(enabled=month!=todayMonth) {
+                            motion?.cancel()
+                            // Even a distant month returns in one short slide, never a multi-page leap.
+                            val direction=if(month.isBefore(todayMonth))1 else -1
+                            Snapshot.withMutableSnapshot {
+                                monthKey=todayMonth.toString()
+                                drag.value=direction*width
+                                selectedDate=null
+                            }
+                            motion=scope.launch {
+                                val position=Animatable(drag.value)
+                                position.animateTo(0f,spring(1f,440f)){drag.value=value}
+                            }
+                        }
                     }
                 }
                 if(!editing){
-                    Row(Modifier.width(132.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End){
+                    Row(Modifier.widthIn(max=132.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.End){
                     Box {
-                        Row(Modifier.widthIn(max=96.dp).heightIn(min=44.dp).bouncyClickable{workMenu=!workMenu}.padding(horizontal=5.dp),
+                        Row(Modifier.widthIn(max=if(todayButtonState.currentState||todayButtonState.targetState)64.dp else 96.dp).heightIn(min=44.dp).bouncyClickable{workMenu=!workMenu}.padding(horizontal=5.dp),
                             verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(4.dp)) {
                             Icon(workProfileIcon(ShiftRepository.activeWorkProfile.iconKey),null,tint=TextSecondary,modifier=Modifier.size(16.dp))
                             Text(ShiftRepository.activeWorkProfile.name,color=TextSecondary,fontSize=11.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
@@ -179,7 +200,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                     }
                     IconButton(onClick=onOpenSettings,modifier=Modifier.size(36.dp)){SiteIcon("settings","Impostazioni",Modifier.size(21.dp))}
                     }
-                }else Spacer(Modifier.width(132.dp))
+                }
             }
             Row(Modifier.fillMaxWidth().height(28.dp).background(CalendarSurface,RoundedCornerShape(topStart=20.dp,topEnd=20.dp)),verticalAlignment=Alignment.CenterVertically){
                 val days=if(ShiftRepository.appPreferences.weekStartMonday)listOf("L","M","M","G","V","S","D")else listOf("D","L","M","M","G","V","S")
@@ -241,3 +262,28 @@ fun workProfileIcon(key:String):ImageVector=siteVector(when(key){
 })
 
 internal fun formatOvertime(hours:Float):String = calendarOvertimeLabel(hours).removePrefix("+")
+
+/** A bounded, accessible action with surface feedback; text is never scaled or blurred. */
+@Composable
+private fun CalendarTodayButton(enabled:Boolean,onClick:()->Unit) {
+    val interactions=remember{MutableInteractionSource()}
+    val pressed by interactions.collectIsPressedAsState()
+    val fill by animateColorAsState(if(pressed)ObsidianPrimaryContainer else ObsidianPrimarySubtle,spring(1f,650f))
+    val offset by animateFloatAsState(if(pressed)1.5f else 0f,spring(.85f,650f))
+    val shape=RoundedCornerShape(10.dp)
+    Box(
+        Modifier.size(width=46.dp,height=44.dp)
+            .semantics{contentDescription="Torna al mese di oggi"}
+            .clickable(enabled=enabled,interactionSource=interactions,indication=null,role=Role.Button,onClick=onClick),
+        contentAlignment=Alignment.Center
+    ) {
+        Box(
+            Modifier.size(width=42.dp,height=32.dp)
+                .graphicsLayer{translationY=offset*density}
+                .background(fill,shape).border(1.dp,ObsidianPrimary.copy(alpha=.5f),shape),
+            contentAlignment=Alignment.Center
+        ) {
+            Text("Oggi",color=ObsidianPrimary,fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
+        }
+    }
+}

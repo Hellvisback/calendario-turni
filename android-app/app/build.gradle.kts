@@ -11,8 +11,8 @@ android {
         applicationId = "com.turni.calendario"
         minSdk = 26
         targetSdk = 32
-        versionCode = 32
-        versionName = "1.6.0"
+        versionCode = 35
+        versionName = "1.6.3"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables {

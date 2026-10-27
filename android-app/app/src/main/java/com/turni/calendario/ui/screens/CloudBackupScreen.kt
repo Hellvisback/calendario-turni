@@ -135,8 +135,8 @@ fun CloudBackupScreen(onDismiss:()->Unit,onImportSuperShift:()->Unit={}){
             }
             Text("Android può posticipare il salvataggio per risparmiare batteria. La data si aggiorna solo dopo la conferma di Drive.",color=TextMuted,fontSize=10.sp,lineHeight=15.sp)
         }
-        CloudCard("Passa da SuperShift","Importa i turni in un calendario dedicato, senza sostituire quelli che hai già.") {
-            CloudButton("Importa da SuperShift","download",onImportSuperShift,enabled,secondary=true)
+        CloudCard("Passa da SuperShift","Verifica il percorso disponibile per versione gratuita, Pro o un calendario già esportato.") {
+            CloudButton("Scegli come trasferire","swap",onImportSuperShift,enabled,secondary=true)
         }
         CloudCard("Altre copie"){
             Row(Modifier.fillMaxWidth().bouncyClickable{otherCopies=!otherCopies}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){

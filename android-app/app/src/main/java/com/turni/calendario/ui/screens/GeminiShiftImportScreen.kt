@@ -376,7 +376,7 @@ fun GeminiShiftImportScreen(
                                     color = TextPrimary
                                 )
                                 Text(
-                                    text = "Automatica, completa e per qualsiasi azienda",
+                                    text = "Modelli e rotazioni da verificare",
                                     fontSize = 11.5.sp,
                                     color = TextSecondary
                                 )
@@ -386,7 +386,7 @@ fun GeminiShiftImportScreen(
                         Spacer(modifier = Modifier.height(14.dp))
 
                         Text(
-                            text = "Questa procedura ti permette di importare in un colpo solo sia il catalogo completo dei tuoi turni (orari di inizio e fine, codici e colori) sia i cicli di rotazione delle squadre direttamente dalla foto o dal PDF del tabellone inviato dalla tua azienda.",
+                            text = "Ricrea modelli di turno e rotazioni dalle informazioni leggibili in foto, screenshot o PDF. Controlla nomi, codici, orari, colori e cicli prima di salvare. I dati non mostrati e lo storico del backup non vengono trasferiti da questa procedura.",
                             fontSize = 13.sp,
                             color = TextSecondary,
                             lineHeight = 19.sp
@@ -399,7 +399,7 @@ fun GeminiShiftImportScreen(
                         Spacer(modifier = Modifier.height(8.dp))
                         StepMiniRow(number = "2", title = "Invia all'AI", description = "Apri ChatGPT, Gemini o Claude, allega la foto del tuo foglio turni e incolla il prompt.")
                         Spacer(modifier = Modifier.height(8.dp))
-                        StepMiniRow(number = "3", title = "Incolla qui la Risposta", description = "L'app estrarrà automaticamente tutti i turni e la tua squadra!")
+                        StepMiniRow(number = "3", title = "Incolla qui la Risposta", description = "Controlla i modelli e le rotazioni proposti prima di salvarli.")
                     }
                 }
 

@@ -16,6 +16,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK" />
     <uses-permission android:name="android.permission.USE_FULL_SCREEN_INTENT" />
 
+    <queries>
+        <package android:name="app.supershift" />
+    </queries>
+
     <application
         android:name=".TurniSyncApplication"
         android:allowBackup="true"

@@ -38,7 +38,7 @@ import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.launch
 
-private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS, STATISTICS_RULES, SUPERSHIFT }
+private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS, STATISTICS_RULES, SUPERSHIFT, SUPERSHIFT_ASSISTED }
 
 @Composable
 fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni:(ShiftRotation?)->Unit={},onDismiss:()->Unit={}) {
@@ -57,7 +57,8 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
                 when(destination){
                     SettingsSubScreen.CLOUD_BACKUP->CloudBackupScreen(onDismiss=close,onImportSuperShift={screen=SettingsSubScreen.SUPERSHIFT})
                     SettingsSubScreen.STATISTICS_RULES->StatisticsRulesScreen(onDismiss=close)
-                    SettingsSubScreen.SUPERSHIFT->SuperShiftImportScreen(onDismiss={screen=SettingsSubScreen.CLOUD_BACKUP})
+                    SettingsSubScreen.SUPERSHIFT->SuperShiftImportScreen(onDismiss={screen=SettingsSubScreen.CLOUD_BACKUP},onAssistedImport={screen=SettingsSubScreen.SUPERSHIFT_ASSISTED})
+                    SettingsSubScreen.SUPERSHIFT_ASSISTED->GeminiShiftImportScreen(onDismiss={screen=SettingsSubScreen.SUPERSHIFT},onNavigateToTurni={rotation->close();onNavigateToTurni(rotation)})
                     SettingsSubScreen.GOOGLE_CALENDAR_SYNC->GoogleCalendarSyncScreen(onDismiss=close)
                     SettingsSubScreen.IMPORT_SHIFTS->GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={rotation->close();onNavigateToTurni(rotation)})
                     SettingsSubScreen.PDF_EXPORT->PdfExportScreen(onDismiss=close)
