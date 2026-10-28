@@ -6,7 +6,7 @@ internal data class WidgetHeaderLayout(val titleMaxWidthDp:Float,val showWork:Bo
 internal fun widgetHeaderLayout(widthDp:Float,today:Boolean):WidgetHeaderLayout {
     val content=(widthDp-16f).coerceAtLeast(1f)
     val navigation=if(today)0f else 64f
-    val showWork=content-navigation>=136f
+    val showWork=if(today)widthDp>=260f else content-navigation>=136f
     val work=if(showWork)(content*.26f).coerceIn(44f,100f)+8f else 0f
     return WidgetHeaderLayout((content-navigation-work).coerceAtLeast(24f),showWork)
 }
@@ -19,4 +19,12 @@ internal fun widgetDateHeaderHeight(wide:Boolean):Float =
 internal fun widgetShiftBaseHeight(heightDp:Float):Float {
     val remaining=heightDp-widgetDateHeaderHeight(false)-4f
     return remaining.coerceIn(16f,52f)
+}
+
+internal data class WidgetDailyShiftLayout(val badgeWidth:Float,val detailX:Float,val detailWidth:Float,val showName:Boolean)
+
+internal fun widgetDailyShiftLayout(width:Float,slotHeight:Float,fontScale:Float):WidgetDailyShiftLayout {
+    val badge=(width*.34f).coerceIn(24f,38f)
+    val start=9f+badge+8f
+    return WidgetDailyShiftLayout(badge,start,(width-start-9f).coerceAtLeast(1f),width>=145f&&slotHeight>=35f*fontScale)
 }

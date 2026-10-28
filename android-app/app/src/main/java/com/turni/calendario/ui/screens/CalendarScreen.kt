@@ -84,6 +84,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     var rotationId by remember{mutableStateOf(ShiftRepository.defaultRotationId.ifBlank{ShiftRepository.activeRotationId})}
     var anchor by remember{mutableStateOf<LocalDate?>(null)}
     var rangeEnd by remember{mutableStateOf<LocalDate?>(null)}
+    var editTool by remember{mutableStateOf<String?>(null)}
+    var eraseAnchor by remember{mutableStateOf<LocalDate?>(null)}
     var eraseDate by remember{mutableStateOf<LocalDate?>(null)}
     var selectShift by remember{mutableStateOf<LocalDate?>(null)}
     var addSecondary by remember{mutableStateOf(false)}
@@ -103,8 +105,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     LaunchedEffect(active,ShiftRepository.selectedDateFromWidget){if(active)ShiftRepository.selectedDateFromWidget?.let{
         monthKey=YearMonth.from(it).toString();lastDate=it;selectedDate=it;ShiftRepository.selectedDateFromWidget=null
     }}
-    fun closeEditor(){editing=false;anchor=null;rangeEnd=null}
-    BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;else->closeEditor()}}
+    fun closeEditor(){editing=false;anchor=null;rangeEnd=null;eraseAnchor=null}
+    BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};else->closeEditor()}}
     fun changeMonth(direction:Int){
         motion?.cancel()
         if(direction!=0)Snapshot.withMutableSnapshot {
@@ -117,33 +119,44 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             position.animateTo(0f,spring(1f,440f)){drag.value=value}
         }
     }
-    fun removeAt(date:LocalDate,extrasOnly:Boolean=false){
+    fun removeAt(date:LocalDate){
         val shifts=ShiftRepository.getShiftsForDate(date).filter{ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId==ShiftRepository.activeWorkProfileId}
-        if(extrasOnly){
-            val extras=calendarExtraEraserTargets(shifts.map{it.id})
-            when {
-                extras.size==1->{ShiftRepository.removeAssignedShift(date,extras.single());paintDay(date,"");feedback=ActionFeedback("Turno aggiuntivo eliminato",true)}
-                extras.size>1->eraseDate=date
-            }
+        if(calendarNeedsSelectiveEraser(shifts.size))eraseDate=date
+        else {
+            ShiftRepository.clearWorkDayShifts(date,clearOnCall=true)
+            paintDay(date,"");feedback=ActionFeedback("Giornata cancellata",true)
         }
-        else if(calendarNeedsSelectiveEraser(shifts.size))eraseDate=date
-        else if(shifts.isNotEmpty()){ShiftRepository.clearWorkDayShifts(date,clearOnCall=true);paintDay(date,"");feedback=ActionFeedback("Turno eliminato",true)}
-        else if(ShiftRepository.isOnCall(date)){ShiftRepository.setDayOnCallManual(date,false);feedback=ActionFeedback("Reperibilità rimossa",true)}
     }
     fun dayClick(date:LocalDate){
         if(dragging||abs(drag.value)>1f)return
         if(!editing){selectedDate=date;lastDate=date;return}
+        if(editTool=="eraser"){
+            val first=eraseAnchor
+            if(first==null)removeAt(date)else{
+                ShiftRepository.clearWorkShiftRange(first,date)
+                paintRequest=CalendarPaintRequest(first,"",(paintRequest?.sequence?:0L)+1L,date)
+                eraseAnchor=null;anchor=null;rangeEnd=null
+                feedback=ActionFeedback("Periodo cancellato · puoi annullare",true)
+            }
+            return
+        }
+        if(editTool=="bell"){
+            val wasOnCall=ShiftRepository.isOnCall(date)
+            ShiftRepository.setDayOnCallManual(date,!wasOnCall)
+            feedback=ActionFeedback(if(wasOnCall)"Reperibilità rimossa" else "Reperibilità attivata",wasOnCall)
+            return
+        }
         when(mode){
-            CalendarEditMode.REPLACE->if(brush=="eraser")removeAt(date)else{
+            CalendarEditMode.REPLACE->{
                 ShiftRepository.replaceShift(date,brush);paintDay(date,brush);feedback=ActionFeedback("Turno aggiornato",false)
             }
-            CalendarEditMode.ADD->if(brush=="eraser")removeAt(date,true)else{
+            CalendarEditMode.ADD->{
                 ShiftRepository.addSecondaryShift(date,brush);paintDay(date,brush);feedback=ActionFeedback("Turno aggiunto",false)
             }
             CalendarEditMode.RANGE->if(anchor==null){anchor=date;rangeEnd=null}else{
                 val start=minOf(anchor!!,date);val end=maxOf(anchor!!,date)
                 ShiftRepository.applyShiftRange(brush,start,end)
-                paintDay(date,if(brush=="eraser")"" else brush)
+                paintRequest=CalendarPaintRequest(start,if(brush=="eraser")"" else brush,(paintRequest?.sequence?:0L)+1L,end)
                 anchor=null;rangeEnd=null;feedback=ActionFeedback(if(brush=="eraser")"Turni eliminati" else "Periodo applicato",brush=="eraser")
             }
             CalendarEditMode.ROTATION->if(anchor==null||date.isBefore(anchor)){anchor=date}else{
@@ -221,9 +234,13 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                 // Precomposed neighbors: motion updates layer translation, not 42 cell compositions per frame.
                 for(delta in -1..1) {
                     key(month.plusMonths(delta.toLong())) {
-                    NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,mode,brush,rotationId,anchor,rangeEnd,
+                    NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,if(eraseAnchor!=null)CalendarEditMode.RANGE else mode,if(eraseAnchor!=null)"eraser" else brush,rotationId,eraseAnchor?:anchor,if(eraseAnchor!=null)null else rangeEnd,
                         Modifier.fillMaxSize().graphicsLayer{translationX=delta*width+drag.value},
-                        paintRequest=paintRequest,animate=delta==0,onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null)rangeEnd=it})
+                        paintRequest=paintRequest,animate=delta==0,onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null&&editTool!="eraser")rangeEnd=it},
+                        onLongClick=if(editing&&editTool=="eraser")({date->
+                            eraseAnchor=date;anchor=null;rangeEnd=null
+                            feedback=ActionFeedback("Inizio selezionato · tocca l’ultimo giorno da cancellare")
+                        })else null)
                     }
                 }
             }
@@ -237,14 +254,14 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
         AnimatedVisibility(editing,enter=slideInVertically(spring(.95f,380f)){it}+fadeIn(),
             exit=slideOutVertically(spring(1f,420f)){it}+fadeOut(),
             modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal=8.dp).padding(bottom=6.dp)) {
-            NativeEditToolbar(mode,brush,rotationId,onMode={mode=it;anchor=null;rangeEnd=null},onBrush={brush=it},
-                onRotation={rotationId=it},onUndo={if(ShiftRepository.undo()){anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()})
+            NativeEditToolbar(mode,brush,rotationId,editTool,onTool={editTool=if(editTool==it)null else it;anchor=null;rangeEnd=null;eraseAnchor=null},onMode={mode=it;anchor=null;rangeEnd=null;eraseAnchor=null},onBrush={brush=it;editTool=null;eraseAnchor=null},
+                onRotation={rotationId=it},onUndo={if(ShiftRepository.undo()){eraseAnchor=null;anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()})
         }
         MagicalActionFeedbackHUD(feedback,onDismiss={feedback=null},modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top=8.dp))
         eraseDate?.let{date->
-            NativeElementEraser(date,mode==CalendarEditMode.ADD,onClose={eraseDate=null},onRemove={id->
-                if(id=="oncall")ShiftRepository.setDayOnCallManual(date,false)else {ShiftRepository.removeAssignedShift(date,id);paintDay(date,"")}
-                feedback=ActionFeedback(if(id=="oncall")"Reperibilità rimossa" else "Turno eliminato",true)
+            NativeElementEraser(date,onClose={eraseDate=null},onRemove={id->
+                ShiftRepository.removeAssignedShift(date,id,clearOnCall=true);paintDay(date,"")
+                feedback=ActionFeedback("Turno eliminato",true)
             })
         }
         selectShift?.let{date-> NativeShiftChooser(onDismiss={selectShift=null},onChoose={id->

@@ -23,9 +23,9 @@
     <application
         android:name=".TurniSyncApplication"
         android:allowBackup="true"
-        android:icon="@mipmap/ic_launcher"
+        android:icon="@mipmap/ic_turnisync"
         android:label="@string/app_name"
-        android:roundIcon="@mipmap/ic_launcher_round"
+        android:roundIcon="@mipmap/ic_turnisync_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.CalendarioTurni">
         <activity
@@ -58,6 +58,7 @@
 
         <receiver
             android:name=".widget.WeeksPanoramaWidgetProvider"
+            android:icon="@mipmap/ic_turnisync"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -77,6 +78,7 @@
 
         <receiver
             android:name=".widget.TodayTomorrowWidgetProvider"
+            android:icon="@mipmap/ic_turnisync"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -96,6 +98,7 @@
 
         <receiver
             android:name=".widget.WeekRowWidgetProvider"
+            android:icon="@mipmap/ic_turnisync"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
@@ -115,6 +118,7 @@
 
         <receiver
             android:name=".widget.MonthGridWidgetProvider"
+            android:icon="@mipmap/ic_turnisync"
             android:exported="true">
             <intent-filter>
                 <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />

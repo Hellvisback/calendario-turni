@@ -108,8 +108,8 @@ object PdfGenerator {
     private fun formatMinutes(minutes: Int) = "${minutes / 60} h ${minutes % 60} min"
 
     private class DocumentWriter(val doc: PdfDocument, val data: PdfExportSnapshot, val width:Float, val height:Float) {
-        private val ink=Color.rgb(28,43,67)
-        private val muted=Color.rgb(86,101,122)
+        private val ink=Color.rgb(20,26,36)
+        private val muted=Color.rgb(48,57,72)
         private val accent=Color.rgb(56,102,232)
         private val paper=Color.rgb(244,246,249)
         private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
@@ -128,6 +128,10 @@ object PdfGenerator {
         }
         private fun lines(value:String,available:Float,size:Float):List<String> {
             paint.textSize=size;paint.isFakeBoldText=false
+            if(Regex("^\\d{2}(?::\\d{2})?–\\d{2}(?::\\d{2})?$").matches(value)) {
+                // A clock range is an indivisible unit. Never split a minute or hour in half.
+                return if(paint.measureText(value)*6.5f/size>available)value.split("–")else listOf(value)
+            }
             return value.split('\n').flatMap { paragraph ->
                 if(paragraph.isBlank())listOf("") else buildList {
                     var rest=paragraph.trim()
@@ -212,6 +216,12 @@ object PdfGenerator {
             throw IllegalArgumentException(crowded)
         }
 
+        private fun compactCalendarDetail(value:String):String {
+            val range=Regex("^(\\d{2}):(\\d{2}) - (\\d{2}):(\\d{2})$").matchEntire(value)?:return value
+            fun clock(h:String,m:String)=if(m=="00")h else "$h:$m"
+            return clock(range.groupValues[1],range.groupValues[2])+"–"+clock(range.groupValues[3],range.groupValues[4])
+        }
+
         private fun calendars(months:List<YearMonth>,top:Float) {
             require(months.size<=12){"Per un calendario leggibile su una pagina, seleziona al massimo 12 mesi."}
             val columns=when{months.size==1->1;months.size<=4->2;else->3}
@@ -239,19 +249,19 @@ object PdfGenerator {
                     val left=x+position%7*cellW;val cellTop=gridTop+position/7*cellH
                     val row=byDate[date]
                     box(left+1f,cellTop,cellW-2f,cellH-3f,if(position%7>=5)Color.rgb(230,237,247)else paper,4f)
-                    text(day.toString(),left+4f,cellTop+if(months.size==1)10f else 8f,if(months.size==1)9f else 7f,ink,true)
+                    text(day.toString(),left+4f,cellTop+if(months.size==1)10f else 8f,if(months.size==1)10f else 8f,ink,true)
                     if(row==null)continue
                     val compact=months.size>1
                     var selected:List<Pair<String,PdfShiftRow?>>?=null
-                    var font=if(compact)6f else 9f
-                    while(font>=5f) {
+                    var font=if(compact)8f else 11f
+                    while(font>=if(compact)6.5f else 8f) {
                         val content=buildList<Pair<String,PdfShiftRow?>> {
                             row.shifts.forEach { shift ->
                                 val titleLine=if(compact||shift.name.isBlank())shift.code else shift.name
                                 lines(titleLine,cellW-6f,font).forEach{add(it to shift)}
-                                shift.details.forEach{detail->lines(if(compact)detail.replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                                shift.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                             }
-                            row.details.forEach{detail->lines(if(compact)detail.replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                            row.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                         }
                         if(content.size*(font+2f)<=cellH-if(compact)12f else 17f){selected=content;break}
                         font-=.5f
@@ -260,10 +270,12 @@ object PdfGenerator {
                     var cursor=cellTop+if(compact)10f else 13f
                     selected.forEach { (value,shift) ->
                         if(shift!=null&&data.options.includeIcon) {
-                            val tint=Color.rgb((Color.red(shift.color)+255*3)/4,(Color.green(shift.color)+255*3)/4,(Color.blue(shift.color)+255*3)/4)
+                            val tint=Color.rgb((Color.red(shift.color)+255*2)/3,(Color.green(shift.color)+255*2)/3,(Color.blue(shift.color)+255*2)/3)
                             box(left+3f,cursor-1f,cellW-6f,font+3f,tint,2f)
                         }
-                        text(value,left+5f,cursor+font,font,if(shift!=null)ink else muted,shift!=null)
+                        paint.textSize=font;paint.isFakeBoldText=shift!=null
+                        val fittedFont=minOf(font,font*(cellW-10f)/paint.measureText(value).coerceAtLeast(1f))
+                        text(value,left+5f,cursor+font,fittedFont,ink,shift!=null)
                         cursor+=font+2f
                     }
                 }

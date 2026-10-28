@@ -165,7 +165,9 @@ data class AppPreferences(
     val weekStartMonday: Boolean = true,
     val timeFormat24h: Boolean = true,
     val showHolidays: Boolean = true,
-    val autoBackupDaily: Boolean = true
+    val autoBackupDaily: Boolean = true,
+    val excludeVacationOnHolidays: Boolean = false,
+    val holidayExcludedShiftIds: Set<String> = emptySet()
 )
 
 /**

@@ -27,25 +27,48 @@ import java.util.UUID
 @Composable
 fun StatisticsRulesScreen(onDismiss:()->Unit) {
     var editing by remember { mutableStateOf<StatisticsRule?>(null) }
+    var editingHolidays by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val definitions=ShiftRepository.shiftDefinitions.toList()
     val rules=ShiftRepository.statisticsRules.toList()
-    fun close(){ if(editing!=null)editing=null else onDismiss() }
+    fun close(){ if(editingHolidays)editingHolidays=false else if(editing!=null)editing=null else onDismiss() }
     BackHandler(onBack=::close)
-    CloudFeatureScaffold(if(editing==null)"Conteggio statistiche" else "Regola di conteggio",::close,feedback,{feedback=null},scrollResetKey=editing?.id) {
-        AnimatedContent(editing,transitionSpec={fadeIn()+slideInHorizontally(spring(stiffness=450f)){it/8} with fadeOut()}) { draft ->
+    CloudFeatureScaffold(if(editingHolidays)"Ferie nei festivi" else if(editing==null)"Conteggio statistiche" else "Turno originale",::close,feedback,{feedback=null},scrollResetKey=if(editingHolidays)"holidays" else editing?.id) {
+        AnimatedContent(editing to editingHolidays,transitionSpec={fadeIn()+slideInHorizontally(spring(stiffness=450f)){it/8} with fadeOut()}) { (draft, holidays) ->
             Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
-                if(draft==null) {
-                    CloudCard("Il calendario resta come piace a te","Scegli quando contare il turno originale al posto di quello visualizzato. La regola vale per conteggi, ore e grafici, anche sui periodi passati. Non modifica il calendario.") {
-                        Text("Esempio: mostri Ferie per tutto un periodo, anche sopra Smonto o Riposo. Se il turno originale è registrato, le statistiche conteranno Smonto o Riposo; gli altri giorni resteranno Ferie.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
-                        Text("Senza un turno originale registrato, viene contato il turno visibile. Cancellarlo con la gomma rimuove anche la provenienza.",fontSize=11.sp,lineHeight=17.sp,color=TextMuted)
+                if(holidays) {
+                    HolidayStatisticsRuleEditor(definitions) {
+                        editingHolidays=false;feedback=ActionFeedback("Regola salvata · statistiche aggiornate")
+                    }
+                } else if(draft==null) {
+                    CloudCard("Come vengono contati i turni","Queste regole cambiano solo statistiche, ore e grafici. I turni che vedi nel calendario restano invariati.") {
+                        Text("1 · Turno originale: conta il turno coperto da una sostituzione.\n2 · Ferie nei festivi: esclude i modelli scelti nelle festività abilitate.\nSe entrambe sono attive, prima viene risolto il turno originale, poi l’eventuale esclusione festiva.",fontSize=12.sp,lineHeight=19.sp,color=TextSecondary)
+                    }
+                    val preferences=ShiftRepository.appPreferences
+                    CloudCard("Ferie nei giorni festivi","Non conta i modelli selezionati quando cadono in una festività abilitata per il lavoro. Esempio: Ferie a Natale non aumenta il totale delle ferie.") {
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                            Column(Modifier.weight(1f)) {
+                                Text(if(preferences.excludeVacationOnHolidays)"Regola attiva" else "Regola disattivata",fontSize=14.sp,fontWeight=FontWeight.Medium,color=TextPrimary)
+                                Text(definitions.filter{it.id in preferences.holidayExcludedShiftIds}.joinToString{it.name}.ifBlank{"Nessun modello selezionato"},fontSize=12.sp,color=TextSecondary)
+                            }
+                            Switch(preferences.excludeVacationOnHolidays,{ enabled->
+                                val current=ShiftRepository.appPreferences
+                                ShiftRepository.appPreferences=current.copy(excludeVacationOnHolidays=enabled,
+                                    holidayExcludedShiftIds=holidayExclusionSelectionForToggle(current.holidayExcludedShiftIds,definitions,enabled))
+                                ShiftRepository.notifyDataChanged()
+                            })
+                        }
+                        CloudButton("Modifica regola","pencil",{editingHolidays=true},secondary=true)
+                    }
+                    if(rules.isEmpty())CloudCard("Turno originale","Per esempio: mostri Ferie anche sopra Riposo o Smonto. Una regola permette di contare il Riposo o lo Smonto originale, senza cambiare quello che vedi.") {
+                        Text("Vale solo quando il turno originale è registrato (ex turno). Se cancelli con la gomma, questa provenienza viene rimossa.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
                     }
                     rules.forEach { rule -> key(rule.id) {
                         val visible=definitions.find { it.id==rule.displayedShiftId }
-                        if(visible!=null) CloudCard(visible.name,ShiftRepository.workProfiles.find { it.id==visible.workProfileId }?.name) {
+                        if(visible!=null) CloudCard("Turno originale · ${visible.name}","Quando ${visible.name} copre uno dei modelli qui sotto, conta il turno originale al suo posto. Senza un ex turno registrato, conta quello visibile.") {
                             Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                                 Column(Modifier.weight(1f)) {
-                                    Text("Conta il turno originale se è:",fontSize=12.sp,color=TextSecondary)
+                                    Text("Turni originali ammessi:",fontSize=12.sp,color=TextSecondary)
                                     Text(definitions.filter { it.id in rule.originalShiftIds }.joinToString { it.name },fontSize=14.sp,lineHeight=20.sp,color=TextPrimary,fontWeight=FontWeight.Medium)
                                 }
                                 Switch(rule.enabled,{ ShiftRepository.saveStatisticsRule(rule.copy(enabled=it));feedback=ActionFeedback(if(it)"Regola attivata" else "Regola disattivata") })
@@ -53,7 +76,7 @@ fun StatisticsRulesScreen(onDismiss:()->Unit) {
                             CloudButton("Modifica regola","pencil",{editing=rule},secondary=true)
                         }
                     } }
-                    CloudButton("Aggiungi regola","plus",{editing=StatisticsRule(UUID.randomUUID().toString(),"",emptySet())},enabled=definitions.size>1)
+                    CloudButton("Aggiungi regola sul turno originale","plus",{editing=StatisticsRule(UUID.randomUUID().toString(),"",emptySet())},enabled=definitions.size>1)
                     if(definitions.size<2)Text("Crea almeno due modelli di turno per aggiungere una regola.",fontSize=12.sp,color=TextSecondary)
                 } else {
                     var displayed by remember(draft.id) { mutableStateOf(draft.displayedShiftId) }
@@ -91,6 +114,34 @@ fun StatisticsRulesScreen(onDismiss:()->Unit) {
             }
         }
     }
+}
+
+@Composable
+private fun HolidayStatisticsRuleEditor(definitions:List<ShiftDefinition>,onSaved:()->Unit) {
+    val initial=remember { ShiftRepository.appPreferences }
+    var selected by remember { mutableStateOf(initial.holidayExcludedShiftIds) }
+    var enabled by remember { mutableStateOf(initial.excludeVacationOnHolidays) }
+    CloudCard("1 · Attiva la regola","I turni scelti restano nel calendario, ma non vengono conteggiati nelle festività abilitate in Impostazioni → Festività.") {
+        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+            Text("Escludi dal conteggio nei festivi",Modifier.weight(1f),fontSize=14.sp,color=TextPrimary)
+            Switch(enabled,{enabled=it})
+        }
+    }
+    CloudCard("2 · Modelli da escludere","Scegli i tuoi modelli, qualunque sia il loro nome. Per esempio Ferie; i normali giorni lavorativi continueranno a contarle.") {
+        definitions.chunked(2).forEach { pair->Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+            pair.forEach { model->Box(Modifier.weight(1f)) {
+                StatisticsModelTile(model,model.id in selected,definitions.map{it.workProfileId}.distinct().size>1) {
+                    selected=if(model.id in selected)selected-model.id else selected+model.id
+                }
+            } }
+            if(pair.size==1)Spacer(Modifier.weight(1f))
+        } }
+    }
+    if(enabled&&selected.isEmpty())Text("Seleziona almeno un modello oppure disattiva la regola.",fontSize=12.sp,color=TextSecondary)
+    CloudButton("Salva regola","check",{
+        ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(excludeVacationOnHolidays=enabled,holidayExcludedShiftIds=selected)
+        ShiftRepository.notifyDataChanged();onSaved()
+    },enabled=!enabled||selected.isNotEmpty())
 }
 
 @Composable

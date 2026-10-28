@@ -93,7 +93,7 @@ fun TurniModelsScreen(onEditorActiveChanged:((Boolean)->Unit)?=null,initialTab:I
                                 }
                             }
                         }
-                        2->items(ShiftRepository.getRotationsSortedByDefault(),key={it.id}){rotation->
+                        2->items(ShiftRepository.rotations.toList(),key={it.id}){rotation->
                             SiteCollectionCard {
                                 val preferred=rotation.id==ShiftRepository.defaultRotationId
                                 val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()

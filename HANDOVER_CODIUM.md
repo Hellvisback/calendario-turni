@@ -1,8 +1,12 @@
+> Ultimo aggiornamento: 1.7.2 (44), conteggio statistiche coerente, salvataggio sveglie robusto e tastiera, avviso riposo, gomma long press per intervallo. docs/VERIFICA_v1.7.2.md.
+
+> Ultimo aggiornamento: 1.7.1 (43), icone selettore widget e resize verticale opzionale settimana/panorama. Vedere docs/VERIFICA_v1.7.1.md.
+
 # Handover Tecnico & Guida Architetturale per CodiumAI / Qodo
 
 **Progetto**: Calendario Turni (RFI Pro / SuperShift Evolution)
 
-**Versione Corrente**: v1.6.4 (versionCode 36, build/test e installazione sul Realme; nessuna release GitHub). Verifica: `docs/VERIFICA_v1.6.4.md`.
+**Versione Corrente**: v1.7.0 (versionCode 42), installata sul Realme. Importazione con AI esclusivamente esterna: copia prompt + documento nella propria chat, incolla risposta o apri JSON, revisione e salvataggio catalogo senza sovrascritture. Nessun campo API o invio automatico. Percorso SuperShift rimosso. 426 test per variante, UI e dati personali verificati; vedere `docs/VERIFICA_v1.7.0.md` per prove e limiti.
 
 **Target Platform**: Android Nativo (Kotlin + Jetpack Compose)
 

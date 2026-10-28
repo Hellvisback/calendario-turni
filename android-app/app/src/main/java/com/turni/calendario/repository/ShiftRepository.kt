@@ -110,6 +110,10 @@ object ShiftRepository {
 
     // Mappa delle assegnazioni sul calendario: LocalDate -> Lista di AssignedShift
     val calendarShifts = mutableStateMapOf<LocalDate, MutableList<AssignedShift>>()
+    val minimumRestAlerts by androidx.compose.runtime.derivedStateOf {
+        minimumRestWarnings(calendarShifts.values.flatMap{it.toList()},shiftDefinitions.toList(),workProfiles.toList())
+    }
+
 
     // Extra informazioni giorno: ore straordinario, trasferta, override reperibilità, note, nascondi ex-turno
     val dayExtraInfo = mutableStateMapOf<LocalDate, DayExtraInfo>()
@@ -119,6 +123,17 @@ object ShiftRepository {
 
     // Configurazione Sveglie Automatiche Intelligenti (Gestita in "Altro")
     var smartAlarmsConfig by mutableStateOf(SmartAlarmsConfig())
+
+    /** Apply only the edited field to the latest saved rule, never a stale UI snapshot. */
+    fun updateSmartAlarmRule(id: String, update: (ShiftAlarmRule) -> ShiftAlarmRule) {
+        val current = smartAlarmsConfig
+        val previous = current.rules.firstOrNull { it.shiftDefId == id }
+            ?: ShiftAlarmRule(id, isEnabled = false, customTime = if(id == "reperibilita") "20:00" else null)
+        val changed = update(previous).copy(shiftDefId = id)
+        smartAlarmsConfig = current.copy(rules = if(current.rules.any { it.shiftDefId == id })
+            current.rules.map { if(it.shiftDefId == id) changed else it } else current.rules + changed)
+        notifyDataChanged()
+    }
 
     // Preferenze dell'applicazione (Gestite in "Altro")
     var appPreferences by mutableStateOf(AppPreferences())
@@ -659,7 +674,7 @@ object ShiftRepository {
         }
     }
 
-    fun removeAssignedShift(date: LocalDate, assignedId: String) {
+    fun removeAssignedShift(date: LocalDate, assignedId: String, clearOnCall:Boolean=false) {
         saveSnapshot()
         val current = calendarShifts[date]?.toList() ?: emptyList()
         val filtered = current.filter { it.id != assignedId }
@@ -671,6 +686,7 @@ object ShiftRepository {
         val extra = getDayExtraInfo(date)
         val isNowEmpty = newList.isEmpty()
         dayExtraInfo[date] = extra.copy(
+            isOnCallManual = if(clearOnCall)false else extra.isOnCallManual,
             isTrasferta = anyTrasferta,
             overtimeHours = newList.sumOf { it.overtimeHours.toDouble() }.toFloat(),
             actualEndTime = newList.firstOrNull()?.actualEndTime,
@@ -837,6 +853,19 @@ object ShiftRepository {
         saveSnapshot()
         clearWorkDayWithoutSnapshot(date, profileId)
         if (clearOnCall) dayExtraInfo[date] = getDayExtraInfo(date).copy(isOnCallManual = false)
+        notifyDataChanged()
+    }
+
+    /** One undo operation for an inclusive interval, preserving other work calendars and notes. */
+    fun clearWorkShiftRange(first: LocalDate, last: LocalDate, profileId: String = activeWorkProfileId) {
+        saveSnapshot()
+        var date = minOf(first, last)
+        val end = maxOf(first, last)
+        while (!date.isAfter(end)) {
+            clearWorkDayWithoutSnapshot(date, profileId)
+            dayExtraInfo[date] = getDayExtraInfo(date).copy(isOnCallManual = false)
+            date = date.plusDays(1)
+        }
         notifyDataChanged()
     }
 
@@ -1287,6 +1316,12 @@ object ShiftRepository {
         reperibilitaConfig = reperibilitaConfig.copy(manualDates = newDates)
     }
 
+    /** Statistical holidays follow enabled holidays, independently of calendar visibility. */
+    fun statisticsEntry(assigned:AssignedShift,definitions:Map<String,ShiftDefinition>,rules:List<StatisticsRule>):AssignedShift? =
+        countedStatisticsAssignment(assigned,definitions,rules,
+            HolidaysCatalog.allHolidays.any{it.id in enabledHolidayIds&&it.getDateForYear(assigned.date.year)==assigned.date},
+            appPreferences.excludeVacationOnHolidays,appPreferences.holidayExcludedShiftIds)
+
     // Statistiche Report Compatibili
     fun getReportStats(start: LocalDate, end: LocalDate): Map<String, Int> {
         val counts = mutableMapOf<String, Int>()
@@ -1296,7 +1331,7 @@ object ShiftRepository {
         while (!d.isAfter(end)) {
             val shifts = calendarShifts[d] ?: emptyList()
             for (assigned in shifts) {
-                val s=statisticsAssignment(assigned, definitions, rules)
+                val s=statisticsEntry(assigned, definitions, rules) ?: continue
                 counts[s.shiftDefId] = (counts[s.shiftDefId] ?: 0) + 1
             }
             d = d.plusDays(1)
@@ -1322,7 +1357,7 @@ object ShiftRepository {
         var curr = start
         while (!curr.isAfter(end)) {
             val extra = dayExtraInfo[curr]
-            val dayShifts = getShiftsForDate(curr).map { statisticsAssignment(it, statisticsModels, countRules) }
+            val dayShifts = getShiftsForDate(curr).mapNotNull { statisticsEntry(it, statisticsModels, countRules) }
             val shiftOvertime = dayShifts.sumOf { it.overtimeHours.toDouble() }.toFloat()
             val overtime = if (dayShifts.any { it.isOvertime || it.overtimeHours > 0f || it.actualEndTime != null }) {
                 shiftOvertime

@@ -5,7 +5,8 @@ import android.graphics.Typeface
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Modifier
@@ -37,7 +38,11 @@ internal fun calendarStartLabel(value: String, use24Hours: Boolean): String =
 private data class PaintedDay(val info:CalendarDayInfo,val shifts:List<Pair<AssignedShift,ShiftDefinition>>,
     val preview:Boolean,val onCall:Boolean,val original:String?,val holidayName:String?,val hasNotes:Boolean)
 private data class CalendarExtraState(val overtime:Float,val travel:Boolean)
-internal data class CalendarPaintRequest(val date:LocalDate,val definitionId:String,val sequence:Long)
+private data class CalendarCellPaint(val definitionId:String,val assignmentIds:Set<String>)
+internal data class CalendarPaintRequest(val date:LocalDate,val definitionId:String,val sequence:Long,val endDate:LocalDate=date)
+
+internal fun calendarPaintDates(request:CalendarPaintRequest,visibleDates:List<LocalDate>):Set<LocalDate> =
+    visibleDates.filter{it in minOf(request.date,request.endDate)..maxOf(request.date,request.endDate)}.toSet()
 
 /** A cycle marker is shown only at the start of a complete repeated cycle. */
 internal fun rotationCycleNumber(anchor:LocalDate?,date:LocalDate,cycleLength:Int):Int? {
@@ -48,8 +53,6 @@ internal fun rotationCycleNumber(anchor:LocalDate?,date:LocalDate,cycleLength:In
 
 internal fun calendarNeedsSelectiveEraser(shiftCount:Int):Boolean = shiftCount>1
 
-/** The first assignment remains the base; the ADD eraser acts only on following assignments. */
-internal fun calendarExtraEraserTargets(assignmentIds:List<String>):List<String> = assignmentIds.drop(1)
 
 /** The first period tap identifies an anchor; only a real endpoint can define a preview. */
 internal fun calendarPeriodContains(anchor:LocalDate?,end:LocalDate?,date:LocalDate):Boolean =
@@ -63,14 +66,18 @@ internal fun calendarExtraBandHeight(available:Float,base:Float,rows:Float):Floa
     if(rows<=0f)0f else ((available-base).coerceAtLeast(0f)/rows).coerceAtMost(13f)
 
 /** One draw layer per page; transparent semantic cells retain TalkBack and full hit targets. */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolean,mode:CalendarEditMode,
     brush:String,rotationId:String,anchor:LocalDate?,rangeEnd:LocalDate?,modifier:Modifier,
-    paintRequest:CalendarPaintRequest?=null,animate:Boolean=true,onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit) {
+    paintRequest:CalendarPaintRequest?=null,animate:Boolean=true,onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,onLongClick:((LocalDate)->Unit)?=null) {
     val days=remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
     val defs by remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}
     val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
     val profile=ShiftRepository.activeWorkProfileId
+    val restDates=ShiftRepository.minimumRestAlerts.filter { warning->
+        ShiftRepository.getShiftsForDate(warning.date).any{it.id==warning.nextId&&defs[it.shiftDefId]?.workProfileId==profile}
+    }.map{it.date}.toSet()
     val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs){derivedStateOf{days.map{day->
         val actual=ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
@@ -87,16 +94,19 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val todayFill=CalendarToday
     val line=ObsidianBorder;val onBrand=if(dark)Color(0xFF24213F)else Color.White
     val amber=ColorReperibilita
-    var painted by remember { mutableStateOf<Map<LocalDate,String>>(emptyMap()) }
-    var paintingDate by remember { mutableStateOf<LocalDate?>(null) }
+    var painted by remember { mutableStateOf<Map<LocalDate,CalendarCellPaint>>(emptyMap()) }
+    var paintingDates by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
     val paintReveal=remember{Animatable(1f)}
-    LaunchedEffect(editing){if(!editing){painted=emptyMap();paintingDate=null}}
+    LaunchedEffect(editing){if(!editing){painted=emptyMap();paintingDates=emptySet()}}
     LaunchedEffect(paintRequest){
         val request=paintRequest
-        if(editing&&request!=null&&days.any{it.date==request.date}){
-            // Every earlier cell keeps its final color; only the latest explicit gesture animates.
-            painted=if(request.definitionId.isBlank())painted-request.date else painted+(request.date to request.definitionId)
-            paintingDate=request.date
+        val affected=request?.let{calendarPaintDates(it,days.map{day->day.date})}.orEmpty()
+        if(editing&&request!=null&&affected.isNotEmpty()){
+            // Every day in this operation animates together; earlier operations stay at rest.
+            painted=if(request.definitionId.isBlank())painted-affected else painted+affected.associateWith{date->
+                CalendarCellPaint(request.definitionId,data.firstOrNull{it.info.date==date}?.shifts.orEmpty().filter{it.first.shiftDefId==request.definitionId}.map{it.first.id}.toSet())
+            }
+            paintingDates=affected
             if(request.definitionId.isNotBlank()&&animate){
                 paintReveal.snapTo(0f);paintReveal.animateTo(1f,tween(480,easing=FastOutSlowInEasing))
             }else paintReveal.snapTo(1f)
@@ -115,12 +125,6 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val mediumTypeface=remember{Typeface.create("sans-serif-medium",Typeface.NORMAL)}
     val bellOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M10.27 21a2 2 0 0 0 3.46 0M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33").toPath()}
     val messageOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M4 4h16v16l-5-4H4V4ZM8 8h8M8 12h5").toPath()}
-    val rangeArrowOutline=remember{Path().apply{
-        moveTo(-12f,0f);lineTo(-8.8f,-3f)
-        lineTo(-8.8f,-1.2f);lineTo(-3f,-1.2f)
-        lineTo(-3f,1.2f);lineTo(-8.8f,1.2f)
-        lineTo(-8.8f,3f);close()
-    }}
     val paint=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{textAlign=Paint.Align.CENTER}}
     val bellSet=data.filter{it.onCall}.map{it.info.date}.toSet()
     var previousBells by remember{mutableStateOf(bellSet)}
@@ -149,6 +153,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             if(editReveal>0f){var x=-size.height;while(x<size.width){drawLine(line.copy(alpha=.65f*editReveal),Offset(x,size.height),Offset(x+size.height,0f),dp(.6f));x+=dp(12f)}}
             data.forEachIndexed{index,item->
                 val x=index%7*cellWidth;val y=index/7*cellHeight;val center=x+cellWidth/2
+                val restAlert=item.info.date in restDates
                 val date=item.info.date;val today=date==todayDate;val chosen=date==selection||date==anchor
                 val cycle=if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,date,rotation?.daySequence?.size?:0)else null
                 // Leave distinct lanes for the date, cycle badge and on-call bell.
@@ -156,11 +161,11 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val periodAnchor=editing&&mode==CalendarEditMode.RANGE&&date==anchor
                 val base=if(date.dayOfWeek.value>=6)weekend else surface
                 val inset=dp(1.5f)*editReveal
-                val contentBottom=y+cellHeight-dp(if(periodAnchor)16f else 6f)
+                val contentBottom=y+cellHeight-dp(if(restAlert)24f else 6f)
                 if(!editing)drawRect(base,Offset(x,y),Size(cellWidth,cellHeight))
-                val paintColor=painted[date]?.takeIf{id->item.shifts.any{it.first.shiftDefId==id}}?.let{defs[it]?.color}?.takeIf{editing&&!item.preview}
+                val paintColor=painted[date]?.takeIf{mark->mark.assignmentIds.isNotEmpty()&&mark.assignmentIds.all{id->item.shifts.any{it.first.id==id&&it.first.shiftDefId==mark.definitionId}}}?.let{defs[it.definitionId]?.color}?.takeIf{editing&&!item.preview}
                 val neutral=if(editing)ObsidianSurface else base
-                val cellFill=if(paintColor!=null)lerp(neutral,paintColor,if(date==paintingDate)paintReveal.value else 1f)else if(today)todayFill else if(chosen)lerp(neutral,brand,.1f)else neutral
+                val cellFill=if(paintColor!=null)lerp(neutral,paintColor,if(date in paintingDates)paintReveal.value else 1f)else if(today)todayFill else if(chosen)lerp(neutral,brand,.1f)else neutral
                 drawRoundRect(cellFill,Offset(x+inset,y+inset),Size(cellWidth-inset*2,cellHeight-inset*2),CornerRadius(dp(if(editing)8f else if(today||chosen)10f else 0f)))
                 if(chosen)drawRoundRect(brand,Offset(x+inset+dp(1f),y+inset+dp(1f)),Size(cellWidth-inset*2-dp(2f),cellHeight-inset*2-dp(2f)),CornerRadius(dp(if(editing)8f else 10f)),style=Stroke(dp(2f)))
                 if(today&&!editing)drawRoundRect(brand,Offset(center-dp(12.5f),y+dp(4f)),Size(dp(25f),dp(24f)),CornerRadius(dp(6f)))
@@ -182,19 +187,20 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 label(date.dayOfMonth.toString(),dateCenter,y+dp(16f),14f,dateInk,true,if(item.info.isCurrentMonth)1f else .5f)
                 if(periodAnchor){
                     val cue=anchorReveal.value
-                    // A separate range guide leaves the cell outline, date and bell unobstructed.
-                    // Its complete outlined arrows include their shafts, not just chevrons.
-                    val half=(cellWidth-dp(14f))*(.88f+.12f*cue)/2f
-                    val middle=y+cellHeight-dp(10f)+dp(2f)*(1f-cue)
-                    drawRoundRect(brand.copy(alpha=.16f*cue),Offset(center-half,middle-dp(5f)),
-                        Size(half*2f,dp(10f)),CornerRadius(dp(4f)))
-                    drawContext.canvas.save()
-                    drawContext.canvas.translate(center,middle)
-                    drawContext.canvas.scale(px,px)
-                    drawPath(rangeArrowOutline,brand.copy(alpha=cue),style=Stroke(1.1f,join=StrokeJoin.Round))
-                    drawContext.canvas.scale(-1f,1f)
-                    drawPath(rangeArrowOutline,brand.copy(alpha=cue),style=Stroke(1.1f,join=StrokeJoin.Round))
-                    drawContext.canvas.restore()
+                    // Thin complete arrows stay in the date lane, safely inside the cell outline.
+                    val middle=y+dp(16f)
+                    val left=x+dp(7f);val right=x+cellWidth-dp(7f)
+                    val travel=dp(1f)*(1f-cue)
+                    val ink=brand.copy(alpha=cue)
+                    val stroke=dp(.95f)
+                    fun arrow(tip:Float,direction:Float){
+                        val shaft=tip+direction*dp(5f)
+                        val shoulder=tip+direction*dp(2.2f)
+                        drawLine(ink,Offset(tip,middle),Offset(shaft,middle),stroke,StrokeCap.Round)
+                        drawLine(ink,Offset(shoulder,middle-dp(2.2f)),Offset(tip,middle),stroke,StrokeCap.Round)
+                        drawLine(ink,Offset(tip,middle),Offset(shoulder,middle+dp(2.2f)),stroke,StrokeCap.Round)
+                    }
+                    arrow(left+travel,1f);arrow(right-travel,-1f)
                 }
                 cycle?.let{number->
                     // Five dp of inset keeps the complete badge inside the selection stroke.
@@ -210,7 +216,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val changed=previousBells.contains(date)!=item.onCall
                 val bellAlpha=if(changed){if(item.onCall)bellProgress.value else 1-bellProgress.value}else if(item.onCall)1f else 0f
                 if(bellAlpha>0){
-                    val bx=center+dp(18f);val by=y+dp(if(cycle!=null)23f else if(editing&&mode==CalendarEditMode.ROTATION)21f else 16f);val color=amber.copy(alpha=bellAlpha*(if(item.info.isCurrentMonth)1f else .45f))
+                    val bx=center+dp(if(periodAnchor)16f else 18f);val by=y+dp(if(periodAnchor)23.5f else if(cycle!=null)23f else if(editing&&mode==CalendarEditMode.ROTATION)21f else 16f);val color=(if(paintColor!=null)catalogInk(cellFill)else amber).copy(alpha=bellAlpha*(if(item.info.isCurrentMonth)1f else .45f))
                     val scale=dp(10f)/24f
                     drawContext.canvas.save();drawContext.canvas.translate(bx-dp(5f),by-dp(5f));drawContext.canvas.scale(scale,scale)
                     drawPath(bellOutline,color,style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round));drawContext.canvas.restore()
@@ -218,11 +224,19 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val noteChanged=previousNotes.contains(date)!=item.hasNotes
                 val noteAlpha=if(noteChanged){if(item.hasNotes)noteProgress.value else 1f-noteProgress.value}else if(item.hasNotes)1f else 0f
                 if(noteAlpha>0f){
-                    val nx=center-dp(18f);val ny=y+dp(16f)
+                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)23.5f else 16f)
                     val scale=dp(10f)/24f
                     drawContext.canvas.save();drawContext.canvas.translate(nx-dp(5f),ny-dp(5f));drawContext.canvas.scale(scale,scale)
-                    drawPath(messageOutline,brand.copy(alpha=noteAlpha*(if(item.info.isCurrentMonth)1f else .45f)),style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round))
+                    drawPath(messageOutline,(if(paintColor!=null)catalogInk(cellFill)else brand).copy(alpha=noteAlpha*(if(item.info.isCurrentMonth)1f else .45f)),style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round))
                     drawContext.canvas.restore()
+                }
+                if(restAlert){
+                    val warningInk=if(dark)Color(0xFFFFCA80)else Color(0xFF854900)
+                    // A centered, inset badge never intersects the selected cell outline.
+                    val warningCenter=Offset(center,y+cellHeight-dp(15f))
+                    drawRoundRect(if(dark)Color(0xFF553B18)else Color(0xFFFFE5B4),
+                        warningCenter-Offset(dp(9f),dp(7f)),Size(dp(18f),dp(14f)),CornerRadius(dp(4f)))
+                    label("!",warningCenter.x,warningCenter.y,11f,warningInk,true)
                 }
                 val faded=if(item.preview||!item.info.isCurrentMonth).45f else 1f
                 var cursor=y+dp(if(editing)28f else 31f);var shown=0
@@ -272,7 +286,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         cursor+=chipHeight+dp(if(editing)2f else 3f);shown++
                     }
                 }
-                if(item.original!=null&&cursor+dp(12f)<contentBottom-dp(1f)){label("ex ${item.original}",center,cursor+dp(6f),9f,muted,false,faded);cursor+=dp(13f)}
+                if(item.original!=null&&cursor+dp(12f)<contentBottom-dp(1f)){label("ex ${item.original}",center,cursor+dp(6f),9f,if(paintColor!=null)catalogInk(cellFill)else muted,false,faded);cursor+=dp(13f)}
                 if(item.shifts.size>shown)item.shifts.drop(shown).take(4).forEachIndexed{i,(_,def)->
                     drawCircle(def.color.copy(alpha=faded),dp(2f),Offset(center+(i-(item.shifts.size-shown-1)/2f)*dp(6f),minOf(cursor+dp(4f),contentBottom-dp(1f))))
                 }
@@ -284,8 +298,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date
-                    contentDescription=buildString{append(day.info.date.toString());day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");day.shifts.forEach{(_,def)->append(", ${def.name}, ${def.timeRangeFormatted}")};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
-                }.clickable{onPreview(day.info.date);onClick(day.info.date)})}
+                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");day.shifts.forEach{(_,def)->append(", ${def.name}, ${def.timeRangeFormatted}")};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
+                }.combinedClickable(onClick={onPreview(day.info.date);onClick(day.info.date)},onLongClick=onLongClick?.let{callback->{callback(day.info.date)}}))}
             }}
         }
     }

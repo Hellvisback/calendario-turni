@@ -90,7 +90,8 @@ object DatabaseRestore {
         val pref = root.optJSONObject("appPreferences")
         val preferences = if (pref == null) previous.preferences else AppPreferences(
             pref.optBoolean("showExShifts", true), pref.optBoolean("weekStartMonday", true),
-            pref.optBoolean("timeFormat24h", true), pref.optBoolean("showHolidays", true), pref.optBoolean("autoBackupDaily", true)
+            pref.optBoolean("timeFormat24h", true), pref.optBoolean("showHolidays", true), pref.optBoolean("autoBackupDaily", true),
+            pref.optBoolean("excludeVacationOnHolidays",false),pref.strings("holidayExcludedShiftIds").filter{ id->definitions.any{it.id==id} }.toSet()
         )
         val c = root.optJSONObject("reperibilitaConfig")
         val seasonal = c?.optJSONObject("seasonal")?.let { s -> SeasonalReperibilitaConfig(

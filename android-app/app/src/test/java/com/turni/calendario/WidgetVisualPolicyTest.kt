@@ -37,7 +37,18 @@ class WidgetVisualPolicyTest {
     @Test fun tinyHostPrioritizesTheDateAndLargerHostShowsTheWorkOnTheSameRow() {
         assertFalse(widgetHeaderLayout(160f,false).showWork)
         assertTrue(widgetHeaderLayout(320f,false).showWork)
-        assertTrue(widgetHeaderLayout(160f,true).showWork)
+        assertFalse(widgetHeaderLayout(160f,true).showWork)
+        assertTrue(widgetHeaderLayout(320f,true).showWork)
+    }
+
+    @Test fun compactDailyWidgetPrioritizesCompleteTimeAndNeverReservesAnUnusedTrailingLane() {
+        for(width in listOf(104f,120f,136f))for(font in listOf(1f,1.2f)){
+            val plan=com.turni.calendario.widget.widgetDailyShiftLayout(width,32f,font)
+            assertFalse(plan.showName)
+            assertTrue(plan.detailWidth>=40f)
+            assertEquals(width-9f,plan.detailX+plan.detailWidth,.01f)
+        }
+        assertTrue(com.turni.calendario.widget.widgetDailyShiftLayout(184f,50f,1.2f).showName)
     }
 
     @Test fun holidayNameIsAnnouncedAlongsideOnCallAndTodaysState() {

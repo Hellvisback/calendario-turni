@@ -24,21 +24,12 @@ open class GeminiApiClient(
 ) {
 
     companion object : GeminiApiClient() {
-        const val DEFAULT_MODEL = "gemini-1.5-flash"
+        const val DEFAULT_MODEL = "gemini-3.8-flash"
         const val BASE_URL = "https://generativelanguage.googleapis.com/v1beta/models"
         const val DEFAULT_CONNECT_TIMEOUT_MS = 30_000
-        const val DEFAULT_READ_TIMEOUT_MS = 60_000
+        const val DEFAULT_READ_TIMEOUT_MS = 120_000
 
-        const val DEFAULT_PROMPT =
-            "Sei un assistente esperto nell'analisi di prospetti turni ferroviari, ospedalieri e industriali " +
-            "(come il MOD. P.R. o prospetti tabellari di servizio). " +
-            "Analizza con la massima precisione l'immagine o documento allegato ed estrai in formato JSON strutturato: " +
-            "1. Tutte le definizioni di turno rilevate con codice breve (code es. M, P, N, MD, SMO, RIP), " +
-            "nome descrittivo (name), orario di inizio (startTime HH:mm) e orario di fine (endTime HH:mm), " +
-            "eventuale colore hex (colorHex) e flag reperibilità (isReperibilita true se il turno è reperibile). " +
-            "2. Tutte le squadre rilevate (squadName es. Squadra A, Squadra B) con la sequenza ciclica ordinata " +
-            "dei codici turno (rotationDays) e l'elenco dei nominativi dei lavoratori associati (employees). " +
-            "3. Date di validità inizio/fine se visibili (validityStart, validityEnd YYYY-MM-DD) ed eventuali note."
+        val DEFAULT_PROMPT: String get() = AiRosterImport.prompt(null)
     }
 
     /**
@@ -82,7 +73,7 @@ open class GeminiApiClient(
             throw IllegalArgumentException("I dati dell'immagine sono vuoti o non validi.")
         }
 
-        val requestUrl = "$BASE_URL/$model:generateContent?key=$cleanKey"
+        val requestUrl = "$BASE_URL/$model:generateContent"
         val url = URL(requestUrl)
         val connection = (url.openConnection() as HttpsURLConnection).apply {
             requestMethod = "POST"
@@ -92,6 +83,7 @@ open class GeminiApiClient(
             doInput = true
             setRequestProperty("Content-Type", "application/json; charset=UTF-8")
             setRequestProperty("Accept", "application/json")
+            setRequestProperty("x-goog-api-key", cleanKey)
         }
 
         try {
@@ -285,7 +277,8 @@ open class GeminiApiClient(
         val generationConfig = JSONObject().apply {
             put("temperature", 0.1)
             put("response_mime_type", "application/json")
-            put("response_schema", responseSchema)
+            put("response_schema", AiRosterImport.responseSchema())
+            put("maxOutputTokens", 32768)
         }
 
         val root = JSONObject().apply {
@@ -345,7 +338,8 @@ open class GeminiApiClient(
             if (parts.length() == 0) {
                 throw IllegalStateException("Risposta Gemini non valida: array 'parts' vuoto.")
             }
-            val innerText = parts.getJSONObject(0).getString("text")
+            if(finishReason=="MAX_TOKENS")throw IllegalStateException("Risposta AI incompleta. Prova un prospetto più breve.")
+            val innerText = (0 until parts.length()).map{parts.getJSONObject(it)}.filter{!it.optBoolean("thought",false)}.mapNotNull{it.optString("text").takeIf{value->value.isNotBlank()}}.joinToString("")
             val parsedInner = parseGeminiResponse(innerText)
             return parsedInner.copy(rawJson = jsonString)
         }

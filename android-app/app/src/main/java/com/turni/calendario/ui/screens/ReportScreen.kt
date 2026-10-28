@@ -85,11 +85,11 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
     val extrasSnapshot = ShiftRepository.dayExtraInfo.toMap()
     val definitions = ShiftRepository.shiftDefinitions.toList()
     val rules=ShiftRepository.statisticsRules.toList()
-    val assignments = remember(start, end, calendarSnapshot, definitions, rules) {
+    val assignments = remember(start, end, calendarSnapshot, definitions, rules, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds) {
         val byId=definitions.associateBy { it.id }
-        calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten().map { com.turni.calendario.model.statisticsAssignment(it,byId,rules) }
+        calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten().mapNotNull { ShiftRepository.statisticsEntry(it,byId,rules) }
     }
-    val computedStats by produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null,start, end, rules, calendarSnapshot, extrasSnapshot, definitions,
+    val computedStats by produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null,start, end, rules, calendarSnapshot, extrasSnapshot, definitions, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds,
         ShiftRepository.reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationId) {
         val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
         try {

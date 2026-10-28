@@ -114,4 +114,31 @@ class SuperShiftCalendarAdapterTest {
         } finally {DatabaseRestore.apply(base)}
     }
 
+    @Test fun multipleShiftsOnTheSameDayRemainDistinctThroughBackupAndReimport() {
+        // Isolate this interchange test from legacy day-level extras seeded by other tests.
+        val base=DatabaseSnapshot.capture().copy(shifts=emptyMap(),extras=emptyMap())
+        val events=listOf(
+            ImportShiftEvent("qa-first",date,"Qualsiasi nome","06:00","14:00","Nota è\\nSeconda riga",0xFF91BEE9),
+            ImportShiftEvent("qa-second",date,"Qualsiasi nome","22:00","06:00","Secondo turno",0xFF91BEE9),
+            ImportShiftEvent("qa-day",date.plusDays(1),"Assenza personalizzata",null,null,"Nota giornaliera")
+        )
+        val plan=SuperShiftCalendarAdapter.plan(events,base)
+        val categories=plan.definitions.associate { it.id to if(it.isAllDay)ShiftCategory.ASSENZA else ShiftCategory.LAVORO }
+        val merged=SuperShiftCalendarAdapter.merge(plan,categories,base).snapshot
+        val restored=DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(merged),base)
+        assertEquals(merged,restored)
+        assertEquals(2,restored.shifts.getValue(date).count { it.id in plan.assignments.map { item->item.id } })
+        val models=restored.definitions.associateBy { it.id }
+        val times=restored.shifts.getValue(date).filter { it.id in plan.assignments.map { item->item.id } }.map {
+            (it.customStartTime?:models.getValue(it.shiftDefId).startTime) to
+                (it.customEndTime?:models.getValue(it.shiftDefId).endTime)
+        }.toSet()
+        assertEquals(setOf("06:00" to "14:00","22:00" to "06:00"),times)
+        assertTrue(restored.shifts.values.flatten().any { it.notes==events.first().notes })
+        assertEquals(3,SuperShiftCalendarAdapter.plan(events,restored).duplicateCount)
+        assertEquals(base.rotations,restored.rotations)
+        assertEquals(base.statisticsRules,restored.statisticsRules)
+        assertEquals(base.extras,restored.extras)
+    }
+
 }

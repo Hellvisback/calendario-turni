@@ -158,7 +158,7 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit,heightFract
             enter = slideInVertically(spring(dampingRatio = .88f, stiffness = Spring.StiffnessLow)) { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()) {
             Surface(Modifier.fillMaxWidth().fillMaxHeight(heightFraction), shape = RoundedCornerShape(topStart = if(fullPage)0.dp else 24.dp, topEnd = if(fullPage)0.dp else 24.dp), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.navigationBarsPadding().imePadding()) {
+                Column(Modifier.then(if(heightFraction>.9f)Modifier.statusBarsPadding()else Modifier).navigationBarsPadding().imePadding()) {
                     Row(Modifier.fillMaxWidth().background(if(heightFraction>.9f)MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background).padding(horizontal=14.dp,vertical=14.dp), verticalAlignment = Alignment.CenterVertically) {
                         if(fullPage || heightFraction>.9f)CatalogIconAction("arrow-left","Indietro",{finish(onDismiss)},Modifier.size(40.dp))
                         else SiteIcon("pencil",null,Modifier.size(28.dp),MaterialTheme.colorScheme.onSurfaceVariant,headerProgress.value)
@@ -293,7 +293,7 @@ fun CustomColorPickerDialog(initialColorHex: Long, onDismiss: () -> Unit, onColo
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (ShiftDefinition) -> Unit, onDelete: (String) -> Unit) {
+fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (ShiftDefinition) -> Unit, onDelete: (String) -> Unit, allowWorkSelection:Boolean=true) {
     var name by remember(shift.id) { mutableStateOf(shift.name) }
     var code by remember(shift.id) { mutableStateOf(shift.shortCode.take(4)) }
     var start by remember(shift.id) { mutableStateOf(shift.startTime) }
@@ -323,7 +323,7 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                     CatalogField("Nome del turno",name,{name=it.take(60)},Modifier.weight(2f))
                     CatalogField("Sigla",code,{code=it.uppercase().filter{ch->ch in 'A'..'Z'||ch in '0'..'9'}.take(4)},Modifier.weight(1f),error=!validCode)
                 }
-                if (ShiftRepository.workProfiles.size > 1) Box {
+                if (allowWorkSelection&&ShiftRepository.workProfiles.size > 1) Box {
                     OutlinedButton(onClick = { workMenu = !workMenu }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
                         Icon(getWorkProfileIcon(ShiftRepository.workProfiles.firstOrNull { it.id == workId }?.iconKey ?: "work"), null, Modifier.size(18.dp))
                         Text(ShiftRepository.workProfiles.firstOrNull { it.id == workId }?.name ?: "Seleziona lavoro", Modifier.weight(1f).padding(horizontal = 10.dp), textAlign = TextAlign.Start, fontSize = 13.sp)
@@ -427,10 +427,10 @@ private fun CatalogDeleteDialog(title: String, dismiss: () -> Unit, confirm: () 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, onSave: (ShiftRotation) -> Unit, onApply: (ShiftRotation) -> Unit, onDelete: ((String) -> Unit)? = null) {
+fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, onSave: (ShiftRotation) -> Unit, onApply: (ShiftRotation) -> Unit, onDelete: ((String) -> Unit)? = null, availableDefinitions:List<ShiftDefinition> = ShiftRepository.shiftDefinitions.toList(), allowDefault:Boolean=true) {
     var title by remember(rotation.id) { mutableStateOf(rotation.name) }
     val sequence = remember(rotation.id) { mutableStateListOf<String>().apply { addAll(rotation.daySequence.ifEmpty { listOf("") }) } }
-    var brush by remember { mutableStateOf(ShiftRepository.shiftDefinitions.firstOrNull()?.id ?: "") }
+    var brush by remember { mutableStateOf(availableDefinitions.firstOrNull()?.id ?: "") }
     var favorite by remember(rotation.id) { mutableStateOf(ShiftRepository.defaultRotationId == rotation.id) }
     val starMotion = remember { Animatable(0f) }
     val starScope = rememberCoroutineScope()
@@ -456,7 +456,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
             CatalogStep(1,"Scegli il turno")
             Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(vertical=4.dp),horizontalArrangement=Arrangement.spacedBy(7.dp)) {
                 CatalogPaintChip("","",MaterialTheme.colorScheme.surfaceVariant,brush.isEmpty()){brush=""}
-                ShiftRepository.shiftDefinitions.forEach { def->CatalogPaintChip(def.shortCode,def.name,def.color,brush==def.id){brush=def.id} }
+                availableDefinitions.forEach { def->CatalogPaintChip(def.shortCode,def.name,def.color,brush==def.id){brush=def.id} }
             }
             CatalogStep(2,"Tocca i giorni da compilare")
             Surface(shape=RoundedCornerShape(15.dp),color=MaterialTheme.colorScheme.surface) {
@@ -469,7 +469,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
                         Text("S${week+1}",Modifier.width(19.dp),fontSize=9.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                         for(day in 0..6) {
                             val index=week*7+day
-                            val def=sequence.getOrNull(index)?.let{ShiftRepository.getShiftDefinition(it)}
+                            val def=sequence.getOrNull(index)?.let{availableDefinitions.firstOrNull{definition->definition.id==it}}
                             if(index>=sequence.size)Spacer(Modifier.weight(1f).height(38.dp))
                             else {
                                 val fill by animateColorAsState(def?.color?:MaterialTheme.colorScheme.surfaceVariant,spring(1f,420f))
@@ -483,7 +483,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {
+            if(allowDefault)Row(Modifier.fillMaxWidth().heightIn(min=48.dp).clickable {
                 favorite=!favorite
                 starScope.launch{starMotion.snapTo(0f);starMotion.animateTo(1f,tween(720));starMotion.snapTo(0f)}
             },verticalAlignment=Alignment.CenterVertically) {
@@ -497,7 +497,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
         Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(14.dp)) {
             CatalogButton("Salva",{
                 val saved = rotation.copy(name = title.trim(), totalDays = sequence.size, daySequence = sequence.toList())
-                finish { onSave(saved); if (favorite) ShiftRepository.setDefaultRotation(saved.id) else if (ShiftRepository.defaultRotationId == saved.id) ShiftRepository.setDefaultRotation("") }
+                finish { onSave(saved); if(allowDefault){if (favorite) ShiftRepository.setDefaultRotation(saved.id) else if (ShiftRepository.defaultRotationId == saved.id) ShiftRepository.setDefaultRotation("")} }
             },Modifier.weight(1f),primary=true,enabled=title.isNotBlank()&&sequence.any{it.isNotEmpty()},icon="check")
         }
         if (deleteConfirm && onDelete != null) CatalogDeleteDialog("Eliminare la rotazione?", { deleteConfirm = false }) { deleteConfirm = false; finish { onDelete(rotation.id) } }
@@ -508,7 +508,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
 private fun CatalogPaintChip(code: String, name: String, color: Color, selected: Boolean, action: () -> Unit) {
     val font=remember{Animatable(12f)};val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
     Column(Modifier.width(if(code.isEmpty())42.dp else 76.dp).height(66.dp).clip(RoundedCornerShape(12.dp))
-        .background(MaterialTheme.colorScheme.surfaceVariant).border(2.dp,if(selected)color else Color.Transparent,RoundedCornerShape(12.dp))
+        .background(if(code.isEmpty()&&selected)MaterialTheme.colorScheme.primary.copy(alpha=.18f)else MaterialTheme.colorScheme.surfaceVariant).border(2.dp,if(selected){if(code.isEmpty())MaterialTheme.colorScheme.primary else color}else Color.Transparent,RoundedCornerShape(12.dp))
         .clickable {
             scope.launch{font.snapTo(13.5f);font.animateTo(12f,spring(.8f,300f))}
             scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(720));phase.snapTo(0f)}

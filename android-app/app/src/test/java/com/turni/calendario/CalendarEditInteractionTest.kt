@@ -7,6 +7,8 @@ import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.DatabaseRestore
 import com.turni.calendario.ui.screens.calendarNeedsSelectiveEraser
 import com.turni.calendario.ui.screens.calendarPeriodContains
+import com.turni.calendario.ui.screens.calendarPaintDates
+import com.turni.calendario.ui.screens.CalendarPaintRequest
 import com.turni.calendario.ui.screens.rotationCycleNumber
 import org.junit.Assert.*
 import org.junit.Test
@@ -61,5 +63,27 @@ class CalendarEditInteractionTest {
             assertEquals(definition.id,ShiftRepository.getShiftsForDate(start).single().shiftDefId)
             assertTrue(ShiftRepository.isOnCall(start))
         }finally{DatabaseRestore.apply(original)}
+    }
+
+    @Test fun rangePaintIncludesEveryInteriorDayAcrossMonthInBothDirections() {
+        val end=start.plusDays(6)
+        val visible=List(42){start.minusDays(8).plusDays(it.toLong())}
+        val expected=(0L..6L).map{start.plusDays(it)}.toSet()
+        assertEquals(expected,calendarPaintDates(CalendarPaintRequest(start,"test",1,end),visible))
+        assertEquals(expected,calendarPaintDates(CalendarPaintRequest(end,"test",2,start),visible))
+        assertEquals(expected.take(2).toSet(),calendarPaintDates(CalendarPaintRequest(start,"test",3,end),expected.take(2)))
+        assertTrue(calendarPaintDates(CalendarPaintRequest(start,"test",4,end),listOf(start.minusDays(1))).isEmpty())
+    }
+    @Test fun appliedRangeUpdatesAllDaysAndOneUndoRestoresTheWholeOperation() {
+        val original=DatabaseSnapshot.capture()
+        try {
+            ShiftRepository.calendarShifts.clear()
+            ShiftRepository.dayExtraInfo.clear()
+            val model=ShiftRepository.shiftDefinitions.first{it.workProfileId==ShiftRepository.activeWorkProfileId}
+            ShiftRepository.applyShiftRange(model.id,start.plusDays(6),start)
+            for(offset in 0L..6L)assertEquals(model.id,ShiftRepository.getShiftsForDate(start.plusDays(offset)).single().shiftDefId)
+            assertTrue(ShiftRepository.undo())
+            assertTrue(ShiftRepository.calendarShifts.isEmpty())
+        } finally {DatabaseRestore.apply(original)}
     }
 }

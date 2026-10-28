@@ -2,6 +2,8 @@ package com.turni.calendario.widget
 
 import android.appwidget.AppWidgetManager
 import android.content.Context
+import android.os.Build
+import android.util.SizeF
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
@@ -32,16 +34,21 @@ internal object TurniWidgetRenderer {
     private val shortMonthFormat = DateTimeFormatter.ofPattern("d MMM", Locale.ITALIAN)
 
     fun update(context: Context, manager: AppWidgetManager, kind: WidgetKind, id: Int) {
-        val dark = com.turni.calendario.ui.theme.TurniThemeState.isDark(context)
-        val palette = Palette(dark)
-        val options = manager.getAppWidgetOptions(id)
-        val portrait = context.resources.configuration.orientation != Configuration.ORIENTATION_LANDSCAPE
-        val width = options.getInt(if (portrait) AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,
-            kind.defaultWidth).takeIf { it > 0 }?.coerceIn(120, 700) ?: kind.defaultWidth
-        val height = options.getInt(if (portrait) AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,
-            kind.defaultHeight).takeIf { it > 0 }?.coerceIn(68, 800) ?: kind.defaultHeight
-        val today = LocalDate.now()
-        val offset = WidgetUpdateManager.getWidgetOffset(context, id)
+        val options=manager.getAppWidgetOptions(id)
+        val portrait=context.resources.configuration.orientation!=Configuration.ORIENTATION_LANDSCAPE
+        val width=options.getInt(if(portrait)AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,kind.defaultWidth).takeIf{it>0}?:kind.defaultWidth
+        val height=options.getInt(if(portrait)AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,kind.defaultHeight).takeIf{it>0}?:kind.defaultHeight
+        val dark=com.turni.calendario.ui.theme.TurniThemeState.isDark(context)
+        val content=collectContent(kind,LocalDate.now(),WidgetUpdateManager.getWidgetOffset(context,id))
+        val sizes=if(Build.VERSION.SDK_INT>=31) options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
+            ?.filter{it.width.isFinite()&&it.height.isFinite()&&it.width in 80f..1000f&&it.height in 40f..1000f}?.distinct()?.take(4).orEmpty() else emptyList()
+        val views=if(Build.VERSION.SDK_INT>=31&&sizes.isNotEmpty()) {
+            RemoteViews(sizes.associateWith{size->createViews(context,kind,id,size.width.toInt(),size.height.toInt(),content,dark,1_500_000f/sizes.size)})
+        }else createViews(context,kind,id,width.coerceIn(80,1000),height.coerceIn(40,1000),content,dark)
+        manager.updateAppWidget(id,views)
+    }
+
+    private fun collectContent(kind:WidgetKind,today:LocalDate,offset:Int):WidgetPresentation {
         val month = YearMonth.from(today).plusMonths(offset.toLong())
         val start: LocalDate
         val rowCount: Int
@@ -57,22 +64,38 @@ internal object TurniWidgetRenderer {
                 columns = 7
             }
         }
-        val views = RemoteViews(context.packageName, kind.layout)
-        views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.bg_widget_turnisync_dark else R.drawable.bg_widget_turnisync_light)
-        val header = widgetHeaderLayout(width.toFloat(), kind == WidgetKind.TODAY)
         val title = when (kind) {
             WidgetKind.TODAY -> "Oggi e domani"
             WidgetKind.MONTH -> month.format(monthFormat).replaceFirstChar { it.uppercase() }
             else -> "${start.format(shortMonthFormat)} – ${start.plusDays((rowCount * 7 - 1).toLong()).format(shortMonthFormat)}"
         }
+        return WidgetPresentation(title,ShiftRepository.activeWorkProfile.name,rowCount,columns,month,
+            (0 until rowCount*columns).map{WidgetUpdateManager.getDaySummary(start.plusDays(it.toLong()),today)},LocalDatabaseStore.loadError!=null)
+    }
+
+    internal fun createViews(context:Context,kind:WidgetKind,id:Int,width:Int,height:Int,content:WidgetPresentation,dark:Boolean,pixelBudget:Float=1_500_000f):RemoteViews {
+        val palette=Palette(dark)
+        val views = RemoteViews(context.packageName, kind.layout)
+        views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.bg_widget_turnisync_dark else R.drawable.bg_widget_turnisync_light)
+        val header = widgetHeaderLayout(width.toFloat(), kind == WidgetKind.TODAY)
+        val title = content.title
         views.setTextViewText(R.id.widget_title, title)
         views.setTextColor(R.id.widget_title, palette.text)
-        views.setTextViewText(R.id.widget_profile, LocalDatabaseStore.loadError?.let { "Dati da ripristinare · Apri TurniSync" }
-            ?: ShiftRepository.activeWorkProfile.name)
+        if(kind==WidgetKind.TODAY){
+            val metrics=context.resources.displayMetrics
+            val titlePaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize=13f*metrics.scaledDensity
+                typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
+            }
+            val available=header.titleMaxWidthDp*metrics.density
+            val fittedSp=13f*min(1f,available/titlePaint.measureText(title).coerceAtLeast(1f))
+            views.setTextViewTextSize(R.id.widget_title,android.util.TypedValue.COMPLEX_UNIT_SP,fittedSp)
+        }
+        views.setTextViewText(R.id.widget_profile, if(content.invalidData) "Dati da ripristinare · Apri TurniSync" else content.workName)
         views.setTextColor(R.id.widget_profile, palette.muted)
         views.setViewVisibility(R.id.widget_profile, if (header.showWork) View.VISIBLE else View.GONE)
         views.setInt(R.id.widget_title, "setMaxWidth", (header.titleMaxWidthDp * context.resources.displayMetrics.density).toInt())
-        views.setContentDescription(R.id.widget_profile, ShiftRepository.activeWorkProfile.name)
+        views.setContentDescription(R.id.widget_profile, content.workName)
         views.setContentDescription(R.id.widget_title, title)
         views.setInt(R.id.widget_previous, "setColorFilter", palette.brand)
         views.setInt(R.id.widget_next, "setColorFilter", palette.brand)
@@ -81,15 +104,17 @@ internal object TurniWidgetRenderer {
         views.setOnClickPendingIntent(R.id.widget_previous, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_PREV, kind.provider))
         views.setOnClickPendingIntent(R.id.widget_next, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_NEXT, kind.provider))
         views.setOnClickPendingIntent(R.id.widget_title, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_RESET, kind.provider))
-        views.setOnClickPendingIntent(R.id.widget_profile, WidgetUpdateManager.createDayPendingIntent(context, today, id * 100 + 99))
+        views.setOnClickPendingIntent(R.id.widget_profile, WidgetUpdateManager.createDayPendingIntent(context, content.days.first().date, id * 100 + 99))
         views.removeAllViews(R.id.widget_rows)
         val navigationHeight=if(kind==WidgetKind.PANORAMA)28f else 22f
         val headerHeight = navigationHeight+if(kind == WidgetKind.TODAY)0f else 10f
-        val cellWidth = (width - 16f) / columns
+        val cellWidth = (width - 16f) / content.columns
+        val rowCount=content.rows
+        val columns=content.columns
         val cellHeight = widgetDayCellHeight(height.toFloat(),rowCount,kind == WidgetKind.TODAY,navigationHeight)
         // Render at native density on normal hosts; cap the whole bitmap payload for oversized widgets.
         val area = ((width - 16f) * (height - 8f - headerHeight)).coerceAtLeast(1f)
-        val density = min(context.resources.displayMetrics.density, sqrt(1_500_000f / area)).coerceAtLeast(1f)
+        val density = min(context.resources.displayMetrics.density, sqrt(pixelBudget / area)).coerceAtLeast(.75f)
         val fontScale = context.resources.configuration.fontScale.coerceIn(1f, 1.2f)
         views.setViewVisibility(R.id.widget_weekdays, if(kind==WidgetKind.TODAY)View.GONE else View.VISIBLE)
         if(kind!=WidgetKind.TODAY){
@@ -103,20 +128,20 @@ internal object TurniWidgetRenderer {
             val row = RemoteViews(context.packageName, R.layout.widget_turnisync_row)
             for (column in 0 until columns) {
                 val index = rowIndex * columns + column
-                val day = start.plusDays(index.toLong())
-                val summary = WidgetUpdateManager.getDaySummary(day, today)
+                val summary = content.days[index]
+                val day = summary.date
                 val cell = RemoteViews(context.packageName, R.layout.widget_turnisync_cell)
                 cell.setImageViewBitmap(R.id.widget_day,
                     renderDay(summary, cellWidth, cellHeight, density, fontScale, palette,
-                        kind == WidgetKind.TODAY, kind == WidgetKind.MONTH && YearMonth.from(day) != month,
-                        LocalDatabaseStore.loadError != null, showWeekday = false))
+                        kind == WidgetKind.TODAY, kind == WidgetKind.MONTH && YearMonth.from(day) != content.month,
+                        content.invalidData, showWeekday = false, compactWeek = kind==WidgetKind.WEEK))
                 cell.setContentDescription(R.id.widget_day, summary.accessibilityLabel)
                 cell.setOnClickPendingIntent(R.id.widget_day, WidgetUpdateManager.createDayPendingIntent(context, day, id * 100 + index))
                 row.addView(R.id.widget_row, cell)
             }
             views.addView(R.id.widget_rows, row)
         }
-        manager.updateAppWidget(id, views)
+        return views
     }
 
     private data class Palette(val dark: Boolean) {
@@ -131,7 +156,7 @@ internal object TurniWidgetRenderer {
     }
 
     private fun renderDay(summary: DayShiftSummary, width: Float, height: Float, density: Float,
-        fontScale: Float, palette: Palette, wide: Boolean, faded: Boolean, invalidData: Boolean, showWeekday: Boolean): Bitmap {
+        fontScale: Float, palette: Palette, wide: Boolean, faded: Boolean, invalidData: Boolean, showWeekday: Boolean, compactWeek:Boolean): Bitmap {
         val bitmap = Bitmap.createBitmap(ceil(width * density).toInt().coerceAtLeast(1),
             ceil(height * density).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -200,6 +225,20 @@ internal object TurniWidgetRenderer {
         }
         // Weekend tint is independent from the text fading of adjacent months.
         if (!wide) rect(1f, 1f, width - 1f, height - 1f, 8f, background)
+        if(compactWeek && height<34f) {
+            val dateHeight=(height-18f).coerceIn(8f,13f)
+            dayNumber(width/2f,10.5f,width-12f,RectF(width/2f-10f,0f,width/2f+10f,dateHeight))
+            if(summary.isOnCall)drawBell(canvas,paint,width-5f,dateHeight/2f,7f,palette.onCall)
+            val shift=summary.shifts.firstOrNull()
+            if(shift!=null&&!invalidData){
+                val tint=mix(shift.definition.colorHex.toInt(),background,if(palette.dark).62f else .26f)
+                rect(3f,dateHeight,width-3f,height-1f,3f,if(faded)mix(tint,background,.5f)else tint)
+                val middle=(dateHeight+height-1f)/2f
+                text(shift.definition.shortCode.take(4),width/2f,middle-1f,9f,contrastInk(tint),true,width-7f)
+                text(shift.startTime,width/2f,height-2f,9f,contrastInk(tint),true,width-7f)
+            }
+            return bitmap
+        }
         if (!wide && height < 27f) {
             // At legacy two-row host heights, use one horizontal line rather than tiny stacked labels.
             val baseline = height / 2f + 4f
@@ -242,20 +281,20 @@ internal object TurniWidgetRenderer {
             }
             return bitmap
         }
-        val headerHeight = if(wide)widgetDateHeaderHeight(true) else if(height<48f)20f else 21f
+        val headerHeight = if(wide)minOf(widgetDateHeaderHeight(true),(height*.38f).coerceAtLeast(18f)) else if(height<48f)20f else 21f
         if (wide) {
             val label = if (summary.isToday) "Oggi" else "Domani"
-            val numberX=if(summary.isToday)53f else 78f
-            text(label,9f,19f,12f,if(summary.isToday)palette.brand else palette.muted,maxWidth=numberX-15f)
-            dayNumber(numberX+6f,14.5f,24f,RectF(numberX-6f,2f,numberX+18f,23f))
+            val numberX=minOf(if(summary.isToday)59f else 84f,width-if(summary.isOnCall)30f else 14f)
+            text(label,9f,headerHeight/2f+4f,12f,if(summary.isToday)palette.brand else palette.muted,maxWidth=numberX-21f)
+            dayNumber(numberX,14.5f,24f,RectF(numberX-12f,2f,numberX+12f,headerHeight-3f))
         } else {
             // The weekday and today's number never share a fixed-width highlight.
             val numberX = width / 2f
             val numberSize = if(height<48f)12.5f else 13.5f
             dayNumber(numberX,numberSize,width-12f,RectF(numberX-13f,1f,numberX+13f,headerHeight-1f))
         }
-        if (summary.isOnCall) drawBell(canvas, paint, width - (if (wide) 17f else 6f),
-            if (wide) 14f else headerHeight/2f, if (wide) 12f else 8f, if (faded) mix(palette.onCall, background, .4f) else palette.onCall)
+        if (summary.isOnCall) drawBell(canvas, paint, width - (if (wide) 10f else 6f),
+            headerHeight/2f, if (wide) 12f else 8f, if (faded) mix(palette.onCall, background, .4f) else palette.onCall)
         if (invalidData) { text("—", width / 2f, height / 2f + 9f, 12f, palette.muted, true); return bitmap }
         if (summary.shifts.isEmpty()) {
             if (wide) text("Nessun turno", 9f, headerHeight + 19f, 12f, palette.muted, maxWidth = width - 18f)
@@ -272,13 +311,20 @@ internal object TurniWidgetRenderer {
                 val ink = contrastInk(chipColor)
                 rect(5f, y, width - 5f, y + slotHeight, 9f, chipColor)
                 val code = shift.definition.shortCode.take(4)
+                val plan=widgetDailyShiftLayout(width,slotHeight,fontScale)
                 val codeHeight=min(32f,slotHeight-6f)
                 val badge=shift.definition.colorHex.toInt()
-                rect(9f,y+3f,47f,y+3f+codeHeight,7f,badge)
-                text(code,28f,y+3f+codeHeight/2f+4f,12f,contrastInk(badge),true,34f)
-                val detailX=55f
-                text(shift.definition.name,detailX,y+slotHeight/2f-3f,11f,ink,maxWidth=width-detailX-10f)
-                text(shift.startTime,detailX,y+slotHeight/2f+12f,12.5f,ink,maxWidth=width-detailX-40f)
+                rect(9f,y+3f,9f+plan.badgeWidth,y+3f+codeHeight,7f,badge)
+                text(code,9f+plan.badgeWidth/2f,y+3f+codeHeight/2f+4f,12f,contrastInk(badge),true,plan.badgeWidth-4f)
+                val detailX=plan.detailX
+                val timeWidth=plan.detailWidth
+                if(!plan.showName) {
+                    // Code already identifies the shift. Prioritize the full start time in compact hosts.
+                    text(shift.startTime,detailX,y+slotHeight/2f+4f,12.5f,ink,maxWidth=timeWidth)
+                }else{
+                    text(shift.definition.name,detailX,y+slotHeight/2f-3f,11f,ink,maxWidth=timeWidth)
+                    text(shift.startTime,detailX,y+slotHeight/2f+12f,12.5f,ink,maxWidth=timeWidth)
+                }
 
 
             }

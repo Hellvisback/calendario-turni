@@ -116,7 +116,7 @@ class GeminiNetworkAndSecurityTest {
         // Part 0: text prompt
         val textPart = parts.getJSONObject(0)
         assertTrue(textPart.has("text"))
-        assertTrue(textPart.getString("text").contains("ferroviari"))
+        assertTrue(textPart.getString("text").contains("un lavoro qualsiasi"))
 
         // Part 1: inline_data image
         val imagePart = parts.getJSONObject(1)

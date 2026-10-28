@@ -29,6 +29,11 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
+import androidx.compose.ui.text.input.ImeAction
+import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.text.font.FontWeight
@@ -64,7 +69,8 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
     val ringing by ShiftAlarmService.ringing.collectAsState()
     val exact = remember(refresh) { ShiftAlarmScheduler.canScheduleExactAlarms(context) }
     val notifications = remember(refresh) { ShiftAlarmScheduler.hasNotificationPermission(context) }
-    val scheduled = remember(config, refresh) { ShiftAlarmScheduler.scheduleNextAlarm(context) }
+    // Rendering reads the plan; only explicit actions/storage register alarms with Android.
+    val scheduled = remember(config, refresh) { if(config.isGlobalEnabled && exact && notifications) ShiftAlarmScheduler.getNextUpcomingAlarm(context) else null }
     val alarms = remember(config, refresh) { ShiftAlarmScheduler.getAllUpcomingAlarms(context, 30) }
     val definitions = ShiftRepository.shiftDefinitions.filter { (!it.isAllDay && it.category == ShiftCategory.LAVORO) || config.rules.any { rule -> rule.shiftDefId == it.id } }
     val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
@@ -99,9 +105,10 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
         refresh++
         return true
     }
-    fun updateRule(rule: ShiftAlarmRule) {
-        ShiftRepository.smartAlarmsConfig = config.copy(rules = config.rules.filterNot { it.shiftDefId == rule.shiftDefId } + rule)
-        if (rule.isEnabled && config.isGlobalEnabled) permissionsReady()
+    fun updateRule(id: String, update: (ShiftAlarmRule) -> ShiftAlarmRule) {
+        ShiftRepository.updateSmartAlarmRule(id, update)
+        val latest = ShiftRepository.smartAlarmsConfig
+        if (latest.rules.any { it.shiftDefId == id && it.isEnabled } && latest.isGlobalEnabled) permissionsReady()
         ShiftAlarmScheduler.scheduleNextAlarm(context)
         refresh++
     }
@@ -139,7 +146,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) { Text("Sveglie automatiche", fontWeight = FontWeight.SemiBold, fontSize = 15.sp); Text(if (config.isGlobalEnabled) "$activeRules regole attive" else "In pausa · regole conservate", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Switch(config.isGlobalEnabled, {
-                            ShiftRepository.smartAlarmsConfig = config.copy(isGlobalEnabled = it)
+                            ShiftRepository.smartAlarmsConfig = ShiftRepository.smartAlarmsConfig.copy(isGlobalEnabled = it)
                             if (it) permissionsReady() else ShiftAlarmScheduler.cancelScheduledAlarm(context)
                             scope.launch { bellMotion.snapTo(0f); bellMotion.animateTo(1f, tween(620)); bellMotion.snapTo(0f) }
                             refresh++
@@ -196,11 +203,11 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                 }
                 items(definitions, key = { it.id }) { definition ->
                     val rule = config.rules.firstOrNull { it.shiftDefId == definition.id } ?: ShiftAlarmRule(definition.id, isEnabled = false)
-                    NativeAlarmRule(definition.name, Color(definition.colorHex), rule, false, ::updateRule)
+                    NativeAlarmRule(definition.name, Color(definition.colorHex), rule, false, { updateRule(definition.id, it) }, { report("Orario impostato · $it", PopupType.SUCCESS) })
                 }
-                item {
+                item(key = "on-call-rule") {
                     val rule = config.rules.firstOrNull { it.shiftDefId == "reperibilita" } ?: ShiftAlarmRule("reperibilita", isEnabled = false, customTime = "20:00")
-                    NativeAlarmRule("Reperibilità", MaterialTheme.colorScheme.tertiary, rule, true, ::updateRule)
+                    NativeAlarmRule("Reperibilità", MaterialTheme.colorScheme.tertiary, rule, true, { updateRule("reperibilita", it) }, { report("Orario impostato · $it", PopupType.SUCCESS) })
                 }
             } else {
                 item { Text("Prossimi 30 giorni", Modifier.padding(vertical = 4.dp), fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
@@ -292,20 +299,31 @@ private fun AlarmPermissionRow(label: String, allowed: Boolean, onClick: () -> U
 }
 
 @Composable
-private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, onCall: Boolean, onChange: (ShiftAlarmRule) -> Unit) {
-    var customText by remember(rule.customTime) { mutableStateOf(rule.customTime ?: if (onCall) "20:00" else "05:00") }
-    var expanded by remember { mutableStateOf(false) }
+private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, onCall: Boolean, onChange: ((ShiftAlarmRule) -> ShiftAlarmRule) -> Unit, onTimeSaved: (String) -> Unit) {
+    val focus = LocalFocusManager.current
+    var customText by remember(rule.shiftDefId, rule.customTime) { mutableStateOf(rule.customTime ?: if (onCall) "20:00" else "05:00") }
+    var expanded by remember(rule.shiftDefId) { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
     val iconMotion = remember { Animatable(0f) }
     fun animateIcon() { scope.launch { iconMotion.snapTo(0f); iconMotion.animateTo(1f, tween(580)); iconMotion.snapTo(0f) } }
     val validTime = remember(customText) { runCatching { LocalTime.parse(customText) }.getOrNull() != null }
+    fun saveTime() {
+        val parsed = runCatching { LocalTime.parse(customText.trim()) }.getOrNull() ?: return
+        val normalized = parsed.format(DateTimeFormatter.ofPattern("HH:mm"))
+        onChange { it.copy(customTime = normalized) }
+        customText = normalized
+        focus.clearFocus()
+        expanded = false
+        animateIcon()
+        onTimeSaved(normalized)
+    }
     AlarmSettingsCard {
         Row(Modifier.fillMaxWidth().bouncyClickable { expanded = !expanded; animateIcon() }, verticalAlignment = Alignment.CenterVertically) {
             Surface(color = color.copy(alpha = .2f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(38.dp)) {
                 Box(contentAlignment = Alignment.Center) { SiteIcon(if (onCall) "bell" else "alarm-clock", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp), progress = iconMotion.value) }
             }
             Spacer(Modifier.width(10.dp))
-            Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(if (onCall) "Promemoria il giorno precedente" else if (rule.customTime == null) "${rule.minutesBefore} min prima dell'attacco" else "Alle ${rule.customTime}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
+            Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(if (onCall) "Alle ${rule.customTime ?: "20:00"} · giorno precedente" else if (rule.customTime == null) "${rule.minutesBefore} min prima dell'attacco" else "Alle ${rule.customTime}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (rule.isEnabled) {
                 SiteIcon(if (expanded) "minus" else "edit", contentDescription = "Modifica orario", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
@@ -313,29 +331,31 @@ private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, o
             Switch(rule.isEnabled, { enabled ->
                 expanded = enabled
                 animateIcon()
-                onChange(rule.copy(isEnabled = enabled))
+                focus.clearFocus()
+                onChange { it.copy(isEnabled = enabled) }
             })
         }
         AnimatedVisibility(rule.isEnabled && expanded, enter = expandVertically(spring(dampingRatio = .9f, stiffness = 260f)) + fadeIn(), exit = shrinkVertically(spring(stiffness = 280f)) + fadeOut()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                 if (!onCall) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onChange(rule.copy(customTime = null)); animateIcon() }) { Text("Anticipo", fontSize = 13.sp, fontWeight = if (rule.customTime == null) FontWeight.Bold else FontWeight.Normal) }
-                    TextButton(onClick = { onChange(rule.copy(customTime = if (validTime) customText else "05:00")); animateIcon() }) { Text("Orario fisso", fontSize = 13.sp, fontWeight = if (rule.customTime != null) FontWeight.Bold else FontWeight.Normal) }
+                    TextButton(onClick = { onChange { it.copy(customTime = null) }; animateIcon() }) { Text("Anticipo", fontSize = 13.sp, fontWeight = if (rule.customTime == null) FontWeight.Bold else FontWeight.Normal) }
+                    TextButton(onClick = { onChange { it.copy(customTime = if (validTime) customText else "05:00") }; animateIcon() }) { Text("Orario fisso", fontSize = 13.sp, fontWeight = if (rule.customTime != null) FontWeight.Bold else FontWeight.Normal) }
                 }
                 if (rule.customTime == null && !onCall) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                         listOf(15, 30, 60, 90, 120).forEach { minutes ->
                             Surface(shape = RoundedCornerShape(12.dp), color = if (rule.minutesBefore == minutes) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant,
-                                modifier = Modifier.weight(1f).bouncyClickable { onChange(rule.copy(minutesBefore = minutes)) }) {
+                                modifier = Modifier.weight(1f).bouncyClickable { onChange { it.copy(minutesBefore = minutes) } }) {
                                 Box(Modifier.padding(vertical = 12.dp), contentAlignment = Alignment.Center) { Text("$minutes'", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurface) }
                             }
                         }
                     }
                 } else {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        OutlinedTextField(customText, { if (it.length <= 5) customText = it }, label = { Text("Orario HH:mm") }, singleLine = true,
+                        OutlinedTextField(customText, { if (it.length <= 5) customText = it }, label = { Text("Orario HH:mm") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
+                            keyboardActions = KeyboardActions(onDone = { saveTime() }),
                             isError = !validTime, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp))
-                        TextButton(onClick = { if (validTime) onChange(rule.copy(customTime = customText)) }, enabled = validTime) { Text("Imposta") }
+                        TextButton(onClick = { saveTime() }, enabled = validTime) { Text("Imposta") }
                     }
                 }
             }

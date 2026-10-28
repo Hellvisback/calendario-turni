@@ -154,6 +154,8 @@ object GoogleDriveBackupHelper {
             put("timeFormat24h", snapshot.preferences.timeFormat24h)
             put("showHolidays", snapshot.preferences.showHolidays)
             put("autoBackupDaily", snapshot.preferences.autoBackupDaily)
+            put("excludeVacationOnHolidays", snapshot.preferences.excludeVacationOnHolidays)
+            put("holidayExcludedShiftIds", JSONArray(snapshot.preferences.holidayExcludedShiftIds.toList()))
         }
         root.put("appPreferences", prefObj)
         root.put("enabledHolidayIds", JSONArray(snapshot.holidayIds.toList()))
@@ -211,11 +213,12 @@ object GoogleDriveBackupHelper {
      */
     fun saveLocalBackupDirect(context: Context, snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): Boolean {
         return try {
+            check(com.turni.calendario.repository.LocalDatabaseStore.loadError == null) { "Dati locali non leggibili: copia sospesa." }
             val json = exportDatabaseToJson(snapshot)
+            require(json.toByteArray(Charsets.UTF_8).size<=16*1024*1024){"Copia locale troppo grande."}
+            DatabaseRestore.parse(json,snapshot)
             val dir = File(context.filesDir, "cloud_backups")
-            if (!dir.exists()) dir.mkdirs()
-            val file = File(dir, "turni_cloud_backup_latest.json")
-            file.writeText(json, Charsets.UTF_8)
+            LocalBackupArchive.save(dir,json)
             true
         } catch (e: Exception) {
             e.printStackTrace()

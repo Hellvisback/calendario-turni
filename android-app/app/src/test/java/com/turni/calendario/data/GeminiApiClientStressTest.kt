@@ -73,8 +73,8 @@ class GeminiApiClientStressTest {
             fail("Expected JSONException when inner JSON text is truncated")
         } catch (e: Exception) {
             assertTrue(
-                "Must throw JSONException when inner text payload is truncated, got: ${e.javaClass.name}",
-                e is JSONException
+                "Must explain an incomplete model response, got: ${e.javaClass.name}",
+                e is IllegalStateException && e.message?.contains("incompleta")==true
             )
         }
     }

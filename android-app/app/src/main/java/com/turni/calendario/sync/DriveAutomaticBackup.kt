@@ -69,6 +69,9 @@ object DriveAutomaticBackup {
 
     fun configure(context: Context, enabled: Boolean, intervalHours: Int = 24, accountEmail: String? = null) {
         require(!enabled || !accountEmail.isNullOrBlank()) { "Collega prima il tuo account Google." }
+        require(!enabled || BackupInstallationApproval.contains(context.noBackupFilesDir, accountEmail)) {
+            "Controlla prima le copie presenti su Google Drive."
+        }
         val previous = status(context)
         scheduler(context).cancel(PERIODIC); scheduler(context).cancel(IMMEDIATE)
         DriveBackupJobService.cancelActive()
@@ -115,6 +118,7 @@ object DriveAutomaticBackup {
         val s = status(context)
         val identity = context.getSharedPreferences("turnisync_google_identity_v1", Context.MODE_PRIVATE)
         return s.enabled && DriveBackupPolicy.sameAccount(email, s.accountEmail) &&
+            BackupInstallationApproval.contains(context.noBackupFilesDir, email) &&
             identity.getBoolean("verified", false) && DriveBackupPolicy.sameAccount(email, identity.getString("email", null))
     }
     internal fun started(context: Context) { mutableStatus.value = status(context).copy(running = true) }

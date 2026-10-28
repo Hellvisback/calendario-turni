@@ -33,3 +33,14 @@ fun validateStatisticsRules(rules: List<StatisticsRule>, definitions: List<Shift
             rule.originalShiftIds.all { byId[it]?.workProfileId==displayed.workProfileId }
     }) { "Seleziona modelli diversi appartenenti allo stesso lavoro" }
 }
+
+/** Original-model rules take precedence; only the resulting selected vacation model is excluded. */
+fun countedStatisticsAssignment(shift:AssignedShift,definitions:Map<String,ShiftDefinition>,rules:List<StatisticsRule>,
+    configuredHoliday:Boolean,excludeVacationOnHolidays:Boolean,excludedModelIds:Set<String>):AssignedShift? {
+    val resolved=statisticsAssignment(shift,definitions,rules)
+    return resolved.takeUnless{configuredHoliday&&excludeVacationOnHolidays&&it.shiftDefId in excludedModelIds}
+}
+
+/** A suggested model is selected only when enabling, never while disabling the option. */
+fun holidayExclusionSelectionForToggle(current:Set<String>,definitions:List<ShiftDefinition>,enabling:Boolean):Set<String> =
+    if(enabling&&current.isEmpty())definitions.filter{it.id=="ferie"}.map{it.id}.toSet()else current

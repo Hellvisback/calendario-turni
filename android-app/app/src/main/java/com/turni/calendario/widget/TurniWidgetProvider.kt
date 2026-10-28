@@ -10,8 +10,8 @@ import com.turni.calendario.R
 
 internal enum class WidgetKind(val layout: Int, val provider: Class<*>, val defaultWidth: Int, val defaultHeight: Int) {
     TODAY(R.layout.widget_today_tomorrow, TodayTomorrowWidgetProvider::class.java, 160, 160),
-    WEEK(R.layout.widget_week_row, WeekRowWidgetProvider::class.java, 320, 96),
-    PANORAMA(R.layout.widget_weeks_panorama, WeeksPanoramaWidgetProvider::class.java, 320, 210),
+    WEEK(R.layout.widget_week_row, WeekRowWidgetProvider::class.java, 320, 84),
+    PANORAMA(R.layout.widget_weeks_panorama, WeeksPanoramaWidgetProvider::class.java, 320, 168),
     MONTH(R.layout.widget_month_grid, MonthGridWidgetProvider::class.java, 320, 320)
 }
 

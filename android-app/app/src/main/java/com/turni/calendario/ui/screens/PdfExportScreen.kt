@@ -81,7 +81,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     PdfRenderer(descriptor).use { renderer ->
                         check(renderer.pageCount==1){"Il documento deve contenere una sola pagina"}
                         renderer.openPage(0).use { page ->
-                            val width=1100
+                            val width=1800
                             val bitmap=Bitmap.createBitmap(width,(width.toFloat()*page.height/page.width).toInt(),Bitmap.Config.ARGB_8888)
                             bitmap.eraseColor(android.graphics.Color.WHITE)
                             page.render(bitmap,null,null,PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)

@@ -114,23 +114,24 @@ object GoogleDriveRemote {
         return result
     }
 
-    fun latest(token: String): DriveBackupFile? = files(token).maxByOrNull { it.modifiedTime }
+    fun latest(token: String): DriveBackupFile? = history(token).firstOrNull()
 
-    fun upload(token: String, json: String): DriveBackupFile {
+    fun history(token: String): List<DriveBackupFile> = files(token).sortedByDescending { java.time.Instant.parse(it.modifiedTime) }
+
+    fun upload(token: String, json: String): DriveBackupFile = createSnapshot(json) { url,method,data,type ->
+        GoogleHttp.request(token,url,method,data,type)
+    }
+
+    internal fun createSnapshot(json:String,request:(String,String,ByteArray,String)->String):DriveBackupFile {
         val data = json.toByteArray(StandardCharsets.UTF_8)
         if (data.size > MAX_RESPONSE_BYTES) throw GoogleApiException(413, "Il backup supera il limite di 16 MB.")
         JSONObject(json)
-        val previous = latest(token)
-        if (previous != null) {
-            val response = GoogleHttp.request(token, "$UPLOAD/${encoded(previous.id)}" + query(mapOf("uploadType" to "media", "fields" to FIELDS)),
-                "PATCH", data)
-            return JSONObject(response).file()
-        }
+        // Immutable snapshots: a new/empty installation can never overwrite an older good copy.
         val boundary = "turnisync_${UUID.randomUUID()}"
         val metadata = JSONObject().put("name", FILE_NAME).put("parents", JSONArray().put("appDataFolder")).put("mimeType", "application/json")
         val body = ("--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$metadata\r\n" +
             "--$boundary\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n$json\r\n--$boundary--\r\n").toByteArray(StandardCharsets.UTF_8)
-        return JSONObject(GoogleHttp.request(token, UPLOAD + query(mapOf("uploadType" to "multipart", "fields" to FIELDS)),
+        return JSONObject(request(UPLOAD + query(mapOf("uploadType" to "multipart", "fields" to FIELDS)),
             "POST", body, "multipart/related; boundary=$boundary")).file()
     }
 

@@ -14,6 +14,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -23,12 +24,15 @@ import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.GoogleCalendarRemote
 import com.turni.calendario.sync.RemoteCalendarInfo
+import com.turni.calendario.sync.GoogleCalendarCooldown
+import com.turni.calendario.sync.CalendarCooldownPolicy
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.delay
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -37,12 +41,18 @@ import java.util.Locale
 @Composable
 fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     val scope = rememberCoroutineScope()
+    val context = LocalContext.current
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val access = rememberGoogleAccess { feedback = ActionFeedback(it, true) }
     var apiBusy by remember { mutableStateOf(false) }
     var operation by remember { mutableStateOf("") }
     val busy = apiBusy || access.busy
     val email = ShiftRepository.googleAccountProfile?.email
+    var cooldown by remember { mutableStateOf(GoogleCalendarCooldown.remaining(context,email)) }
+    LaunchedEffect(email) {
+        while(true){cooldown=GoogleCalendarCooldown.remaining(context,email);delay(1000)}
+    }
+    val canChange = !busy && cooldown==0L
     var calendarOwner by remember { mutableStateOf<String?>(null) }
     var selectedCalendar by remember { mutableStateOf<RemoteCalendarInfo?>(null) }
     var calendars by remember { mutableStateOf(emptyList<RemoteCalendarInfo>()) }
@@ -63,9 +73,10 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     val end = when (range) { 1 -> start.plusMonths(3).minusDays(1); 2 -> start.plusYears(1).minusDays(1); else -> start.plusMonths(1).minusDays(1) }
     val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN) }
     val work = ShiftRepository.activeWorkProfile
-    val definitions = ShiftRepository.shiftDefinitions.filter { it.workProfileId == work.id }
-    val selectedIds = definitions.filter { includeRest || it.category != ShiftCategory.RIPOSO }.map { it.id }.toSet()
-    val shiftCount = ShiftRepository.calendarShifts.entries.filter { it.key >= start && it.key <= end }.sumOf { entry -> entry.value.count { it.shiftDefId in selectedIds } }
+    val shiftCount by remember(start,end,work.id,includeRest){derivedStateOf{
+        val selectedIds=ShiftRepository.shiftDefinitions.filter{it.workProfileId==work.id&&(includeRest||it.category!=ShiftCategory.RIPOSO)}.map{it.id}.toSet()
+        ShiftRepository.calendarShifts.entries.filter { it.key >= start && it.key <= end }.sumOf { entry -> entry.value.count { it.shiftDefId in selectedIds } }
+    }}
 
     fun chooseCalendar() {
         if (apiBusy || access.busy) return
@@ -93,6 +104,12 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             if (owner == null || ShiftRepository.googleAccountProfile?.email != owner) {
                 selectedCalendar = null; feedback = ActionFeedback("L'account è cambiato. Scegli di nuovo il calendario Google.", true)
             } else {
+                if(!GoogleCalendarCooldown.tryStart(context,owner)){
+                    cooldown=GoogleCalendarCooldown.remaining(context,owner)
+                    feedback=ActionFeedback("Attendi prima di avviare un’altra operazione su Calendar.",true)
+                    return@authorize
+                }
+                cooldown=CalendarCooldownPolicy.DURATION_MILLIS
                 // Snapshot repository state on main, then perform all network work on IO.
                 val workId = ShiftRepository.activeWorkProfileId
                 val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == workId }.toList()
@@ -108,7 +125,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                         feedback = ActionFeedback(if (count == 1) "Un turno sincronizzato su Google Calendar" else "$count turni sincronizzati su Google Calendar")
                     } catch (error: CancellationException) { throw error
                     } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Sincronizzazione Google Calendar non riuscita.", true)
-                    } finally { apiBusy = false; operation = "" }
+                    } finally { GoogleCalendarCooldown.finished(context,owner);cooldown=GoogleCalendarCooldown.remaining(context,owner);apiBusy = false; operation = "" }
                 }
             }
         }
@@ -121,6 +138,12 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             if (owner == null || ShiftRepository.googleAccountProfile?.email != owner) {
                 selectedCalendar = null; feedback = ActionFeedback("L'account è cambiato. Scegli di nuovo il calendario Google.", true)
             } else {
+                if(!GoogleCalendarCooldown.tryStart(context,owner)){
+                    cooldown=GoogleCalendarCooldown.remaining(context,owner)
+                    feedback=ActionFeedback("Attendi prima di avviare un’altra operazione su Calendar.",true)
+                    return@authorize
+                }
+                cooldown=CalendarCooldownPolicy.DURATION_MILLIS
                 apiBusy = true; operation = "Rimozione degli eventi TurniSync…"
                 scope.launch {
                     try {
@@ -128,7 +151,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                         feedback = ActionFeedback(if (count == 1) "Un evento TurniSync rimosso" else "$count eventi TurniSync rimossi", true)
                     } catch (error: CancellationException) { throw error
                     } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Impossibile rimuovere gli eventi TurniSync.", true)
-                    } finally { apiBusy = false; operation = "" }
+                    } finally { GoogleCalendarCooldown.finished(context,owner);cooldown=GoogleCalendarCooldown.remaining(context,owner);apiBusy = false; operation = "" }
                 }
             }
         }
@@ -167,12 +190,18 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 }
             }
         }
-        CloudButton(if (apiBusy) operation else "Sincronizza i turni", "upload", {
+        CloudButton(if (apiBusy) operation else if(cooldown>0)"Attendi ${CalendarCooldownPolicy.label(cooldown)}" else "Sincronizza i turni", "upload", {
             if (shiftCount == 0) confirmEmpty = true else synchronize()
-        }, enabled = !busy && selectedCalendar != null)
+        }, enabled = canChange && selectedCalendar != null)
+        AnimatedVisibility(cooldown>0,enter=expandVertically(tween(240))+fadeIn(),exit=shrinkVertically(tween(200))+fadeOut()){
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)){
+                LinearProgressIndicator(progress=1f-cooldown.toFloat()/CalendarCooldownPolicy.DURATION_MILLIS,modifier=Modifier.fillMaxWidth().height(3.dp))
+                Text("Google può impiegare qualche minuto ad aggiornare gli eventi. Dopo ogni sincronizzazione o rimozione attendi 3 minuti prima della prossima operazione.",fontSize=12.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
+            }
+        }
         Text("La sincronizzazione aggiorna gli eventi TurniSync del lavoro e del periodo scelti. Gli eventi personali restano invariati.", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
         CloudCard("Gestione degli eventi", "Rimuove dal calendario scelto solo gli eventi creati da TurniSync, anche degli altri lavori e periodi. I turni nell'app restano salvati.") {
-            CloudButton("Rimuovi eventi TurniSync", "trash", { confirmDelete = true }, enabled = !busy && selectedCalendar != null, destructive = true)
+            CloudButton(if(cooldown>0)"Rimuovi tra ${CalendarCooldownPolicy.label(cooldown)}" else "Rimuovi eventi TurniSync", "trash", { confirmDelete = true }, enabled = canChange && selectedCalendar != null, destructive = true)
         }
     }
     if (picker) Dialog(onDismissRequest = { picker = false }) {
@@ -200,11 +229,11 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     }
     if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Rimuovere gli eventi TurniSync?") },
         text = { Text("Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.") },
-        confirmButton = { TextButton(onClick = { confirmDelete = false; deleteEvents() }, enabled = !busy) { Text("Rimuovi eventi", color = MaterialTheme.colorScheme.error) } },
+        confirmButton = { TextButton(onClick = { confirmDelete = false; deleteEvents() }, enabled = canChange) { Text("Rimuovi eventi", color = MaterialTheme.colorScheme.error) } },
         dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annulla") } })
     if (confirmEmpty) AlertDialog(onDismissRequest = { confirmEmpty = false }, title = { Text("Nessun turno nel periodo") },
         text = { Text("La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?") },
-        confirmButton = { TextButton(onClick = { confirmEmpty = false; synchronize() }, enabled = !busy) { Text("Aggiorna calendario") } },
+        confirmButton = { TextButton(onClick = { confirmEmpty = false; synchronize() }, enabled = canChange) { Text("Aggiorna calendario") } },
         dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Annulla") } })
 }
 
