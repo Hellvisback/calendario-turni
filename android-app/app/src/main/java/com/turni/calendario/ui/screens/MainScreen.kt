@@ -107,13 +107,13 @@ private fun MainDockVisibility(visible:()->Boolean,enter:EnterTransition,exit:Ex
     AnimatedVisibility(visible=visible(),enter=enter,exit=exit,modifier=modifier,content=content)
 }
 
-/** Retain composition while moving inactive content outside the hit-test and semantics viewport. */
+/** Retain state with a short arrival motion, without two full-screen alpha buffers. */
 @Composable
 private fun RetainedDestination(visible:Boolean,content:@Composable ()->Unit) {
-    val opacity=animateFloatAsState(if(visible)1f else 0f,tween(220))
+    val arrival=animateFloatAsState(if(visible)0f else 1f,tween(240,easing=androidx.compose.animation.core.FastOutSlowInEasing))
     val hiddenSemantics=if(visible)Modifier else Modifier.clearAndSetSemantics{}
-    Box(Modifier.fillMaxSize().then(hiddenSemantics).zIndex(if(visible)0f else -1f).graphicsLayer{alpha=opacity.value}.layout{measurable,constraints->
+    Box(Modifier.fillMaxSize().then(hiddenSemantics).zIndex(if(visible)0f else -1f).graphicsLayer{translationY=arrival.value*14.dp.toPx();clip=true}.layout{measurable,constraints->
         val child=measurable.measure(constraints)
-        layout(child.width,child.height){child.place(if(visible||opacity.value>.001f)0 else child.width*2,0)}
+        layout(child.width,child.height){child.place(if(visible)0 else child.width*2,0)}
     }) { content() }
 }

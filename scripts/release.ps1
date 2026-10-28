@@ -139,8 +139,17 @@ if (Test-Path $packageJsonFile) {
 }
 
 # 3. Compilazione APK
-$apkOutputDir = "$projectRoot\android-app\app\build\outputs\apk\debug"
-$apkSource = "$apkOutputDir\app-debug.apk"
+$betaApk = "$projectRoot\android-app\app\build\outputs\apk\beta\app-beta.apk"
+$debugApk = "$projectRoot\android-app\app\build\outputs\apk\debug\app-debug.apk"
+
+if ($newName -match 'beta' -and (Test-Path $betaApk)) {
+    $apkOutputDir = "$projectRoot\android-app\app\build\outputs\apk\beta"
+    $apkSource = $betaApk
+    Write-Host "Rilevato pacchetto Beta ottimizzato: $betaApk" -ForegroundColor Cyan
+} else {
+    $apkOutputDir = "$projectRoot\android-app\app\build\outputs\apk\debug"
+    $apkSource = $debugApk
+}
 $apkLatest = "$apkOutputDir\app-release-latest.apk"
 $apkVersioned = "$apkOutputDir\app-release-v$newName.apk"
 
@@ -242,7 +251,11 @@ if ($releaseAlreadyExists) {
     $tempNotesFile = [System.IO.Path]::GetTempFileName()
     [System.IO.File]::WriteAllText($tempNotesFile, $ReleaseNotes, [System.Text.Encoding]::UTF8)
     try {
-        & gh release create $tag @assetsToUpload --title $ReleaseTitle --notes-file $tempNotesFile --latest
+        if ($newName -match 'beta|alpha|rc') {
+            & gh release create $tag @assetsToUpload --title $ReleaseTitle --notes-file $tempNotesFile --prerelease
+        } else {
+            & gh release create $tag @assetsToUpload --title $ReleaseTitle --notes-file $tempNotesFile --latest
+        }
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Creazione GitHub release fallita con codice $LASTEXITCODE"
             exit 1

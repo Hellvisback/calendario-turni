@@ -254,6 +254,7 @@ private fun ReportAnimatedValue(value:Float,animation:ReportProgress,decimal:Boo
     modifier:Modifier=Modifier,fontSize:TextUnit,color:Color=reportInk,fontWeight:FontWeight?=null,
     lineHeight:TextUnit=TextUnit.Unspecified,letterSpacing:TextUnit=TextUnit.Unspecified) {
     val finalLabel=remember(value,decimal,suffix){(if(decimal)reportNumber(value)else value.roundToInt().toString())+suffix}
+    val labels=remember(decimal,suffix){ReportCountLabel(decimal,suffix)}
     val density=LocalDensity.current
     val paint=remember(fontSize,color,fontWeight,letterSpacing,density){android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG).apply{
         textSize=with(density){fontSize.toPx()};this.color=color.toArgb()
@@ -265,7 +266,7 @@ private fun ReportAnimatedValue(value:Float,animation:ReportProgress,decimal:Boo
         Text(finalLabel,Modifier.graphicsLayer{alpha=0f},fontSize=fontSize,color=color,fontWeight=fontWeight,lineHeight=lineHeight,letterSpacing=letterSpacing)
         Canvas(Modifier.matchParentSize()){
             val step=(value*animation.value*(if(decimal)10f else 1f)).roundToInt()
-            val label=(if(decimal)reportNumber(step/10f)else step.toString())+suffix
+            val label=labels.at(step)
             drawContext.canvas.nativeCanvas.drawText(label,size.width/2f,size.height/2f-(paint.ascent()+paint.descent())/2f,paint)
         }
     }

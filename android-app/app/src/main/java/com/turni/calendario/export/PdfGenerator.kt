@@ -68,7 +68,7 @@ object PdfGenerator {
     }
 
     fun writePdf(context: Context, snapshot: PdfExportSnapshot): File {
-        val output = File(context.cacheDir, "turnisync-${System.currentTimeMillis()}.pdf")
+        val output = File.createTempFile("turnisync-", ".pdf", context.cacheDir)
         val calendar=PdfExportPlan.presentation(snapshot.options)!=PdfPresentation.LIST
         val months=snapshot.days.map{YearMonth.from(it.date)}.distinct().size
         val first=if(calendar&&months>2)842 to 1191 else 595 to 842

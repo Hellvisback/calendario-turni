@@ -1,3 +1,5 @@
+> Candidata corrente: 1.8.0-beta.1 (46), build assembleBeta ottimizzata; vedere docs/VERIFICA_v1.8.0-beta.1.md per prove, simboli R8, firma e limiti prestazioni/cloud. Non pubblicata.
+
 > Ultimo aggiornamento: 1.7.3 (45), long press per intervalli in Cambia/Più turni, calendari condivisi, pannelli PDF/AI, feedback dock e pulsanti. docs/VERIFICA_v1.7.3.md.
 
 > Ultimo aggiornamento: 1.7.2 (44), conteggio statistiche coerente, salvataggio sveglie robusto e tastiera, avviso riposo, gomma long press per intervallo. docs/VERIFICA_v1.7.2.md.

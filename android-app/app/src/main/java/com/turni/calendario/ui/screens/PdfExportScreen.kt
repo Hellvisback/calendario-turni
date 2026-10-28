@@ -96,7 +96,10 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             previewError=if(error is IllegalArgumentException)error.message else "Impossibile preparare l’anteprima. Riprova."
         } finally {previewLoading=false}
     }
-    val update: (PdfExportOptions) -> Unit = { options = it; ShiftRepository.pdfExportOptions = it; ShiftRepository.notifyDataChanged() }
+    val update: (PdfExportOptions) -> Unit = {
+        if(options!=it){previewLoading=true;zoom=false}
+        options=it;ShiftRepository.pdfExportOptions=it;ShiftRepository.notifyDataChanged()
+    }
     val range = remember(options.mode, options.startDate, options.endDate, options.selectedYear) { PdfExportPlan.range(options) }
     val formatter = remember { DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN) }
     BackHandler(onBack = onDismiss)

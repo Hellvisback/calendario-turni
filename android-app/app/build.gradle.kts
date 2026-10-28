@@ -11,10 +11,12 @@ android {
         applicationId = "com.turni.calendario"
         minSdk = 26
         targetSdk = 32
-        versionCode = 45
-        versionName = "1.7.3"
+        versionCode = 46
+        versionName = "1.8.0-beta.1"
 
-        testInstrumentationRunner = "com.turni.calendario.WidgetRenderingInstrumentation"
+        testInstrumentationRunner = if(project.hasProperty("integrityProbe"))
+            "com.turni.calendario.DatabaseIntegrityInstrumentation" else
+            "com.turni.calendario.WidgetRenderingInstrumentation"
         vectorDrawables {
             useSupportLibrary = true
         }
@@ -28,6 +30,15 @@ android {
                 "proguard-rules.pro"
             )
         }
+    }
+    // Installable beta: same certificate as existing device builds, without debug overhead.
+    buildTypes.create("beta") {
+        initWith(buildTypes.getByName("release"))
+        signingConfig = signingConfigs.getByName("debug")
+        isDebuggable = false
+        isMinifyEnabled = true
+        isShrinkResources = true
+        matchingFallbacks += listOf("release")
     }
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11

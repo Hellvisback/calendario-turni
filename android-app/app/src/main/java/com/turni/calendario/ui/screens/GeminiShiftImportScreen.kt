@@ -144,7 +144,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                         CatalogGroup("Proposta estratta"){
                             Text("${current.shifts.size} modelli · ${current.cycles.size} ${if(current.cycles.size==1)"sequenza" else "sequenze"}",fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary)
                             if(current.period.isNotBlank())Text(current.period,fontSize=11.sp,color=TextSecondary)
-                            Text("Salvi nel lavoro ${ShiftRepository.workProfiles.firstOrNull{it.id==current.profileId}?.name.orEmpty()}. Puoi correggere nomi, sigle, categorie, orari, colori e ogni giorno del ciclo. Nessun turno sarà applicato al calendario.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
+                            Text("Salvi nel lavoro ${ShiftRepository.workProfiles.firstOrNull{it.id==current.profileId}?.name.orEmpty()}. Puoi correggere nomi, sigle, orari, colori e ogni giorno del ciclo. Nessun turno sarà applicato al calendario.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
                             if(current.warnings.isNotEmpty()){
                                 CatalogButton(if(showSource)"Nascondi osservazioni" else "Leggi ${current.warnings.size} osservazioni",{showSource=!showSource},Modifier.fillMaxWidth(),icon="message")
                                 AnimatedVisibility(showSource,enter=expandVertically()+fadeIn(),exit=shrinkVertically()+fadeOut()){
@@ -236,22 +236,12 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     editCycle?.let{id->current?.cycles?.firstOrNull{it.rotation.id==id}?.let{row->
         RotationMatrixEditorScreen(row.rotation,{editCycle=null},{updated->draft=current.copy(cycles=current.cycles.map{if(it.rotation.id==id)it.copy(rotation=updated)else it});cycleConfirmed=false;confirmed=false;editCycle=null},{},availableDefinitions=current.shifts.map{it.definition},allowDefault=false)
     }}
-    if(discard) {
-        var leave by remember { mutableStateOf(false) }
-        SelectorSheet("Uscire dalla revisione?",{
-            discard=false
-            if(leave){draft=null;confirmed=false}
-        }) { close->
-            Row(horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
-                Box(Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(ObsidianPrimarySubtle),contentAlignment=Alignment.Center){SiteIcon("file-text",null,Modifier.size(24.dp),ObsidianPrimary)}
-                Text("Le modifiche sono ancora in bozza. Il catalogo non è stato aggiornato.",Modifier.weight(1f),fontSize=13.sp,lineHeight=20.sp,color=TextSecondary)
-            }
-            Spacer(Modifier.height(18.dp))
-            CatalogButton("Continua revisione",close,Modifier.fillMaxWidth(),primary=true,icon="pencil")
-            Spacer(Modifier.height(8.dp))
-            CatalogButton("Torna al documento",{leave=true;close()},Modifier.fillMaxWidth(),icon="arrow-left")
-        }
-    }
+    if(discard) AppConfirmationDialog(
+        title="Scartare la revisione?",
+        message="Le modifiche sono ancora in bozza. Se torni al documento, perderai questa revisione. I turni già salvati nel catalogo restano invariati.",
+        confirmLabel="Scarta e torna al documento",dismissLabel="Continua revisione",
+        onDismiss={discard=false},onConfirm={discard=false;draft=null;confirmed=false})
+
 }
 
 @Composable

@@ -18,3 +18,17 @@ internal fun reportMetrics(assignments:List<AssignedShift>,definitions:List<Shif
             }.toFloat() else 0f)
     }
 }
+
+/** No Formatter/locale allocations on animation frames; unchanged values reuse their label. */
+internal class ReportCountLabel(private val decimal:Boolean,private val suffix:String) {
+    private var previous:Int?=null
+    private var label=""
+    fun at(step:Int):String {
+        if(previous!=step){
+            previous=step
+            val magnitude=kotlin.math.abs(step.toLong())
+            label=(if(decimal)(if(step<0)"-" else "")+"${magnitude/10},${magnitude%10}" else step.toString())+suffix
+        }
+        return label
+    }
+}

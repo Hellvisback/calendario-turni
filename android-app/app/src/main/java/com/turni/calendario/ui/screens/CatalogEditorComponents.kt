@@ -304,14 +304,13 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
     var breakStart by remember(shift.id) { mutableStateOf(shift.breakStartTime ?: "12:00") }
     var color by remember(shift.id) { mutableStateOf(shift.colorHex) }
     var workId by remember(shift.id) { mutableStateOf(shift.workProfileId) }
-    var category by remember(shift.id) { mutableStateOf(shift.category) }
     var workMenu by remember { mutableStateOf(false) }
     var deleteConfirm by remember { mutableStateOf(false) }
     val existing = ShiftRepository.shiftDefinitions.any { it.id == shift.id }
     fun validTime(value: String) = runCatching { LocalTime.parse(value) }.isSuccess
     val validCode = code.matches(Regex("[A-Z0-9]{1,4}"))
     val valid = name.isNotBlank() && validCode && (allDay || (validTime(start) && validTime(end) && (!hasBreak || (validTime(breakStart) && (pause.toIntOrNull() ?: -1) in 0..720))))
-    fun draft() = shift.copy(name = name.trim(), shortCode = code, startTime = start, endTime = end, colorHex = color, workProfileId = workId, category = category, isAllDay = allDay, breakMinutes = if (hasBreak && !allDay) pause.toIntOrNull() ?: 0 else 0, breakStartTime = if (hasBreak && !allDay) breakStart else null)
+    fun draft() = shift.copy(name = name.trim(), shortCode = code, startTime = start, endTime = end, colorHex = color, workProfileId = workId, isAllDay = allDay, breakMinutes = if (hasBreak && !allDay) pause.toIntOrNull() ?: 0 else 0, breakStartTime = if (hasBreak && !allDay) breakStart else null)
     CatalogEditorSheet(if (existing) "Modifica turno" else "Nuovo turno", onDismiss) { finish ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,Color(color),.10f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -333,13 +332,7 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                         ShiftRepository.workProfiles.forEach { profile -> DropdownMenuItem(text = { Text(profile.name) }, onClick = { workId = profile.id; workMenu = false }) }
                     }
                 }
-                Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    listOf(ShiftCategory.LAVORO to "Lavoro", ShiftCategory.RIPOSO to "Riposo", ShiftCategory.ASSENZA to "Assenza", ShiftCategory.ALTRO to "Altro").forEach { (value, label) ->
-                        Surface(shape = RoundedCornerShape(10.dp), color = if (category == value) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background, modifier = Modifier.bouncyClickable { category = value }) {
-                            Text(label, Modifier.padding(horizontal = 8.dp, vertical = 6.dp), color = if (category == value) MaterialTheme.colorScheme.onPrimaryContainer else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 10.sp)
-                        }
-                    }
-                }
+
             }
             CatalogGroup("Orario") {
                 CatalogToggle("Tutto il giorno", allDay) { allDay = it }
