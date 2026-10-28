@@ -32,6 +32,10 @@ import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.zIndex
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.text.AnnotatedString
 import com.turni.calendario.ui.components.SiteIcon
 import kotlinx.coroutines.launch
 import androidx.compose.ui.text.font.FontWeight
@@ -90,14 +94,17 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
         val byId=definitions.associateBy { it.id }
         calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten().mapNotNull { ShiftRepository.statisticsEntry(it,byId,rules) }
     }
-    val computedStats by produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null,start, end, rules, calendarSnapshot, extrasSnapshot, definitions, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds,
+    val computedStats by key(start, end, rules, calendarSnapshot, extrasSnapshot, definitions, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds,
         ShiftRepository.reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationId) {
+        // A changed period gets its own loading state; never render the previous totals.
+        produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null) {
         val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
         try {
             value=kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.Default) {
                 snapshot.enter{ShiftRepository.getComprehensiveReportStats(start,end)}
             }
         } finally {snapshot.dispose()}
+        }
     }
     val stats=computedStats?:com.turni.calendario.repository.ComprehensiveReportStats(0,0f,0f,0,0,0,0,0,0,emptyMap())
     val metrics = remember(assignments, definitions) { reportMetrics(assignments,definitions) }
@@ -116,10 +123,11 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
                 shifts.count { it.first.isTrasferta }, shifts.map { it.first.date }.distinct().count { ShiftRepository.isOnCall(it) })
         }
     }
-    val progress = remember(mode, start, end) { Animatable(0f) }
-    LaunchedEffect(progress,active,computedStats) {
-        if(active&&computedStats!=null){progress.snapTo(0f);progress.animateTo(1f,spring(dampingRatio=1f,stiffness=55f))}
-        else progress.snapTo(1f)
+    // Reset atomically with activation/data, before anything can be drawn. Resetting
+    // a retained clock in LaunchedEffect flashed completed charts for one frame.
+    val progress = remember(mode, start, end, active, computedStats) { Animatable(if(active)0f else 1f) }
+    LaunchedEffect(progress) {
+        if(active&&computedStats!=null)progress.animateTo(1f,spring(dampingRatio=1f,stiffness=55f))
     }
     val periodKey = "$mode/$start/$end"
     val shapeKeys = metrics.map { "model:"+it.definition.id } + if(stats.countReperibilita>0) listOf("oncall") else emptyList()
@@ -262,8 +270,8 @@ private fun ReportAnimatedValue(value:Float,animation:ReportProgress,decimal:Boo
         textAlign=android.graphics.Paint.Align.CENTER
         if(letterSpacing!=TextUnit.Unspecified)this.letterSpacing=letterSpacing.value/fontSize.value
     }}
-    Box(modifier){
-        Text(finalLabel,Modifier.graphicsLayer{alpha=0f},fontSize=fontSize,color=color,fontWeight=fontWeight,lineHeight=lineHeight,letterSpacing=letterSpacing)
+    Box(modifier.semantics{text=AnnotatedString(finalLabel)}){
+        Text(finalLabel,Modifier.clearAndSetSemantics{}.graphicsLayer{alpha=0f},fontSize=fontSize,color=color,fontWeight=fontWeight,lineHeight=lineHeight,letterSpacing=letterSpacing)
         Canvas(Modifier.matchParentSize()){
             val step=(value*animation.value*(if(decimal)10f else 1f)).roundToInt()
             val label=labels.at(step)

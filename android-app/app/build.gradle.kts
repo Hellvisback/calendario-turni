@@ -11,8 +11,8 @@ android {
         applicationId = "com.turni.calendario"
         minSdk = 26
         targetSdk = 32
-        versionCode = 46
-        versionName = "1.8.0-beta.1"
+        versionCode = 47
+        versionName = "1.8.0-beta.2"
 
         testInstrumentationRunner = if(project.hasProperty("integrityProbe"))
             "com.turni.calendario.DatabaseIntegrityInstrumentation" else

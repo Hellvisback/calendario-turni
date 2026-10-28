@@ -1,4 +1,4 @@
-@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class,androidx.compose.material3.ExperimentalMaterial3Api::class,androidx.compose.ui.ExperimentalComposeUiApi::class)
 package com.turni.calendario.ui.screens
 
 import android.content.ClipData
@@ -15,14 +15,18 @@ import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.*
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
 import com.turni.calendario.data.*
@@ -37,7 +41,11 @@ import java.util.UUID
 @Composable
 fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation?)->Unit)?=null){
     val context=LocalContext.current;val scope=rememberCoroutineScope()
-    var name by remember{mutableStateOf(SecurePreferencesManager.getUserName(context).orEmpty())}
+    var name by rememberSaveable{mutableStateOf(SecurePreferencesManager.getUserName(context).orEmpty())}
+    var confirmedName by rememberSaveable{mutableStateOf("")}
+    val nameConfirmed=name.isNotBlank()&&name==confirmedName
+    val focusManager=LocalFocusManager.current
+    val keyboard=LocalSoftwareKeyboardController.current
     var document by remember{mutableStateOf<AiRosterDocument?>(null)}
     var draft by remember{mutableStateOf<AiRosterDraft?>(null)}
     var selectedCycle by remember{mutableStateOf<String?>(null)}
@@ -53,6 +61,15 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     var showSource by remember{mutableStateOf(false)}
     var saved by remember{mutableStateOf<AiSavedRoster?>(null)}
     var discard by remember{mutableStateOf(false)}
+    fun confirmName(){
+        val normalized=name.trim().replace(Regex("\\s+")," ")
+        if(normalized.isNotBlank()){
+            name=normalized;confirmedName=normalized
+            SecurePreferencesManager.saveUserName(context,normalized)
+            focusManager.clearFocus();keyboard?.hide()
+            message=ActionFeedback("Nome confermato · pronto per le istruzioni")
+        }
+    }
     val profile=ShiftRepository.activeWorkProfileId
     val prompt=remember(name){AiRosterImport.prompt(name)}
     fun fail(error:Exception){
@@ -105,7 +122,9 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                     if(step==0){
                         CatalogGroup("1 · Il tuo prospetto"){
                             Text("Scrivi il nome come compare nel prospetto. Allegalo poi alla tua AI insieme alle istruzioni che copierai qui.",fontSize=13.sp,lineHeight=19.sp,color=TextSecondary)
-                            ImportField("Nome e cognome nel documento",name,{name=it.take(100)},enabled=!busy)
+                            ImportField("Nome e cognome nel documento",name,{name=it.take(100)},enabled=!busy,onDone={confirmName()})
+                            CatalogButton(if(nameConfirmed)"Nome confermato" else "Conferma nome",{confirmName()},
+                                Modifier.fillMaxWidth(),primary=!nameConfirmed,enabled=!busy&&name.isNotBlank(),icon="check")
                             CatalogButton(if(document==null)"Scegli prospetto · facoltativo" else "Cambia prospetto",{picker.launch(arrayOf("application/pdf","image/*"))},Modifier.fillMaxWidth(),enabled=!busy,icon="upload")
                             document?.let{file->
                                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
@@ -245,6 +264,8 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
 }
 
 @Composable
-private fun ImportField(label:String,value:String,change:(String)->Unit,enabled:Boolean=true,secret:Boolean=false){
-    OutlinedTextField(value,change,label={Text(label)},singleLine=true,enabled=enabled,visualTransformation=if(secret)PasswordVisualTransformation()else androidx.compose.ui.text.input.VisualTransformation.None,modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp))
+private fun ImportField(label:String,value:String,change:(String)->Unit,enabled:Boolean=true,onDone:()->Unit={}){
+    OutlinedTextField(value,change,label={Text(label)},singleLine=true,enabled=enabled,
+        keyboardOptions=KeyboardOptions(imeAction=ImeAction.Done),keyboardActions=KeyboardActions(onDone={onDone()}),
+        modifier=Modifier.fillMaxWidth(),shape=RoundedCornerShape(14.dp))
 }

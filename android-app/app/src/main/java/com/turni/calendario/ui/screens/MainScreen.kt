@@ -2,7 +2,7 @@ package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.semantics.clearAndSetSemantics
@@ -110,7 +110,10 @@ private fun MainDockVisibility(visible:()->Boolean,enter:EnterTransition,exit:Ex
 /** Retain state with a short arrival motion, without two full-screen alpha buffers. */
 @Composable
 private fun RetainedDestination(visible:Boolean,content:@Composable ()->Unit) {
-    val arrival=animateFloatAsState(if(visible)0f else 1f,tween(240,easing=androidx.compose.animation.core.FastOutSlowInEasing))
+    // Prepare the first visible frame during composition, not in a later effect.
+    // A retained, inactive page must never flash its previous resting position.
+    val arrival=remember(visible){Animatable(if(visible)1f else 0f)}
+    LaunchedEffect(arrival){if(visible)arrival.animateTo(0f,tween(240,easing=androidx.compose.animation.core.FastOutSlowInEasing))}
     val hiddenSemantics=if(visible)Modifier else Modifier.clearAndSetSemantics{}
     Box(Modifier.fillMaxSize().then(hiddenSemantics).zIndex(if(visible)0f else -1f).graphicsLayer{translationY=arrival.value*14.dp.toPx();clip=true}.layout{measurable,constraints->
         val child=measurable.measure(constraints)
