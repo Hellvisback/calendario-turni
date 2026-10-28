@@ -569,7 +569,13 @@ object ShiftRepository {
      * Aggiunge un turno secondario alla data (es. turno doppio, straordinario, reperibilità)
      */
     fun addSecondaryShift(date: LocalDate, shiftDefId: String, notes: String = "") {
+        if (getShiftDefinition(shiftDefId) == null) return
         saveSnapshot()
+        addSecondaryWithoutSnapshot(date, shiftDefId, notes)
+        notifyDataChanged()
+    }
+
+    private fun addSecondaryWithoutSnapshot(date: LocalDate, shiftDefId: String, notes: String = "") {
         val currentList = calendarShifts[date]?.toList() ?: emptyList()
         val newList = mutableStateListOf<AssignedShift>()
         newList.addAll(currentList)
@@ -583,7 +589,6 @@ object ShiftRepository {
         )
         newList.add(newEntry)
         calendarShifts[date] = newList
-        notifyDataChanged()
     }
 
     /**
@@ -621,7 +626,7 @@ object ShiftRepository {
     /**
      * Assegna un turno a un intervallo di date in blocco (da startDate a endDate)
      */
-    fun applyShiftRange(shiftDefId: String, startDate: LocalDate, endDate: LocalDate) {
+    fun applyShiftRange(shiftDefId: String, startDate: LocalDate, endDate: LocalDate, addSecondary: Boolean = false) {
         val erasing = shiftDefId == "eraser" || shiftDefId == "empty"
         if (!erasing && getShiftDefinition(shiftDefId) == null) return
         saveSnapshot()
@@ -630,6 +635,7 @@ object ShiftRepository {
         var current = start
         while (!current.isAfter(end)) {
             if (erasing) clearWorkDayWithoutSnapshot(current, activeWorkProfileId)
+            else if (addSecondary) addSecondaryWithoutSnapshot(current, shiftDefId)
             else replacePrimaryWithoutSnapshot(current, shiftDefId)
             current = current.plusDays(1)
         }

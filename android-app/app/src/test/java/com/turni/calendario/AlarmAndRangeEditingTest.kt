@@ -77,5 +77,27 @@ class AlarmAndRangeEditingTest {
             assertTrue(Repository.isOnCall(start.plusDays(1)))
         } finally { DatabaseRestore.apply(original) }
     }
+    @Test fun addingRangePreservesEveryBaseShiftAndUsesOneUndoAcrossMonths() {
+        val original=DatabaseSnapshot.capture()
+        try {
+            Repository.calendarShifts.clear();Repository.dayExtraInfo.clear()
+            val models=Repository.shiftDefinitions.filter{it.workProfileId==Repository.activeWorkProfileId}
+            val base=models.first();val extra=models.first{it.id!=base.id}
+            val start=LocalDate.of(2030,1,30)
+            for(offset in -1L..4L)Repository.replaceShift(start.plusDays(offset),base.id)
+            val before=DatabaseSnapshot.capture()
+            Repository.applyShiftRange(extra.id,start.plusDays(3),start,addSecondary=true)
+            for(offset in 0L..3L){
+                val shifts=Repository.getShiftsForDate(start.plusDays(offset))
+                assertEquals(listOf(base.id,extra.id),shifts.map{it.shiftDefId})
+                assertEquals(before.shifts[start.plusDays(offset)]!!.first(),shifts.first())
+            }
+            assertEquals(1,Repository.getShiftsForDate(start.minusDays(1)).size)
+            assertEquals(1,Repository.getShiftsForDate(start.plusDays(4)).size)
+            assertTrue(Repository.undo())
+            assertEquals(before.shifts,DatabaseSnapshot.capture().shifts)
+        }finally{DatabaseRestore.apply(original)}
+    }
+
 }
 

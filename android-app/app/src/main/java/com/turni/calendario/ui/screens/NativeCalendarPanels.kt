@@ -158,12 +158,13 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
         }
         Spacer(Modifier.height(6.dp))
         BoxWithConstraints(Modifier.fillMaxWidth().height(48.dp).clip(RoundedCornerShape(13.dp)).background(ObsidianSurfaceContainer)) {
-            val width = maxWidth / 4
-            val selectedX by animateDpAsState(width * mode.ordinal, spring(.95f, 380f))
+            val modes = CalendarEditMode.values().filterNot { it == CalendarEditMode.RANGE }
+            val width = maxWidth / modes.size
+            val selectedX by animateDpAsState(width * modes.indexOf(mode).coerceAtLeast(0), spring(.95f, 380f))
             Box(Modifier.offset(x = selectedX).width(width).fillMaxHeight().padding(3.dp)
                 .clip(RoundedCornerShape(10.dp)).background(ObsidianPrimary))
             Row(Modifier.fillMaxSize()) {
-                CalendarEditMode.values().forEach { item ->
+                modes.forEach { item ->
                     val glyph = when (item) { CalendarEditMode.REPLACE -> "swap"; CalendarEditMode.RANGE -> "calendar"; CalendarEditMode.ADD -> "layers"; CalendarEditMode.ROTATION -> "rotation" }
                     val phase = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
                     var replay by remember { mutableStateOf<Job?>(null) }
@@ -392,7 +393,7 @@ private fun DetailPill(text: String, color: Color, background: Color) {
 
 /** One floating, opaque surface; the existing day surface is hidden while this is open. */
 @Composable
-internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp,
+internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp, dimAmount: Float = 0f,
     content: @Composable ColumnScope.(close: () -> Unit) -> Unit) {
     var visible by remember { mutableStateOf(false) }; var closing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -400,7 +401,7 @@ internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp,
     LaunchedEffect(Unit) { visible = true }
     Dialog(onDismissRequest = close, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         val view = LocalView.current
-        SideEffect { (view.parent as? DialogWindowProvider)?.window?.setDimAmount(0f) }
+        SideEffect { (view.parent as? DialogWindowProvider)?.window?.setDimAmount(dimAmount) }
         Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
             Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = close))
             AnimatedVisibility(visible,

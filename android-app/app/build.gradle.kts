@@ -11,8 +11,8 @@ android {
         applicationId = "com.turni.calendario"
         minSdk = 26
         targetSdk = 32
-        versionCode = 44
-        versionName = "1.7.2"
+        versionCode = 45
+        versionName = "1.7.3"
 
         testInstrumentationRunner = "com.turni.calendario.WidgetRenderingInstrumentation"
         vectorDrawables {

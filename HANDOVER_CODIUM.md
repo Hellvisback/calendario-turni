@@ -1,3 +1,5 @@
+> Ultimo aggiornamento: 1.7.3 (45), long press per intervalli in Cambia/Più turni, calendari condivisi, pannelli PDF/AI, feedback dock e pulsanti. docs/VERIFICA_v1.7.3.md.
+
 > Ultimo aggiornamento: 1.7.2 (44), conteggio statistiche coerente, salvataggio sveglie robusto e tastiera, avviso riposo, gomma long press per intervallo. docs/VERIFICA_v1.7.2.md.
 
 > Ultimo aggiornamento: 1.7.1 (43), icone selettore widget e resize verticale opzionale settimana/panorama. Vedere docs/VERIFICA_v1.7.1.md.

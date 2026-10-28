@@ -46,6 +46,7 @@ import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -176,16 +177,25 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
     }
     if(zoom&&preview!=null) PdfPreviewDialog(preview!!){zoom=false}
     if (dateDialog) PdfPeriodDialog(options, { dateDialog = false }) { update(it); dateDialog = false }
-    if (filterDialog) AlertDialog(onDismissRequest = { filterDialog = false }, title = { Text("Turni da includere") }, containerColor = ObsidianSurface, text = {
-        Column(Modifier.heightIn(max = 360.dp).verticalScroll(rememberScrollState())) {
-            val entries = listOf(null to "Tutti i turni") + ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.map { it.id to it.name }
-            entries.forEach { (id, label) ->
-                Row(Modifier.fillMaxWidth().selectable(options.filterShiftId == id, role = Role.RadioButton) { update(options.copy(filterShiftId = id)); filterDialog = false }.padding(vertical = 8.dp), verticalAlignment = Alignment.CenterVertically) {
-                    RadioButton(options.filterShiftId == id, onClick = null); Text(label, color = TextPrimary, modifier = Modifier.padding(start = 8.dp))
+    if (filterDialog) SelectorSheet("Turni da includere",{filterDialog=false}) { close->
+        Text("Scegli un modello oppure includi tutti i turni del lavoro attivo.",color=TextSecondary,fontSize=12.sp,modifier=Modifier.padding(bottom=12.dp))
+        val models=ShiftRepository.shiftDefinitions.filter{it.workProfileId==ShiftRepository.activeWorkProfileId}
+        val entries=listOf(null to "Tutti i turni")+models.map{it.id to it.name}
+        entries.forEach { (id,label)->
+            val selected=options.filterShiftId==id
+            val shape=RoundedCornerShape(14.dp)
+            Row(Modifier.fillMaxWidth().padding(bottom=7.dp).clip(shape).background(if(selected)ObsidianPrimarySubtle else ObsidianSurfaceContainer)
+                .bouncyClickable { update(options.copy(filterShiftId=id));close() }.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                val model=models.firstOrNull{it.id==id}
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(model?.color?:ObsidianSurfaceHigh),contentAlignment=Alignment.Center) {
+                    if(model==null)SiteIcon("layers",null,Modifier.size(19.dp),ObsidianPrimary)
+                    else Text(model.shortCode.take(4),fontSize=10.sp,fontWeight=FontWeight.Bold,color=catalogInk(model.color))
                 }
+                Text(label,Modifier.weight(1f),color=TextPrimary,fontSize=14.sp)
+                if(selected)SiteIcon("check",null,Modifier.size(20.dp),ObsidianPrimary)
             }
         }
-    }, confirmButton = { TextButton(onClick = { filterDialog = false }) { Text("Chiudi") } })
+    }
 }
 
 @Composable
@@ -224,73 +234,65 @@ private fun PdfToggle(label: String, checked: Boolean, onChange: (Boolean) -> Un
 private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save: (PdfExportOptions) -> Unit) {
     var month by remember { mutableStateOf(YearMonth.from(options.startDate)) }
     var year by remember { mutableStateOf(options.selectedYear) }
+    var yearPage by remember { mutableStateOf((options.selectedYear/12)*12) }
     var from by remember { mutableStateOf(options.startDate) }
     var to by remember { mutableStateOf(options.endDate) }
     var selectingEnd by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    AlertDialog(onDismissRequest = dismiss, containerColor = ObsidianSurface, title = { Text("Periodo da esportare", color = TextPrimary) }, text = {
-        Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            if (options.mode == PdfExportMode.MESE || options.mode == PdfExportMode.ANNO) {
-                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                    IconButton(onClick = { if (options.mode == PdfExportMode.MESE) { if (month > YearMonth.of(1900, 1)) month = month.minusMonths(1) } else if (year > 1900) year-- }) { SiteIcon("chevron-left", "Periodo precedente") }
-                    Text(if (options.mode == PdfExportMode.MESE) month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)) else "$year", color = TextPrimary, modifier = Modifier.weight(1f), fontWeight = FontWeight.Bold)
-                    IconButton(onClick = { if (options.mode == PdfExportMode.MESE) { if (month < YearMonth.of(2200, 12)) month = month.plusMonths(1) } else if (year < 2200) year++ }) { SiteIcon("chevron-right", "Periodo successivo") }
+    // Keep the draft until the exit animation finishes, then commit once.
+    var pending by remember { mutableStateOf<PdfExportOptions?>(null) }
+    SelectorSheet(when(options.mode){PdfExportMode.MESE->"Scegli il mese";PdfExportMode.ANNO->"Scegli l’anno";else->"Periodo da esportare"},
+        {pending?.let(save)?:dismiss()}) { close->
+        Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+            when(options.mode) {
+                PdfExportMode.MESE, PdfExportMode.ANNO -> {
+                    val monthly=options.mode==PdfExportMode.MESE
+                    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
+                        IconButton(onClick={if(monthly&&month.year>1900)month=month.minusYears(1)else if(!monthly)yearPage=(yearPage-12).coerceAtLeast(1900)}) {SiteIcon("chevron-left","Periodo precedente")}
+                        Text(if(monthly)month.year.toString() else "$yearPage – ${minOf(2200,yearPage+11)}",Modifier.weight(1f),color=TextPrimary,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+                        IconButton(onClick={if(monthly&&month.year<2200)month=month.plusYears(1)else if(!monthly)yearPage=(yearPage+12).coerceAtMost(2196)}) {SiteIcon("chevron-right","Periodo successivo")}
+                    }
+                    (0 until 12).chunked(3).forEach { group->Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        group.forEach { index->
+                            val value=if(monthly)index+1 else yearPage+index
+                            val chosen=if(monthly)month.monthValue==value else year==value
+                            val tone by animateColorAsState(if(chosen)ObsidianPrimary else ObsidianSurfaceContainer)
+                            Box(Modifier.weight(1f).height(48.dp).clip(RoundedCornerShape(13.dp)).background(tone).bouncyClickable(enabled=value in (if(monthly)1..12 else 1900..2200)) {
+                                if(monthly)month=YearMonth.of(month.year,value)else year=value
+                            },contentAlignment=Alignment.Center) {
+                                Text(if(monthly)java.time.Month.of(value).getDisplayName(java.time.format.TextStyle.SHORT,Locale.ITALIAN).replaceFirstChar{it.titlecase(Locale.ITALIAN)}else value.toString(),fontSize=13.sp,fontWeight=FontWeight.SemiBold,color=if(chosen)OnBrand else TextPrimary)
+                            }
+                        }
+                    } }
                 }
-            } else {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    listOf(false, true).forEach { end ->
-                        val selected = selectingEnd == end
-                        val tone by animateColorAsState(if (selected) ObsidianPrimaryContainer else ObsidianSurfaceContainer)
-                        Surface(onClick = { selectingEnd = end; month = YearMonth.from(if (end) to else from) }, color = tone, shape = RoundedCornerShape(12.dp), modifier = Modifier.weight(1f)) {
-                            Column(Modifier.padding(10.dp)) {
-                                Text(if (end) "Al" else "Dal", color = TextSecondary, fontSize = 11.sp)
-                                Text((if (end) to else from).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")), color = TextPrimary, fontSize = 12.sp)
+                else -> {
+                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        listOf(false,true).forEach { end->
+                            val selected=selectingEnd==end
+                            Box(Modifier.weight(1f).clip(RoundedCornerShape(13.dp)).background(if(selected)ObsidianPrimarySubtle else ObsidianSurfaceContainer).bouncyClickable {selectingEnd=end;month=YearMonth.from(if(end)to else from)}.padding(12.dp)) {
+                                Column {Text(if(end)"Al" else "Dal",fontSize=11.sp,color=TextSecondary);Text((if(end)to else from).format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),fontSize=14.sp,color=TextPrimary,fontWeight=FontWeight.SemiBold)}
                             }
                         }
                     }
-                }
-                PdfDateGrid(month, if (selectingEnd) to else from, { month = it }) { date ->
-                    error = null
-                    if (selectingEnd) to = date else { from = date; if (to < from) to = from; selectingEnd = true }
+                    AppDateGrid(month,if(selectingEnd)to else from,{month=it},rangeStart=from,rangeEnd=to) { date->
+                        error=null
+                        if(selectingEnd){to=date;if(from>to)from=to}else{from=date;if(to<from)to=from;selectingEnd=true}
+                    }
                 }
             }
-            error?.let { Text(it, color = MaterialTheme.colorScheme.error, fontSize = 12.sp) }
-        }
-    }, dismissButton = { TextButton(onClick = dismiss) { Text("Annulla") } }, confirmButton = {
-        TextButton(onClick = {
-            try {
-                val changed = when (options.mode) {
-                    PdfExportMode.MESE -> options.copy(startDate = month.atDay(1), endDate = month.atEndOfMonth())
-                    PdfExportMode.ANNO -> options.copy(selectedYear = year)
-                    else -> options.copy(startDate = from, endDate = to)
-                }
-                PdfExportPlan.dates(changed); save(changed)
-            } catch (_: java.time.format.DateTimeParseException) { error = "Controlla le date: esempio 2026-11-01" }
-            catch (exception: IllegalArgumentException) { error = exception.message }
-        }) { Text("Conferma") }
-    })
-}
-
-@Composable
-private fun PdfDateGrid(month: YearMonth, selected: LocalDate, changeMonth: (YearMonth) -> Unit, select: (LocalDate) -> Unit) {
-    Column(Modifier.animateContentSize(spring(stiffness = 250f))) {
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            IconButton(onClick = { if (month > YearMonth.of(1900, 1)) changeMonth(month.minusMonths(1)) }) { SiteIcon("chevron-left", "Mese precedente") }
-            Text(month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)), color = TextPrimary, modifier = Modifier.weight(1f), fontSize = 13.sp, fontWeight = FontWeight.Bold)
-            IconButton(onClick = { if (month < YearMonth.of(2200, 12)) changeMonth(month.plusMonths(1)) }) { SiteIcon("chevron-right", "Mese successivo") }
-        }
-        Row(Modifier.fillMaxWidth()) { listOf("L", "M", "M", "G", "V", "S", "D").forEach { Text(it, color = TextMuted, fontSize = 11.sp, modifier = Modifier.weight(1f), textAlign = androidx.compose.ui.text.style.TextAlign.Center) } }
-        val offset = month.atDay(1).dayOfWeek.value - 1
-        repeat((offset + month.lengthOfMonth() + 6) / 7) { row ->
-            Row(Modifier.fillMaxWidth()) {
-                repeat(7) { column ->
-                    val day = row * 7 + column - offset + 1
-                    if (day in 1..month.lengthOfMonth()) {
-                        val date = month.atDay(day)
-                        val tone by animateColorAsState(if (selected == date) ObsidianPrimaryContainer else ObsidianSurface)
-                        Box(Modifier.weight(1f).height(38.dp).clip(RoundedCornerShape(10.dp)).background(tone).selectable(selected == date, role = Role.RadioButton) { select(date) }, contentAlignment = Alignment.Center) { Text("$day", color = TextPrimary, fontSize = 12.sp) }
-                    } else Spacer(Modifier.weight(1f).height(38.dp))
-                }
+            error?.let{Text(it,color=MaterialTheme.colorScheme.error,fontSize=12.sp)}
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                CatalogButton("Annulla",close,Modifier.weight(1f))
+                CatalogButton("Conferma",{
+                    try {
+                        val changed=when(options.mode){
+                            PdfExportMode.MESE->options.copy(startDate=month.atDay(1),endDate=month.atEndOfMonth())
+                            PdfExportMode.ANNO->options.copy(selectedYear=year)
+                            else->options.copy(startDate=from,endDate=to)
+                        }
+                        PdfExportPlan.dates(changed);pending=changed;close()
+                    }catch(exception:IllegalArgumentException){error=exception.message}
+                },Modifier.weight(1f),primary=true,icon="check")
             }
         }
     }

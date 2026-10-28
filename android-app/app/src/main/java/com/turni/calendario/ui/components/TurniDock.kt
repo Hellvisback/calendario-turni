@@ -3,6 +3,8 @@ package com.turni.calendario.ui.components
 import android.content.Context
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.ui.draw.clip
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -84,7 +86,7 @@ fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit
 @Composable
 private fun DockAction(name:String,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit){
     val motion=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-    Box(modifier.bouncyClickable{scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
+    Box(modifier.clip(CircleShape).bouncyClickable{scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
         SiteIconMotion(name,label,Modifier.size(23.dp),if(selected)OnBrand else DockInk){motion.value}
     }
 }

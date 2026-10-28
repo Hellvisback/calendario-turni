@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.graphics.vector.PathParser
 import androidx.compose.ui.graphics.PathMeasure
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.layout.onGloballyPositioned
 import androidx.compose.ui.layout.boundsInRoot
@@ -219,7 +220,11 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
         }
         item("dock-clearance") { Spacer(Modifier.height(118.dp)) }
     }
-    AnimatedVisibility(picking!=null,modifier=Modifier.zIndex(10f).padding(horizontal=16.dp).offset { IntOffset(0,dateBottom.roundToInt()) }.widthIn(max=320.dp),enter=fadeIn(tween(380))+scaleIn(spring(dampingRatio=.88f,stiffness=180f),initialScale=.18f,transformOrigin=TransformOrigin(if(pickerField==0).2f else .8f,0f))+slideInVertically(spring()){ -20 },exit=fadeOut(tween(220))+scaleOut(tween(260),targetScale=.2f,transformOrigin=TransformOrigin(if(pickerField==0).2f else .8f,0f))) {
+    val pickerWidth=minOf(280,LocalConfiguration.current.screenWidthDp-32).dp
+    val pickerX by animateDpAsState(if(pickerField==0)16.dp else (LocalConfiguration.current.screenWidthDp.dp-pickerWidth-16.dp),spring(1f,380f))
+    AnimatedVisibility(picking!=null,modifier=Modifier.zIndex(10f).offset { IntOffset(pickerX.roundToPx(),dateBottom.roundToInt()) }.width(pickerWidth),
+        enter=fadeIn(tween(260))+scaleIn(tween(420,easing=CubicBezierEasing(.16f,1f,.3f,1f)),initialScale=.32f,transformOrigin=TransformOrigin(if(pickerField==0).25f else .75f,0f))+slideInVertically(tween(380)){ -it/6 },
+        exit=fadeOut(tween(170))+scaleOut(tween(240,easing=FastOutSlowInEasing),targetScale=.35f,transformOrigin=TransformOrigin(if(pickerField==0).25f else .75f,0f))) {
         ReportDatePicker(if(pickerField==0)draftFrom else draftUntil,{picking=null}) { date -> if(pickerField==0){draftFrom=date;if(draftUntil<date)draftUntil=date}else{draftUntil=date;if(draftFrom>date)draftFrom=date};picking=null }
     }
     }
@@ -410,21 +415,13 @@ private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Bo
 @Composable
 private fun ReportDatePicker(selected:LocalDate,onClose:()->Unit,onDate:(LocalDate)->Unit) {
     var month by remember(selected){mutableStateOf(YearMonth.from(selected))}
-    Surface(Modifier.fillMaxWidth().shadow(16.dp,RoundedCornerShape(20.dp)),shape=RoundedCornerShape(20.dp),color=ObsidianSurface) {
-        Column(Modifier.padding(12.dp)) {
+    Surface(Modifier.fillMaxWidth().shadow(14.dp,RoundedCornerShape(22.dp)),shape=RoundedCornerShape(22.dp),color=ObsidianSurface) {
+        Column(Modifier.padding(10.dp)) {
             Row(verticalAlignment=Alignment.CenterVertically) {
-                Column(Modifier.weight(1f)) { Text("Seleziona data",fontSize=9.sp,color=reportMuted);Text("${month.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN)} ${month.year}",fontSize=14.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,color=reportInk) }
-                ReportIconButton("chevron-left","Mese precedente"){month=month.minusMonths(1)}
-                ReportIconButton("chevron-right","Mese successivo"){month=month.plusMonths(1)}
+                Text("Seleziona data",Modifier.weight(1f),fontSize=11.sp,color=TextSecondary)
                 ReportIconButton("x","Chiudi calendario",onClose)
             }
-            Text(selected.format(DateTimeFormatter.ofPattern("d MMMM yyyy",Locale.ITALIAN)),Modifier.padding(vertical=8.dp),fontSize=13.sp,color=reportInk)
-            Row { listOf("L","M","M","G","V","S","D").forEach{Text(it,Modifier.weight(1f),textAlign=TextAlign.Center,color=reportMuted,fontSize=10.sp)} }
-            val leading=month.atDay(1).dayOfWeek.value-1;val cells=((leading+month.lengthOfMonth()+6)/7)*7
-            (0 until cells step 7).forEach{week->Row{(0..6).forEach{offset->
-                val day=week+offset-leading+1;val valid=day in 1..month.lengthOfMonth();val date=if(valid)month.atDay(day)else null
-                Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(9.dp)).background(if(date==selected)ObsidianPrimary else Color.Transparent).then(if(valid)Modifier.bouncyClickable{onDate(date!!)}else Modifier),contentAlignment=Alignment.Center){if(valid)Text("$day",fontSize=12.sp,color=if(date==selected)MaterialTheme.colorScheme.onPrimary else reportInk)}
-            }}}
+            AppDateGrid(month,selected,{month=it},compact=true,select=onDate)
         }
     }
 }

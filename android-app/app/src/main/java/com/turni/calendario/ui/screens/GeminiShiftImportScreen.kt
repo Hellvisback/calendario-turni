@@ -236,7 +236,22 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     editCycle?.let{id->current?.cycles?.firstOrNull{it.rotation.id==id}?.let{row->
         RotationMatrixEditorScreen(row.rotation,{editCycle=null},{updated->draft=current.copy(cycles=current.cycles.map{if(it.rotation.id==id)it.copy(rotation=updated)else it});cycleConfirmed=false;confirmed=false;editCycle=null},{},availableDefinitions=current.shifts.map{it.definition},allowDefault=false)
     }}
-    if(discard)AlertDialog(onDismissRequest={discard=false},title={Text("Uscire dalla revisione?")},text={Text("Le modifiche sono ancora in bozza. Il catalogo non è stato aggiornato.")},confirmButton={TextButton({discard=false;draft=null;confirmed=false}){Text("Torna al documento")}},dismissButton={TextButton({discard=false}){Text("Continua revisione")}})
+    if(discard) {
+        var leave by remember { mutableStateOf(false) }
+        SelectorSheet("Uscire dalla revisione?",{
+            discard=false
+            if(leave){draft=null;confirmed=false}
+        }) { close->
+            Row(horizontalArrangement=Arrangement.spacedBy(12.dp),verticalAlignment=Alignment.CenterVertically) {
+                Box(Modifier.size(44.dp).clip(RoundedCornerShape(13.dp)).background(ObsidianPrimarySubtle),contentAlignment=Alignment.Center){SiteIcon("file-text",null,Modifier.size(24.dp),ObsidianPrimary)}
+                Text("Le modifiche sono ancora in bozza. Il catalogo non è stato aggiornato.",Modifier.weight(1f),fontSize=13.sp,lineHeight=20.sp,color=TextSecondary)
+            }
+            Spacer(Modifier.height(18.dp))
+            CatalogButton("Continua revisione",close,Modifier.fillMaxWidth(),primary=true,icon="pencil")
+            Spacer(Modifier.height(8.dp))
+            CatalogButton("Torna al documento",{leave=true;close()},Modifier.fillMaxWidth(),icon="arrow-left")
+        }
+    }
 }
 
 @Composable

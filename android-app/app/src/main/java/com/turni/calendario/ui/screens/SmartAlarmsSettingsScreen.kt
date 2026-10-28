@@ -355,7 +355,12 @@ private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, o
                         OutlinedTextField(customText, { if (it.length <= 5) customText = it }, label = { Text("Orario HH:mm") }, singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii, imeAction = ImeAction.Done),
                             keyboardActions = KeyboardActions(onDone = { saveTime() }),
                             isError = !validTime, modifier = Modifier.weight(1f), shape = RoundedCornerShape(14.dp))
-                        TextButton(onClick = { saveTime() }, enabled = validTime) { Text("Imposta") }
+                        Button(onClick = { saveTime() }, enabled = validTime,
+                            modifier = Modifier.padding(start = 8.dp).heightIn(min = 44.dp),
+                            shape = RoundedCornerShape(12.dp),
+                            colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary,contentColor = MaterialTheme.colorScheme.onPrimary)) {
+                            Text("Imposta",fontWeight=FontWeight.SemiBold)
+                        }
                     }
                 }
             }

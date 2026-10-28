@@ -1,6 +1,6 @@
 {
   "name": "calendario-turni",
-  "version": "1.7.2",
+  "version": "1.7.3",
   "description": "Applicazione di gestione e pianificazione turni",
   "type": "module",
   "scripts": {

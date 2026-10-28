@@ -507,7 +507,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
 @Composable
 private fun CatalogPaintChip(code: String, name: String, color: Color, selected: Boolean, action: () -> Unit) {
     val font=remember{Animatable(12f)};val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-    Column(Modifier.width(if(code.isEmpty())42.dp else 76.dp).height(66.dp).clip(RoundedCornerShape(12.dp))
+    Column(Modifier.width(if(code.isEmpty())66.dp else 76.dp).height(66.dp).clip(RoundedCornerShape(12.dp))
         .background(if(code.isEmpty()&&selected)MaterialTheme.colorScheme.primary.copy(alpha=.18f)else MaterialTheme.colorScheme.surfaceVariant).border(2.dp,if(selected){if(code.isEmpty())MaterialTheme.colorScheme.primary else color}else Color.Transparent,RoundedCornerShape(12.dp))
         .clickable {
             scope.launch{font.snapTo(13.5f);font.animateTo(12f,spring(.8f,300f))}
