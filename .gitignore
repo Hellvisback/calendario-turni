@@ -63,3 +63,6 @@ turnisync-database*.json
 !design/**/*.html
 !design/**/*.png
 !design/**/*.jpg
+
+# Android images are source assets required by clean checkouts.
+!android-app/app/src/main/res/**/*.png
