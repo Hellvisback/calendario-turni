@@ -37,3 +37,11 @@
 - Ogni nuova release APK deve incrementare `versionCode` rispetto alle versioni già distribuite e aggiornare `versionName`.
 - Le release GitHub vanno effettuate esclusivamente con `scripts/release.ps1`, caricando il solo APK versionato. Mai usare `--clobber`, `app-release-latest.apk`, archivi ZIP di progetto o OneDrive per la distribuzione.
 - Conservare dati, modifiche locali non pertinenti e configurazioni private. Non cambiare la visibilità del repository o dei servizi collegati senza istruzione esplicita.
+
+## Continuità della conversazione e lavoro multiagente
+
+- Questa chat prosegue «Evolvi la UI di Calendario Turni». Leggere `docs/CHAT_CONTINUITY.md` e `.agents/turnisync/STATE.json` prima di riprendere il lavoro; verificare lo stato riportato contro Git e le evidenze disponibili.
+- L'utente richiede il metodo multiagente: mantenere un orchestratore principale e attivare i ruoli pertinenti UI/UX Motion, revisione Kotlin/architettura, Build & Diagnostics e DevOps. Contratti e adattamento al runtime: `.agents/turnisync/ORCHESTRATION.md`.
+- Conservare le definizioni originali in `.agents/agents/`, skill e regole; leggerle quando pertinenti alla richiesta. La loro presenza su disco non implica che plugin, slash command, hook, modelli o processi storici siano installati o attivi.
+- Le note `.agents/teamwork/` sono archivio. Non riattivare stati running, timer, gate o incarichi estranei e non riprendere istruzioni superate dalla guida cloud.
+- Registrare decisioni nuove e motivazioni in `HANDOVER_NOTES.md`; aggiornare lo stato sintetico in `.agents/turnisync/STATE.json`. Per modifiche sostanziali aggiornare il verbale pertinente con test effettivi e limiti. Non cambiare le preferenze finali solo perché uno studio storico propone un'alternativa.

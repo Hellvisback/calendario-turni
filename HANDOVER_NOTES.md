@@ -215,3 +215,11 @@ Turni calendario a dimensioni fisse, overflow con pallini centrati nei colori or
 ## 14 novembre 2026 — beta.17 (62)
 Contorni calendario arretrati e assottigliati, curve interne coerenti; rimossa fascia rossa grande della gomma, sostituita da indicatore data 16 dp. Rifiniti frecce, note/campanella e contorno festività. Provate selezioni su celle colorate in chiaro/scuro e intervalli in entrambe le direzioni; 480 test passati e lintVitalBeta riuscito. Installata su Realme 8 Pro, database personale invariato. Dettagli, screenshot e Drive in docs/VERIFICA_v1.8.0-beta.17.md.
 
+## 14 novembre 2026 — continuità operativa della chat cloud
+
+Richiesta dell'utente: proseguire «Evolvi la UI di Calendario Turni» con gli stessi ruoli, struttura di design, salvataggi delle decisioni e motivazioni. Recuperato il catalogo originale di 68 agenti, 48 skill e 122 regole, conservando lo storico teamwork come archivio. Inventario con SHA-256 in `.agents/turnisync/INVENTORY.json`; metodo adattato agli strumenti effettivi in `.agents/turnisync/ORCHESTRATION.md`.
+
+`docs/CHAT_CONTINUITY.md` collega fonti, motivazioni delle scelte finali e limiti ancora aperti; `.agents/turnisync/STATE.json` conserva lo stato sintetico. AGENTS.md indica la sequenza di ripresa. Questa struttura evita di riapplicare esperimenti scartati, istruzioni Gemini obsolete o task già concluse quando cambia il computer o si compatta il contesto.
+
+Nel cloud già verificati assembleBeta, lintVitalBeta e 480 test senza errori/fallimenti/saltati sul codice della correzione risorse `829ff74`. Le modifiche di continuità sono documentali: nessuna nuova modifica UI, versione o release. La memoria interna del vecchio modello, processi/ID agenti, plugin/hook di altri strumenti e tutti i fotogrammi locali non sono clonati; i ruoli vengono ricreati su richiesta con gli strumenti disponibili. Storico privato e configurazioni specifiche della macchina restano fuori dal repository pubblico.
+
