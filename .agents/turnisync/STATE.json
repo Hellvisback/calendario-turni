@@ -1,0 +1,70 @@
+{
+  "schemaVersion": 1,
+  "updatedAt": "2026-11-14",
+  "project": "TurniSync / Calendario Turni",
+  "originalChatTitle": "Evolvi la UI di Calendario Turni",
+  "originalChatId": "01a1543e-464b-7a42-9149-4bef11db9185",
+  "currentUserObjective": "Continue the original conversation with the same project decisions, design references and multi-agent roles",
+  "currentWorkStatus": "Cloud source setup verified; continuity configuration reconstructed and independently audited",
+  "appVersion": "1.8.0-beta.17",
+  "versionCode": 62,
+  "branch": "codex/restore-android-source-images",
+  "pullRequest": "https://github.com/Hellvisback/calendario-turni/pull/1",
+  "validatedCodeCommit": "829ff740346d56c1496ce60ef4c2d60b65892f42",
+  "verification": {
+    "cloudBuild": "assembleBeta passed",
+    "lint": "lintVitalBeta passed",
+    "unitTests": 480,
+    "failures": 0,
+    "errors": 0,
+    "skipped": 0,
+    "physicalDeviceTestInCloud": false,
+    "note": "Documentation-only continuity changes do not rerun or replace the previous app verification"
+  },
+  "entryPoints": [
+    "AGENTS.md",
+    "docs/CLOUD_HANDOFF.md",
+    "docs/CHAT_CONTINUITY.md",
+    ".agents/turnisync/ORCHESTRATION.md",
+    "docs/VERIFICA_v1.8.0-beta.17.md"
+  ],
+  "team": {
+    "mainAgent": "orchestrator",
+    "coreRoles": [
+      "ui_motion_expressive",
+      "quality_architecture_reviewer",
+      "build_diagnostics",
+      "devops"
+    ],
+    "supportRoles": [
+      "planner_architect",
+      "performance",
+      "security_data",
+      "documentation"
+    ],
+    "runtime": "available collaboration tools; no restored historical model identities or agent process IDs"
+  },
+  "knownOpenItems": [
+    "Frame-time/performance improvements remain unproven on the cloud",
+    "Public OAuth verification and external-account device testing incomplete",
+    "Store publication, Play App Signing and final signing key incomplete"
+  ],
+  "constraints": [
+    "Website remains private",
+    "No APK release requested",
+    "No new UI feature requested after beta.17; do not replay completed historical tasks",
+    "Original signing key and physical device unavailable in cloud"
+  ],
+  "privateCloudReferences": {
+    "transcript": "/workspace/evolvi-migrazione/CHAT_EVOLVI.md",
+    "exportPages": "/workspace/evolvi-migrazione/storico/",
+    "environmentStatus": "/workspace/turnisync-setup/STATO_CLOUD.md",
+    "checkCommand": "bash /workspace/turnisync-setup/check-cloud.sh"
+  },
+  "migrationLimits": [
+    "No identical hidden model state or running historical processes",
+    "Historical command/patch exports are incomplete",
+    "683 Windows image references are not materialized at their original paths; curated final QA images are in design/"
+  ],
+  "nextAction": "Continue from the next concrete user request using current sources and role contracts; preserve unresolved limitations"
+}
