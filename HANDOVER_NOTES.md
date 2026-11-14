@@ -223,3 +223,9 @@ Richiesta dell'utente: proseguire «Evolvi la UI di Calendario Turni» con gli s
 
 Nel cloud già verificati assembleBeta, lintVitalBeta e 480 test senza errori/fallimenti/saltati sul codice della correzione risorse `829ff74`. Le modifiche di continuità sono documentali: nessuna nuova modifica UI, versione o release. La memoria interna del vecchio modello, processi/ID agenti, plugin/hook di altri strumenti e tutti i fotogrammi locali non sono clonati; i ruoli vengono ricreati su richiesta con gli strumenti disponibili. Storico privato e configurazioni specifiche della macchina restano fuori dal repository pubblico.
 
+
+## 14 novembre 2026 — pubblicazione GitHub dell’APK originale beta.17
+
+Su richiesta dell’utente è stata pubblicata la prerelease v1.8.0-beta.17 con il solo app-release-v1.8.0-beta.17.apk (62), 3.285.129 byte. È lo stesso artefatto già distribuito dalla chat precedente, senza nuova build né cambio di firma/versione. SHA-256 167d190a533937810359bd69d47a4ced3bcc7547178042f2c5635180dc174dfc; certificato identico alla beta.2 ufficiale. Tag sullo snapshot sorgenti 5771268.
+
+URL: https://github.com/Hellvisback/calendario-turni/releases/tag/v1.8.0-beta.17 . Download pubblico effettuato dopo la pubblicazione e hash ricontrollato. Pubblicazione tramite nuova modalità verificata PublishExistingArtifact di scripts/release.ps1; il job Actions 43620668463 ha completato l’upload dopo un errore di autenticazione del caricamento diretto dal cloud. APK trasferito tramite oggetto Git senza aggiungerlo al tree; copia durevole nell’asset della release. Modalità VerifyOnly e rifiuto di hash/certificato/versione errati verificati prima di pubblicare. Nessuna installazione sul telefono o nuova correzione UI dichiarata.

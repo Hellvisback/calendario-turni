@@ -4,12 +4,11 @@
   "project": "TurniSync / Calendario Turni",
   "originalChatTitle": "Evolvi la UI di Calendario Turni",
   "originalChatId": "01a1543e-464b-7a42-9149-4bef11db9185",
-  "currentUserObjective": "Continue the original conversation with the same project decisions, design references and multi-agent roles",
-  "currentWorkStatus": "Cloud source setup verified; continuity configuration reconstructed and independently audited",
+  "currentUserObjective": "Publish the latest available original APK on GitHub for user verification",
+  "currentWorkStatus": "Original beta.17 published and downloaded back successfully; hash and certificate verified",
   "appVersion": "1.8.0-beta.17",
   "versionCode": 62,
-  "branch": "codex/restore-android-source-images",
-  "pullRequest": "https://github.com/Hellvisback/calendario-turni/pull/1",
+  "branch": "codex/publish-beta17",
   "validatedCodeCommit": "829ff740346d56c1496ce60ef4c2d60b65892f42",
   "verification": {
     "cloudBuild": "assembleBeta passed",
@@ -51,9 +50,9 @@
   ],
   "constraints": [
     "Website remains private",
-    "No APK release requested",
     "No new UI feature requested after beta.17; do not replay completed historical tasks",
-    "Original signing key and physical device unavailable in cloud"
+    "Original signing key and physical device unavailable in cloud",
+    "Republishing an existing APK preserves version and signature; new APK builds still require version increments"
   ],
   "privateCloudReferences": {
     "transcript": "/workspace/evolvi-migrazione/CHAT_EVOLVI.md",
@@ -66,5 +65,17 @@
     "Historical command/patch exports are incomplete",
     "683 Windows image references are not materialized at their original paths; curated final QA images are in design/"
   ],
-  "nextAction": "Continue from the next concrete user request using current sources and role contracts; preserve unresolved limitations"
+  "nextAction": "Use the user’s bug reports from the downloaded beta.17 as the next concrete task",
+  "sourceRecoveryPullRequest": "https://github.com/Hellvisback/calendario-turni/pull/1",
+  "lastRelease": {
+    "tag": "v1.8.0-beta.17",
+    "url": "https://github.com/Hellvisback/calendario-turni/releases/tag/v1.8.0-beta.17",
+    "apkUrl": "https://github.com/Hellvisback/calendario-turni/releases/download/v1.8.0-beta.17/app-release-v1.8.0-beta.17.apk",
+    "sha256": "167d190a533937810359bd69d47a4ced3bcc7547178042f2c5635180dc174dfc",
+    "bytes": 3285129,
+    "versionCode": 62,
+    "sourceSnapshot": "5771268b691a1976cfce00b24db30ad9432295dd",
+    "workflowRun": "https://github.com/Hellvisback/calendario-turni/actions/runs/43620668463",
+    "newBuild": false
+  }
 }
