@@ -8,7 +8,18 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 
 object TurniThemeState {
+    private var applicationContext:Context?=null
+    fun restoreStoredMode(value:String?) {
+        if(value==null) {
+            applicationContext?.let { com.turni.calendario.repository.ShiftRepository.appPreferences=com.turni.calendario.repository.ShiftRepository.appPreferences.copy(themeMode=mode.name) }
+            return
+        }
+        val restored=ThemeMode.values().firstOrNull{it.name==value}?:return
+        applicationContext?.let{setMode(it,restored)}
+    }
     var mode by mutableStateOf(ThemeMode.AUTOMATIC)
+        private set
+    var style by mutableStateOf(PaletteStyle.GRAPHITE)
         private set
     private var systemDark by mutableStateOf(true)
     val dark: Boolean get() = mode.isDark(systemDark)
@@ -19,8 +30,18 @@ object TurniThemeState {
     }
     fun isDark(context: Context): Boolean = storedMode(context).isDark(
         context.resources.configuration.uiMode and android.content.res.Configuration.UI_MODE_NIGHT_MASK == android.content.res.Configuration.UI_MODE_NIGHT_YES)
+    fun storedStyle(context: Context): PaletteStyle = resolvePaletteStyle(
+        context.getSharedPreferences("turnisync_theme", 0).getString("palette_style", null)
+    )
     fun initialize(context: Context) {
+        applicationContext=context.applicationContext
         mode = storedMode(context)
+        style = storedStyle(context)
+        // Retire the experimental palette keys without touching the user's theme mode or shift data.
+        val prefs = context.getSharedPreferences("turnisync_theme", 0)
+        if (prefs.getString("palette_style", null) != style.name) {
+            prefs.edit().putString("palette_style", style.name).apply()
+        }
         refreshSystem(context)
     }
     fun refreshSystem(context: Context) {
@@ -30,35 +51,45 @@ object TurniThemeState {
     fun setMode(context: Context, value: ThemeMode) {
         refreshSystem(context)
         mode = value
+        com.turni.calendario.repository.ShiftRepository.appPreferences=com.turni.calendario.repository.ShiftRepository.appPreferences.copy(themeMode=value.name)
         context.getSharedPreferences("turnisync_theme", 0).edit().putString("mode", value.name).putBoolean("dark", dark).apply()
         com.turni.calendario.widget.WidgetUpdateManager.notifyWidgetsChanged(context)
     }
     fun setDark(context: Context, value: Boolean) = setMode(context, if (value) ThemeMode.DARK else ThemeMode.LIGHT)
+    fun setStyle(context: Context, value: PaletteStyle) {
+        if (style == value) return
+        style = value
+        context.getSharedPreferences("turnisync_theme", 0).edit().putString("palette_style", value.name).apply()
+        com.turni.calendario.widget.WidgetUpdateManager.notifyWidgetsChanged(context)
+    }
 }
-private fun themed(dark: Long, light: Long) = Color(if (TurniThemeState.dark) dark else light)
-val ObsidianBackground get() = themed(0xFF101114, 0xFFF4F6F9)
-val ObsidianSurface get() = themed(0xFF1A1C22, 0xFFFFFFFF)
-val ObsidianSurfaceContainer get() = themed(0xFF22242C, 0xFFEDF1F8)
-val ObsidianSurfaceHigh get() = themed(0xFF262932, 0xFFEDF1F8)
-val ObsidianSurfaceHighest get() = themed(0xFF323540, 0xFFDEE5F0)
-val ObsidianBorder get() = themed(0xFF383B46, 0xFFE3E9F2)
-val ObsidianBorderSubtle get() = themed(0xFF2C2F38, 0xFFE8ECF3)
-val ObsidianBorderActive get() = ObsidianPrimary
-val ObsidianPrimary get() = themed(0xFFBCB8FF, 0xFF3866E8)
-val ObsidianPrimaryContainer get() = themed(0xFF454064, 0xFFDFE6FF)
-val ObsidianPrimarySubtle get() = themed(0xFF302D45, 0xFFEBEFFF)
-val ObsidianSecondary get() = themed(0xFFC3BBE9, 0xFF655195)
-val ObsidianTertiary get() = themed(0xFF83CDB7, 0xFF166B56)
-val TextPrimary get() = themed(0xFFF4F3F7, 0xFF1C2B43)
-val TextSecondary get() = themed(0xFFBEC1CD, 0xFF56657A)
-val TextMuted get() = themed(0xFFADB1C0, 0xFF657086)
-val CalendarSurface get() = themed(0xFF16181E, 0xFFFFFFFF)
-val CalendarWeekend get() = themed(0xFF20222B, 0xFFE6EDF7)
-val CalendarToday get() = themed(0xFF343146, 0xFFD6E5FF)
-val DockBody get() = themed(0xFF2C2D3A, 0xFFE3EBFC)
-val DockInk get() = themed(0xFFE7E5F4, 0xFF36547E)
-val OnBrand get() = themed(0xFF24213F, 0xFFFFFFFF)
-val PrimaryGradient get() = Brush.horizontalGradient(listOf(ObsidianPrimary, ObsidianSecondary))
+val ObsidianBackground get() = Color(currentTurniPalette.background)
+val ObsidianSurface get() = Color(currentTurniPalette.surface)
+val ObsidianSurfaceContainer get() = Color(currentTurniPalette.container)
+val ObsidianSurfaceHigh get() = Color(currentTurniPalette.surfaceHigh)
+val ObsidianSurfaceHighest get() = Color(currentTurniPalette.surfaceHighest)
+val ObsidianBorder get() = Color(currentTurniPalette.border)
+val ObsidianBorderSubtle get() = Color(currentTurniPalette.divider)
+val ObsidianBorderActive get() = BrandInk
+val ObsidianPrimary get() = Color(currentTurniPalette.primary)
+// Standalone labels/icons need a lighter blue on dark surfaces than filled actions.
+val BrandInk get() = Color(currentTurniPalette.primaryInk)
+val ObsidianPrimaryContainer get() = Color(currentTurniPalette.primaryContainer)
+val ObsidianPrimarySubtle get() = Color(currentTurniPalette.primarySubtle)
+val ObsidianSecondary get() = Color(currentTurniPalette.secondary)
+val ObsidianTertiary get() = Color(currentTurniPalette.tertiary)
+val TextPrimary get() = Color(currentTurniPalette.text)
+val TextSecondary get() = Color(currentTurniPalette.secondaryText)
+val TextMuted get() = Color(currentTurniPalette.mutedText)
+val CalendarSurface get() = Color(currentTurniPalette.calendar)
+val CalendarWeekend get() = Color(currentTurniPalette.calendarWeekend)
+val CalendarToday get() = Color(currentTurniPalette.calendarToday)
+val DockBody get() = Color(currentTurniPalette.dock)
+val DockInk get() = Color(currentTurniPalette.dockInk)
+val DockSelected get() = Color(currentTurniPalette.dockSelected)
+val DockOnSelected get() = Color(currentTurniPalette.dockOnSelected)
+val OnBrand get() = Color(currentTurniPalette.onPrimary)
+val PrimaryGradient get() = Brush.horizontalGradient(listOf(ObsidianPrimary, Color(currentTurniPalette.primaryInk)))
 val AmberGradient = Brush.horizontalGradient(listOf(Color(0xFFD97706), Color(0xFFF2C46D)))
 val EmeraldGradient = Brush.horizontalGradient(listOf(Color(0xFF166B56), Color(0xFF83CDB7)))
 val PurpleGradient = Brush.horizontalGradient(listOf(Color(0xFF655195), Color(0xFFBAAEF6)))
@@ -74,7 +105,7 @@ val ColorMatDom = Color(0xFFF2C46D)
 val ColorUffici = Color(0xFFAAB9CE)
 val ColorDonazione = Color(0xFFEE9C9C)
 val ColorMalattia = Color(0xFFB4D995)
-val ColorReperibilita get() = themed(0xFFF4CA70, 0xFF805100)
-val ColorTrasferta get() = themed(0xFF94C4EF, 0xFF235C98)
+val ColorReperibilita get() = Color(currentTurniPalette.onCall.ink)
+val ColorTrasferta get() = Color(currentTurniPalette.travel.ink)
 
-val ColorNegative get() = themed(0xFFFFA1AB, 0xFFB3263C)
+val ColorNegative get() = Color(currentTurniPalette.danger.ink)

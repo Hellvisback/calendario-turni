@@ -43,7 +43,7 @@ fun AppConfirmationDialog(title:String,message:String,confirmLabel:String,dismis
                                 SiteIcon("trash-2",null,Modifier.size(23.dp),MaterialTheme.colorScheme.onErrorContainer)
                             }
                             Spacer(Modifier.weight(1f))
-                            Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).bouncyClickable{finish(onDismiss)},contentAlignment=Alignment.Center){SiteIcon("x","Continua revisione",Modifier.size(18.dp),TextSecondary)}
+                            Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).bouncyClickable{finish(onDismiss)},contentAlignment=Alignment.Center){SiteIcon("x",dismissLabel,Modifier.size(18.dp),ColorNegative)}
                         }
                         Text(title,color=TextPrimary,fontSize=21.sp,fontWeight=FontWeight.SemiBold)
                         Text(message,color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)

@@ -6,7 +6,6 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -19,15 +18,16 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.turni.calendario.ui.theme.SemanticTone
+import com.turni.calendario.ui.theme.currentTurniPalette
+import com.turni.calendario.ui.theme.readableIndicator
 import kotlinx.coroutines.delay
 import kotlin.math.cos
 import kotlin.math.sin
@@ -66,6 +66,7 @@ fun AnimatedStatusPopup(
     modifier: Modifier = Modifier
 ) {
     val isVisible = message != null
+    val palette = currentTurniPalette
 
     // Auto-dismiss timer
     LaunchedEffect(message) {
@@ -101,14 +102,14 @@ fun AnimatedStatusPopup(
     }
 
     // Pre-calculated delicate sparkle particles
-    val particles = remember(message) {
+    val particles = remember(message, type, palette) {
         if (message != null && type == PopupType.SUCCESS) {
             val colors = listOf(
-                Color(0xFF34D399), // Emerald
-                Color(0xFF10B981), // Mint
-                Color(0xFFF59E0B), // Gold
-                Color(0xFF38BDF8), // Cyan
-                Color(0xFFFFFFFF)  // White Spark
+                Color(palette.success.ink),
+                Color(palette.success.edge),
+                Color(palette.secondary),
+                Color(palette.travel.edge),
+                Color(palette.primary)
             )
             val rnd = Random(message.hashCode())
             List(18) {
@@ -125,35 +126,23 @@ fun AnimatedStatusPopup(
         } else emptyList()
     }
 
-    // Style based on type
-    val (bgColor, borderColor, iconColor, icon) = remember(type) {
-        when (type) {
-            PopupType.SUCCESS -> PopupStyle(
-                bg = Color(0xFF064E3B),
-                border = Color(0xFF10B981),
-                icon = Color(0xFF34D399),
-                iconVector = Icons.Default.CheckCircle
-            )
-            PopupType.ERROR -> PopupStyle(
-                bg = Color(0xFF7F1D1D),
-                border = Color(0xFFEF4444),
-                icon = Color(0xFFFCA5A5),
-                iconVector = Icons.Default.Error
-            )
-            PopupType.WARNING -> PopupStyle(
-                bg = Color(0xFF78350F),
-                border = Color(0xFFF59E0B),
-                icon = Color(0xFFFDE68A),
-                iconVector = Icons.Default.Warning
-            )
-            PopupType.INFO -> PopupStyle(
-                bg = Color(0xFF0C4A6E),
-                border = Color(0xFF38BDF8),
-                icon = Color(0xFF7DD3FC),
-                iconVector = Icons.Default.Info
-            )
-        }
+    val tone = when (type) {
+        PopupType.SUCCESS -> palette.success
+        PopupType.ERROR -> palette.danger
+        PopupType.WARNING -> palette.warning
+        PopupType.INFO -> SemanticTone(palette.primaryContainer, palette.onPrimaryContainer, palette.primary)
     }
+    val icon = when (type) {
+        PopupType.SUCCESS -> Icons.Default.CheckCircle
+        PopupType.ERROR -> Icons.Default.Error
+        PopupType.WARNING -> Icons.Default.Warning
+        PopupType.INFO -> Icons.Default.Info
+    }
+    val bgColor = Color(tone.fill)
+    val ink = Color(tone.ink)
+    val borderColor = Color(tone.edge)
+    val iconFill = lerp(bgColor, borderColor, .20f)
+    val closeFill = lerp(bgColor, ink, .10f)
 
     Box(
         modifier = modifier.fillMaxSize(),
@@ -217,7 +206,7 @@ fun AnimatedStatusPopup(
                         shape = RoundedCornerShape(20.dp)
                     ),
                 shape = RoundedCornerShape(20.dp),
-                colors = CardDefaults.cardColors(containerColor = bgColor),
+                colors = CardDefaults.cardColors(containerColor = bgColor, contentColor = ink),
                 border = androidx.compose.foundation.BorderStroke(
                     1.2.dp,
                     Brush.horizontalGradient(
@@ -239,13 +228,13 @@ fun AnimatedStatusPopup(
                         modifier = Modifier
                             .size(38.dp)
                             .clip(CircleShape)
-                            .background(borderColor.copy(alpha = 0.2f)),
+                            .background(iconFill),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = icon,
                             contentDescription = null,
-                            tint = iconColor,
+                            tint = readableIndicator(iconFill, ink),
                             modifier = Modifier.size(24.dp)
                         )
                     }
@@ -254,7 +243,7 @@ fun AnimatedStatusPopup(
 
                     Text(
                         text = message ?: "",
-                        color = Color.White,
+                        color = ink,
                         fontSize = 13.5.sp,
                         fontWeight = FontWeight.SemiBold,
                         lineHeight = 18.sp,
@@ -268,12 +257,12 @@ fun AnimatedStatusPopup(
                         modifier = Modifier
                             .size(32.dp)
                             .clip(CircleShape)
-                            .background(Color.White.copy(alpha = 0.1f))
+                            .background(closeFill)
                     ) {
                         Icon(
                             Icons.Default.Close,
                             contentDescription = "Chiudi",
-                            tint = Color.White.copy(alpha = 0.9f),
+                            tint = readableIndicator(closeFill, ink),
                             modifier = Modifier.size(16.dp)
                         )
                     }
@@ -282,10 +271,3 @@ fun AnimatedStatusPopup(
         }
     }
 }
-
-private data class PopupStyle(
-    val bg: Color,
-    val border: Color,
-    val icon: Color,
-    val iconVector: ImageVector
-)

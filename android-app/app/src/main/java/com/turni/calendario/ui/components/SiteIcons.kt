@@ -17,6 +17,13 @@ import kotlin.math.*
 
 /** Original 24-unit outline artwork and articulated motion from the approved prototype. */
 private val sitePaths = mapOf(
+    "alert-triangle" to listOf("M12 3 22 21H2L12 3ZM12 9v5M12 17h.01"),
+    "tag" to listOf("M3 3h8l10 10-8 8L3 11V3ZM7 7h.01"),
+    "graduation-cap" to listOf("m2 9 10-5 10 5-10 5L2 9ZM6 11v6c4 3 8 3 12 0v-6M22 9v8"),
+    "heart-pulse" to listOf("M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.7l-1.1-1.1a5.5 5.5 0 0 0-7.8 7.8L12 21l8.8-8.6a5.5 5.5 0 0 0 0-7.8ZM3 12h5l2-4 4 8 2-4h5"),
+    "book-open" to listOf("M12 5v15M12 5C8 2 4 3 2 4v15c4-1 7-1 10 1 3-2 6-2 10-1V4c-2-1-6-2-10 1Z"),
+    "smile" to listOf("M22 12a10 10 0 1 1-20 0 10 10 0 0 1 20 0ZM8 9h.01M16 9h.01M7 14c3 5 7 5 10 0"),
+    "flag" to listOf("M4 22V3c6-4 10 4 16 0v12c-6 4-10-4-16 0"),
     "folder-open" to listOf("M3 8V5a2 2 0 0 1 2-2h4l2 3h8a2 2 0 0 1 2 2v2M2 10h20l-3 10H5L2 10Z"),
     "search" to listOf("M17 10a7 7 0 1 1-14 0 7 7 0 0 1 14 0ZM15 15l6 6"),
     "message" to listOf("M4 4h16v12H9l-5 4V4ZM8 8h8M8 12h5"),
@@ -43,7 +50,7 @@ private val sitePaths = mapOf(
     "arrow-left" to listOf("m12 19-7-7 7-7M5 12h14"),
     "undo" to listOf("M3 10h10a7 7 0 0 1 0 14M3 10l5-5M3 10l5 5"),
     "trash" to listOf("M3 6h18M9 6V4h6v2M5 6l1 15h12l1-15M10 10v7M14 10v7"),
-    "notebook" to listOf("M4 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H4V3ZM4 7H2M4 12H2M4 17H2M8 7h8M8 11h5M8 15h4"),
+    "notebook" to listOf("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5V3ZM5 7H3M5 12H3M5 17H3M9 7h8M9 11h5M9 15h4"),
     "briefcase" to listOf("M12 12h.01M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2M22 13a18.15 18.15 0 0 1-20 0M4 6h16a2 2 0 0 1 2 2v10a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2Z"),
     "building" to listOf("M3 21V7h8v14M11 21V3h10v18M1 21h22M6 10h2M6 14h2M6 18h2M14 6h3M14 10h3M14 14h3M14 18h3"),
     "users" to listOf("M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M22 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75M13 7a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z"),
@@ -116,6 +123,7 @@ private fun buildSiteVector(name:String,progress:Float):ImageVector {
                 "plane"->{tx=if(p<.5f)12f*p else -10f*(1-p);ty=-tx;alpha=abs(2*p-1).coerceIn(0f,1f)}
                 "eraser"->{tx=sin(p*2*PI).toFloat()*2f;rotation=-12f*wave}
                 "undo"->rotation=-26f*wave
+                "tag","graduation-cap","heart-pulse","book-open","smile","flag"->{rotation=4f*wave;sy=1f+.06f*wave}
                 "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
                 "chevron-left"->tx=-2.5f*wave
                 "chevron-right"->tx=2.5f*wave
@@ -161,7 +169,8 @@ fun SiteIconMotion(name:String,description:String?=null,modifier:Modifier=Modifi
                     "plane"->{tx=if(p<.5f)12f*p else -10f*(1-p);ty=-tx;alpha=abs(2*p-1).coerceIn(0f,1f)}
                     "eraser"->{tx=sin(p*2*PI).toFloat()*2f;rotation=-12f*wave}
                     "undo"->rotation=-26f*wave
-                    "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
+                    "tag","graduation-cap","heart-pulse","book-open","smile","flag"->{rotation=4f*wave;sy=1f+.06f*wave}
+                "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
                     "chevron-left"->tx=-2.5f*wave
                     "chevron-right"->tx=2.5f*wave
                 }

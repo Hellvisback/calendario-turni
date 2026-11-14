@@ -14,6 +14,7 @@ class TurniSyncApplication : Application() {
     override fun onCreate() {
         super.onCreate()
         com.turni.calendario.ui.theme.TurniThemeState.initialize(this)
+        com.turni.calendario.repository.FirstRunStore.initialize(this)
         LocalDatabaseStore.start(this)
         com.turni.calendario.ui.screens.GoogleAccountSession.initialize(this)
         com.turni.calendario.sync.DriveAutomaticBackup.ensureScheduled(this)

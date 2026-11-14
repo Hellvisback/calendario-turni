@@ -145,7 +145,7 @@ fun HolidaysSettingsScreen(
                     border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
                     contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
                 ) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(15.dp))
+                    Icon(Icons.Outlined.Refresh, contentDescription = null, tint = BrandInk, modifier = Modifier.size(15.dp))
                     Spacer(modifier = Modifier.width(6.dp))
                     Text("Ripristina", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
                 }

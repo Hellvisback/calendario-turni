@@ -2,6 +2,9 @@
 
 package com.turni.calendario.ui.screens
 
+import com.turni.calendario.ui.theme.BrandInk
+import com.turni.calendario.ui.theme.ColorNegative
+
 import android.net.Uri
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
@@ -33,7 +36,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.TextStyle
@@ -48,6 +50,9 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
+import com.turni.calendario.ui.theme.currentTurniPalette
+import com.turni.calendario.ui.theme.readableInk
+import com.turni.calendario.ui.theme.shiftDisplayColor
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.components.TurniEraserIcon
 import com.turni.calendario.ui.components.SiteIcon
@@ -58,14 +63,8 @@ import java.time.LocalTime
 import java.util.UUID
 
 /** Approved defaults; existing custom colors remain untouched. */
-val catalogPastelColors = listOf(0xFFF2C46DL, 0xFFEE9C9CL, 0xFFBAAEF6L, 0xFF83CDB7L, 0xFF94C4EFL, 0xFFAAB9CEL)
-internal fun catalogInk(color: Color): Color {
-    val dark = Color(0xFF171923)
-    val luminance = color.luminance()
-    val darkContrast = (luminance + .05f) / (dark.luminance() + .05f)
-    val lightContrast = 1.05f / (luminance + .05f)
-    return if (darkContrast >= lightContrast) dark else Color.White
-}
+val catalogPastelColors = listOf(0xFFDBC38EL, 0xFFD9AE9BL, 0xFFAEBCE4L, 0xFF97C6BFL, 0xFF9EC4DEL, 0xFFB8C1C8L)
+internal fun catalogInk(color: Color): Color = readableInk(color, Color(0xFF211728))
 
 @Composable
 internal fun CatalogGroup(title: String, outlined: Boolean = false, content: @Composable ColumnScope.() -> Unit) {
@@ -125,7 +124,7 @@ internal fun CatalogButton(label:String,action:()->Unit,modifier:Modifier=Modifi
 }
 
 @Composable
-internal fun CatalogIconAction(name:String,label:String,action:()->Unit,modifier:Modifier=Modifier,tint:Color=MaterialTheme.colorScheme.onSurface) {
+internal fun CatalogIconAction(name:String,label:String,action:()->Unit,modifier:Modifier=Modifier,tint:Color=if(name=="x")ColorNegative else MaterialTheme.colorScheme.onSurface) {
     val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
     Box(modifier.width(40.dp).height(44.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant).clickable {
         scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(620));phase.snapTo(0f)};action()
@@ -177,14 +176,16 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit,heightFract
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun UniversalColorPickerRow(selectedColorHex: Long, showNames:Boolean=false, onColorSelected: (Long) -> Unit) {
+fun UniversalColorPickerRow(selectedColorHex: Long, showNames:Boolean=false, shiftId:String?=null, onColorSelected: (Long) -> Unit) {
     var showPicker by remember { mutableStateOf(false) }
+    fun display(value:Long)=if(shiftId!=null)shiftDisplayColor(Color(value),definitionId=shiftId)else Color(value)
+    val selectedColor=display(selectedColorHex)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
             catalogPastelColors.forEachIndexed { index,value ->
                 Column(Modifier.weight(1f).bouncyClickable{onColorSelected(value)},horizontalAlignment=Alignment.CenterHorizontally) {
-                    Box(Modifier.size(if(showNames)34.dp else 32.dp).clip(RoundedCornerShape(if(showNames)11.dp else 9.dp)).background(Color(value)),contentAlignment=Alignment.Center) {
-                        if(value==selectedColorHex)SiteIcon("check","Selezionato",Modifier.size(16.dp),catalogInk(Color(value)))
+                    Box(Modifier.size(if(showNames)34.dp else 32.dp).clip(RoundedCornerShape(if(showNames)11.dp else 9.dp)).background(display(value)),contentAlignment=Alignment.Center) {
+                        if(display(value)==selectedColor)SiteIcon("check","Selezionato",Modifier.size(16.dp),catalogInk(display(value)))
                     }
                     if(showNames)Text(listOf("Ambra","Corallo","Lavanda","Menta","Azzurro","Perla")[index],fontSize=9.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=5.dp))
                 }
@@ -201,15 +202,15 @@ fun UniversalColorPickerRow(selectedColorHex: Long, showNames:Boolean=false, onC
         } else Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(10.dp),verticalAlignment=Alignment.Bottom) {
             Column(Modifier.width(58.dp),verticalArrangement=Arrangement.spacedBy(5.dp)) {
                 Text("Colore",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
-                Box(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(10.dp)).background(Color(selectedColorHex)).bouncyClickable{showPicker=true},contentAlignment=Alignment.Center) {
-                    SiteIcon("pipette","Scegli colore",Modifier.size(17.dp),catalogInk(Color(selectedColorHex)))
+                Box(Modifier.fillMaxWidth().height(40.dp).clip(RoundedCornerShape(10.dp)).background(selectedColor).bouncyClickable{showPicker=true},contentAlignment=Alignment.Center) {
+                    SiteIcon("pipette","Scegli colore",Modifier.size(17.dp),catalogInk(selectedColor))
                 }
             }
-            var hexDraft by remember(selectedColorHex){mutableStateOf(colorToHex(Color(selectedColorHex)))}
+            var hexDraft by remember(selectedColorHex,selectedColor){mutableStateOf(colorToHex(selectedColor))}
             CatalogField("HEX",hexDraft,{hexDraft=it.take(7).uppercase();if(Regex("#[0-9A-F]{6}").matches(hexDraft))parseHexToColor(hexDraft)?.let{value->onColorSelected(colorToLong(value))}},Modifier.weight(1f),error=!Regex("#[0-9A-F]{6}").matches(hexDraft))
         }
     }
-    if (showPicker) CustomColorPickerDialog(selectedColorHex, { showPicker = false }) { onColorSelected(it); showPicker = false }
+    if (showPicker) CustomColorPickerDialog(colorToLong(selectedColor), { showPicker = false }) { onColorSelected(it); showPicker = false }
 }
 
 @Composable
@@ -253,7 +254,7 @@ fun CustomColorPickerDialog(initialColorHex: Long, onDismiss: () -> Unit, onColo
                         Text("Colore personalizzato",fontSize=18.sp,fontWeight=FontWeight.SemiBold)
                         Text("Palette e personalizzazione",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=3.dp))
                     }
-                    IconButton(onClick = { finish(onDismiss) }, enabled = !closing,modifier=Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) { SiteIcon("x", "Chiudi",Modifier.size(18.dp)) }
+                    IconButton(onClick = { finish(onDismiss) }, enabled = !closing,modifier=Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(MaterialTheme.colorScheme.surfaceVariant)) { SiteIcon("x", "Chiudi",Modifier.size(18.dp),ColorNegative) }
                 }
                 Row(Modifier.fillMaxWidth().padding(bottom=4.dp),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                     catalogPastelColors.forEach { value->Box(Modifier.weight(1f).heightIn(max=42.dp).aspectRatio(1f).clip(RoundedCornerShape(12.dp)).background(Color(value)).bouncyClickable {
@@ -307,14 +308,15 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
     var workMenu by remember { mutableStateOf(false) }
     var deleteConfirm by remember { mutableStateOf(false) }
     val existing = ShiftRepository.shiftDefinitions.any { it.id == shift.id }
+    val previewColor=shiftDisplayColor(Color(color),definitionId=shift.id)
     fun validTime(value: String) = runCatching { LocalTime.parse(value) }.isSuccess
     val validCode = code.matches(Regex("[A-Z0-9]{1,4}"))
     val valid = name.isNotBlank() && validCode && (allDay || (validTime(start) && validTime(end) && (!hasBreak || (validTime(breakStart) && (pause.toIntOrNull() ?: -1) in 0..720))))
     fun draft() = shift.copy(name = name.trim(), shortCode = code, startTime = start, endTime = end, colorHex = color, workProfileId = workId, isAllDay = allDay, breakMinutes = if (hasBreak && !allDay) pause.toIntOrNull() ?: 0 else 0, breakStartTime = if (hasBreak && !allDay) breakStart else null)
     CatalogEditorSheet(if (existing) "Modifica turno" else "Nuovo turno", onDismiss) { finish ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,Color(color),.10f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(Color(color)), contentAlignment = Alignment.Center) { Text(code, color = catalogInk(Color(color)), fontWeight = FontWeight.Bold,fontSize=11.sp) }
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(androidx.compose.ui.graphics.lerp(MaterialTheme.colorScheme.surfaceVariant,previewColor,.10f)).padding(10.dp), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(previewColor), contentAlignment = Alignment.Center) { Text(code, color = catalogInk(previewColor), fontWeight = FontWeight.Bold,fontSize=11.sp) }
                 Column(Modifier.padding(start = 9.dp)) { Text(name.ifBlank { "Il tuo turno" }, fontWeight = FontWeight.Bold,fontSize=14.sp); Text(if (allDay) "Tutto il giorno" else "$start – $end", fontSize = 11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant,modifier=Modifier.padding(top=4.dp)) }
             }
             CatalogGroup("Identità") {
@@ -323,7 +325,7 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                     CatalogField("Sigla",code,{code=it.uppercase().filter{ch->ch in 'A'..'Z'||ch in '0'..'9'}.take(4)},Modifier.weight(1f),error=!validCode)
                 }
                 if (allowWorkSelection&&ShiftRepository.workProfiles.size > 1) Box {
-                    OutlinedButton(onClick = { workMenu = !workMenu }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp)) {
+                    OutlinedButton(onClick = { workMenu = !workMenu }, modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(14.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandInk)) {
                         Icon(getWorkProfileIcon(ShiftRepository.workProfiles.firstOrNull { it.id == workId }?.iconKey ?: "work"), null, Modifier.size(18.dp))
                         Text(ShiftRepository.workProfiles.firstOrNull { it.id == workId }?.name ?: "Seleziona lavoro", Modifier.weight(1f).padding(horizontal = 10.dp), textAlign = TextAlign.Start, fontSize = 13.sp)
                         Icon(Icons.Default.ExpandMore, null)
@@ -359,7 +361,7 @@ fun ShiftEditorScreen(shift: ShiftDefinition, onDismiss: () -> Unit, onSave: (Sh
                     }
                 }
             }
-            CatalogGroup("Colore") { UniversalColorPickerRow(color) { color = it } }
+            CatalogGroup("Colore") { UniversalColorPickerRow(color,shiftId=shift.id) { color = it } }
             Spacer(Modifier.height(8.dp))
         }
         Row(Modifier.fillMaxWidth().background(MaterialTheme.colorScheme.background).padding(horizontal=14.dp,vertical=10.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -435,7 +437,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
             CatalogGroup("Nome della rotazione",outlined=true) { CatalogField("Nome",title,{title=it.take(60)},Modifier.fillMaxWidth()) }
             CatalogGroup("Lunghezza del ciclo",outlined=true) {
                 Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End,verticalAlignment=Alignment.CenterVertically) {
-                    Text("${sequence.size}",fontSize=25.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)
+                    Text("${sequence.size}",fontSize=25.sp,fontWeight=FontWeight.Bold,color=BrandInk)
                     Text(if(sequence.size==1)" giorno" else " giorni",fontSize=11.sp,color=MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 listOf(listOf(-1,1),listOf(-7,7)).forEach { row->Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
@@ -480,7 +482,7 @@ fun RotationMatrixEditorScreen(rotation: ShiftRotation, onDismiss: () -> Unit, o
                 favorite=!favorite
                 starScope.launch{starMotion.snapTo(0f);starMotion.animateTo(1f,tween(720));starMotion.snapTo(0f)}
             },verticalAlignment=Alignment.CenterVertically) {
-                Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(if(favorite)Color(0xFFE4A52E).copy(alpha=.15f)else MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center) {
+                Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(if(favorite)Color(currentTurniPalette.warning.fill)else MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center) {
                     CatalogDefaultStar(favorite,"Rotazione predefinita",Modifier.size(21.dp),starMotion.value)
                 }
                 Text("Rotazione predefinita",Modifier.padding(start=10.dp),fontSize=12.sp,fontWeight=FontWeight.Medium)
@@ -518,7 +520,7 @@ private fun CatalogPaintChip(code: String, name: String, color: Color, selected:
 @Composable
 private fun CatalogStep(number:Int,label:String) {
     Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-        Box(Modifier.size(23.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){Text("$number",fontSize=11.sp,fontWeight=FontWeight.Bold,color=MaterialTheme.colorScheme.primary)}
+        Box(Modifier.size(23.dp).clip(RoundedCornerShape(8.dp)).background(MaterialTheme.colorScheme.surfaceVariant),contentAlignment=Alignment.Center){Text("$number",fontSize=11.sp,fontWeight=FontWeight.Bold,color=BrandInk)}
         Text(label,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
     }
 }
@@ -585,7 +587,7 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { key ->
                             Box(Modifier.weight(1f).height(52.dp).clip(RoundedCornerShape(14.dp)).background(if (icon == key) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.background).border(if (icon == key) 2.dp else 0.dp, if (icon == key) MaterialTheme.colorScheme.primary else Color.Transparent, RoundedCornerShape(14.dp)).semantics { contentDescription=when(key){"work"->"Valigetta";"business"->"Edificio";"people"->"Persone";"computer"->"Computer";"factory"->"Strumenti";"hospital"->"Salute";"shipping"->"Trasporto";else->"Treno"} }.bouncyClickable { icon = key }, contentAlignment = Alignment.Center) {
-                                CatalogWorkIcon(key,Modifier.size(22.dp),if(icon==key)MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant)
+                                CatalogWorkIcon(key,Modifier.size(22.dp),if(icon==key)BrandInk else MaterialTheme.colorScheme.onSurfaceVariant)
                             }
                         }
                     }
@@ -654,10 +656,10 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
                         night = preset.nightSurchargePercent; holiday = preset.holidaySurchargePercent; nightHoliday = preset.nightHolidaySurchargePercent
                         overtime = preset.overtimeDaySurchargePercent; overtimeNight = preset.overtimeNightSurchargePercent
                         showContracts = false
-                    }, modifier = Modifier.fillMaxWidth()) { Text(preset.name, Modifier.fillMaxWidth(), textAlign = TextAlign.Start) }
+                    }, modifier = Modifier.fillMaxWidth(), colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text(preset.name, Modifier.fillMaxWidth(), textAlign = TextAlign.Start) }
                 }
             }
-        }, confirmButton = { TextButton(onClick = { showContracts = false }) { Text("Chiudi") } })
+        }, confirmButton = { TextButton(onClick = { showContracts = false }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Chiudi") } })
     }
 }
 
@@ -680,6 +682,6 @@ internal fun CatalogDefaultStar(selected: Boolean, description: String, modifier
             scaleX = 1f + .18f * wave
             scaleY = scaleX
             rotationZ = 10f * kotlin.math.sin(progress * 2f * kotlin.math.PI).toFloat()
-        }, tint = Color(0xFFF2BC3B))
+        }, tint = Color(currentTurniPalette.warning.ink))
     } else SiteIcon("star", description, modifier, MaterialTheme.colorScheme.onSurfaceVariant, progress)
 }

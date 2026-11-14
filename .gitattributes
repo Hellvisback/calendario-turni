@@ -1,0 +1,12 @@
+# Linux entry points must retain executable-compatible line endings.
+android-app/gradlew text eol=lf
+android-app/gradlew.bat text eol=crlf
+*.sh text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.svg text eol=lf
+*.jar binary
+
+# Preserve archived prototypes and exports byte-for-byte.
+design/reference/*.html -text
+design/svg/** -text

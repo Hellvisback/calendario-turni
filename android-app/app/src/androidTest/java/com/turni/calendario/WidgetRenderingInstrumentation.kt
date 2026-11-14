@@ -11,6 +11,7 @@ import android.os.Bundle
 import android.view.View
 import android.widget.FrameLayout
 import com.turni.calendario.model.ShiftDefinition
+import com.turni.calendario.ui.theme.PaletteStyle
 import com.turni.calendario.widget.*
 import java.io.File
 import java.time.LocalDate
@@ -20,15 +21,17 @@ import kotlin.math.roundToInt
 
 /** No repository mutations, permissions changes or launcher rearrangements. Render real RemoteViews. */
 class WidgetRenderingInstrumentation:Instrumentation() {
-    override fun onCreate(arguments:Bundle?) { super.onCreate(arguments);start() }
+    private var pdfOnly=false
+    override fun onCreate(arguments:Bundle?) { super.onCreate(arguments);pdfOnly=arguments?.getString("pdfOnly")=="true";start() }
     override fun onStart() {
         val results=Bundle()
         try {
-            verifyWidgetMetadata()
             renderPdfFixtures()
+            if(pdfOnly){results.putString("stream","Three real one-page PDFs rendered successfully.\n");finish(Activity.RESULT_OK,results);return}
+            verifyWidgetMetadata()
             var rendered=0
             runOnMainSync {
-                val folder=File(targetContext.filesDir,"widget_qa_v168").apply{check(exists()||mkdirs())}
+                val folder=File(targetContext.filesDir,"widget_qa_expressive").apply{check(exists()||mkdirs())}
                 val fixtures=listOf(
                     Triple(WidgetKind.WEEK,320,168), Triple(WidgetKind.WEEK,320,84), Triple(WidgetKind.WEEK,280,68),
                     Triple(WidgetKind.PANORAMA,320,252),Triple(WidgetKind.PANORAMA,320,168),Triple(WidgetKind.PANORAMA,280,132),
@@ -36,7 +39,7 @@ class WidgetRenderingInstrumentation:Instrumentation() {
                     Triple(WidgetKind.TODAY,160,180),Triple(WidgetKind.TODAY,120,148),
                     Triple(WidgetKind.TODAY,136,160),Triple(WidgetKind.TODAY,200,220)
                 )
-                for(dark in listOf(true,false))for(scale in listOf(1f,1.3f,1.5f))for((kind,width,height)in fixtures){
+                for(style in PaletteStyle.values())for(dark in listOf(true,false))for(scale in listOf(1f,1.3f,1.5f))for((kind,width,height)in fixtures){
                     val config=Configuration(targetContext.resources.configuration).apply{fontScale=scale}
                     val context=targetContext.createConfigurationContext(config)
                     val rows=when(kind){WidgetKind.MONTH->6;WidgetKind.PANORAMA,WidgetKind.TODAY->2;else->1}
@@ -56,7 +59,7 @@ class WidgetRenderingInstrumentation:Instrumentation() {
                     }
                     val title=when(kind){WidgetKind.TODAY->"Oggi e domani";WidgetKind.WEEK->"26 ott – 1 nov";WidgetKind.PANORAMA->"26 ott – 8 nov";else->"Novembre 2026"}
                     val data=WidgetPresentation(title,"Lavoro",rows,columns,YearMonth.of(2026,11),days)
-                    val remote=TurniWidgetRenderer.createViews(context,kind,90_000+rendered,width,height,data,dark)
+                    val remote=TurniWidgetRenderer.createViews(context,kind,90_000+rendered,width,height,data,dark,style=style)
                     val view=remote.apply(context,FrameLayout(context))
                     val density=context.resources.displayMetrics.density
                     val w=(width*density).roundToInt();val h=(height*density).roundToInt()
@@ -64,7 +67,7 @@ class WidgetRenderingInstrumentation:Instrumentation() {
                     view.layout(0,0,w,h)
                     val bitmap=Bitmap.createBitmap(w,h,Bitmap.Config.ARGB_8888)
                     view.draw(Canvas(bitmap))
-                    val name="${kind.name.lowercase()}-${width}x$height-${if(dark)"dark" else "light"}-${scale}.png"
+                    val name="${style.name.lowercase()}-${kind.name.lowercase()}-${width}x$height-${if(dark)"dark" else "light"}-${scale}.png"
                     File(folder,name).outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)}
                     bitmap.recycle()
                     if(kind==WidgetKind.TODAY){
@@ -107,15 +110,15 @@ class WidgetRenderingInstrumentation:Instrumentation() {
         }
     }
     private fun renderPdfFixtures(){
-        val folder=File(targetContext.filesDir,"pdf_qa_v169").apply{mkdirs()}
-        for(mode in listOf(com.turni.calendario.model.PdfExportMode.MESE,com.turni.calendario.model.PdfExportMode.ANNO)){
-            val options=com.turni.calendario.model.PdfExportOptions(mode=mode,startDate=LocalDate.of(2026,11,1),selectedYear=2026)
+        val folder=File(targetContext.getExternalFilesDir(null),"pdf_qa_v180b13").apply{mkdirs()}
+        for(mode in listOf(com.turni.calendario.model.PdfExportMode.ELENCO,com.turni.calendario.model.PdfExportMode.MESE,com.turni.calendario.model.PdfExportMode.ANNO)){
+            val options=com.turni.calendario.model.PdfExportOptions(mode=mode,startDate=LocalDate.of(2026,11,1),endDate=LocalDate.of(2026,11,30),selectedYear=2026)
             val days=com.turni.calendario.export.PdfExportPlan.dates(options).mapIndexed{index,date->
                 val names=listOf("Mattina","Pomeriggio","Notte","Riposo")
                 val codes=listOf("MAT","POM","NOT","RIP")
                 val times=listOf("06:00 - 13:36","14:00 - 21:36","22:00 - 05:36","Tutto il giorno")
                 val n=index%4
-                com.turni.calendario.export.PdfDayRow(date,listOf(com.turni.calendario.export.PdfShiftRow(codes[n],names[n],0xFFBAAEF6.toInt(),null,listOf(times[n]))),emptyList())
+                com.turni.calendario.export.PdfDayRow(date,listOf(com.turni.calendario.export.PdfShiftRow(codes[n],names[n],(if(index==6)0xFF001122 else listOf(0xFFF2C46D,0xFFEE9C9C,0xFFBAAEF6,0xFFAAB9CE)[n]).toInt(),null,listOf(times[n])+if(index==12&&mode!=com.turni.calendario.model.PdfExportMode.ANNO)listOf("Straordinario: 1 h", "Trasferta", "Formazione sicurezza")else emptyList())),if(date==LocalDate.of(2026,11,1))listOf("Ognissanti")else emptyList(),date==LocalDate.of(2026,11,1))
             }
             val snapshot=com.turni.calendario.export.PdfExportSnapshot("Lavoro di esempio",options,days)
             val file=com.turni.calendario.export.PdfGenerator.writePdf(targetContext,snapshot)

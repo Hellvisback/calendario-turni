@@ -117,6 +117,38 @@ object ShiftRepository {
 
     // Extra informazioni giorno: ore straordinario, trasferta, override reperibilità, note, nascondi ex-turno
     val dayExtraInfo = mutableStateMapOf<LocalDate, DayExtraInfo>()
+    val dayTags = mutableStateListOf<DayTag>()
+
+    fun saveDayTag(tag: DayTag) {
+        val clean = tag.copy(name = tag.name.trim().replace(Regex("\\s+"), " "))
+        val updated = dayTags.filterNot { it.id == clean.id } + clean
+        validateDayTags(updated, dayExtraInfo.toMap())
+        val index = dayTags.indexOfFirst { it.id == clean.id }
+        if (index < 0) dayTags.add(clean) else dayTags[index] = clean
+        notifyDataChanged()
+    }
+
+    fun deleteUnusedDayTag(id: String) {
+        require(dayExtraInfo.values.none { id in it.tagIds }) { "Archivia l’etichetta per conservare i giorni già segnati" }
+        dayTags.removeAll { it.id == id }
+        // Undo must never revive a reference to a deliberately deleted definition.
+        for (index in undoHistory.indices) {
+            val snapshot = undoHistory[index]
+            undoHistory[index] = snapshot.copy(extras = snapshot.extras.mapValues { (_, extra) ->
+                extra.copy(tagIds = extra.tagIds.filterNot { it == id })
+            })
+        }
+        notifyDataChanged()
+    }
+
+    fun saveDayAnnotations(date: LocalDate, notes: String, tagIds: List<String>) {
+        val known = dayTags.map { it.id }.toSet()
+        require(tagIds.all { it in known }) { "Un’etichetta non è più disponibile" }
+        saveSnapshot()
+        dayExtraInfo[date] = getDayExtraInfo(date).copy(notes = notes.take(500), tagIds = tagIds.distinct())
+        notifyDataChanged()
+    }
+
 
     // Configurazione Reperibilità (Gestita in "Altro")
     var reperibilitaConfig by mutableStateOf(ReperibilitaConfig())
@@ -938,8 +970,11 @@ object ShiftRepository {
 
     fun clearAllShifts() {
         saveSnapshot()
+        val annotations = dayExtraInfo.filterValues { it.notes.isNotBlank() || it.tagIds.isNotEmpty() }
+            .mapValues { (date, extra) -> DayExtraInfo(date, notes=extra.notes, tagIds=extra.tagIds) }
         calendarShifts.clear()
         dayExtraInfo.clear()
+        dayExtraInfo.putAll(annotations)
         notifyDataChanged()
     }
 

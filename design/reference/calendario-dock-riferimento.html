@@ -1,0 +1,346 @@
+<div id="turni-liquid-v3">
+ <div class="viz-carousel viz-dotted-background" aria-label="Calendario Turni, versione scura e bianca" data-previous-label="Precedente" data-next-label="Successivo">
+  <section class="ct-stage" data-variant="Scuro" aria-label="Calendario scuro">
+  <div class="ct-phone" data-appearance="dark" aria-label="Proposta Calendario Turni con dock a gocce">
+    <div class="ct-status"><span>09:41</span><span aria-label="Segnale, Wi-Fi, batteria">▴ ▰</span></div>
+    <main class="ct-content"></main>
+    <div class="ct-sheet-layer"></div>
+    <div class="ct-notice" role="status" aria-live="polite"></div>
+    <nav class="ct-dock" aria-label="Navigazione e azioni calendario">
+      <canvas class="ct-liquid" aria-hidden="true"></canvas>
+      <button type="button" class="ct-dock-action ct-satellite" data-dock="edit" aria-label="Modifica calendario" data-tooltip="Modifica"><i data-lucide="pencil" aria-hidden="true"></i></button>
+      <button type="button" class="ct-dock-action" data-dock="settings" aria-label="Impostazioni" data-tooltip="Impostazioni"><i data-lucide="sliders-vertical" aria-hidden="true"></i></button>
+      <button type="button" class="ct-dock-action" data-dock="calendar" aria-label="Calendario" aria-current="page" data-tooltip="Calendario"><i data-lucide="calendar" aria-hidden="true"></i></button>
+      <button type="button" class="ct-dock-action" data-dock="report" aria-label="Report" data-tooltip="Report"><i data-lucide="chart-no-axes-column-increasing" aria-hidden="true"></i></button>
+      <button type="button" class="ct-dock-action ct-satellite" data-dock="models" aria-label="Turni, lavori e rotazioni" data-tooltip="Turni"><i data-lucide="clock" aria-hidden="true"></i></button>
+    </nav>
+    <div class="ct-gesture" aria-hidden="true"></div>
+  </div>
+  </section>
+  <section class="ct-stage" data-variant="Bianco" aria-label="Calendario bianco" hidden></section>
+ </div>
+</div>
+<style>
+#turni-liquid-v3 {padding:16px 0;font-family:Inter,"Segoe UI",sans-serif}
+#turni-liquid-v3 .ct-stage {padding:18px 8px;min-height:924px;display:grid;place-items:center}
+#turni-liquid-v3 .ct-stage[hidden] {display:none}
+#turni-liquid-v3 * {box-sizing:border-box}
+#turni-liquid-v3 .ct-phone {--ct-bg:#080b11;--ct-surface:#131720;--ct-high:#202532;--ct-line:#2b303c;--ct-text:#f1f0f5;--ct-muted:#adb0bf;--ct-brand:#bfabf5;--ct-on-brand:#201334;--ct-cream:#f4ebcf;--ct-purple:#46316f;--ct-m:#e9b45b;--ct-p:#e58c80;--ct-n:#b7a2f5;--ct-sm:#8accb6;--ct-rip:#a6b5c9;--ct-fer:#91bae9;width:min(100%,408px);height:884px;position:relative;background:var(--ct-bg);color:var(--ct-text);border-radius:34px;overflow:hidden;box-shadow:0 18px 64px #0003;border:1px solid var(--ct-line);font-size:14px;line-height:1.4;color-scheme:dark}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] {--ct-bg:#fff;--ct-surface:#f3f4f6;--ct-high:#eaeaf0;--ct-line:#e0dee6;--ct-text:#24222b;--ct-muted:#635f70;--ct-brand:#684895;--ct-on-brand:#fff;color-scheme:light}
+#turni-liquid-v3 button,#turni-liquid-v3 input,#turni-liquid-v3 textarea {font:inherit;color:inherit}
+#turni-liquid-v3 button {border:0;background:none;padding:0;touch-action:manipulation;-webkit-tap-highlight-color:transparent}
+#turni-liquid-v3 button:active {transform:scale(.95)}
+#turni-liquid-v3 button:focus-visible {outline:3px solid var(--ct-brand);outline-offset:2px}
+#turni-liquid-v3 .ct-phone svg.lucide {width:18px!important;height:18px!important}
+#turni-liquid-v3 .ct-phone .ct-icon svg.lucide {width:21px!important;height:21px!important}
+#turni-liquid-v3 .ct-phone .ct-dock-action svg.lucide {width:27px!important;height:27px!important}
+#turni-liquid-v3 .ct-phone [data-dock="report"] svg.lucide {stroke-width:4.5;stroke-linecap:round;width:25px!important;height:25px!important}
+#turni-liquid-v3 .ct-phone .ct-ccnl svg.lucide {width:14px!important;height:14px!important}
+#turni-liquid-v3 .ct-status {display:flex;justify-content:space-between;align-items:center;height:42px;padding:0 23px;font-size:12px;font-weight:600}
+#turni-liquid-v3 .ct-content {padding:10px 14px 0}
+#turni-liquid-v3 h2 {font-size:34px;letter-spacing:-1.4px;line-height:1.1;font-weight:750;margin:0}
+#turni-liquid-v3 h3 {font-size:19px;letter-spacing:-.4px;margin:0;font-weight:650}
+#turni-liquid-v3 p {margin:4px 0;color:var(--ct-muted)}
+#turni-liquid-v3 small {font-size:11px;color:var(--ct-muted)}
+#turni-liquid-v3 .ct-header {display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;gap:8px}
+#turni-liquid-v3 .ct-year {font-size:14px;letter-spacing:0;color:var(--ct-muted);font-weight:500;margin-left:5px}
+#turni-liquid-v3 .ct-icon {width:44px;height:44px;border-radius:50%;background:var(--ct-high);display:inline-grid;place-items:center;flex:none}
+#turni-liquid-v3 .ct-icon svg {width:21px;height:21px;stroke-width:1.8}
+#turni-liquid-v3 .ct-monthbar {display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:6px}
+#turni-liquid-v3 .ct-profile {display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ct-muted);min-width:0}
+#turni-liquid-v3 .ct-profile svg {width:16px;height:16px}
+#turni-liquid-v3 .ct-montharrows {display:flex;align-items:center;gap:2px}
+#turni-liquid-v3 .ct-montharrows button {width:36px;height:40px;display:grid;place-items:center}
+#turni-liquid-v3 .ct-montharrows svg {width:18px}
+#turni-liquid-v3 .ct-weekdays {display:grid;grid-template-columns:repeat(7,1fr);margin:0 0 8px;text-align:center;color:var(--ct-muted);font-size:11px}
+#turni-liquid-v3 .ct-grid {display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:4px}
+#turni-liquid-v3 .ct-day {display:flex;flex-direction:column;align-items:stretch;justify-content:flex-start;height:106px;min-width:0;border-radius:12px;background:var(--ct-surface);padding:4px 3px;position:relative;text-align:center;gap:3px}
+#turni-liquid-v3 .ct-grid.ct-six .ct-day {height:89px}
+#turni-liquid-v3 .ct-six .ct-assignment-code {line-height:14px}
+#turni-liquid-v3 .ct-six .ct-assignment-time {line-height:13px}
+#turni-liquid-v3 .ct-day.ct-out {opacity:.35}
+#turni-liquid-v3 .ct-day.ct-selected {box-shadow:inset 0 0 0 1.5px var(--ct-brand);background:color-mix(in srgb,var(--ct-brand) 12%,var(--ct-surface))}
+#turni-liquid-v3 .ct-daynum {font-size:13px;align-self:center;display:grid;place-items:center;width:23px;height:20px;border-radius:7px;font-weight:600;flex:none}
+#turni-liquid-v3 .ct-assignment {display:flex;flex-direction:column;overflow:hidden;flex:none;border-radius:7px;background:color-mix(in srgb,var(--shift) 18%,var(--ct-surface));box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--shift) 20%,transparent)}
+#turni-liquid-v3 .ct-assignment-code {font-size:11px;font-weight:700;line-height:18px;color:var(--shift);background:color-mix(in srgb,var(--shift) 25%,var(--ct-surface));white-space:nowrap}
+#turni-liquid-v3 .ct-assignment-time {font-size:11px;line-height:16px;color:var(--ct-text);white-space:nowrap}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] .ct-assignment {background:color-mix(in srgb,var(--shift) 18%,white);box-shadow:inset 0 0 0 1px color-mix(in srgb,var(--shift) 35%,white)}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] .ct-assignment-code {background:color-mix(in srgb,var(--shift) 48%,white);color:#292231}
+#turni-liquid-v3 .ct-overflow {font-size:11px;line-height:15px;font-weight:600;color:var(--ct-muted)}
+#turni-liquid-v3 .ct-more {position:absolute;top:6px;right:4px;font-size:11px;line-height:16px;color:var(--ct-brand);font-weight:650}
+#turni-liquid-v3 .ct-has-more .ct-daynum {align-self:flex-start}
+#turni-liquid-v3 .ct-today .ct-daynum {background:var(--ct-brand);color:var(--ct-on-brand)}
+#turni-liquid-v3 .ct-shift {background:color-mix(in srgb,var(--shift) 22%,var(--ct-surface));color:var(--shift);font-size:11px;line-height:19px;border-radius:5px;font-weight:650;white-space:nowrap}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] .ct-shift {background:color-mix(in srgb,var(--shift) 30%,white);color:#28232e}
+#turni-liquid-v3 .ct-time {font-size:11px;color:var(--ct-muted);line-height:13px}
+#turni-liquid-v3 .ct-oncall {position:absolute;top:5px;right:3px;width:4px;height:4px;border-radius:50%;background:var(--ct-m)}
+#turni-liquid-v3 .ct-ex {font-size:10px;color:var(--ct-muted);white-space:nowrap;margin-top:2px}
+#turni-liquid-v3 .ct-legend {display:flex;gap:12px;margin-top:12px;color:var(--ct-muted);font-size:11px;align-items:center}
+#turni-liquid-v3 .ct-dot {display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--ct-m);margin-right:4px}
+#turni-liquid-v3 .ct-dock {height:108px;position:absolute;bottom:23px;left:8px;right:8px;z-index:20;transition:opacity .15s}
+#turni-liquid-v3 .ct-dock[hidden] {display:none}
+#turni-liquid-v3 .ct-liquid {width:100%;height:100%;position:absolute;inset:0;pointer-events:none}
+#turni-liquid-v3 .ct-dock-action {position:absolute;top:50%;width:44px;height:44px;display:grid;place-items:center;border-radius:50%;margin:-22px 0 0 -22px;color:var(--ct-purple);will-change:left,opacity}
+#turni-liquid-v3 .ct-dock-action[aria-current="page"] {color:var(--ct-cream)}
+#turni-liquid-v3 .ct-dock-action svg {width:25px;height:25px;stroke-width:1.65}
+#turni-liquid-v3 .ct-gesture {position:absolute;bottom:9px;left:35%;width:30%;height:4px;border-radius:8px;background:var(--ct-text);opacity:.85;z-index:22}
+#turni-liquid-v3 .ct-sheet-layer {position:absolute;inset:0;pointer-events:none;z-index:12}
+#turni-liquid-v3 .ct-sheet {position:absolute;left:10px;right:10px;bottom:138px;background:var(--ct-surface);border:1px solid var(--ct-line);border-radius:28px;box-shadow:0 12px 40px #0007;pointer-events:auto;padding:14px 12px 12px;animation:ct-sheet-in .48s linear(0,.16 .08,.57 .22,.89 .4,1.035 .62,1.01 .82,1);max-height:700px}
+#turni-liquid-v3 .ct-sheet:before {content:"";height:3px;width:30px;background:var(--ct-line);border-radius:5px;display:block;margin:0 auto 8px}
+#turni-liquid-v3 .ct-sheet-head {display:flex;align-items:center;justify-content:space-between;gap:2px;margin-bottom:8px}
+#turni-liquid-v3 .ct-sheet-head h3 {font-size:16px;flex:1;text-align:center}
+#turni-liquid-v3 .ct-sheet-head .ct-icon {width:36px;height:40px;background:transparent}
+#turni-liquid-v3 .ct-ccnl {display:flex;justify-content:space-between;align-items:center;padding:8px 2px 12px;font-size:11px;color:var(--ct-muted);gap:5px}
+#turni-liquid-v3 .ct-ccnl span:last-child {display:flex;align-items:center;gap:4px;color:var(--ct-sm)}
+#turni-liquid-v3 .ct-ccnl svg {width:14px;height:14px}
+#turni-liquid-v3 .ct-shift-row {padding:10px;border-radius:17px;background:var(--ct-high);margin-bottom:8px}
+#turni-liquid-v3 .ct-day-assignments {max-height:360px;overflow-y:auto;overscroll-behavior:contain;padding-right:2px}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] .ct-sheet {box-shadow:0 10px 32px #28203822}
+#turni-liquid-v3 .ct-phone[data-appearance="light"] .ct-ccnl span:last-child {color:#386c59}
+#turni-liquid-v3 .ct-shift-info {display:flex;align-items:center;gap:9px}
+#turni-liquid-v3 .ct-shift-info>div:last-child {min-width:0}
+#turni-liquid-v3 .ct-badge {width:39px;height:42px;border-radius:12px;background:var(--shift,var(--ct-brand));color:#201b28;display:grid;place-items:center;font-size:12px;font-weight:700;flex:none}
+#turni-liquid-v3 .ct-shift-title {font-size:15px;font-weight:650}
+#turni-liquid-v3 .ct-shift-meta {font-size:11px;color:var(--ct-muted);margin-top:2px}
+#turni-liquid-v3 .ct-shift-tools {display:flex;justify-content:flex-end;gap:6px;margin-top:6px}
+#turni-liquid-v3 .ct-tool {height:36px;min-width:44px;display:grid;place-items:center;border-radius:10px;background:var(--ct-surface)}
+#turni-liquid-v3 .ct-tool svg {width:18px;height:18px}
+#turni-liquid-v3 .ct-danger {color:#ec9c9c}
+#turni-liquid-v3 .ct-info-row {display:flex;align-items:center;gap:9px;width:100%;min-height:44px;padding:8px 10px;border-radius:13px;background:var(--ct-high);text-align:left;margin-bottom:7px;font-size:12px}
+#turni-liquid-v3 .ct-info-row svg {width:18px;height:18px;flex:none;color:var(--ct-muted)}
+#turni-liquid-v3 .ct-info-row span:last-child {margin-left:auto;color:var(--ct-muted);font-size:11px}
+#turni-liquid-v3 .ct-footer {display:flex;gap:8px;margin-top:10px}
+#turni-liquid-v3 .ct-button {padding:11px 14px;border-radius:16px;background:var(--ct-high);min-height:44px;display:flex;align-items:center;justify-content:center;gap:7px;font-size:12px;font-weight:600}
+#turni-liquid-v3 .ct-button svg {width:17px;height:17px;flex:none}
+#turni-liquid-v3 .ct-footer .ct-button {flex:1;min-width:0}
+#turni-liquid-v3 .ct-button.ct-primary {background:var(--ct-brand);color:var(--ct-on-brand)}
+#turni-liquid-v3 .ct-back-head {display:flex;align-items:center;gap:10px;margin:0 0 18px}
+#turni-liquid-v3 .ct-back-head h2 {font-size:25px;letter-spacing:-.7px}
+#turni-liquid-v3 .ct-tabs {display:flex;gap:3px;background:var(--ct-high);padding:4px;border-radius:17px;margin:14px 0}
+#turni-liquid-v3 .ct-tabs button {padding:9px 4px;min-height:40px;flex:1;border-radius:13px;font-size:12px;white-space:nowrap}
+#turni-liquid-v3 .ct-tabs button[aria-pressed="true"] {background:var(--ct-brand);color:var(--ct-on-brand)}
+#turni-liquid-v3 .ct-report-hero {border-radius:25px;padding:22px;background:var(--ct-surface);margin:18px 0}
+#turni-liquid-v3 .ct-total {font-size:48px;font-weight:650;letter-spacing:-2px;margin:7px 0}
+#turni-liquid-v3 .ct-total span {font-size:20px;letter-spacing:0;color:var(--ct-muted)}
+#turni-liquid-v3 .ct-bar {display:flex;height:13px;border-radius:10px;overflow:hidden;margin:20px 0 12px}
+#turni-liquid-v3 .ct-metrics {display:grid;grid-template-columns:1fr 1fr;gap:9px}
+#turni-liquid-v3 .ct-metric {padding:18px 15px;border-radius:22px;background:var(--ct-surface)}
+#turni-liquid-v3 .ct-metric strong {font-size:25px;display:block;margin-bottom:5px;font-weight:650}
+#turni-liquid-v3 .ct-section-title {font-size:11px;text-transform:uppercase;letter-spacing:1.4px;color:var(--ct-muted);margin:24px 0 9px}
+#turni-liquid-v3 .ct-settings-list {background:var(--ct-surface);border-radius:23px;padding:4px 13px}
+#turni-liquid-v3 .ct-settings-row {display:flex;align-items:center;gap:11px;padding:13px 0;min-height:57px;border-bottom:1px solid var(--ct-line);width:100%;text-align:left}
+#turni-liquid-v3 .ct-settings-row:last-child {border-bottom:0}
+#turni-liquid-v3 .ct-settings-row>svg {width:21px;height:21px;color:var(--ct-brand);flex:none}
+#turni-liquid-v3 .ct-settings-row>span {flex:1;font-size:13px}
+#turni-liquid-v3 .ct-settings-row small {display:block;margin-top:3px}
+#turni-liquid-v3 .ct-settings-row .ct-chevron {width:15px;color:var(--ct-muted)}
+#turni-liquid-v3 .ct-model-row {display:flex;gap:12px;align-items:center;padding:13px 2px;border-bottom:1px solid var(--ct-line)}
+#turni-liquid-v3 .ct-model-row .ct-name {font-size:14px;font-weight:600}
+#turni-liquid-v3 .ct-model-row small {display:block;margin-top:3px}
+#turni-liquid-v3 .ct-model-list {background:var(--ct-surface);border-radius:23px;padding:0 14px;margin-top:16px}
+#turni-liquid-v3 .ct-paint {bottom:30px}
+#turni-liquid-v3 .ct-paint .ct-tabs button {font-size:11px}
+#turni-liquid-v3 .ct-palette {display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+#turni-liquid-v3 .ct-palette button {padding:10px 3px;border-radius:14px;min-height:54px;background:var(--ct-high);font-size:11px;display:flex;align-items:center;justify-content:center;gap:5px}
+#turni-liquid-v3 .ct-palette button[aria-pressed="true"] {box-shadow:inset 0 0 0 2px var(--ct-brand)}
+#turni-liquid-v3 .ct-palette .ct-chip {height:24px;width:29px;background:var(--shift);color:#201b28;border-radius:8px;display:grid;place-items:center;font-weight:600}
+#turni-liquid-v3 .ct-palette svg {height:20px;width:20px}
+#turni-liquid-v3 .ct-detail {bottom:30px;padding:20px 16px}
+#turni-liquid-v3 .ct-detail .ct-footer {margin-top:18px}
+#turni-liquid-v3 .ct-field {display:flex;justify-content:space-between;align-items:center;background:var(--ct-high);padding:14px;border-radius:15px;margin:10px 0;gap:8px;font-size:13px}
+#turni-liquid-v3 .ct-field input {background:none;border:0;width:90px;text-align:right;min-width:0}
+#turni-liquid-v3 textarea {background:var(--ct-high);border:1px solid var(--ct-line);border-radius:15px;resize:none;padding:12px;width:100%;height:130px;margin-top:16px;font-size:14px}
+#turni-liquid-v3 .ct-preset {display:flex;gap:5px;flex-wrap:wrap}
+#turni-liquid-v3 .ct-preset button {padding:10px 12px;background:var(--ct-high);border-radius:12px;font-size:12px}
+#turni-liquid-v3 .ct-notice {position:absolute;bottom:132px;left:30px;right:30px;padding:12px 15px;pointer-events:none;background:var(--ct-high);color:var(--ct-text);border-radius:20px;text-align:center;font-size:12px;box-shadow:0 6px 24px #0004;z-index:24;opacity:0;transform:translateY(18px);transition:transform .3s,opacity .3s}
+#turni-liquid-v3 .ct-notice.ct-visible {opacity:1;transform:translateY(0)}
+@keyframes ct-sheet-in {from{transform:translateY(130%)}to{transform:translateY(0)}}
+@media(max-width:360px){#turni-liquid-v3{padding:12px 0}#turni-liquid-v3 .ct-phone{border-radius:24px;height:884px}#turni-liquid-v3 .ct-content{padding-left:9px;padding-right:9px}#turni-liquid-v3 .ct-day{border-radius:10px;padding-left:2px;padding-right:2px}#turni-liquid-v3 .ct-sheet{left:7px;right:7px;padding-left:10px;padding-right:10px}#turni-liquid-v3 .ct-profile{font-size:11px}#turni-liquid-v3 .ct-montharrows button{width:30px}}
+@media(prefers-reduced-motion:reduce){#turni-liquid-v3 *,#turni-liquid-v3 *:before{animation:none!important;transition:none!important}}
+</style>
+<script>
+(() => {
+  const outer = document.getElementById('turni-liquid-v3');
+  const whitePhone = outer.querySelector('.ct-phone').cloneNode(true);
+  whitePhone.dataset.appearance='light';
+  whitePhone.setAttribute('aria-label','Proposta Calendario Turni bianca');
+  outer.querySelector('[data-variant="Bianco"]').append(whitePhone);
+  outer.querySelectorAll('.ct-phone').forEach(phone => {
+  const root = phone;
+  const content = root.querySelector('.ct-content');
+  const layer = root.querySelector('.ct-sheet-layer');
+  const dock = root.querySelector('.ct-dock');
+  const canvas = root.querySelector('.ct-liquid');
+  const context = canvas.getContext('2d');
+  const buttons = [...dock.querySelectorAll('[data-dock]')];
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  const saved = window.openai?.widgetState;
+  const design = { dark: phone.dataset.appearance!=='light', speed: saved?.privateContent?.speed || 1 };
+  const state = { tab:'calendar', year:2026, month:9, day:15, sheet:null, mode:'Cambia', paint:'POM', modelTab:'Turni', reportTab:'Mese', onCall:false, travel:false, note:'', overtime:0, selectedShift:'NOT', edits:{}, added:[] };
+  let expansion = 1, velocity = 0, goal = 1, selection = .5, selectionGoal = .5;
+  let lastTime = 0, animationId = 0, notificationTimer = 0;
+  const definitions = {
+    MAT:{name:'Mattina',time:'06:00',range:'06:00 – 13:36',color:'m'},
+    POM:{name:'Pomeriggio',time:'14:00',range:'14:00 – 21:36',color:'p'},
+    NOT:{name:'Notte',time:'22:00',range:'22:00 – 05:36',color:'n'},
+    SMO:{name:'Smonto notte',time:'—',range:'Tutto il giorno',color:'sm'},
+    RIP:{name:'Riposo',time:'—',range:'Tutto il giorno',color:'rip'},
+    FER:{name:'Ferie',time:'—',range:'Tutto il giorno',color:'fer'},
+    GIO:{name:'Giornaliero',time:'08:30',range:'08:30 – 17:06',color:'sm'},
+    DOM:{name:'Mat Dom',time:'08:36',range:'08:36 – 16:12',color:'m'}
+  };
+  const monthShifts = ['POM','POM','NOT','NOT','SMO','RIP','MAT','MAT','NOT','SMO','RIP','POM','POM','NOT','SMO','GIO','MAT','RIP','NOT','NOT','SMO','RIP','MAT','POM','DOM','MAT','MAT','POM','POM','FER','FER'];
+  const icons = name => `<i data-lucide="${name}" aria-hidden="true"></i>`;
+  const escape = value => String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+  const iconButton = (action, label, icon, extra='') => `<button type="button" class="ct-icon cursor-interaction ${extra}" data-action="${action}" aria-label="${label}">${icons(icon)}</button>`;
+  const today = new Date(2026,9,19);
+  const monthDate = () => new Date(state.year,state.month,1);
+  const monthLabel = () => monthDate().toLocaleDateString('it-IT',{month:'long'}).replace(/^./, x=>x.toUpperCase());
+  const selectedDate = () => new Date(state.year,state.month,state.day);
+  const dateLabel = () => selectedDate().toLocaleDateString('it-IT',{weekday:'long',day:'numeric',month:'long'}).replace(/^./,x=>x.toUpperCase());
+  const shiftFor = day => state.edits[day] || (day===15?'POM':monthShifts[(day-1)%31]) || 'MAT';
+  const shiftsFor = day => [...(day===15?[shiftFor(day),'NOT']:[shiftFor(day)]),...state.added.filter(item=>item.day===day).map(item=>item.code)];
+  const persist = () => window.openai?.setWidgetState?.({modelContent:{concept:'Dock proporzioni Cattura7, turni e orari uniti',section:state.tab,popup:state.sheet,theme:design.dark?'Scuro':'Bianco'},privateContent:{speed:design.speed}})?.catch(()=>{});
+  const refreshIcons = () => { if(globalThis.lucide) lucide.createIcons({attrs:{width:20,height:20}}); };
+  function drawBridge(a,b,kind){
+    const distance=b.x-a.x;
+    if(distance <= Math.abs(a.r-b.r)+1 || a.r<1 || b.r<1) return;
+    const theta=Math.PI*.25;
+    const xa=a.x+a.r*Math.cos(theta), xb=b.x-b.r*Math.cos(theta);
+    const ya=54-a.r*Math.sin(theta), yb=54-b.r*Math.sin(theta);
+    const handle=Math.max(3,(xb-xa)*.5);
+    context.beginPath();context.moveTo(xa,ya);
+    if(kind==='main'){
+      context.bezierCurveTo(xa+handle,ya+3,xb-handle,yb+3,xb,yb);
+      context.lineTo(xb,108-yb);
+      context.bezierCurveTo(xb-handle,108-yb-3,xa+handle,108-ya-3,xa,108-ya);
+    }else{
+      const middle=(xa+xb)/2, neck=3.2*Math.min(1,distance/65), tangent=Math.max(3,Math.min(12,(xb-xa)*.34));
+      context.bezierCurveTo(xa+tangent,ya+tangent,middle-6,54-neck,middle,54-neck);
+      context.bezierCurveTo(middle+6,54-neck,xb-tangent,yb+tangent,xb,yb);
+      context.lineTo(xb,108-yb);
+      context.bezierCurveTo(xb-tangent,108-yb-tangent,middle+6,54+neck,middle,54+neck);
+      context.bezierCurveTo(middle-6,54+neck,xa+tangent,108-ya-tangent,xa,108-ya);
+    }
+    context.closePath();context.fill();
+  }
+  function drawDock(){
+    const width=dock.clientWidth;
+    if(!width) return;
+    const dpr=window.devicePixelRatio||1;
+    if(canvas.width!==Math.round(width*dpr)||canvas.height!==Math.round(108*dpr)){canvas.width=Math.round(width*dpr);canvas.height=Math.round(108*dpr);}
+    context.setTransform(dpr,0,0,dpr,0,0);context.clearRect(0,0,width,108);
+    const scale=width/380;
+    const progress=Math.max(0,Math.min(1.12,expansion));
+    const r=44*scale;
+    const main=[{x:width*.314,r},{x:width*.5,r},{x:width*.686,r}];
+    const left={x:width*(.314-.233*progress),r:(9+22*progress)*scale};
+    const right={x:width*(.686+.233*progress),r:left.r};
+    const colors=getComputedStyle(phone);
+    context.fillStyle=colors.getPropertyValue('--ct-cream').trim();
+    for(const item of main){context.beginPath();context.arc(item.x,54,item.r,0,Math.PI*2);context.fill();}
+    drawBridge(main[0],main[1],'main');drawBridge(main[1],main[2],'main');
+    if(progress>.01){for(const satellite of [left,right]){context.beginPath();context.arc(satellite.x,54,satellite.r,0,Math.PI*2);context.fill();}drawBridge(left,main[0],'side');drawBridge(main[2],right,'side');}
+    context.fillStyle=colors.getPropertyValue('--ct-purple').trim();
+    context.beginPath();context.arc(width*selection,54,39*scale,0,Math.PI*2);context.fill();
+    const positions={edit:left.x,settings:main[0].x,calendar:main[1].x,report:main[2].x,models:right.x};
+    for(const button of buttons){const key=button.dataset.dock;button.style.left=positions[key]+'px';if(key==='edit'||key==='models'){const alpha=Math.max(0,Math.min(1,(progress-.18)/.65));button.style.opacity=alpha;button.style.scale=String(.7+.3*Math.min(progress,1));button.style.visibility=progress<.04?'hidden':'visible';}}
+  }
+  function tick(time){
+    const dt=Math.min(.032,(time-lastTime)/1000||.016)*design.speed;lastTime=time;
+    if(reduced.matches){expansion=goal;velocity=0;selection=selectionGoal;}
+    else {const acceleration=(goal-expansion)*190-velocity*21;velocity+=acceleration*dt;expansion+=velocity*dt;selection+=(selectionGoal-selection)*Math.min(1,dt*15);}
+    drawDock();
+    if(Math.abs(expansion-goal)>.0005||Math.abs(velocity)>.001||Math.abs(selection-selectionGoal)>.0005) animationId=requestAnimationFrame(tick);
+    else {expansion=goal;selection=selectionGoal;animationId=0;drawDock();}
+  }
+  function updateDock(){
+    goal=state.tab==='calendar'?1:0;
+    selectionGoal=state.tab==='settings'?.314:state.tab==='report'?.686:.5;
+    dock.hidden=state.tab==='models'||state.sheet==='paint'||['details','notes','replace','add','settings-detail'].includes(state.sheet);
+    for(const button of buttons){const key=button.dataset.dock;const satellite=key==='edit'||key==='models';button.disabled=satellite&&goal===0;button.inert=satellite&&goal===0;button.setAttribute('aria-hidden',String(satellite&&goal===0));if(key===state.tab)button.setAttribute('aria-current','page');else button.removeAttribute('aria-current');}
+    if(!animationId){lastTime=0;animationId=requestAnimationFrame(tick);}
+  }
+  function calendar(){
+    const firstDay=(monthDate().getDay()+6)%7;
+    const count=new Date(state.year,state.month+1,0).getDate();
+    const total=Math.ceil((firstDay+count)/7)*7;
+    let days='';
+    for(let index=0;index<total;index++){
+      const date=new Date(state.year,state.month,index-firstDay+1);const day=date.getDate();const own=date.getMonth()===state.month;
+      const codes=own?shiftsFor(day):[['MAT'],['MAT'],['POM']][index%3];
+      const isToday=date.getTime()===today.getTime();
+      const isSelected=own&&state.sheet==='day'&&state.day===day;
+      const assignments=codes.slice(0,2).map(code=>{const def=definitions[code];return `<span class="ct-assignment" style="--shift:var(--ct-${def.color})"><span class="ct-assignment-code">${code}</span><span class="ct-assignment-time">${def.time}</span></span>`;}).join('');
+      const extraCount=codes.length>2?`<span class="ct-more">+${codes.length-2}</span>`:'';
+      const extra=own&&[16,30,31].includes(day)?`<span class="ct-ex">ex ${day===16?'SMO':day===30?'RIP':'MAT'}</span>`:'';
+      days+=`<button type="button" class="ct-day cursor-interaction ${own?'':'ct-out'} ${isToday?'ct-today':''} ${isSelected?'ct-selected':''} ${codes.length>2?'ct-has-more':''}" data-day="${day}" ${own?'':'disabled'} aria-label="${escape(date.toLocaleDateString('it-IT',{day:'numeric',month:'long'}))}, ${codes.map(code=>definitions[code].name+' '+definitions[code].range).join('; ')}"><span class="ct-daynum">${day}</span>${extraCount}${own&&codes.length<3&&[1,2,12,13,24,28,29].includes(day)?'<span class="ct-oncall" aria-label="Reperibilità"></span>':''}${assignments}${extra}</button>`;
+    }
+    return `<div class="ct-header"><h2>${monthLabel()}<span class="ct-year">${state.year}</span></h2>${iconButton('today','Vai a oggi','calendar-check')}</div><div class="ct-monthbar"><div class="ct-profile">${icons('briefcase-business')}<span>Lavoro Principale · Turno A</span></div><div class="ct-montharrows">${iconButton('month-prev','Mese precedente','chevron-left')}${iconButton('month-next','Mese successivo','chevron-right')}</div></div><div class="ct-weekdays" aria-hidden="true">${['L','M','M','G','V','S','D'].map(d=>`<span>${d}</span>`).join('')}</div><div class="ct-grid ${total===42?'ct-six':''}">${days}</div><div class="ct-legend"><span><span class="ct-dot"></span>Reperibilità</span><span>— senza orario</span><span>ex · originario</span></div>`;
+  }
+  function report(){return `<div class="ct-header"><h2>Report</h2><small>Lavoro Principale</small></div><div class="ct-tabs">${['Mese','Anno','Personalizzato'].map(t=>`<button type="button" data-report="${t}" aria-pressed="${state.reportTab===t}">${t}</button>`).join('')}</div><div class="ct-monthbar">${iconButton('report-prev','Periodo precedente','chevron-left')}<strong>${state.reportTab==='Anno'?'2026':state.reportTab==='Personalizzato'?'1 – 31 ottobre 2026':'Ottobre 2026'}</strong>${iconButton('report-next','Periodo successivo','chevron-right')}</div><div class="ct-report-hero"><small>ORE LAVORATE · OTTOBRE</small><div class="ct-total">167,2 <span>h</span></div><p>22 turni di servizio</p><div class="ct-bar" aria-label="Distribuzione dei turni del mese">${[['p',23],['m',19],['n',23],['sm',12],['rip',16],['fer',7]].map(([c,w])=>`<span style="background:var(--ct-${c});width:${w}%"></span>`).join('')}</div><small>Mattina · Pomeriggio · Notte · Riposo</small></div><div class="ct-metrics">${[['7','Notti'],['5','Riposi'],['1','Giorno di ferie'],['3','Smonti notte']].map(([value,label])=>`<div class="ct-metric"><strong>${value}</strong><small>${label}</small></div>`).join('')}</div><div class="ct-legend">Reperibilità · 7<span>Trasferte · 0</span></div>`;}
+  const settingsItems=[['cloud-upload','Account e backup','Google Drive'],['scan-text','Importazione turni','Prospetto, screenshot o PDF'],['file-text','Esportazione PDF','Prospetto e stampa'],['calendar-sync','Google Calendar','Sincronizzazione'],['alarm-clock','Sveglie intelligenti','Anticipo rispetto al turno'],['bell-ring','Reperibilità','Regole e giorni'],['calendar-heart','Festività','Nazionali, religiose e CCNL']];
+  function settings(){return `<div class="ct-header"><h2>Impostazioni</h2></div><p>Calendario Turni</p><div class="ct-section-title">Dati e collegamenti</div><div class="ct-settings-list">${settingsItems.slice(0,4).map(([icon,title,sub])=>`<button type="button" class="ct-settings-row cursor-interaction" data-setting="${title}">${icons(icon)}<span>${title}<small>${sub}</small></span>${icons('chevron-right')}</button>`).join('')}</div><div class="ct-section-title">Il tuo calendario</div><div class="ct-settings-list">${settingsItems.slice(4).map(([icon,title,sub])=>`<button type="button" class="ct-settings-row cursor-interaction" data-setting="${title}">${icons(icon)}<span>${title}<small>${sub}</small></span>${icons('chevron-right')}</button>`).join('')}</div>`;}
+  function models(){
+    const rows=state.modelTab==='Turni'?Object.entries(definitions).slice(0,7).map(([code,def])=>`<div class="ct-model-row"><div class="ct-badge" style="--shift:var(--ct-${def.color})">${code}</div><div><span class="ct-name">${def.name}</span><small>${def.range}${def.time==='—'?'':' · 7 h 36 min'}</small></div></div>`).join(''):state.modelTab==='Lavori'?`<div class="ct-model-row"><div class="ct-badge">${icons('briefcase-business')}</div><div><span class="ct-name">Lavoro Principale</span><small>Profilo attivo · configurazione CCNL</small></div></div><div class="ct-field">Ore, pause e riposo minimo</div><div class="ct-field">Profili semplici e avanzati</div>`:`<div class="ct-model-row"><div class="ct-badge">${icons('repeat-2')}</div><div><span class="ct-name">Turno A</span><small>Rotazione predefinita</small></div></div><div class="ct-field">Sequenza e matrice settimanale</div><div class="ct-field">Applicazione: 30, 90, 180 o 365 giorni</div>`;
+    return `<div class="ct-back-head">${iconButton('back-calendar','Torna al calendario','arrow-left')}<h2>Modelli e turni</h2></div><p>Orari, lavori e rotazioni</p><div class="ct-tabs">${['Turni','Lavori','Rotazioni'].map(t=>`<button type="button" data-model="${t}" aria-pressed="${state.modelTab===t}">${t}</button>`).join('')}</div><div class="ct-model-list">${rows}</div>`;
+  }
+  function shiftRow(code,index){const def=definitions[code];return `<div class="ct-shift-row"><div class="ct-shift-info"><div class="ct-badge" style="--shift:var(--ct-${def.color})">${code}</div><div><div class="ct-shift-title">${def.name}</div><div class="ct-shift-meta">${def.range}${def.time==='—'?'':' · 7 h 36 min'}</div></div></div><div class="ct-shift-tools"><button type="button" class="ct-tool cursor-interaction" data-action="details" aria-label="Straordinario, stacco e note turno">${icons('sliders-horizontal')}</button><button type="button" class="ct-tool cursor-interaction" data-action="travel" aria-label="Trasferta" aria-pressed="${state.travel}">${icons('plane')}${state.travel?'<small>Attiva</small>':''}</button><button type="button" class="ct-tool ct-danger cursor-interaction" data-action="delete-preview" aria-label="Elimina turno">${icons('trash-2')}</button></div></div>`;}
+  function daySheet(){return `<section class="ct-sheet" aria-label="Dettaglio giorno"><div class="ct-sheet-head">${iconButton('day-prev','Giorno precedente','chevron-left')}<h3>${dateLabel()}</h3>${iconButton('day-next','Giorno successivo','chevron-right')}${iconButton('close-sheet','Chiudi dettaglio','x')}</div><div class="ct-ccnl"><span>${shiftsFor(state.day).length} ${shiftsFor(state.day).length===1?'turno':'turni'} nella giornata</span><span>${icons('calendar-days')}Dettaglio</span></div><div class="ct-day-assignments">${shiftsFor(state.day).map((code,index)=>shiftRow(code,index)).join('')}</div><button type="button" class="ct-info-row cursor-interaction" data-action="oncall" aria-pressed="${state.onCall}">${icons('bell-ring')}Reperibilità<span>${state.onCall?'Attiva':'Non attiva'}</span></button><button type="button" class="ct-info-row cursor-interaction" data-action="notes">${icons('notebook-pen')}<span style="margin-left:0;color:var(--ct-text);font-size:12px">${state.note?escape(state.note):'Note e tag del giorno'}</span>${icons('plus')}</button><div class="ct-footer"><button type="button" class="ct-button ct-primary cursor-interaction" data-action="replace">${icons('arrow-left-right')}Cambia turno</button><button type="button" class="ct-button cursor-interaction" data-action="add">${icons('circle-plus')}Altro turno</button></div></section>`;}
+  function paintSheet(){return `<section class="ct-sheet ct-paint" aria-label="Modalità modifica calendario"><div class="ct-sheet-head"><h3>Modifica calendario</h3><button type="button" class="ct-button cursor-interaction" data-action="finish-paint">${icons('check')}Fatto</button></div><div class="ct-tabs">${['Cambia','Più turni','Periodo','Rotazione'].map(t=>`<button type="button" data-mode="${t}" aria-pressed="${state.mode===t}">${t}</button>`).join('')}</div><div class="ct-palette">${Object.entries(definitions).map(([code,def])=>`<button type="button" data-paint="${code}" aria-pressed="${state.paint===code}" aria-label="Seleziona ${def.name}"><span class="ct-chip" style="--shift:var(--ct-${def.color})">${code}</span></button>`).join('')}<button type="button" data-action="new-model">${icons('plus')}Nuovo</button><button type="button" data-paint="erase" aria-pressed="${state.paint==='erase'}">${icons('eraser')}Gomma</button></div></section>`;}
+  function detailsSheet(){return `<section class="ct-sheet ct-detail" aria-label="Informazioni turno"><div class="ct-back-head">${iconButton('back-day','Torna al dettaglio giorno','arrow-left')}<h3>Info turno · ${definitions[shiftFor(state.day)].name}</h3></div><div class="ct-tabs"><button type="button" aria-pressed="true">Straordinario</button><button type="button" data-action="notes">Note turno</button></div><label class="ct-field">Stacco effettivo<input type="time" value="05:36" aria-label="Orario effettivo di stacco"></label><label class="ct-field">Straordinario<input type="number" min="0" step="0.25" value="${state.overtime}" aria-label="Ore di straordinario"></label><div class="ct-preset">${[15,30,45,60].map(m=>`<button type="button" data-overtime="${m}">+${m} min</button>`).join('')}</div><div class="ct-footer"><button type="button" class="ct-button ct-primary" data-action="save-details">Salva informazioni</button></div></section>`;}
+  function notesSheet(){return `<section class="ct-sheet ct-detail" aria-label="Note del giorno"><div class="ct-back-head">${iconButton('back-day','Torna al dettaglio giorno','arrow-left')}<h3>Note e tag</h3></div><textarea aria-label="Nota del giorno" placeholder="Formazione, condotta, visite…">${escape(state.note)}</textarea><div class="ct-footer"><button type="button" class="ct-button ct-primary" data-action="save-notes">Salva nota</button></div></section>`;}
+  function selector(){return `<section class="ct-sheet ct-detail" aria-label="Selettore turno"><div class="ct-back-head">${iconButton('back-day','Torna al dettaglio giorno','arrow-left')}<h3>${state.sheet==='add'?'Aggiungi':'Cambia'} turno · ${state.day}/${state.month+1}</h3></div><div class="ct-tabs"><button type="button" data-action="replace" aria-pressed="${state.sheet==='replace'}">Sostituisci</button><button type="button" data-action="add" aria-pressed="${state.sheet==='add'}">+ Aggiungi turno</button></div><div class="ct-settings-list">${Object.entries(definitions).slice(0,7).map(([code,def])=>`<button type="button" class="ct-settings-row" data-select-shift="${code}"><span class="ct-badge" style="--shift:var(--ct-${def.color});flex:0 0 39px">${code}</span><span>${def.name}<small>${def.range}</small></span></button>`).join('')}</div></section>`;}
+  function render(){
+    phone.dataset.appearance=design.dark?'dark':'light';
+    content.innerHTML=state.tab==='calendar'?calendar():state.tab==='settings'?settings():state.tab==='report'?report():models();
+    layer.innerHTML=state.sheet==='day'?daySheet():state.sheet==='paint'?paintSheet():state.sheet==='details'?detailsSheet():state.sheet==='notes'?notesSheet():['replace','add'].includes(state.sheet)?selector():'';
+    updateDock();refreshIcons();
+  }
+  function notify(message){const el=root.querySelector('.ct-notice');el.textContent=message;el.classList.add('ct-visible');clearTimeout(notificationTimer);notificationTimer=setTimeout(()=>el.classList.remove('ct-visible'),2000);}
+  function goTab(tab){state.tab=tab;state.sheet=null;render();persist();}
+  function openDay(day){state.day=day;state.sheet='day';render();persist();}
+  root.addEventListener('click',event=>{
+    const button=event.target.closest('button');if(!button||button.disabled) return;
+    const key=button.dataset.dock;
+    if(key){if(key==='edit'){state.sheet='paint';render();}else goTab(key);return;}
+    if(button.dataset.day){const day=+button.dataset.day;if(state.sheet==='paint'){notify(state.mode==='Periodo'?'Periodo: selezione del giorno '+day:state.mode==='Rotazione'?'Rotazione: inizio dal giorno '+day:'Anteprima modifica del giorno '+day);return;}openDay(day);return;}
+    if(button.dataset.mode){state.mode=button.dataset.mode;render();return;}
+    if(button.dataset.paint){state.paint=button.dataset.paint;render();return;}
+    if(button.dataset.model){state.modelTab=button.dataset.model;render();return;}
+    if(button.dataset.report){state.reportTab=button.dataset.report;render();if(state.reportTab!=='Mese')notify('Anteprima del selettore · dati di ottobre');return;}
+    if(button.dataset.setting){notify(button.dataset.setting);return;}
+    if(button.dataset.overtime){state.overtime=+(state.overtime+(+button.dataset.overtime)/60).toFixed(2);render();return;}
+    if(button.dataset.selectShift){if(state.sheet==='add')state.added.push({day:state.day,code:button.dataset.selectShift});else state.edits[state.day]=button.dataset.selectShift;state.sheet='day';render();notify('Turno aggiornato nella sola anteprima');return;}
+    switch(button.dataset.action){
+      case 'today':state.year=2026;state.month=9;state.sheet=null;render();break;
+      case 'month-prev':case 'month-next':{const d=new Date(state.year,state.month+(button.dataset.action==='month-next'?1:-1),1);state.year=d.getFullYear();state.month=d.getMonth();state.sheet=null;render();break;}
+      case 'day-prev':case 'day-next':{const d=new Date(state.year,state.month,state.day+(button.dataset.action==='day-next'?1:-1));state.day=d.getDate();state.year=d.getFullYear();state.month=d.getMonth();render();break;}
+      case 'close-sheet':state.sheet=null;render();break;
+      case 'back-calendar':goTab('calendar');break;
+      case 'details':state.sheet='details';render();break;
+      case 'notes':state.sheet='notes';render();break;
+      case 'back-day':state.sheet='day';render();break;
+      case 'oncall':state.onCall=!state.onCall;render();break;
+      case 'travel':state.travel=!state.travel;render();break;
+      case 'delete-preview':notify('Anteprima · eliminazione non eseguita');break;
+      case 'replace':case 'add':state.sheet=button.dataset.action;render();break;
+      case 'finish-paint':state.sheet=null;render();break;
+      case 'save-notes':state.note=layer.querySelector('textarea').value;state.sheet='day';render();notify('Nota aggiornata nella sola anteprima');break;
+      case 'save-details':state.overtime=+layer.querySelector('input[type="number"]').value;state.sheet='day';render();notify('Anteprima informazioni turno');break;
+      case 'new-model':notify('Nuovo modello turno');break;
+      case 'report-prev':case 'report-next':notify('Anteprima del selettore periodo');break;
+    }
+    persist();
+  });
+  root.addEventListener('keydown',event=>{if(event.key==='Escape'){state.sheet=null;render();}});
+  new ResizeObserver(drawDock).observe(dock);
+  reduced.addEventListener?.('change',()=>updateDock());
+  window.addEventListener('openai:set_globals',event=>{const restored=event.detail?.globals?.widgetState?.privateContent;if(typeof restored?.speed==='number'){design.speed=restored.speed;}});
+  render();
+  if(globalThis.Tweak){const tweak=new Tweak({container:phone,onChange:()=>{render();persist();}});tweak.addSlider(design,'speed',{label:'Velocità delle gocce',min:.45,max:1.5,step:.05});}
+  });
+})();
+</script>
+
+

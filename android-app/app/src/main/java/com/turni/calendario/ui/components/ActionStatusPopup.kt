@@ -26,7 +26,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.turni.calendario.ui.theme.TurniThemeState
+import com.turni.calendario.ui.theme.currentTurniPalette
 import kotlinx.coroutines.delay
 import kotlin.math.*
 
@@ -67,10 +67,11 @@ internal fun ActionStatusPopup(feedback:ActionFeedback?,onDismiss:()->Unit,modif
         enter=slideInVertically(spring(.88f,360f)){-it/3}+fadeIn(tween(210)),
         exit=slideOutVertically(tween(240,easing=FastOutSlowInEasing)){-it/3}+fadeOut(tween(220))){
         retained?.let{item->key(item.timestamp){
-            val dark=TurniThemeState.dark;val destructive=item.isDestructive
-            val background=if(destructive){if(dark)Color(0xFF3D2029)else Color(0xFFFFEBEE)}else{if(dark)Color(0xFF18382C)else Color(0xFFE5F7ED)}
-            val ink=if(destructive){if(dark)Color(0xFFFFE1E5)else Color(0xFF93263C)}else{if(dark)Color(0xFFDAF9E8)else Color(0xFF194D35)}
-            val border=if(destructive){if(dark)Color(0xFF81434F)else Color(0xFFE9AEB9)}else{if(dark)Color(0xFF38664E)else Color(0xFFB2D9C2)}
+            val destructive=item.isDestructive
+            val tone=if(destructive)currentTurniPalette.danger else currentTurniPalette.success
+            val background=Color(tone.fill)
+            val ink=Color(tone.ink)
+            val border=Color(tone.edge)
             val icon=remember{Animatable(0f)}
             LaunchedEffect(Unit){icon.animateTo(1f,tween(520,easing=FastOutSlowInEasing))}
             Box(contentAlignment=Alignment.Center){
@@ -103,7 +104,11 @@ private fun StatusPerimeterBurst(destructive:Boolean,modifier:Modifier){
             List(count){statusEdgePoint(bounds.width.toFloat(),bounds.height.toFloat(),16*density,(it+.4f)/count)}
         }
     }
-    val colors=remember(destructive){if(destructive)listOf(Color(0xFFFF8995),Color(0xFFFFB1A8))else listOf(Color(0xFF70D6AC),Color(0xFFA9E9CE),Color(0xFFEBCE83))}
+    val palette=currentTurniPalette
+    val colors=remember(destructive,palette){
+        if(destructive)listOf(Color(palette.danger.edge),Color(palette.danger.ink))
+        else listOf(Color(palette.success.edge),Color(palette.tertiary),Color(palette.secondary))
+    }
     LaunchedEffect(Unit){delay(140);flight.animateTo(1f,tween(850,easing=LinearEasing))}
     Canvas(modifier.onSizeChanged{bounds=it}){
         points.forEachIndexed{i,point->

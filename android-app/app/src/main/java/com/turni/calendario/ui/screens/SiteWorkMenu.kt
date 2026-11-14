@@ -31,9 +31,9 @@ internal fun SiteWorkMenu(open:Boolean,onDismiss:()->Unit,onChoose:(String)->Uni
                     ShiftRepository.workProfiles.forEach{work->
                         val active=work.id==ShiftRepository.activeWorkProfileId
                         Row(Modifier.fillMaxWidth().background(if(active)ObsidianPrimaryContainer else ObsidianSurface,RoundedCornerShape(12.dp)).bouncyClickable{onChoose(work.id)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                            Icon(workProfileIcon(work.iconKey),null,Modifier.size(17.dp),tint=if(active)ObsidianPrimary else TextSecondary)
+                            Icon(workProfileIcon(work.iconKey),null,Modifier.size(17.dp),tint=if(active)BrandInk else TextSecondary)
                             Text(work.name,Modifier.weight(1f),fontSize=12.sp,color=TextPrimary)
-                            if(active)SiteIcon("check",null,Modifier.size(15.dp),ObsidianPrimary)
+                            if(active)SiteIcon("check",null,Modifier.size(15.dp),BrandInk)
                         }
                     }
                 }

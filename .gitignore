@@ -33,3 +33,33 @@ test_*.ps1
 find_coords.ps1
 project_*.json
 !esApp/**
+
+# Private machine state and credentials
+.env
+.env.*
+!.env.example
+.turnisync-cloud.env
+*.keystore
+*.jks
+*.p12
+*.pfx
+*.pem
+*credentials*.json
+*.db
+*.sqlite
+*.sqlite3
+turnisync-database*.json
+/qa-artifacts/
+/artifacts/
+
+# Local documents unrelated to TurniSync (retain locally)
+/Guida_Scelta_Casa_Genitori_Fabriano.docx
+/annunci_immobiliari_raw_data.md
+/bundle_completo_prompt_e_dati.md
+/prompt_master_analisi_immobiliare.md
+
+# Source references are intentionally available after cloning
+!android-app/gradle/wrapper/gradle-wrapper.jar
+!design/**/*.html
+!design/**/*.png
+!design/**/*.jpg

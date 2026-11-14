@@ -1,0 +1,34 @@
+[
+  {
+    "path": "design/reference/calendario-dock-gocce.html",
+    "sha256": "6a830b0aa4e9159c1dcf5fad4d5087882413e42969e4bab18798fc8cd00cdf15"
+  },
+  {
+    "path": "design/reference/calendario-dock-riferimento.html",
+    "sha256": "b2ebdf0c6ba5b06b4d4ba6559b10fc9b8fee5e67d2e08c32f7e8ce7b8d0fd5ae"
+  },
+  {
+    "path": "design/reference/turnisync-direzioni-dark.html",
+    "sha256": "eb6ac32e6261c3b05666e28f4e4ee2306184068fdcac5f3cb158f5b6b6909123"
+  },
+  {
+    "path": "design/reference/turnisync-grafite-laguna.html",
+    "sha256": "21246b91d92a8bed4ea6ae69c9a57dcc22b7c287f4fc360ac694f6a8d493a7e5"
+  },
+  {
+    "path": "design/reference/turnisync-palette-coordinate.html",
+    "sha256": "5a5766efbc98370e3e07fe2a829f713ca8c65669e1da96ca9bce7de287151ac2"
+  },
+  {
+    "path": "design/reference/turnisync-palette-studio.html",
+    "sha256": "73e87266c980ded0791c301b9d9702d72a257a4ca6792b3a01bbf96898ba0f3b"
+  },
+  {
+    "path": "design/reference/turnisync-raven-navy-ridisegno.html",
+    "sha256": "cc1a78b6ff84e3982e6c4679cd07e75b1505eff15df1fb2a6b6db22eb4c59aed"
+  },
+  {
+    "path": "design/reference/turnisync-raven-navy.html",
+    "sha256": "c89d9166443a0b6bd771858e345460e5a843589c659fd5025fc2d7b0d5aed6aa"
+  }
+]

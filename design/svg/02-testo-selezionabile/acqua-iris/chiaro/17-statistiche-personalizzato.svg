@@ -1,0 +1,313 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="818" viewBox="0 0 390 818">
+  <title>TurniSync · Statistiche · Personalizzato · acqua-iris · chiaro</title>
+  <defs>
+    <clipPath id="Ritaglio">
+      <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-2">
+      <path d="M0 40 H390 L390 40 V790 L390 790 H0 L0 790 V40 L0 40 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-3">
+      <path d="M44 224 H346 A30 30 0 0 1 376 254 V420 A12 12 0 0 1 364 432 H44 A30 30 0 0 1 14 402 V254 A30 30 0 0 1 44 224 Z" />
+    </clipPath>
+  </defs>
+  <g id="TurniSync" aria-label="TurniSync">
+    <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" fill="#f2f7f6" />
+    <g clip-path="url(#Ritaglio)">
+      <g id="ts-status" aria-label="ts-status">
+        <g id="span" aria-label="span">
+          <text id="Testo-9-41" x="26" y="24.2969" fill="#1c302e" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0.2" textLength="22.9219" lengthAdjust="spacingAndGlyphs">9:41</text>
+        </g>
+        <g id="Passa-al-tema-scuro" aria-label="Passa al tema scuro">
+          <path d="M171.9063 6 H218.0938 A14.5 14.5 0 0 1 232.5938 20.5 V20.5 A14.5 14.5 0 0 1 218.0938 35 H171.9063 A14.5 14.5 0 0 1 157.4063 20.5 V20.5 A14.5 14.5 0 0 1 171.9063 6 Z" fill="#e5efec" />
+          <g id="lucide-sun" aria-label="lucide-sun">
+            <circle cx="12" cy="12" r="4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 2v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 20v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m4.93 4.93 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m17.66 17.66 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M2 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M20 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m6.34 17.66-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m19.07 4.93-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+          </g>
+          <text id="Testo-Chiaro" x="188.4063" y="24.7969" fill="#1c302e" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="35.1875" lengthAdjust="spacingAndGlyphs">Chiaro</text>
+        </g>
+        <g id="ts-system" aria-label="ts-system">
+          <g id="lucide-signal" aria-label="lucide-signal">
+            <path d="M2 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M7 20v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M12 20v-8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M17 20V8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M22 4v16" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+          </g>
+          <g id="lucide-wifi" aria-label="lucide-wifi">
+            <path d="M12 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M2 8.82a15 15 0 0 1 20 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M5 12.859a10 10 0 0 1 14 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M8.5 16.429a5 5 0 0 1 7 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+          </g>
+          <g id="lucide-battery-full" aria-label="lucide-battery-full">
+            <path d="M10 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M14 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M22 14v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M6 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <rect x="2" y="6" width="16" height="12" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+          </g>
+        </g>
+      </g>
+      <g id="ts-body" aria-label="ts-body">
+        <g clip-path="url(#Ritaglio-2)">
+          <g id="ts-enter" aria-label="ts-enter">
+            <g id="ts-header" aria-label="ts-header">
+              <g id="ts-page-title" aria-label="ts-page-title">
+                <text id="Testo-Statistiche" x="14" y="83" fill="#1c302e" font-family="Manrope" font-size="27" font-weight="800" letter-spacing="-1" textLength="128.2031" lengthAdjust="spacingAndGlyphs">Statistiche</text>
+              </g>
+              <g id="Impostazioni" aria-label="Impostazioni">
+                <path d="M358 54 H358 A18 18 0 0 1 376 72 V72 A18 18 0 0 1 358 90 H358 A18 18 0 0 1 340 72 V72 A18 18 0 0 1 358 54 Z" fill="#ffffff" />
+                <g id="lucide-settings-2" aria-label="lucide-settings-2">
+                  <path d="M14 17H5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <path d="M19 7h-9" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <circle cx="17" cy="17" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <circle cx="7" cy="7" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-segments" aria-label="ts-segments">
+              <path d="M31 103 H359 A17 17 0 0 1 376 120 V134 A17 17 0 0 1 359 151 H31 A17 17 0 0 1 14 134 V120 A17 17 0 0 1 31 103 Z" fill="#e5efec" />
+              <g id="Mese" aria-label="Mese">
+                <text id="Testo-Mese" x="60.4531" y="130.5938" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="31.0938" lengthAdjust="spacingAndGlyphs">Mese</text>
+              </g>
+              <g id="Anno" aria-label="Anno">
+                <text id="Testo-Anno" x="179.9219" y="130.5938" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="30.1563" lengthAdjust="spacingAndGlyphs">Anno</text>
+              </g>
+              <g id="Personalizzato" aria-label="Personalizzato">
+                <path d="M269 107 H359 A13 13 0 0 1 372 120 V134 A13 13 0 0 1 359 147 H269 A13 13 0 0 1 256 134 V120 A13 13 0 0 1 269 107 Z" fill="#e5dff8" />
+                <text id="Testo-Personalizzato" x="271.3125" y="130.5938" fill="#473a6c" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="85.375" lengthAdjust="spacingAndGlyphs">Personalizzato</text>
+              </g>
+            </g>
+            <g id="ts-period" aria-label="ts-period">
+              <g id="Periodo-precedente" aria-label="Periodo precedente">
+                <g id="lucide-chevron-left" aria-label="lucide-chevron-left">
+                  <path d="m15 18-6-6 6-6" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 24 180)" />
+                </g>
+              </g>
+              <g id="span-2" aria-label="span">
+                <text id="Testo-1-15-novembre" x="131.7344" y="194.0938" fill="#1c302e" font-family="Manrope" font-size="17" font-weight="700" letter-spacing="0" textLength="126.5469" lengthAdjust="spacingAndGlyphs">1 – 15 novembre</text>
+              </g>
+              <g id="Periodo-successivo" aria-label="Periodo successivo">
+                <g id="lucide-chevron-right" aria-label="lucide-chevron-right">
+                  <path d="m9 18 6-6-6-6" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 180)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-hero" aria-label="ts-hero">
+              <path d="M44 224 H346 A30 30 0 0 1 376 254 V420 A12 12 0 0 1 364 432 H44 A30 30 0 0 1 14 402 V254 A30 30 0 0 1 44 224 Z" fill="#ffffff" />
+              <g clip-path="url(#Ritaglio-3)">
+                <g id="Ripartizione-dei-16-turni-inseriti-incluse-assenze-e-riposi" aria-label="Ripartizione dei 16 turni inseriti, incluse assenze e riposi">
+                  <path d="M 197.474 153.458 A 91 91 0 0 1 122.931 205.654" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#718032" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                  <path d="M 122.931 205.654 A 91 91 0 0 1 46.583 175.000" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#377e6d" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                  <path d="M 46.583 175.000 A 91 91 0 0 1 36.592 161.186" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#796ab0" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                  <path d="M 36.592 161.186 A 91 91 0 0 1 25.120 129.236" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#946b9f" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                  <path d="M 25.120 129.236 A 91 91 0 0 1 24.042 112.221" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#6e838b" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                  <path d="M 24.042 112.221 A 91 91 0 0 1 58.975 43.291" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#66875d" stroke-opacity="1" stroke-width="24" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(1 0 0 1 194 160)" />
+                </g>
+                <g id="ts-eyebrow" aria-label="ts-eyebrow">
+                  <text id="Testo-RESOCONTO-TOTALE" x="33" y="256" fill="#625296" font-family="Manrope" font-size="11" font-weight="750" letter-spacing="0.3" textLength="116.7813" lengthAdjust="spacingAndGlyphs">RESOCONTO TOTALE</text>
+                </g>
+                <g id="ts-total" aria-label="ts-total">
+                  <text id="Testo-81" x="33" y="332.3906" fill="#09675d" font-family="Manrope" font-size="56" font-weight="750" letter-spacing="-2.8" style="font-variant-numeric:tabular-nums" textLength="63.8438" lengthAdjust="spacingAndGlyphs">81</text>
+                  <g id="small" aria-label="small">
+                    <text id="Testo-h" x="101.8438" y="332.3906" fill="#09675d" font-family="Manrope" font-size="18" font-weight="500" letter-spacing="-0.3" style="font-variant-numeric:tabular-nums" textLength="10.5938" lengthAdjust="spacingAndGlyphs">h</text>
+                  </g>
+                </g>
+                <g id="ts-total-caption" aria-label="ts-total-caption">
+                  <text id="Testo-ore-lavorate-1-h-di-straordinario" x="33" y="358.1875" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="400" letter-spacing="0" textLength="158.375" lengthAdjust="spacingAndGlyphs">ore lavorate · 1 h di straordinario</text>
+                </g>
+                <g id="ts-hero-bottom" aria-label="ts-hero-bottom">
+                  <g id="span-3" aria-label="span">
+                    <g id="strong" aria-label="strong">
+                      <text id="Testo-9" x="33" y="404.125" fill="#1c302e" font-family="Manrope" font-size="19" font-weight="750" letter-spacing="-0.5" textLength="11.3281" lengthAdjust="spacingAndGlyphs">9</text>
+                    </g>
+                    <text id="Testo-giorni" x="51.5156" y="404.125" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="400" letter-spacing="0" textLength="28.6719" lengthAdjust="spacingAndGlyphs">giorni</text>
+                  </g>
+                  <g id="span-4" aria-label="span">
+                    <g id="strong-2" aria-label="strong">
+                      <text id="Testo-16" x="103.1875" y="404.125" fill="#1c302e" font-family="Manrope" font-size="19" font-weight="750" letter-spacing="-0.5" textLength="19.2969" lengthAdjust="spacingAndGlyphs">16</text>
+                    </g>
+                    <text id="Testo-turni" x="129.6719" y="404.125" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="400" letter-spacing="0" textLength="24.0313" lengthAdjust="spacingAndGlyphs">turni</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="ts-section-heading" aria-label="ts-section-heading">
+              <text id="Testo-I-tuoi-turni" x="17" y="466" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="-0.3" textLength="72.3438" lengthAdjust="spacingAndGlyphs">I tuoi turni</text>
+              <g id="small-2" aria-label="small">
+                <text id="Testo-nel-periodo" x="315.2031" y="466" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="500" letter-spacing="0" textLength="57.7969" lengthAdjust="spacingAndGlyphs">nel periodo</text>
+              </g>
+            </g>
+            <g id="ts-metrics" aria-label="ts-metrics">
+              <g id="Mattina-4-turni-32-ore" aria-label="Mattina, 4 turni, 32 ore">
+                <g id="ts-shape-stage" aria-label="ts-shape-stage">
+                  <g id="Forma" aria-label="Forma">
+                    <path d="M 0.50000000 0.09812955 C 0.50482678 0.09441828 0.50965351 0.09070702 0.51448035 0.08699575 C 0.62762523 0.00000002 0.78774267 0.01041575 0.88866347 0.11133653 C 0.98958421 0.21225737 1.00000000 0.37237483 0.91300422 0.48551971 C 0.90929294 0.49034646 0.90558171 0.49517325 0.90187043 0.50000000 C 0.90558165 0.50482678 0.90929294 0.50965351 0.91300416 0.51448035 C 0.99999988 0.62762517 0.98958421 0.78774267 0.88866347 0.88866347 C 0.78774267 0.98958433 0.62762523 1.00000000 0.51448029 0.91300428 C 0.50965351 0.90929294 0.50482678 0.90558177 0.50000000 0.90187043 C 0.49517319 0.90558171 0.49034640 0.90929300 0.48551959 0.91300422 C 0.37237471 1.00000000 0.21225730 0.98958421 0.11133650 0.88866347 C 0.01041574 0.78774267 0.00000002 0.62762523 0.08699573 0.51448041 C 0.09070700 0.50965357 0.09441828 0.50482678 0.09812956 0.50000000 C 0.09441827 0.49517313 0.09070700 0.49034634 0.08699573 0.48551953 C 0.00000000 0.37237465 0.01041573 0.21225728 0.11133651 0.11133648 C 0.21225730 0.01041571 0.37237471 0.00000000 0.48551953 0.08699571 C 0.49034634 0.09070699 0.49517319 0.09441827 0.50000000 0.09812955 Z" fill="#e5ebbf" fill-opacity="1" fill-rule="nonzero" stroke="none" stroke-opacity="1" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(132 0 0 132 35.75 482)" />
+                  </g>
+                  <g id="ts-count" aria-label="ts-count">
+                    <text id="Testo-4" x="90.8125" y="563" fill="#4c5621" font-family="Manrope" font-size="38" font-weight="800" letter-spacing="-1.5" textLength="21.875" lengthAdjust="spacingAndGlyphs">4</text>
+                  </g>
+                </g>
+                <g id="h3" aria-label="h3">
+                  <text id="Testo-Mattina" x="77.6875" y="635" fill="#1c302e" font-family="Manrope" font-size="13" font-weight="750" letter-spacing="0" textLength="48.1094" lengthAdjust="spacingAndGlyphs">Mattina</text>
+                </g>
+                <g id="small-3" aria-label="small">
+                  <text id="Testo-32-ore" x="84.375" y="653.5469" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="34.75" lengthAdjust="spacingAndGlyphs">32 ore</text>
+                </g>
+              </g>
+              <g id="Pomeriggio-5-turni-40-ore" aria-label="Pomeriggio, 5 turni, 40 ore">
+                <g id="ts-shape-stage-2" aria-label="ts-shape-stage">
+                  <g id="Forma-2" aria-label="Forma">
+                    <path d="M 1.00000000 0.50000000 C 1.00000000 0.55172682 0.99190873 0.60345358 0.97572625 0.65325838 C 0.94336128 0.75286746 0.88029289 0.83967370 0.79556030 0.90123552 C 0.71082765 0.96279734 0.60878092 0.99595439 0.50404555 0.99595439 C 0.39931041 0.99595439 0.29726353 0.96279722 0.21253096 0.90123552 C 0.12779829 0.83967364 0.06472998 0.75286752 0.03236498 0.65325826 C 0.00000000 0.55364919 0.00000000 0.44635072 0.03236500 0.34674159 C 0.06473000 0.24713236 0.12779829 0.16032636 0.21253096 0.09876451 C 0.29726362 0.03720263 0.39931020 0.00404568 0.50404561 0.00404566 C 0.60878092 0.00404566 0.71082783 0.03720272 0.79556048 0.09876463 C 0.88029307 0.16032647 0.94336140 0.24713263 0.97572631 0.34674183 C 0.99190879 0.39654645 1.00000000 0.44827324 1.00000000 0.50000000 Z" fill="#cfeae3" fill-opacity="1" fill-rule="nonzero" stroke="none" stroke-opacity="1" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(132 0 0 132 222.25 482)" />
+                  </g>
+                  <g id="ts-count-2" aria-label="ts-count">
+                    <text id="Testo-5" x="277.7969" y="563" fill="#235a4f" font-family="Manrope" font-size="38" font-weight="800" letter-spacing="-1.5" textLength="20.8906" lengthAdjust="spacingAndGlyphs">5</text>
+                  </g>
+                </g>
+                <g id="h3-2" aria-label="h3">
+                  <text id="Testo-Pomeriggio" x="252.6719" y="635" fill="#1c302e" font-family="Manrope" font-size="13" font-weight="750" letter-spacing="0" textLength="71.1563" lengthAdjust="spacingAndGlyphs">Pomeriggio</text>
+                </g>
+                <g id="small-4" aria-label="small">
+                  <text id="Testo-40-ore" x="270.3906" y="653.5469" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="35.7188" lengthAdjust="spacingAndGlyphs">40 ore</text>
+                </g>
+              </g>
+              <g id="Sera-0-turni-0-ore" aria-label="Sera, 0 turni, 0 ore">
+                <g id="ts-shape-stage-3" aria-label="ts-shape-stage">
+                  <g id="Forma-3" aria-label="Forma">
+                    <path d="M 0.50000000 0.17030418 C 0.50578737 0.16142936 0.51157486 0.15255453 0.51736230 0.14367971 C 0.53398341 0.11819186 0.56938881 0.10244157 0.60751849 0.10357324 C 0.64526409 0.10469352 0.67900246 0.12136877 0.69494015 0.14678164 C 0.69744104 0.15076935 0.69994193 0.15475707 0.70244282 0.15874477 C 0.71121472 0.17273168 0.71656144 0.18776540 0.71823275 0.20314266 C 0.71904713 0.21063587 0.71986151 0.21812908 0.72067595 0.22562231 C 0.74650478 0.18171695 0.82450300 0.17182331 0.86852139 0.20686898 C 0.86953568 0.20767654 0.87055004 0.20848411 0.87156439 0.20929165 C 0.89745915 0.22990802 0.91329342 0.25636980 0.91653705 0.28444856 C 0.91678935 0.28663340 0.91704178 0.28881827 0.91729414 0.29100308 C 0.92125475 0.32528818 0.90746409 0.35940507 0.87872761 0.38641351 C 0.88076538 0.38636225 0.88280320 0.38631102 0.88484091 0.38625976 C 0.91753620 0.38543740 0.94850904 0.39713305 0.96685666 0.41722983 C 0.98845530 0.44088754 1.00000000 0.46880633 1.00000000 0.49738124 C 1.00000000 0.49912709 1.00000000 0.50087291 1.00000000 0.50261867 C 1.00000000 0.53119361 0.98845536 0.55911249 0.96685666 0.58277017 C 0.94850904 0.60286689 0.91753620 0.61456269 0.88484091 0.61374027 C 0.88280314 0.61368906 0.88076538 0.61363775 0.87872761 0.61358649 C 0.90746409 0.64059490 0.92125469 0.67471176 0.91729420 0.70899683 C 0.91704184 0.71118170 0.91678941 0.71336651 0.91653705 0.71555138 C 0.91329342 0.74363017 0.89745921 0.77009183 0.87156445 0.79070824 C 0.87055010 0.79151583 0.86953574 0.79232347 0.86852139 0.79313099 C 0.82450306 0.82817662 0.74650478 0.81828302 0.72067595 0.77437770 C 0.71986151 0.78187090 0.71904719 0.78936416 0.71823275 0.79685736 C 0.71656144 0.81223452 0.71121472 0.82726836 0.70244288 0.84125519 C 0.69994193 0.84524280 0.69744110 0.84923053 0.69494021 0.85321832 C 0.67900246 0.87863111 0.64526403 0.89530647 0.60751837 0.89642668 C 0.56938875 0.89755827 0.53398329 0.88180810 0.51736218 0.85632020 C 0.51157480 0.84744543 0.50578731 0.83857059 0.50000000 0.82969582 C 0.49421254 0.83857059 0.48842508 0.84744549 0.48263770 0.85632026 C 0.46601665 0.88180810 0.43061125 0.89755845 0.39248157 0.89642668 C 0.35473591 0.89530647 0.32099742 0.87863111 0.30505976 0.85321826 C 0.30255884 0.84923053 0.30005795 0.84524274 0.29755703 0.84125507 C 0.28878525 0.82726836 0.28343862 0.81223458 0.28176731 0.79685754 C 0.28095287 0.78936416 0.28013843 0.78187102 0.27932400 0.77437770 C 0.25349516 0.81828302 0.17549694 0.82817662 0.13147861 0.79313099 C 0.13046427 0.79232347 0.12944992 0.79151583 0.12843557 0.79070824 C 0.10254084 0.77009189 0.08670654 0.74363011 0.08346296 0.71555138 C 0.08321057 0.71336651 0.08295818 0.71118170 0.08270583 0.70899689 C 0.07874528 0.67471182 0.09253596 0.64059484 0.12127239 0.61358643 C 0.11923461 0.61363769 0.11719684 0.61368901 0.11515907 0.61374021 C 0.08246378 0.61456263 0.05149094 0.60286689 0.03314332 0.58277011 C 0.01154467 0.55911243 0.00000000 0.53119361 0.00000001 0.50261867 C 0.00000001 0.50087285 0.00000001 0.49912709 0.00000003 0.49738124 C 0.00000003 0.46880633 0.01154474 0.44088748 0.03314339 0.41722977 C 0.05149098 0.39713305 0.08246370 0.38543734 0.11515892 0.38625965 C 0.11719677 0.38631091 0.11923462 0.38636214 0.12127247 0.38641340 C 0.09253600 0.35940498 0.07874535 0.32528806 0.08270587 0.29100302 C 0.08295825 0.28881821 0.08321063 0.28663340 0.08346303 0.28444859 C 0.08670662 0.25636980 0.10254086 0.22990805 0.12843566 0.20929164 C 0.12944995 0.20848410 0.13046427 0.20767653 0.13147858 0.20686899 C 0.17549694 0.17182332 0.25349522 0.18171690 0.27932417 0.22562224 C 0.28013861 0.21812902 0.28095299 0.21063581 0.28176743 0.20314260 C 0.28343874 0.18776543 0.28878543 0.17273159 0.29755726 0.15874474 C 0.30005819 0.15475702 0.30255908 0.15076929 0.30506000 0.14678156 C 0.32099766 0.12136875 0.35473603 0.10469349 0.39248157 0.10357322 C 0.43061119 0.10244155 0.46601665 0.11819186 0.48263770 0.14367969 C 0.48842508 0.15255451 0.49421254 0.16142936 0.50000000 0.17030418 Z" fill="#d6e8f2" fill-opacity="1" fill-rule="nonzero" stroke="none" stroke-opacity="1" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(132 0 0 132 35.75 672.5469)" />
+                  </g>
+                  <g id="ts-count-3" aria-label="ts-count">
+                    <text id="Testo-0" x="89.6875" y="753.5469" fill="#30556f" font-family="Manrope" font-size="38" font-weight="800" letter-spacing="-1.5" textLength="24.125" lengthAdjust="spacingAndGlyphs">0</text>
+                  </g>
+                </g>
+              </g>
+              <g id="Notte-1-turni-8-ore" aria-label="Notte, 1 turni, 8 ore">
+                <g id="ts-shape-stage-4" aria-label="ts-shape-stage">
+                  <g id="Forma-4" aria-label="Forma">
+                    <path d="M 0.91213202 0.91213202 C 0.85784274 0.96642137 0.78284270 1.00000000 0.69999999 1.00000000 C 0.56666666 1.00000000 0.43333334 1.00000000 0.30000001 1.00000000 C 0.13431460 1.00000000 0.00000000 0.86568540 0.00000000 0.69999999 C 0.00000000 0.56666666 0.00000000 0.43333334 0.00000000 0.30000001 C 0.00000000 0.13431460 0.13431460 0.00000000 0.30000001 0.00000000 C 0.43333334 0.00000000 0.56666666 0.00000000 0.69999999 0.00000000 C 0.86568540 0.00000000 1.00000000 0.13431460 1.00000000 0.30000001 C 1.00000000 0.43333334 1.00000000 0.56666666 1.00000000 0.69999999 C 1.00000000 0.78284270 0.96642137 0.85784268 0.91213202 0.91213202 Z" fill="#e4dff7" fill-opacity="1" fill-rule="nonzero" stroke="none" stroke-opacity="1" stroke-width="1.8" stroke-linecap="butt" stroke-linejoin="miter" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(132 0 0 132 222.25 672.5469)" />
+                  </g>
+                  <g id="ts-count-4" aria-label="ts-count">
+                    <text id="Testo-1" x="280.3594" y="753.5469" fill="#4e4380" font-family="Manrope" font-size="38" font-weight="800" letter-spacing="-1.5" textLength="15.7656" lengthAdjust="spacingAndGlyphs">1</text>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="Navigazione-principale" aria-label="Navigazione principale">
+        <g id="ts-tabs" aria-label="ts-tabs">
+          <g id="Ombra" aria-label="Ombra">
+            <path d="M138.5781 713.33333 H251.4062 A55.66667 55.66667 0 0 1 307.07287 769 V769 A55.66667 55.66667 0 0 1 251.4062 824.66667 H138.5781 A55.66667 55.66667 0 0 1 82.91143 769 V769 A55.66667 55.66667 0 0 1 138.5781 713.33333 Z" fill="#000000" fill-opacity="0.00036" />
+            <path d="M138.5781 714.16667 H251.4062 A54.83333 54.83333 0 0 1 306.23953 769 V769 A54.83333 54.83333 0 0 1 251.4062 823.83333 H138.5781 A54.83333 54.83333 0 0 1 83.74477 769 V769 A54.83333 54.83333 0 0 1 138.5781 714.16667 Z" fill="#000000" fill-opacity="0.0001" />
+            <path d="M138.5781 715 H251.4062 A54 54 0 0 1 305.4062 769 V769 A54 54 0 0 1 251.4062 823 H138.5781 A54 54 0 0 1 84.5781 769 V769 A54 54 0 0 1 138.5781 715 Z" fill="#000000" fill-opacity="0.00012" />
+            <path d="M138.5781 715.83333 H251.4062 A53.16667 53.16667 0 0 1 304.57287 769 V769 A53.16667 53.16667 0 0 1 251.4062 822.16667 H138.5781 A53.16667 53.16667 0 0 1 85.41143 769 V769 A53.16667 53.16667 0 0 1 138.5781 715.83333 Z" fill="#000000" fill-opacity="0.00015" />
+            <path d="M138.5781 716.66667 H251.4062 A52.33333 52.33333 0 0 1 303.73953 769 V769 A52.33333 52.33333 0 0 1 251.4062 821.33333 H138.5781 A52.33333 52.33333 0 0 1 86.24477 769 V769 A52.33333 52.33333 0 0 1 138.5781 716.66667 Z" fill="#000000" fill-opacity="0.00019" />
+            <path d="M138.5781 717.5 H251.4062 A51.5 51.5 0 0 1 302.9062 769 V769 A51.5 51.5 0 0 1 251.4062 820.5 H138.5781 A51.5 51.5 0 0 1 87.0781 769 V769 A51.5 51.5 0 0 1 138.5781 717.5 Z" fill="#000000" fill-opacity="0.00023" />
+            <path d="M138.5781 718.33333 H251.4062 A50.66667 50.66667 0 0 1 302.07287 769 V769 A50.66667 50.66667 0 0 1 251.4062 819.66667 H138.5781 A50.66667 50.66667 0 0 1 87.91143 769 V769 A50.66667 50.66667 0 0 1 138.5781 718.33333 Z" fill="#000000" fill-opacity="0.00027" />
+            <path d="M138.5781 719.16667 H251.4062 A49.83333 49.83333 0 0 1 301.23953 769 V769 A49.83333 49.83333 0 0 1 251.4062 818.83333 H138.5781 A49.83333 49.83333 0 0 1 88.74477 769 V769 A49.83333 49.83333 0 0 1 138.5781 719.16667 Z" fill="#000000" fill-opacity="0.00033" />
+            <path d="M138.5781 720 H251.4062 A49 49 0 0 1 300.4062 769 V769 A49 49 0 0 1 251.4062 818 H138.5781 A49 49 0 0 1 89.5781 769 V769 A49 49 0 0 1 138.5781 720 Z" fill="#000000" fill-opacity="0.00039" />
+            <path d="M138.5781 720.83333 H251.4062 A48.16667 48.16667 0 0 1 299.57287 769 V769 A48.16667 48.16667 0 0 1 251.4062 817.16667 H138.5781 A48.16667 48.16667 0 0 1 90.41143 769 V769 A48.16667 48.16667 0 0 1 138.5781 720.83333 Z" fill="#000000" fill-opacity="0.00046" />
+            <path d="M138.5781 721.66667 H251.4062 A47.33333 47.33333 0 0 1 298.73953 769 V769 A47.33333 47.33333 0 0 1 251.4062 816.33333 H138.5781 A47.33333 47.33333 0 0 1 91.24477 769 V769 A47.33333 47.33333 0 0 1 138.5781 721.66667 Z" fill="#000000" fill-opacity="0.00054" />
+            <path d="M138.5781 722.5 H251.4062 A46.5 46.5 0 0 1 297.9062 769 V769 A46.5 46.5 0 0 1 251.4062 815.5 H138.5781 A46.5 46.5 0 0 1 92.0781 769 V769 A46.5 46.5 0 0 1 138.5781 722.5 Z" fill="#000000" fill-opacity="0.00063" />
+            <path d="M138.5781 723.33333 H251.4062 A45.66667 45.66667 0 0 1 297.07287 769 V769 A45.66667 45.66667 0 0 1 251.4062 814.66667 H138.5781 A45.66667 45.66667 0 0 1 92.91143 769 V769 A45.66667 45.66667 0 0 1 138.5781 723.33333 Z" fill="#000000" fill-opacity="0.00073" />
+            <path d="M138.5781 724.16667 H251.4062 A44.83333 44.83333 0 0 1 296.23953 769 V769 A44.83333 44.83333 0 0 1 251.4062 813.83333 H138.5781 A44.83333 44.83333 0 0 1 93.74477 769 V769 A44.83333 44.83333 0 0 1 138.5781 724.16667 Z" fill="#000000" fill-opacity="0.00084" />
+            <path d="M138.5781 725 H251.4062 A44 44 0 0 1 295.4062 769 V769 A44 44 0 0 1 251.4062 813 H138.5781 A44 44 0 0 1 94.5781 769 V769 A44 44 0 0 1 138.5781 725 Z" fill="#000000" fill-opacity="0.00096" />
+            <path d="M138.5781 725.83333 H251.4062 A43.16667 43.16667 0 0 1 294.57287 769 V769 A43.16667 43.16667 0 0 1 251.4062 812.16667 H138.5781 A43.16667 43.16667 0 0 1 95.41143 769 V769 A43.16667 43.16667 0 0 1 138.5781 725.83333 Z" fill="#000000" fill-opacity="0.00109" />
+            <path d="M138.5781 726.66667 H251.4062 A42.33333 42.33333 0 0 1 293.73953 769 V769 A42.33333 42.33333 0 0 1 251.4062 811.33333 H138.5781 A42.33333 42.33333 0 0 1 96.24477 769 V769 A42.33333 42.33333 0 0 1 138.5781 726.66667 Z" fill="#000000" fill-opacity="0.00122" />
+            <path d="M138.5781 727.5 H251.4062 A41.5 41.5 0 0 1 292.9062 769 V769 A41.5 41.5 0 0 1 251.4062 810.5 H138.5781 A41.5 41.5 0 0 1 97.0781 769 V769 A41.5 41.5 0 0 1 138.5781 727.5 Z" fill="#000000" fill-opacity="0.00137" />
+            <path d="M138.5781 728.33333 H251.4062 A40.66667 40.66667 0 0 1 292.07287 769 V769 A40.66667 40.66667 0 0 1 251.4062 809.66667 H138.5781 A40.66667 40.66667 0 0 1 97.91143 769 V769 A40.66667 40.66667 0 0 1 138.5781 728.33333 Z" fill="#000000" fill-opacity="0.00152" />
+            <path d="M138.5781 729.16667 H251.4062 A39.83333 39.83333 0 0 1 291.23953 769 V769 A39.83333 39.83333 0 0 1 251.4062 808.83333 H138.5781 A39.83333 39.83333 0 0 1 98.74477 769 V769 A39.83333 39.83333 0 0 1 138.5781 729.16667 Z" fill="#000000" fill-opacity="0.00168" />
+            <path d="M138.5781 730 H251.4062 A39 39 0 0 1 290.4062 769 V769 A39 39 0 0 1 251.4062 808 H138.5781 A39 39 0 0 1 99.5781 769 V769 A39 39 0 0 1 138.5781 730 Z" fill="#000000" fill-opacity="0.00184" />
+            <path d="M138.5781 730.83333 H251.4062 A38.16667 38.16667 0 0 1 289.57287 769 V769 A38.16667 38.16667 0 0 1 251.4062 807.16667 H138.5781 A38.16667 38.16667 0 0 1 100.41143 769 V769 A38.16667 38.16667 0 0 1 138.5781 730.83333 Z" fill="#000000" fill-opacity="0.002" />
+            <path d="M138.5781 731.66667 H251.4062 A37.33333 37.33333 0 0 1 288.73953 769 V769 A37.33333 37.33333 0 0 1 251.4062 806.33333 H138.5781 A37.33333 37.33333 0 0 1 101.24477 769 V769 A37.33333 37.33333 0 0 1 138.5781 731.66667 Z" fill="#000000" fill-opacity="0.00217" />
+            <path d="M138.5781 732.5 H251.4062 A36.5 36.5 0 0 1 287.9062 769 V769 A36.5 36.5 0 0 1 251.4062 805.5 H138.5781 A36.5 36.5 0 0 1 102.0781 769 V769 A36.5 36.5 0 0 1 138.5781 732.5 Z" fill="#000000" fill-opacity="0.00233" />
+            <path d="M138.5781 733.33333 H251.4062 A35.66667 35.66667 0 0 1 287.07287 769 V769 A35.66667 35.66667 0 0 1 251.4062 804.66667 H138.5781 A35.66667 35.66667 0 0 1 102.91143 769 V769 A35.66667 35.66667 0 0 1 138.5781 733.33333 Z" fill="#000000" fill-opacity="0.00248" />
+            <path d="M138.5781 734.16667 H251.4062 A34.83333 34.83333 0 0 1 286.23953 769 V769 A34.83333 34.83333 0 0 1 251.4062 803.83333 H138.5781 A34.83333 34.83333 0 0 1 103.74477 769 V769 A34.83333 34.83333 0 0 1 138.5781 734.16667 Z" fill="#000000" fill-opacity="0.00263" />
+            <path d="M138.5781 735 H251.4062 A34 34 0 0 1 285.4062 769 V769 A34 34 0 0 1 251.4062 803 H138.5781 A34 34 0 0 1 104.5781 769 V769 A34 34 0 0 1 138.5781 735 Z" fill="#000000" fill-opacity="0.00277" />
+            <path d="M138.5781 735.83333 H251.4062 A33.16667 33.16667 0 0 1 284.57287 769 V769 A33.16667 33.16667 0 0 1 251.4062 802.16667 H138.5781 A33.16667 33.16667 0 0 1 105.41143 769 V769 A33.16667 33.16667 0 0 1 138.5781 735.83333 Z" fill="#000000" fill-opacity="0.0029" />
+            <path d="M138.5781 736.66667 H251.4062 A32.33333 32.33333 0 0 1 283.73953 769 V769 A32.33333 32.33333 0 0 1 251.4062 801.33333 H138.5781 A32.33333 32.33333 0 0 1 106.24477 769 V769 A32.33333 32.33333 0 0 1 138.5781 736.66667 Z" fill="#000000" fill-opacity="0.00301" />
+            <path d="M138.5781 737.5 H251.4062 A31.5 31.5 0 0 1 282.9062 769 V769 A31.5 31.5 0 0 1 251.4062 800.5 H138.5781 A31.5 31.5 0 0 1 107.0781 769 V769 A31.5 31.5 0 0 1 138.5781 737.5 Z" fill="#000000" fill-opacity="0.0031" />
+            <path d="M138.5781 738.33333 H251.4062 A30.66667 30.66667 0 0 1 282.07287 769 V769 A30.66667 30.66667 0 0 1 251.4062 799.66667 H138.5781 A30.66667 30.66667 0 0 1 107.91143 769 V769 A30.66667 30.66667 0 0 1 138.5781 738.33333 Z" fill="#000000" fill-opacity="0.00318" />
+            <path d="M138.5781 739.16667 H251.4062 A29.83333 29.83333 0 0 1 281.23953 769 V769 A29.83333 29.83333 0 0 1 251.4062 798.83333 H138.5781 A29.83333 29.83333 0 0 1 108.74477 769 V769 A29.83333 29.83333 0 0 1 138.5781 739.16667 Z" fill="#000000" fill-opacity="0.00323" />
+            <path d="M138.5781 740 H251.4062 A29 29 0 0 1 280.4062 769 V769 A29 29 0 0 1 251.4062 798 H138.5781 A29 29 0 0 1 109.5781 769 V769 A29 29 0 0 1 138.5781 740 Z" fill="#000000" fill-opacity="0.00326" />
+            <path d="M138.5781 740.83333 H251.4062 A28.16667 28.16667 0 0 1 279.57287 769 V769 A28.16667 28.16667 0 0 1 251.4062 797.16667 H138.5781 A28.16667 28.16667 0 0 1 110.41143 769 V769 A28.16667 28.16667 0 0 1 138.5781 740.83333 Z" fill="#000000" fill-opacity="0.00328" />
+            <path d="M138.5781 741.66667 H251.4062 A27.33333 27.33333 0 0 1 278.73953 769 V769 A27.33333 27.33333 0 0 1 251.4062 796.33333 H138.5781 A27.33333 27.33333 0 0 1 111.24477 769 V769 A27.33333 27.33333 0 0 1 138.5781 741.66667 Z" fill="#000000" fill-opacity="0.00326" />
+            <path d="M138.5781 742.5 H251.4062 A26.5 26.5 0 0 1 277.9062 769 V769 A26.5 26.5 0 0 1 251.4062 795.5 H138.5781 A26.5 26.5 0 0 1 112.0781 769 V769 A26.5 26.5 0 0 1 138.5781 742.5 Z" fill="#000000" fill-opacity="0.00323" />
+            <path d="M138.5781 743.33333 H251.4062 A25.66667 25.66667 0 0 1 277.07287 769 V769 A25.66667 25.66667 0 0 1 251.4062 794.66667 H138.5781 A25.66667 25.66667 0 0 1 112.91143 769 V769 A25.66667 25.66667 0 0 1 138.5781 743.33333 Z" fill="#000000" fill-opacity="0.00317" />
+            <path d="M138.5781 744.16667 H251.4062 A24.83333 24.83333 0 0 1 276.23953 769 V769 A24.83333 24.83333 0 0 1 251.4062 793.83333 H138.5781 A24.83333 24.83333 0 0 1 113.74477 769 V769 A24.83333 24.83333 0 0 1 138.5781 744.16667 Z" fill="#000000" fill-opacity="0.0031" />
+            <path d="M138.5781 745 H251.4062 A24 24 0 0 1 275.4062 769 V769 A24 24 0 0 1 251.4062 793 H138.5781 A24 24 0 0 1 114.5781 769 V769 A24 24 0 0 1 138.5781 745 Z" fill="#000000" fill-opacity="0.003" />
+            <path d="M138.5781 745.83333 H251.4062 A23.16667 23.16667 0 0 1 274.57287 769 V769 A23.16667 23.16667 0 0 1 251.4062 792.16667 H138.5781 A23.16667 23.16667 0 0 1 115.41143 769 V769 A23.16667 23.16667 0 0 1 138.5781 745.83333 Z" fill="#000000" fill-opacity="0.00289" />
+            <path d="M138.5781 746.66667 H251.4062 A22.33333 22.33333 0 0 1 273.73953 769 V769 A22.33333 22.33333 0 0 1 251.4062 791.33333 H138.5781 A22.33333 22.33333 0 0 1 116.24477 769 V769 A22.33333 22.33333 0 0 1 138.5781 746.66667 Z" fill="#000000" fill-opacity="0.00276" />
+            <path d="M138.5781 747.5 H251.4062 A21.5 21.5 0 0 1 272.9062 769 V769 A21.5 21.5 0 0 1 251.4062 790.5 H138.5781 A21.5 21.5 0 0 1 117.0781 769 V769 A21.5 21.5 0 0 1 138.5781 747.5 Z" fill="#000000" fill-opacity="0.00262" />
+            <path d="M138.5781 748.33333 H251.4062 A20.66667 20.66667 0 0 1 272.07287 769 V769 A20.66667 20.66667 0 0 1 251.4062 789.66667 H138.5781 A20.66667 20.66667 0 0 1 117.91143 769 V769 A20.66667 20.66667 0 0 1 138.5781 748.33333 Z" fill="#000000" fill-opacity="0.00246" />
+            <path d="M138.5781 749.16667 H251.4062 A19.83333 19.83333 0 0 1 271.23953 769 V769 A19.83333 19.83333 0 0 1 251.4062 788.83333 H138.5781 A19.83333 19.83333 0 0 1 118.74477 769 V769 A19.83333 19.83333 0 0 1 138.5781 749.16667 Z" fill="#000000" fill-opacity="0.0023" />
+            <path d="M138.5781 750 H251.4062 A19 19 0 0 1 270.4062 769 V769 A19 19 0 0 1 251.4062 788 H138.5781 A19 19 0 0 1 119.5781 769 V769 A19 19 0 0 1 138.5781 750 Z" fill="#000000" fill-opacity="0.00214" />
+            <path d="M138.5781 750.83333 H251.4062 A18.16667 18.16667 0 0 1 269.57287 769 V769 A18.16667 18.16667 0 0 1 251.4062 787.16667 H138.5781 A18.16667 18.16667 0 0 1 120.41143 769 V769 A18.16667 18.16667 0 0 1 138.5781 750.83333 Z" fill="#000000" fill-opacity="0.00197" />
+            <path d="M138.5781 751.66667 H251.4062 A17.33333 17.33333 0 0 1 268.73953 769 V769 A17.33333 17.33333 0 0 1 251.4062 786.33333 H138.5781 A17.33333 17.33333 0 0 1 121.24477 769 V769 A17.33333 17.33333 0 0 1 138.5781 751.66667 Z" fill="#000000" fill-opacity="0.00181" />
+            <path d="M138.5781 752.5 H251.4062 A16.5 16.5 0 0 1 267.9062 769 V769 A16.5 16.5 0 0 1 251.4062 785.5 H138.5781 A16.5 16.5 0 0 1 122.0781 769 V769 A16.5 16.5 0 0 1 138.5781 752.5 Z" fill="#000000" fill-opacity="0.00164" />
+            <path d="M138.5781 753.33333 H251.4062 A15.66667 15.66667 0 0 1 267.07287 769 V769 A15.66667 15.66667 0 0 1 251.4062 784.66667 H138.5781 A15.66667 15.66667 0 0 1 122.91143 769 V769 A15.66667 15.66667 0 0 1 138.5781 753.33333 Z" fill="#000000" fill-opacity="0.00148" />
+            <path d="M138.5781 754.16667 H251.4062 A14.83333 14.83333 0 0 1 266.23953 769 V769 A14.83333 14.83333 0 0 1 251.4062 783.83333 H138.5781 A14.83333 14.83333 0 0 1 123.74477 769 V769 A14.83333 14.83333 0 0 1 138.5781 754.16667 Z" fill="#000000" fill-opacity="0.00133" />
+            <path d="M138.5781 755 H251.4062 A14 14 0 0 1 265.4062 769 V769 A14 14 0 0 1 251.4062 783 H138.5781 A14 14 0 0 1 124.5781 769 V769 A14 14 0 0 1 138.5781 755 Z" fill="#000000" fill-opacity="0.00118" />
+            <path d="M138.5781 755.83333 H251.4062 A13.16667 13.16667 0 0 1 264.57287 769 V769 A13.16667 13.16667 0 0 1 251.4062 782.16667 H138.5781 A13.16667 13.16667 0 0 1 125.41143 769 V769 A13.16667 13.16667 0 0 1 138.5781 755.83333 Z" fill="#000000" fill-opacity="0.00104" />
+            <path d="M138.5781 756.66667 H251.4062 A12.33333 12.33333 0 0 1 263.73953 769 V769 A12.33333 12.33333 0 0 1 251.4062 781.33333 H138.5781 A12.33333 12.33333 0 0 1 126.24477 769 V769 A12.33333 12.33333 0 0 1 138.5781 756.66667 Z" fill="#000000" fill-opacity="0.00092" />
+            <path d="M138.5781 757.5 H251.4062 A11.5 11.5 0 0 1 262.9062 769 V769 A11.5 11.5 0 0 1 251.4062 780.5 H138.5781 A11.5 11.5 0 0 1 127.0781 769 V769 A11.5 11.5 0 0 1 138.5781 757.5 Z" fill="#000000" fill-opacity="0.0008" />
+            <path d="M138.5781 758.33333 H251.4062 A10.66667 10.66667 0 0 1 262.07287 769 V769 A10.66667 10.66667 0 0 1 251.4062 779.66667 H138.5781 A10.66667 10.66667 0 0 1 127.91143 769 V769 A10.66667 10.66667 0 0 1 138.5781 758.33333 Z" fill="#000000" fill-opacity="0.00069" />
+            <path d="M138.5781 759.16667 H251.4062 A9.83333 9.83333 0 0 1 261.23953 769 V769 A9.83333 9.83333 0 0 1 251.4062 778.83333 H138.5781 A9.83333 9.83333 0 0 1 128.74477 769 V769 A9.83333 9.83333 0 0 1 138.5781 759.16667 Z" fill="#000000" fill-opacity="0.00059" />
+            <path d="M138.5781 760 H251.4062 A9 9 0 0 1 260.4062 769 V769 A9 9 0 0 1 251.4062 778 H138.5781 A9 9 0 0 1 129.5781 769 V769 A9 9 0 0 1 138.5781 760 Z" fill="#000000" fill-opacity="0.00051" />
+            <path d="M138.5781 760.83333 H251.4062 A8.16667 8.16667 0 0 1 259.57287 769 V769 A8.16667 8.16667 0 0 1 251.4062 777.16667 H138.5781 A8.16667 8.16667 0 0 1 130.41143 769 V769 A8.16667 8.16667 0 0 1 138.5781 760.83333 Z" fill="#000000" fill-opacity="0.00043" />
+            <path d="M138.5781 761.66667 H251.4062 A7.33333 7.33333 0 0 1 258.73953 769 V769 A7.33333 7.33333 0 0 1 251.4062 776.33333 H138.5781 A7.33333 7.33333 0 0 1 131.24477 769 V769 A7.33333 7.33333 0 0 1 138.5781 761.66667 Z" fill="#000000" fill-opacity="0.00036" />
+            <path d="M138.5781 762.5 H251.4062 A6.5 6.5 0 0 1 257.9062 769 V769 A6.5 6.5 0 0 1 251.4062 775.5 H138.5781 A6.5 6.5 0 0 1 132.0781 769 V769 A6.5 6.5 0 0 1 138.5781 762.5 Z" fill="#000000" fill-opacity="0.0003" />
+            <path d="M138.5781 763.33333 H251.4062 A5.66667 5.66667 0 0 1 257.07287 769 V769 A5.66667 5.66667 0 0 1 251.4062 774.66667 H138.5781 A5.66667 5.66667 0 0 1 132.91143 769 V769 A5.66667 5.66667 0 0 1 138.5781 763.33333 Z" fill="#000000" fill-opacity="0.00025" />
+            <path d="M138.5781 764.16667 H251.4062 A4.83333 4.83333 0 0 1 256.23953 769 V769 A4.83333 4.83333 0 0 1 251.4062 773.83333 H138.5781 A4.83333 4.83333 0 0 1 133.74477 769 V769 A4.83333 4.83333 0 0 1 138.5781 764.16667 Z" fill="#000000" fill-opacity="0.00021" />
+            <path d="M138.5781 765 H251.4062 A4 4 0 0 1 255.4062 769 V769 A4 4 0 0 1 251.4062 773 H138.5781 A4 4 0 0 1 134.5781 769 V769 A4 4 0 0 1 138.5781 765 Z" fill="#000000" fill-opacity="0.00017" />
+            <path d="M138.5781 765.83333 H251.4062 A3.16667 3.16667 0 0 1 254.57287 769 V769 A3.16667 3.16667 0 0 1 251.4062 772.16667 H138.5781 A3.16667 3.16667 0 0 1 135.41143 769 V769 A3.16667 3.16667 0 0 1 138.5781 765.83333 Z" fill="#000000" fill-opacity="0.00014" />
+            <path d="M138.5781 766.66667 H251.4062 A2.33333 2.33333 0 0 1 253.73953 769 V769 A2.33333 2.33333 0 0 1 251.4062 771.33333 H138.5781 A2.33333 2.33333 0 0 1 136.24477 769 V769 A2.33333 2.33333 0 0 1 138.5781 766.66667 Z" fill="#000000" fill-opacity="0.00011" />
+          </g>
+          <path d="M138.5781 735 H251.4062 A29 29 0 0 1 280.4062 764 V764 A29 29 0 0 1 251.4062 793 H138.5781 A29 29 0 0 1 109.5781 764 V764 A29 29 0 0 1 138.5781 735 Z" fill="#e5efec" />
+          <g id="Calendario" aria-label="Calendario">
+            <g id="lucide-calendar-days" aria-label="lucide-calendar-days">
+              <path d="M8 2v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M16 2v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <rect x="3" y="4" width="18" height="18" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M3 10h18" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M8 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M12 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M16 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M8 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M12 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+              <path d="M16 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 130.5781 756)" />
+            </g>
+          </g>
+          <g id="Statistiche" aria-label="Statistiche">
+            <path d="M190.5781 740 H251.4062 A24 24 0 0 1 275.4062 764 V764 A24 24 0 0 1 251.4062 788 H190.5781 A24 24 0 0 1 166.5781 764 V764 A24 24 0 0 1 190.5781 740 Z" fill="#09675d" />
+            <g id="lucide-chart-no-axes-combined" aria-label="lucide-chart-no-axes-combined">
+              <path d="M12 16v5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+              <path d="M16 14.639V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+              <path d="M20 10.656V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+              <path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+              <path d="M4 18.463V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+              <path d="M8 14.656V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 179.5781 756)" />
+            </g>
+            <g id="ts-tab-label" aria-label="ts-tab-label">
+              <text id="Testo-Statistiche-2" x="202.5781" y="768.2969" fill="#ffffff" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0" textLength="59.8281" lengthAdjust="spacingAndGlyphs">Statistiche</text>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="ts-overlay" aria-label="ts-overlay" />
+      <g id="ts-home-indicator" aria-label="ts-home-indicator" opacity="0.6">
+        <path d="M143 806 H247 A2 2 0 0 1 249 808 V808 A2 2 0 0 1 247 810 H143 A2 2 0 0 1 141 808 V808 A2 2 0 0 1 143 806 Z" fill="#1c302e" />
+      </g>
+    </g>
+  </g>
+</svg>

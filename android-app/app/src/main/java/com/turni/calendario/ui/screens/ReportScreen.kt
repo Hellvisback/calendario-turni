@@ -45,6 +45,7 @@ import androidx.compose.ui.unit.*
 import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.WorkProfile
+import com.turni.calendario.model.dayTagMetrics
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
@@ -63,12 +64,12 @@ private data class WorkReportSummary(
 )
 private fun reportNumber(value: Float) = String.format(Locale.ITALIAN, "%.1f", value)
 private fun hourLabel(value: Float) = reportNumber(value) + " h"
-private val reportInk get() = if(TurniThemeState.dark) Color(0xFFF4F3F7) else Color(0xFF1D2D46)
-private val reportMuted get() = if(TurniThemeState.dark) Color(0xFFBEC1CD) else Color(0xFF4E6078)
+private val reportInk get() = TextPrimary
+private val reportMuted get() = TextSecondary
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
+fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate: (LocalDate) -> Unit = {}) {
     var mode by remember { mutableStateOf(ReportPeriodMode.MESE) }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var year by remember { mutableStateOf(LocalDate.now().year) }
@@ -89,6 +90,8 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
     val calendarSnapshot = ShiftRepository.calendarShifts.mapValues { it.value.toList() }
     val extrasSnapshot = ShiftRepository.dayExtraInfo.toMap()
     val definitions = ShiftRepository.shiftDefinitions.toList()
+    val dayTags = ShiftRepository.dayTags.toList()
+    val tagMetrics = remember(start,end,extrasSnapshot,dayTags) { dayTagMetrics(dayTags,extrasSnapshot,start,end) }
     val rules=ShiftRepository.statisticsRules.toList()
     val assignments = remember(start, end, calendarSnapshot, definitions, rules, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds) {
         val byId=definitions.associateBy { it.id }
@@ -160,7 +163,7 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
                     }
                 }
                 Box(Modifier.fillMaxWidth().height(34.dp).bouncyClickable { from=draftFrom;until=draftUntil;picking=null },contentAlignment=Alignment.Center) {
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) { SiteIcon("check",null,Modifier.size(15.dp),tint=ObsidianPrimary);Text("Applica periodo",fontSize=11.sp,color=ObsidianPrimary) }
+                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) { SiteIcon("check",null,Modifier.size(15.dp),tint=BrandInk);Text("Applica periodo",fontSize=11.sp,color=BrandInk) }
                 }
             }
         }
@@ -226,6 +229,7 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}) {
         itemsIndexed(workSummaries,key={_,summary -> "work:${summary.profile.id}"}) { index,summary ->
             ReportWorkSection(summary,index,workSummaries.lastIndex,ShiftRepository.activeWorkProfileId,progress)
         }
+        if(dayTags.isNotEmpty())dayTagReport(tagMetrics,periodKey,onOpenDate)
         item("dock-clearance") { Spacer(Modifier.height(118.dp)) }
     }
     val pickerWidth=minOf(280,LocalConfiguration.current.screenWidthDp-32).dp
@@ -289,7 +293,7 @@ private fun ReportWorkSection(summary:WorkReportSummary,index:Int,lastIndex:Int,
             if(index>0)Divider(Modifier.padding(top=16.dp),color=ObsidianBorderSubtle)
             Row(Modifier.padding(top=12.dp,bottom=10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)) {
                 Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(ObsidianSurfaceHigh),contentAlignment=Alignment.Center) {
-                    SiteIcon(work.iconKey.takeIf { it.isNotBlank() } ?: "briefcase-business",null,Modifier.size(18.dp),tint=ObsidianPrimary)
+                    SiteIcon(work.iconKey.takeIf { it.isNotBlank() } ?: "briefcase-business",null,Modifier.size(18.dp),tint=BrandInk)
                 }
                 Column {
                     Text(work.name,fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=reportInk)
@@ -303,7 +307,7 @@ private fun ReportWorkSection(summary:WorkReportSummary,index:Int,lastIndex:Int,
             }
             Column(Modifier.padding(top=10.dp,bottom=14.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
                 summary.metrics.forEach { metric -> Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(metric.definition.color))
+                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(shiftChartColor(metric.definition.color)))
                     Text(metric.definition.name,Modifier.weight(1f),fontSize=11.sp,color=reportInk)
                     Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=reportInk)
                     Text(if(metric.definition.isAllDay && metric.hours==0f) "—" else hourLabel(metric.hours),Modifier.width(48.dp),fontSize=11.sp,color=reportMuted,textAlign=TextAlign.End)
@@ -321,7 +325,18 @@ private fun ReportWorkExtra(label:String,value:String) { Row(Modifier.fillMaxWid
 
 @Composable
 private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
-    Surface(shape=RoundedCornerShape(23.dp),color=ObsidianSurface,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
+    val palette=currentTurniPalette
+    val fill=Color(palette.surface)
+    val titleInk=Color(palette.text)
+    val detailInk=readableInk(fill,TextSecondary)
+    val emphasis=Color(palette.text)
+    val weakestInk=listOf(titleInk,detailInk,emphasis).minByOrNull { contrastRatio(fill,it) } ?: titleInk
+    val ringAmount=if(TurniThemeState.dark).46f else .34f
+    val ringTrack=readableChartTint(fill,detailInk,weakestInk,.10f)
+    val pigments=remember(metrics,fill,weakestInk,ringAmount) {
+        metrics.map { readableChartTint(fill,it.definition.color,weakestInk,ringAmount) }
+    }
+    Surface(shape=RoundedCornerShape(23.dp),color=fill,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
         Box(Modifier.clip(RoundedCornerShape(23.dp))) {
             // Every assigned user model participates, including rest, leave and all-day models.
             val distribution=metrics
@@ -345,8 +360,8 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                 val head=fullLength*animation.value.coerceIn(0f,1f)
                 val densityScale=1.dp.toPx()
                 translate(left=size.width-190*densityScale) { scale(densityScale,densityScale,pivot=Offset.Zero) {
-                    drawPath(ring,if(TurniThemeState.dark)Color(0xFF383B46).copy(alpha=.23f) else Color(0xFFE5EBF3).copy(alpha=.23f),style=ringStroke)
-                    distribution.forEachIndexed { index,metric ->
+                    drawPath(ring,ringTrack,style=ringStroke)
+                    pigments.forEachIndexed { index,pigment ->
                         val boundary=boundaries[index]
                         val endDistance=minOf(head,boundary.endDistance)
                         if(endDistance>boundary.startDistance) {
@@ -357,7 +372,7 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                                 if(localEnd>localStart) {
                                     segmentBuffer.reset()
                                     piece.getSegment(localStart,localEnd,segmentBuffer,true)
-                                    drawPath(segmentBuffer,metric.definition.color.copy(alpha=if(TurniThemeState.dark).46f else .38f),style=ringStroke)
+                                    drawPath(segmentBuffer,pigment,style=ringStroke)
                                 }
                                 offset+=piece.length
                             }
@@ -367,27 +382,29 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
             }
             Column(Modifier.padding(start=16.dp,end=16.dp,top=16.dp,bottom=12.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
-                    Text("Resoconto totale",Modifier.weight(1f),fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=reportInk)
-                    SiteIcon("layers-2",null,Modifier.size(12.dp),tint=reportMuted);Text("Tutti i lavori",Modifier.padding(start=4.dp),fontSize=10.sp,color=reportMuted)
+                    Text("Resoconto totale",Modifier.weight(1f),fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
+                    SiteIcon("layers-2",null,Modifier.size(12.dp),tint=detailInk);Text("Tutti i lavori",Modifier.padding(start=4.dp),fontSize=10.sp,color=detailInk)
                 }
                 Row(Modifier.padding(top=12.dp,bottom=11.dp),verticalAlignment=Alignment.Bottom) {
-                    ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold)
-                    Text("ore lavorate",Modifier.padding(start=7.dp,bottom=4.dp),fontSize=11.sp,color=reportMuted)
+                    ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=emphasis)
+                    Text("ore lavorate",Modifier.padding(start=7.dp,bottom=4.dp),fontSize=11.sp,color=detailInk)
                 }
                 Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(days.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold);Text("Giorni lavorati",Modifier.padding(start=6.dp),fontSize=10.sp,color=reportMuted) }
+                    Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(days.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold,color=titleInk);Text("Giorni lavorati",Modifier.padding(start=6.dp),fontSize=10.sp,color=detailInk) }
                     Box(Modifier.width(1.dp).height(20.dp).background(ObsidianBorderSubtle))
-                    Row(Modifier.weight(1f).padding(start=13.dp),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(assignments.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold);Text("Turni totali",Modifier.padding(start=6.dp),fontSize=10.sp,color=reportMuted) }
+                    Row(Modifier.weight(1f).padding(start=13.dp),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(assignments.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold,color=titleInk);Text("Turni totali",Modifier.padding(start=6.dp),fontSize=10.sp,color=detailInk) }
                 }
                 Divider(color=ObsidianBorderSubtle)
                 distribution.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     row.forEach { metric -> Row(Modifier.weight(1f).heightIn(min=27.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                        Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(metric.definition.color))
-                        Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=reportMuted,maxLines=2)
-                        Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=reportInk)
+                        val source = metric.definition.color
+                        val legendColor = remember(fill, source) { readablePigment(fill, source) }
+                        Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(legendColor))
+                        Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=detailInk,maxLines=2)
+                        Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
                     } };if(row.size==1)Spacer(Modifier.weight(1f))
                 } }
-                if(overtime>0)Text("Inclusi ${hourLabel(overtime)} di straordinario",Modifier.padding(top=6.dp),fontSize=10.sp,color=reportMuted)
+                if(overtime>0)Text("Inclusi ${hourLabel(overtime)} di straordinario",Modifier.padding(top=6.dp),fontSize=10.sp,color=detailInk)
             }
         }
     }
@@ -407,16 +424,18 @@ private fun ReportSegments(selected:ReportPeriodMode,onSelect:(ReportPeriodMode)
 
 @Composable
 private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Boolean,shape:String,index:Int,animation:ReportProgress,modifier:Modifier,onCall:Boolean=false) {
-    val surface=if(TurniThemeState.dark)Color(0xFF1A1C22)else Color.White
-    val background=lerp(surface,color,if(onCall).24f else if(TurniThemeState.dark).28f else .38f)
+    val dark=TurniThemeState.dark
+    val style=TurniThemeState.style
+    val tone=remember(color,dark,onCall,style){metricColorStyle(color,dark,onCall,style)}
+    val background=tone.fill
     val path=remember(shape){reportShapePath(shape)}
     Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.82f+.18f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-2f else 2f)*(1-entrance)},contentAlignment=Alignment.Center) {
         Canvas(Modifier.matchParentSize()){scale(size.width/160f,size.height/160f,pivot=Offset.Zero){if(shape=="cushion")rotate(-12f,Offset(80f,80f)){drawPath(path,background)}else drawPath(path,background)}}
         Column(Modifier.fillMaxWidth(.76f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text(name,color=reportInk,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
-            ReportAnimatedValue(count.toFloat(),animation,fontSize=30.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1.3).sp)
-            if(onCall||allDay)Text(if(onCall)"giornate" else "Giornata intera",color=reportMuted,fontSize=11.sp,lineHeight=14.sp,fontWeight=FontWeight.Medium)
-            else ReportAnimatedValue(hours,animation,true," h",fontSize=11.sp,color=reportMuted,lineHeight=14.sp,fontWeight=FontWeight.Medium)
+            Text(name,color=tone.ink,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
+            ReportAnimatedValue(count.toFloat(),animation,fontSize=30.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1.3).sp,color=tone.ink)
+            if(onCall||allDay)Text(if(onCall)"giornate" else "Giornata intera",color=tone.secondaryInk,fontSize=11.sp,lineHeight=14.sp,fontWeight=FontWeight.Medium)
+            else ReportAnimatedValue(hours,animation,true," h",fontSize=11.sp,color=tone.secondaryInk,lineHeight=14.sp,fontWeight=FontWeight.Medium)
         }
     }
 }

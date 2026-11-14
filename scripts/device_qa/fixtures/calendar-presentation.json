@@ -1,0 +1,161 @@
+{
+  "version": 5,
+  "workProfiles": [
+    {
+      "id": "qa-work",
+      "name": "Lavoro di prova",
+      "ccnlCode": "CCNL_PERSONALIZZATO",
+      "ccnlName": "Personalizzato",
+      "weeklyHours": 40,
+      "minRestHoursBetweenShifts": 0,
+      "isDefault": true,
+      "colorHex": 4287939823,
+      "iconKey": "work"
+    }
+  ],
+  "shiftDefinitions": [
+    {
+      "id": "qa-0",
+      "name": "Mattina",
+      "shortCode": "MAT",
+      "startTime": "06:00",
+      "endTime": "14:00",
+      "colorHex": 4293248895,
+      "workProfileId": "qa-work",
+      "category": "LAVORO"
+    },
+    {
+      "id": "qa-1",
+      "name": "Pomeriggio",
+      "shortCode": "POM",
+      "startTime": "14:00",
+      "endTime": "22:00",
+      "colorHex": 4293309080,
+      "workProfileId": "qa-work",
+      "category": "LAVORO"
+    },
+    {
+      "id": "qa-2",
+      "name": "Notte",
+      "shortCode": "NOT",
+      "startTime": "22:00",
+      "endTime": "06:00",
+      "colorHex": 4290035432,
+      "workProfileId": "qa-work",
+      "category": "LAVORO"
+    },
+    {
+      "id": "qa-3",
+      "name": "Formazione",
+      "shortCode": "FOR",
+      "startTime": "09:00",
+      "endTime": "12:00",
+      "colorHex": 4289124040,
+      "workProfileId": "qa-work",
+      "category": "LAVORO"
+    },
+    {
+      "id": "qa-4",
+      "name": "Riunione",
+      "shortCode": "RIU",
+      "startTime": "12:00",
+      "endTime": "14:00",
+      "colorHex": 4292328168,
+      "workProfileId": "qa-work",
+      "category": "LAVORO"
+    }
+  ],
+  "rotations": [],
+  "activeWorkProfileId": "qa-work",
+  "activeRotationId": "qa-cycle",
+  "defaultRotationId": "qa-cycle",
+  "calendarShifts": [],
+  "dayExtraInfo": [
+    {
+      "date": "2026-11-21",
+      "notes": "Nota di prova",
+      "isOnCallManual": true
+    }
+  ],
+  "dayTags": [
+    {
+      "id": "qa-tag",
+      "name": "Formazione",
+      "iconKey": "graduation-cap",
+      "colorHex": 4294100077,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-1",
+      "name": "Visita medica di controllo annuale",
+      "iconKey": "heart-pulse",
+      "colorHex": 4293827740,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-2",
+      "name": "Aggiornamento delle procedure operative",
+      "iconKey": "book-open",
+      "colorHex": 4287939823,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-3",
+      "name": "Corso di primo soccorso",
+      "iconKey": "tag",
+      "colorHex": 4286827959,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-4",
+      "name": "Incontro con il gruppo di lavoro",
+      "iconKey": "graduation-cap",
+      "colorHex": 4294100077,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-5",
+      "name": "Prova pratica sul campo",
+      "iconKey": "heart-pulse",
+      "colorHex": 4293827740,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-6",
+      "name": "Riunione periodica",
+      "iconKey": "book-open",
+      "colorHex": 4287939823,
+      "archived": false
+    },
+    {
+      "id": "qa-tag-7",
+      "name": "Studio individuale",
+      "iconKey": "tag",
+      "colorHex": 4286827959,
+      "archived": false
+    }
+  ],
+  "appPreferences": {
+    "themeMode": "DARK",
+    "weekStartMonday": true,
+    "timeFormat24h": true,
+    "showExShifts": true,
+    "showHolidays": true,
+    "autoBackupDaily": false
+  },
+  "smartAlarmsConfig": {
+    "isGlobalEnabled": false,
+    "rules": [],
+    "disabledAlarmIds": []
+  },
+  "reperibilitaConfig": {
+    "mode": "MANUALE",
+    "shiftSpecificIds": [],
+    "manualDates": []
+  },
+  "enabledHolidayIds": [
+    "capodanno",
+    "natale"
+  ],
+  "statisticsRules": []
+}

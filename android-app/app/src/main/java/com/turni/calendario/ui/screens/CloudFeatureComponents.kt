@@ -80,6 +80,7 @@ internal fun GoogleSignInButton(enabled:Boolean,loading:Boolean,onClick:()->Unit
 @Composable
 internal fun GoogleAccountCard(access:GoogleAccess,onFeedback:(ActionFeedback)->Unit,enabled:Boolean=true,
     feature:GoogleFeature=GoogleFeature.PROFILE,explanation:String?=null,onConnected:((String)->Unit)?=null){
+    var showAccessDetails by remember { mutableStateOf(false) }
     val profile=ShiftRepository.googleAccountProfile
     fun connect(){access.authorize(feature,true){token->onConnected?.invoke(token)?:onFeedback(ActionFeedback("Account Google collegato"))}}
     CloudCard("Account Google",if(profile==null)explanation?:"Accedi con il tuo account. I tuoi dati rimangono nel tuo spazio Google." else null){
@@ -96,8 +97,19 @@ internal fun GoogleAccountCard(access:GoogleAccess,onFeedback:(ActionFeedback)->
                 }
             }
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.End){
-                TextButton(onClick=::connect,enabled=enabled&&!access.busy){Text("Cambia account",color=ObsidianPrimary,fontSize=12.sp)}
-                TextButton(onClick={access.disconnect{onFeedback(ActionFeedback("Account Google scollegato"))}},enabled=enabled&&!access.busy){Text("Disconnetti",color=TextSecondary,fontSize=12.sp)}
+                TextButton(onClick=::connect,enabled=enabled&&!access.busy, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Cambia account",color=BrandInk,fontSize=12.sp)}
+                TextButton(onClick={access.disconnect{onFeedback(ActionFeedback("Account Google scollegato"))}},enabled=enabled&&!access.busy, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Disconnetti",color=TextSecondary,fontSize=12.sp)}
+            }
+        }
+        TextButton(onClick={showAccessDetails=!showAccessDetails},colors=ButtonDefaults.textButtonColors(contentColor=BrandInk)) {Text("Quali dati autorizzo?",fontSize=12.sp)}
+        androidx.compose.animation.AnimatedVisibility(showAccessDetails,enter=androidx.compose.animation.expandVertically()+androidx.compose.animation.fadeIn(),exit=androidx.compose.animation.shrinkVertically()+androidx.compose.animation.fadeOut()) {
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                Text(when(feature){
+                    GoogleFeature.DRIVE->"Google conferma nome ed email e permette a TurniSync di usare il proprio spazio privato su Drive. Gli altri file di Drive non vengono letti. Collegare l’account non avvia un backup."
+                    GoogleFeature.CALENDAR->"Google conferma nome ed email, mostra i calendari e chiede il permesso di gestire eventi. Nell’app scegli la destinazione: TurniSync gestisce gli eventi che ha creato, riconoscibili dal proprio contrassegno."
+                    else->"Google conferma nome ed email dell’account scelto. La password rimane gestita da Google."
+                },color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                Text("Durante la beta l’accesso può essere limitato agli account di prova. Il consenso Google e le eventuali limitazioni dipendono dalla configurazione del progetto; cambiare account non trasferisce automaticamente i dati.",color=TextSecondary,fontSize=11.sp,lineHeight=17.sp)
             }
         }
     }

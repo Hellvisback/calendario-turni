@@ -19,15 +19,49 @@ public final class DatabaseIntegrityInstrumentation extends android.app.Instrume
                 while ((count = reader.read(buffer)) != -1) input.append(buffer, 0, count);
             }
             org.json.JSONObject json = new org.json.JSONObject(input.toString()); json.remove("exportDate");
+            if (arguments != null && "true".equals(arguments.getString("backupAudit"))) {
+                auditBackupFields(json, "database", result);
+                java.io.File backup = new java.io.File(getTargetContext().getFilesDir(), "cloud_backups/turni_cloud_backup_latest.json");
+                if (backup.isFile()) {
+                    String text = new String(java.nio.file.Files.readAllBytes(backup.toPath()), java.nio.charset.StandardCharsets.UTF_8);
+                    auditBackupFields(new org.json.JSONObject(text), "localBackup", result);
+                } else result.putString("localBackup", "absent");
+            }
             byte[] digest = java.security.MessageDigest.getInstance("SHA-256").digest(json.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
             char[] digits = "0123456789abcdef".toCharArray(); StringBuilder hex = new StringBuilder();
             for (byte value : digest) { int unsigned = value & 255; hex.append(digits[unsigned >>> 4]); hex.append(digits[unsigned & 15]); }
             result.putString("snapshotSha256", hex.toString());
+            org.json.JSONObject preferences = json.optJSONObject("appPreferences");
+            if (preferences != null) {
+                preferences.remove("themeMode");
+                byte[] legacy = java.security.MessageDigest.getInstance("SHA-256").digest(json.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+                StringBuilder legacyHex = new StringBuilder();
+                for (byte value : legacy) { int unsigned = value & 255; legacyHex.append(digits[unsigned >>> 4]); legacyHex.append(digits[unsigned & 15]); }
+                result.putString("withoutThemeModeSha256", legacyHex.toString());
+            }
             result.putString("debuggable", Boolean.toString((getTargetContext().getApplicationInfo().flags & android.content.pm.ApplicationInfo.FLAG_DEBUGGABLE) != 0));
             finish(android.app.Activity.RESULT_OK, result);
         } catch (Throwable error) {
             result.putString("stream", error.toString()); finish(android.app.Activity.RESULT_CANCELED, result);
         }
+    }
+
+    /** Field presence/counts only: never expose note contents or mutate user data. */
+    private void auditBackupFields(org.json.JSONObject json, String prefix, android.os.Bundle result) throws Exception {
+        int missing = 0;
+        for (String collection : new String[]{"calendarShifts", "dayExtraInfo"}) {
+            org.json.JSONArray rows = json.getJSONArray(collection);
+            int overtime = 0, travel = 0, notes = 0;
+            for (int i = 0; i < rows.length(); i++) {
+                org.json.JSONObject row = rows.getJSONObject(i);
+                for (String key : new String[]{"overtimeHours", "actualEndTime", "isTrasferta", "notes"}) if (!row.has(key)) missing++;
+                if (row.optDouble("overtimeHours", 0) > 0) overtime++;
+                if (row.optBoolean("isTrasferta")) travel++;
+                if (!row.optString("notes").trim().isEmpty()) notes++;
+            }
+            result.putString(prefix + "." + collection, "rows=" + rows.length() + ", overtime=" + overtime + ", travel=" + travel + ", notes=" + notes);
+        }
+        result.putInt(prefix + ".missingExtraFields", missing);
     }
 
     /** Inspect navigation on devices without screenrecord, independently of optimized app classes. */

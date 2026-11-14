@@ -30,7 +30,6 @@ import java.net.URLEncoder
 
 internal enum class GoogleFeature(val dataScopes:List<String>){
     PROFILE(emptyList()),
-    CALENDAR_IMPORT(listOf("https://www.googleapis.com/auth/calendar.calendarlist.readonly","https://www.googleapis.com/auth/calendar.events.readonly")),
     DRIVE(listOf("https://www.googleapis.com/auth/drive.appdata")),
     CALENDAR(listOf("https://www.googleapis.com/auth/calendar.calendarlist.readonly","https://www.googleapis.com/auth/calendar.events"));
     val scopes get()=listOf("openid","https://www.googleapis.com/auth/userinfo.email","https://www.googleapis.com/auth/userinfo.profile")+dataScopes
@@ -150,6 +149,7 @@ internal fun rememberGoogleAccess(onError:(String)->Unit):GoogleAccess{
 private fun googleAccessError(error:Exception):String=when((error as? ApiException)?.statusCode){
     10->"Il collegamento Google non è configurato per questa versione dell’app. Occorre completare la configurazione Google di TurniSync."
     7->"Connessione assente. Controlla Internet e riprova."
+    8,12500->"Google non ha completato l’accesso. Durante la beta l’account deve essere abilitato come utente di prova. Se lo è già, controlla Google Play Services e riprova."
     16,12501->"Accesso Google annullato. Nessuna operazione eseguita."
     else->"Google non ha autorizzato il collegamento. Verifica la connessione e la configurazione dell’app, poi riprova."
 }

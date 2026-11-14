@@ -136,7 +136,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 }
                 PdfSection("Anteprima",preview?.paperLabel?:"Lo stesso foglio che verrà condiviso") {
                     when {
-                        previewLoading -> Box(Modifier.fillMaxWidth().height(220.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(26.dp),color=ObsidianPrimary,strokeWidth=2.dp)}
+                        previewLoading -> Box(Modifier.fillMaxWidth().height(220.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(26.dp),color=BrandInk,strokeWidth=2.dp)}
                         preview!=null -> Surface(onClick={zoom=true},shape=RoundedCornerShape(12.dp),color=ObsidianSurfaceContainer) {
                             Image(preview!!.bitmap.asImageBitmap(),"Anteprima PDF, tocca per ingrandire",Modifier.fillMaxWidth().height(310.dp).padding(10.dp),contentScale=ContentScale.Fit)
                         }
@@ -157,7 +157,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     PdfToggle("Marchio TurniSync", options.includeLogo) { update(options.copy(includeLogo = it)) }
                 }
                 PdfSection("Nota del documento") {
-                    OutlinedTextField(value = options.headerNotes, onValueChange = { update(options.copy(headerNotes = it.take(4000))) }, placeholder = { Text("Una nota per chi riceve il prospetto") }, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp), maxLines = 5, colors = TextFieldDefaults.outlinedTextFieldColors(textColor = TextPrimary, focusedBorderColor = ObsidianPrimary, unfocusedBorderColor = ObsidianBorderSubtle), shape = RoundedCornerShape(14.dp))
+                    OutlinedTextField(value = options.headerNotes, onValueChange = { update(options.copy(headerNotes = it.take(4000))) }, placeholder = { Text("Una nota per chi riceve il prospetto") }, modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp), maxLines = 5, colors = OutlinedTextFieldDefaults.colors(focusedTextColor = TextPrimary, unfocusedTextColor = TextPrimary, focusedBorderColor = ObsidianPrimary, unfocusedBorderColor = ObsidianBorderSubtle), shape = RoundedCornerShape(14.dp))
                     Text("Il PDF usa fondo bianco e testo scuro per la lettura e la stampa.", fontSize = 11.sp, color = TextMuted, modifier = Modifier.padding(top = 10.dp))
                 }
                 Spacer(Modifier.height(8.dp))
@@ -191,11 +191,11 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 .bouncyClickable { update(options.copy(filterShiftId=id));close() }.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
                 val model=models.firstOrNull{it.id==id}
                 Box(Modifier.size(36.dp).clip(RoundedCornerShape(10.dp)).background(model?.color?:ObsidianSurfaceHigh),contentAlignment=Alignment.Center) {
-                    if(model==null)SiteIcon("layers",null,Modifier.size(19.dp),ObsidianPrimary)
+                    if(model==null)SiteIcon("layers",null,Modifier.size(19.dp),BrandInk)
                     else Text(model.shortCode.take(4),fontSize=10.sp,fontWeight=FontWeight.Bold,color=catalogInk(model.color))
                 }
                 Text(label,Modifier.weight(1f),color=TextPrimary,fontSize=14.sp)
-                if(selected)SiteIcon("check",null,Modifier.size(20.dp),ObsidianPrimary)
+                if(selected)SiteIcon("check",null,Modifier.size(20.dp),BrandInk)
             }
         }
     }
@@ -218,7 +218,7 @@ private fun PdfAction(icon: String, title: String, subtitle: String, onClick: ()
     val scope = rememberCoroutineScope()
     Surface(onClick = { scope.launch { progress.snapTo(0f); progress.animateTo(1f, tween(560)); progress.snapTo(0f) }; onClick() }, color = ObsidianSurface, shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-            SiteIcon(icon, null, tint = ObsidianPrimary, progress = progress.value)
+            SiteIcon(icon, null, tint = BrandInk, progress = progress.value)
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(subtitle, color = TextMuted, fontSize = 11.sp) }
             SiteIcon("chevron-right", null, Modifier.size(18.dp), TextMuted)
         }
@@ -318,7 +318,7 @@ private fun PdfPreviewDialog(preview:PdfPreview,onClose:()->Unit) {
             Column(Modifier.padding(12.dp)) {
                 Row(verticalAlignment=Alignment.CenterVertically) {
                     Text(preview.paperLabel,Modifier.weight(1f),color=TextPrimary,fontWeight=FontWeight.Bold)
-                    IconButton(onClick=onClose){SiteIcon("x","Chiudi anteprima")}
+                    IconButton(onClick=onClose){SiteIcon("x","Chiudi anteprima",tint=ColorNegative)}
                 }
                 Box(Modifier.weight(1f).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(ObsidianSurfaceContainer),contentAlignment=Alignment.Center) {
                     Image(preview.bitmap.asImageBitmap(),"Documento PDF",Modifier.fillMaxSize().transformable(gestures).graphicsLayer{scaleX=scale;scaleY=scale;translationX=offset.x;translationY=offset.y},contentScale=ContentScale.Fit)

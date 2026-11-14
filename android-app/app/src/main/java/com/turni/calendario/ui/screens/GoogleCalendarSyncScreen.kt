@@ -1,6 +1,8 @@
 @file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
 package com.turni.calendario.ui.screens
 
+import com.turni.calendario.ui.theme.BrandInk
+
 import androidx.compose.animation.*
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
@@ -162,7 +164,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         CloudCard("Calendario di destinazione", "Scegli dove sincronizzare i turni di ${work.name}.") {
             selectedCalendar?.let { selected ->
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    SiteIcon("calendar", modifier = Modifier.size(25.dp), tint = MaterialTheme.colorScheme.primary)
+                    SiteIcon("calendar", modifier = Modifier.size(25.dp), tint = BrandInk)
                     Column(Modifier.weight(1f)) {
                         Text(selected.name, color = MaterialTheme.colorScheme.onSurface, fontWeight = FontWeight.SemiBold, fontSize = 15.sp)
                         Text(calendarOwner.orEmpty(), color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
@@ -214,27 +216,27 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                         Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp))
                             .background(if (selectedCalendar?.id == calendar.id) MaterialTheme.colorScheme.primaryContainer else MaterialTheme.colorScheme.surfaceVariant)
                             .clickable { selectedCalendar = calendar; picker = false }.padding(14.dp), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            SiteIcon("calendar", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(22.dp))
+                            SiteIcon("calendar", tint = BrandInk, modifier = Modifier.size(22.dp))
                             Column(Modifier.weight(1f)) {
                                 Text(calendar.name, color = MaterialTheme.colorScheme.onSurface, fontSize = 14.sp, fontWeight = FontWeight.Medium)
                                 if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                            if (selectedCalendar?.id == calendar.id) SiteIcon("check", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                            if (selectedCalendar?.id == calendar.id) SiteIcon("check", tint = BrandInk, modifier = Modifier.size(18.dp))
                         }
                     }
                 }
-                TextButton(onClick = { picker = false }, modifier = Modifier.align(Alignment.End)) { Text("Annulla") }
+                TextButton(onClick = { picker = false }, modifier = Modifier.align(Alignment.End), colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Annulla") }
             }
         }
     }
     if (confirmDelete) AlertDialog(onDismissRequest = { confirmDelete = false }, title = { Text("Rimuovere gli eventi TurniSync?") },
         text = { Text("Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.") },
-        confirmButton = { TextButton(onClick = { confirmDelete = false; deleteEvents() }, enabled = canChange) { Text("Rimuovi eventi", color = MaterialTheme.colorScheme.error) } },
-        dismissButton = { TextButton(onClick = { confirmDelete = false }) { Text("Annulla") } })
+        confirmButton = { TextButton(onClick = { confirmDelete = false; deleteEvents() }, enabled = canChange, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Rimuovi eventi", color = MaterialTheme.colorScheme.error) } },
+        dismissButton = { TextButton(onClick = { confirmDelete = false }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Annulla") } })
     if (confirmEmpty) AlertDialog(onDismissRequest = { confirmEmpty = false }, title = { Text("Nessun turno nel periodo") },
         text = { Text("La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?") },
-        confirmButton = { TextButton(onClick = { confirmEmpty = false; synchronize() }, enabled = canChange) { Text("Aggiorna calendario") } },
-        dismissButton = { TextButton(onClick = { confirmEmpty = false }) { Text("Annulla") } })
+        confirmButton = { TextButton(onClick = { confirmEmpty = false; synchronize() }, enabled = canChange, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Aggiorna calendario") } },
+        dismissButton = { TextButton(onClick = { confirmEmpty = false }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Annulla") } })
 }
 
 @Composable

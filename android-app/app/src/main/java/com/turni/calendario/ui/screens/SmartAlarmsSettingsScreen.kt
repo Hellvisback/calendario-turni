@@ -2,6 +2,8 @@
 
 package com.turni.calendario.ui.screens
 
+import com.turni.calendario.ui.theme.BrandInk
+
 import android.content.Context
 import android.content.Intent
 import android.media.AudioManager
@@ -69,6 +71,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
     val ringing by ShiftAlarmService.ringing.collectAsState()
     val exact = remember(refresh) { ShiftAlarmScheduler.canScheduleExactAlarms(context) }
     val notifications = remember(refresh) { ShiftAlarmScheduler.hasNotificationPermission(context) }
+    val fullScreen=remember(refresh){ShiftAlarmScheduler.canShowFullScreenAlarms(context)}
     // Rendering reads the plan; only explicit actions/storage register alarms with Android.
     val scheduled = remember(config, refresh) { if(config.isGlobalEnabled && exact && notifications) ShiftAlarmScheduler.getNextUpcomingAlarm(context) else null }
     val alarms = remember(config, refresh) { ShiftAlarmScheduler.getAllUpcomingAlarms(context, 30) }
@@ -95,8 +98,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
             if (Build.VERSION.SDK_INT >= 33 && context.applicationInfo.targetSdkVersion >= 33) {
                 notificationLauncher.launch("android.permission.POST_NOTIFICATIONS")
             } else {
-                // targetSdk 32: Android 13 owns the first channel prompt; denied access
-                // must be restored in system settings rather than a non-working request.
+                // Older Android releases expose notification controls through system settings.
                 openSettings(Intent(Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName))
             }
             report("Abilita le notifiche delle sveglie, poi ripeti la prova", PopupType.WARNING)
@@ -142,7 +144,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
             Spacer(Modifier.height(12.dp))
                 AlarmSettingsCard {
                     Row(verticalAlignment = Alignment.CenterVertically) {
-                        SiteIcon("bell", tint = MaterialTheme.colorScheme.primary, progress = bellMotion.value)
+                        SiteIcon("bell", tint = BrandInk, progress = bellMotion.value)
                         Spacer(Modifier.width(12.dp))
                         Column(Modifier.weight(1f)) { Text("Sveglie automatiche", fontWeight = FontWeight.SemiBold, fontSize = 15.sp); Text(if (config.isGlobalEnabled) "$activeRules regole attive" else "In pausa · regole conservate", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
                         Switch(config.isGlobalEnabled, {
@@ -198,7 +200,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                             ShiftAlarmScheduler.scheduleNextAlarm(context)
                             refresh++
                             report(if (enable) "Tutte le regole sono attive" else "Tutte le regole sono disattivate", PopupType.SUCCESS)
-                        }) { Text(if (activeRules > 0) "Disattiva tutte" else "Riattiva tutte", fontSize = 12.sp, color = if (activeRules > 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.primary) }
+                        }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text(if (activeRules > 0) "Disattiva tutte" else "Riattiva tutte", fontSize = 12.sp, color = if (activeRules > 0) MaterialTheme.colorScheme.error else BrandInk) }
                     }
                 }
                 items(definitions, key = { it.id }) { definition ->
@@ -216,16 +218,16 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                     Text("Riattiva lo switch in alto per programmare le sveglie. Le tue regole restano salvate.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
                 } }
                 if (upcoming.isEmpty()) item { AlarmSettingsCard {
-                    SiteIcon("alarm-clock", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(28.dp))
+                    SiteIcon("alarm-clock", tint = BrandInk, modifier = Modifier.size(28.dp))
                     Text("Nessuna sveglia da mostrare", fontSize = 15.sp, fontWeight = FontWeight.SemiBold)
                     Text("Le sveglie compaiono quando un turno ha una regola attiva.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    TextButton(onClick = { tab = 0 }) { Text("Scegli le regole") }
+                    TextButton(onClick = { tab = 0 }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Scegli le regole") }
                 } }
                 items(upcoming, key = { it.id }) { alarm ->
                     AlarmSettingsCard {
                         Row(verticalAlignment = Alignment.CenterVertically) {
                             Surface(color = Color(alarm.shiftColorHex).copy(alpha = .18f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(40.dp)) {
-                                Box(contentAlignment = Alignment.Center) { SiteIcon(if (alarm.isReperibilita) "bell" else "alarm-clock", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp)) }
+                                Box(contentAlignment = Alignment.Center) { SiteIcon(if (alarm.isReperibilita) "bell" else "alarm-clock", tint = BrandInk, modifier = Modifier.size(21.dp)) }
                             }
                             Spacer(Modifier.width(12.dp))
                             Column(Modifier.weight(1f)) {
@@ -241,24 +243,30 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
             item {
                 AlarmSettingsCard {
                     Row(Modifier.fillMaxWidth().bouncyClickable { toolsExpanded = !toolsExpanded }.padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
-                        SiteIcon("shield-alert", tint = if (exact && notifications) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp))
+                        SiteIcon("shield-alert", tint = if (exact && notifications) BrandInk else MaterialTheme.colorScheme.error, modifier = Modifier.size(22.dp))
                         Spacer(Modifier.width(10.dp))
                         Column(Modifier.weight(1f)) {
                             Text("Verifica e prova", fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
                             Text(if (!exact || !notifications) "Autorizzazioni da completare" else if (alarmVolume == 0) "Volume sveglie a zero" else "Audio, autorizzazioni e prova sonora", fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
-                        SiteIcon(if (toolsExpanded) "minus" else "plus", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                        SiteIcon(if (toolsExpanded) "minus" else "plus", tint = BrandInk, modifier = Modifier.size(18.dp))
                     }
                     AnimatedVisibility(toolsExpanded, enter = expandVertically(spring(stiffness = 260f)) + fadeIn(), exit = shrinkVertically() + fadeOut()) {
                     Column(Modifier.padding(top = 8.dp), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    if(Build.VERSION.SDK_INT>=34) {
+                        AlarmPermissionRow("Schermata della sveglia",fullScreen) {
+                            openSettings(Intent(Settings.ACTION_MANAGE_APP_USE_FULL_SCREEN_INTENT,Uri.parse("package:${context.packageName}")))
+                        }
+                        Text("Consente di aprire la sveglia a schermo bloccato. Senza questa opzione restano audio e notifica; il dispositivo decide come mostrarla.",color=MaterialTheme.colorScheme.onSurfaceVariant,fontSize=11.sp,lineHeight=17.sp)
+                    }
                     AlarmPermissionRow("Sveglie esatte", exact) { permissionsReady() }
                     AlarmPermissionRow("Notifiche delle sveglie", notifications) {
                         ShiftAlarmService.ensureChannel(context)
                         openSettings(Intent(Settings.ACTION_CHANNEL_NOTIFICATION_SETTINGS).putExtra(Settings.EXTRA_APP_PACKAGE, context.packageName).putExtra(Settings.EXTRA_CHANNEL_ID, ShiftAlarmReceiver.CHANNEL_ID))
                     }
                     Text("Volume sveglie: $alarmVolume/${audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)}", color = if (alarmVolume == 0) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 12.sp)
-                    TextButton(onClick = { openSettings(Intent(Settings.ACTION_SOUND_SETTINGS)) }) { Text("Controlla audio") }
-                    TextButton(onClick = { openSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }) { Text("Attività in background") }
+                    TextButton(onClick = { openSettings(Intent(Settings.ACTION_SOUND_SETTINGS)) }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Controlla audio") }
+                    TextButton(onClick = { openSettings(Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:${context.packageName}"))) }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Attività in background") }
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         Button(onClick = {
                             if (permissionsReady()) {
@@ -267,7 +275,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 report(if (ok) "Prova programmata tra 10 secondi. Puoi spegnere lo schermo." else "Prova non programmata: controlla le autorizzazioni", if (ok) PopupType.SUCCESS else PopupType.ERROR)
                             }
                         }, modifier = Modifier.weight(1f), shape = RoundedCornerShape(16.dp)) { Icon(Icons.Outlined.PlayArrow, null); Spacer(Modifier.width(5.dp)); Text("Prova tra 10 s") }
-                        if (pendingTest || ringing) OutlinedButton(onClick = { ShiftAlarmScheduler.cancelTestAlarm(context); pendingTest = false; report("Prova fermata") }, shape = RoundedCornerShape(16.dp)) { Text("Ferma") }
+                        if (pendingTest || ringing) OutlinedButton(onClick = { ShiftAlarmScheduler.cancelTestAlarm(context); pendingTest = false; report("Prova fermata") }, shape = RoundedCornerShape(16.dp), colors = ButtonDefaults.outlinedButtonColors(contentColor = BrandInk)) { Text("Ferma") }
                     }
                     Text("Prova: massimo 20 secondi. Sveglie: massimo 2 minuti. Volume e Non disturbare restano sotto il tuo controllo.", color = MaterialTheme.colorScheme.onSurfaceVariant, fontSize = 11.sp)
                     }
@@ -291,10 +299,10 @@ private fun AlarmSettingsCard(content: @Composable ColumnScope.() -> Unit) {
 @Composable
 private fun AlarmPermissionRow(label: String, allowed: Boolean, onClick: () -> Unit) {
     Row(Modifier.fillMaxWidth().bouncyClickable(onClick = onClick).padding(vertical = 9.dp), verticalAlignment = Alignment.CenterVertically) {
-        SiteIcon(if (allowed) "check" else "settings", tint = if (allowed) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
+        SiteIcon(if (allowed) "check" else "settings", tint = if (allowed) BrandInk else MaterialTheme.colorScheme.error, modifier = Modifier.size(20.dp))
         Spacer(Modifier.width(10.dp))
         Text(label, modifier = Modifier.weight(1f), fontSize = 13.sp)
-        Text(if (allowed) "Consentite" else "Consenti", fontSize = 12.sp, color = MaterialTheme.colorScheme.primary)
+        Text(if (allowed) "Consentite" else "Consenti", fontSize = 12.sp, color = BrandInk)
     }
 }
 
@@ -320,12 +328,12 @@ private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, o
     AlarmSettingsCard {
         Row(Modifier.fillMaxWidth().bouncyClickable { expanded = !expanded; animateIcon() }, verticalAlignment = Alignment.CenterVertically) {
             Surface(color = color.copy(alpha = .2f), shape = RoundedCornerShape(12.dp), modifier = Modifier.size(38.dp)) {
-                Box(contentAlignment = Alignment.Center) { SiteIcon(if (onCall) "bell" else "alarm-clock", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(21.dp), progress = iconMotion.value) }
+                Box(contentAlignment = Alignment.Center) { SiteIcon(if (onCall) "bell" else "alarm-clock", tint = BrandInk, modifier = Modifier.size(21.dp), progress = iconMotion.value) }
             }
             Spacer(Modifier.width(10.dp))
             Column(Modifier.weight(1f)) { Text(title, fontWeight = FontWeight.SemiBold, fontSize = 14.sp); Text(if (onCall) "Alle ${rule.customTime ?: "20:00"} · giorno precedente" else if (rule.customTime == null) "${rule.minutesBefore} min prima dell'attacco" else "Alle ${rule.customTime}", fontSize = 12.sp, color = MaterialTheme.colorScheme.onSurfaceVariant) }
             if (rule.isEnabled) {
-                SiteIcon(if (expanded) "minus" else "edit", contentDescription = "Modifica orario", tint = MaterialTheme.colorScheme.primary, modifier = Modifier.size(18.dp))
+                SiteIcon(if (expanded) "minus" else "edit", contentDescription = "Modifica orario", tint = BrandInk, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(6.dp))
             }
             Switch(rule.isEnabled, { enabled ->
@@ -338,8 +346,8 @@ private fun NativeAlarmRule(title: String, color: Color, rule: ShiftAlarmRule, o
         AnimatedVisibility(rule.isEnabled && expanded, enter = expandVertically(spring(dampingRatio = .9f, stiffness = 260f)) + fadeIn(), exit = shrinkVertically(spring(stiffness = 280f)) + fadeOut()) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp), modifier = Modifier.padding(top = 8.dp)) {
                 if (!onCall) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    TextButton(onClick = { onChange { it.copy(customTime = null) }; animateIcon() }) { Text("Anticipo", fontSize = 13.sp, fontWeight = if (rule.customTime == null) FontWeight.Bold else FontWeight.Normal) }
-                    TextButton(onClick = { onChange { it.copy(customTime = if (validTime) customText else "05:00") }; animateIcon() }) { Text("Orario fisso", fontSize = 13.sp, fontWeight = if (rule.customTime != null) FontWeight.Bold else FontWeight.Normal) }
+                    TextButton(onClick = { onChange { it.copy(customTime = null) }; animateIcon() }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Anticipo", fontSize = 13.sp, fontWeight = if (rule.customTime == null) FontWeight.Bold else FontWeight.Normal) }
+                    TextButton(onClick = { onChange { it.copy(customTime = if (validTime) customText else "05:00") }; animateIcon() }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) { Text("Orario fisso", fontSize = 13.sp, fontWeight = if (rule.customTime != null) FontWeight.Bold else FontWeight.Normal) }
                 }
                 if (rule.customTime == null && !onCall) {
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(5.dp)) {

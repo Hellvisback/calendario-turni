@@ -41,7 +41,7 @@ object DatabaseRestore {
     fun parse(text: String, previous: DatabaseSnapshot = DatabaseSnapshot.capture()): DatabaseSnapshot {
         require(text.length <= 24 * 1024 * 1024) { "Backup troppo grande" }
         val root = JSONObject(text)
-        require(root.optInt("version", 1) in 1..4) { "Versione backup non supportata" }
+        require(root.optInt("version", 1) in 1..5) { "Versione backup non supportata" }
         require(root.has("shiftDefinitions") || root.has("calendarShifts")) { "File backup non valido" }
         val definitions = root.items("shiftDefinitions", previous.definitions) { o -> ShiftDefinition(
             id = o.getString("id"), name = o.getString("name"), shortCode = o.getString("shortCode"),
@@ -71,7 +71,7 @@ object DatabaseRestore {
             date = LocalDate.parse(o.getString("date")), overtimeHours = o.optDouble("overtimeHours", 0.0).toFloat(),
             isTrasferta = o.optBoolean("isTrasferta"), isOnCallManual = o.tristate("isOnCallManual"),
             hideExShift = o.optBoolean("hideExShift"), rotationCleared = o.optBoolean("rotationCleared"),
-            notes = o.optString("notes"), actualEndTime = o.optional("actualEndTime")
+            notes = o.optString("notes"), actualEndTime = o.optional("actualEndTime"), tagIds = if(o.has("tagIds"))o.getJSONArray("tagIds").strings()else emptyList()
         ) }
         val profiles = root.items("workProfiles", previous.profiles) { o -> WorkProfile(
             id = o.getString("id"), name = o.getString("name"), companyOrDepartment = o.optString("companyOrDepartment"),
@@ -91,7 +91,8 @@ object DatabaseRestore {
         val preferences = if (pref == null) previous.preferences else AppPreferences(
             pref.optBoolean("showExShifts", true), pref.optBoolean("weekStartMonday", true),
             pref.optBoolean("timeFormat24h", true), pref.optBoolean("showHolidays", true), pref.optBoolean("autoBackupDaily", true),
-            pref.optBoolean("excludeVacationOnHolidays",false),pref.strings("holidayExcludedShiftIds").filter{ id->definitions.any{it.id==id} }.toSet()
+            pref.optBoolean("excludeVacationOnHolidays",false),pref.strings("holidayExcludedShiftIds").filter{ id->definitions.any{it.id==id} }.toSet(),
+            pref.optional("themeMode").also{require(it==null||it in setOf("AUTOMATIC","LIGHT","DARK")){"Tema del backup non valido"}}
         )
         val c = root.optJSONObject("reperibilitaConfig")
         val seasonal = c?.optJSONObject("seasonal")?.let { s -> SeasonalReperibilitaConfig(
@@ -130,14 +131,20 @@ object DatabaseRestore {
             StatisticsRule(o.getString("id"),o.getString("displayedShiftId"),o.strings("originalShiftIds").toSet(),o.optBoolean("enabled",true))
         }
         validateStatisticsRules(statisticsRules,definitions)
+        val dayTags = root.items("dayTags", emptyList<DayTag>()) { o ->
+            DayTag(o.getString("id"), o.getString("name"), o.optString("iconKey", "tag"),
+                o.optLong("colorHex", 0xFF94C4EF), o.optBoolean("archived"))
+        }
+        validateDayTags(dayTags, extraByDate)
         return DatabaseSnapshot(definitions, rotations, migratedShifts, extraByDate, profiles,
             activeWork, root.optString("activeRotationId", previous.activeRotationId), root.optString("defaultRotationId", previous.defaultRotationId),
-            preferences, onCall, alarms, if (root.has("enabledHolidayIds")) root.strings("enabledHolidayIds").toSet() else previous.holidayIds, statisticsRules)
+            preferences, onCall, alarms, if (root.has("enabledHolidayIds")) root.strings("enabledHolidayIds").toSet() else previous.holidayIds, statisticsRules, dayTags)
     }
 
     fun apply(snapshot: DatabaseSnapshot) {
         validateReferences(snapshot.definitions, snapshot.profiles, snapshot.shifts.values.flatten(), snapshot.rotations)
         validateStatisticsRules(snapshot.statisticsRules,snapshot.definitions)
+        validateDayTags(snapshot.dayTags,snapshot.extras)
         Snapshot.withMutableSnapshot {
             ShiftRepository.shiftDefinitions.clear(); ShiftRepository.shiftDefinitions.addAll(snapshot.definitions)
             ShiftRepository.rotations.clear(); ShiftRepository.rotations.addAll(snapshot.rotations)
@@ -153,7 +160,9 @@ object DatabaseRestore {
             ShiftRepository.smartAlarmsConfig = snapshot.alarms
             ShiftRepository.enabledHolidayIds = snapshot.holidayIds
             ShiftRepository.statisticsRules.clear(); ShiftRepository.statisticsRules.addAll(snapshot.statisticsRules)
+            ShiftRepository.dayTags.clear(); ShiftRepository.dayTags.addAll(snapshot.dayTags)
         }
+        com.turni.calendario.ui.theme.TurniThemeState.restoreStoredMode(snapshot.preferences.themeMode)
         ShiftRepository.clearCalendarUndoHistory()
         ShiftRepository.notifyDataChanged()
     }

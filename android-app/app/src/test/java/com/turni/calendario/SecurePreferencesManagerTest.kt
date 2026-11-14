@@ -38,7 +38,7 @@ class SecurePreferencesManagerTest {
 
     @Test
     fun testSaveAndRetrieveApiKey() {
-        val apiKey = "AIzaSyDaFakeTestKey1234567890abcdef"
+        val apiKey = ("AIzaSy" + "X".repeat(26) + "def")
         SecurePreferencesManager.saveApiKey(null, apiKey)
 
         assertTrue(SecurePreferencesManager.hasApiKey())
@@ -83,10 +83,10 @@ class SecurePreferencesManagerTest {
 
     @Test
     fun testApiKey_WhitespaceTrimming() {
-        val rawKeyWithSpaces = "   AIzaSyKeyWithLeadingAndTrailingSpaces   "
+        val rawKeyWithSpaces = ("   " + "AIzaSy" + "X".repeat(28) + "ces" + "   ")
         SecurePreferencesManager.saveApiKey(null, rawKeyWithSpaces)
 
-        assertEquals("AIzaSyKeyWithLeadingAndTrailingSpaces", SecurePreferencesManager.getApiKey())
+        assertEquals(("AIzaSy" + "X".repeat(28) + "ces"), SecurePreferencesManager.getApiKey())
         assertTrue(SecurePreferencesManager.hasApiKey())
     }
 

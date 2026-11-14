@@ -1,0 +1,248 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="818" viewBox="0 0 390 818">
+  <title>TurniSync · Turni e lavori · cobalto-burro · chiaro</title>
+  <defs>
+    <clipPath id="Ritaglio">
+      <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-2">
+      <path d="M0 40 H390 L390 40 V790 L390 790 H0 L0 790 V40 L0 40 Z" />
+    </clipPath>
+  </defs>
+  <g id="TurniSync" aria-label="TurniSync">
+    <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" fill="#f3f5fb" />
+    <g clip-path="url(#Ritaglio)">
+      <g id="ts-status" aria-label="ts-status">
+        <g id="span" aria-label="span">
+          <text id="Testo-9-41" x="26" y="24.2969" fill="#1b253c" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0.2" textLength="22.9219" lengthAdjust="spacingAndGlyphs">9:41</text>
+        </g>
+        <g id="Passa-al-tema-scuro" aria-label="Passa al tema scuro">
+          <path d="M171.9063 6 H218.0938 A14.5 14.5 0 0 1 232.5938 20.5 V20.5 A14.5 14.5 0 0 1 218.0938 35 H171.9063 A14.5 14.5 0 0 1 157.4063 20.5 V20.5 A14.5 14.5 0 0 1 171.9063 6 Z" fill="#e8edf7" />
+          <g id="lucide-sun" aria-label="lucide-sun">
+            <circle cx="12" cy="12" r="4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 2v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 20v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m4.93 4.93 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m17.66 17.66 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M2 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M20 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m6.34 17.66-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m19.07 4.93-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+          </g>
+          <text id="Testo-Chiaro" x="188.4063" y="24.7969" fill="#1b253c" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="35.1875" lengthAdjust="spacingAndGlyphs">Chiaro</text>
+        </g>
+        <g id="ts-system" aria-label="ts-system">
+          <g id="lucide-signal" aria-label="lucide-signal">
+            <path d="M2 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M7 20v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M12 20v-8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M17 20V8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M22 4v16" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+          </g>
+          <g id="lucide-wifi" aria-label="lucide-wifi">
+            <path d="M12 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M2 8.82a15 15 0 0 1 20 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M5 12.859a10 10 0 0 1 14 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M8.5 16.429a5 5 0 0 1 7 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+          </g>
+          <g id="lucide-battery-full" aria-label="lucide-battery-full">
+            <path d="M10 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M14 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M22 14v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M6 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <rect x="2" y="6" width="16" height="12" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+          </g>
+        </g>
+      </g>
+      <g id="ts-body" aria-label="ts-body">
+        <g clip-path="url(#Ritaglio-2)">
+          <g id="ts-enter" aria-label="ts-enter">
+            <g id="ts-header" aria-label="ts-header">
+              <g id="Torna-al-calendario" aria-label="Torna al calendario">
+                <g id="lucide-arrow-left" aria-label="lucide-arrow-left">
+                  <path d="m12 19-7-7 7-7" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 24 64)" />
+                  <path d="M19 12H5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 24 64)" />
+                </g>
+              </g>
+              <g id="ts-page-title" aria-label="ts-page-title">
+                <text id="Testo-Turni-e-lavori" x="63" y="83" fill="#1b253c" font-family="Manrope" font-size="27" font-weight="800" letter-spacing="-1" textLength="163.75" lengthAdjust="spacingAndGlyphs">Turni e lavori</text>
+              </g>
+              <g id="Nuovo-turno" aria-label="Nuovo turno">
+                <g id="lucide-plus" aria-label="lucide-plus">
+                  <path d="M5 12h14" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <path d="M12 5v14" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-segments" aria-label="ts-segments">
+              <path d="M31 103 H359 A17 17 0 0 1 376 120 V134 A17 17 0 0 1 359 151 H31 A17 17 0 0 1 14 134 V120 A17 17 0 0 1 31 103 Z" fill="#e8edf7" />
+              <g id="button" aria-label="button">
+                <path d="M31 107 H121 A13 13 0 0 1 134 120 V134 A13 13 0 0 1 121 147 H31 A13 13 0 0 1 18 134 V120 A13 13 0 0 1 31 107 Z" fill="#3052cb" />
+                <text id="Testo-Modelli" x="55.0156" y="130.5938" fill="#ffffff" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="41.9688" lengthAdjust="spacingAndGlyphs">Modelli</text>
+              </g>
+              <g id="Rotazioni" aria-label="Rotazioni">
+                <text id="Testo-Rotazioni" x="167.5" y="130.5938" fill="#516078" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="55" lengthAdjust="spacingAndGlyphs">Rotazioni</text>
+              </g>
+              <g id="Lavori" aria-label="Lavori">
+                <text id="Testo-Lavori" x="296.6719" y="130.5938" fill="#516078" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="34.6563" lengthAdjust="spacingAndGlyphs">Lavori</text>
+              </g>
+            </g>
+            <g id="ts-catalog-item" aria-label="ts-catalog-item">
+              <path d="M33 167 H357 A19 19 0 0 1 376 186 V223 A19 19 0 0 1 357 242 H33 A19 19 0 0 1 14 223 V186 A19 19 0 0 1 33 167 Z" fill="#ffffff" />
+              <g id="ts-detail-badge" aria-label="ts-detail-badge">
+                <path d="M43 183 H60 A13 13 0 0 1 73 196 V213 A13 13 0 0 1 60 226 H43 A13 13 0 0 1 30 213 V196 A13 13 0 0 1 43 183 Z" fill="#f4e8bc" />
+                <text id="Testo-MAT" x="38.9375" y="208.0938" fill="#5d4d14" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="25.125" lengthAdjust="spacingAndGlyphs">MAT</text>
+              </g>
+              <g id="ts-detail-copy" aria-label="ts-detail-copy">
+                <text id="Testo-Mattina" x="85" y="199.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="52.5469" lengthAdjust="spacingAndGlyphs">Mattina</text>
+                <g id="small" aria-label="small">
+                  <text id="Testo-06-00-14-00" x="85" y="219.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="75.8438" lengthAdjust="spacingAndGlyphs">06:00 – 14:00</text>
+                </g>
+              </g>
+              <g id="Modifica-Mattina" aria-label="Modifica Mattina">
+                <g id="lucide-pencil" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 196.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 196.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-2" aria-label="ts-catalog-item">
+              <path d="M33 251 H357 A19 19 0 0 1 376 270 V307 A19 19 0 0 1 357 326 H33 A19 19 0 0 1 14 307 V270 A19 19 0 0 1 33 251 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-2" aria-label="ts-detail-badge">
+                <path d="M43 267 H60 A13 13 0 0 1 73 280 V297 A13 13 0 0 1 60 310 H43 A13 13 0 0 1 30 297 V280 A13 13 0 0 1 43 267 Z" fill="#dce7f8" />
+                <text id="Testo-POM" x="37.8906" y="292.0938" fill="#2d4d7b" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="27.2188" lengthAdjust="spacingAndGlyphs">POM</text>
+              </g>
+              <g id="ts-detail-copy-2" aria-label="ts-detail-copy">
+                <text id="Testo-Pomeriggio" x="85" y="283.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="78.4844" lengthAdjust="spacingAndGlyphs">Pomeriggio</text>
+                <g id="small-2" aria-label="small">
+                  <text id="Testo-14-00-22-00" x="85" y="303.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="74.7656" lengthAdjust="spacingAndGlyphs">14:00 – 22:00</text>
+                </g>
+              </g>
+              <g id="Modifica-Pomeriggio" aria-label="Modifica Pomeriggio">
+                <g id="lucide-pencil-2" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 280.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 280.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-3" aria-label="ts-catalog-item">
+              <path d="M33 335 H357 A19 19 0 0 1 376 354 V391 A19 19 0 0 1 357 410 H33 A19 19 0 0 1 14 391 V354 A19 19 0 0 1 33 335 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-3" aria-label="ts-detail-badge">
+                <path d="M43 351 H60 A13 13 0 0 1 73 364 V381 A13 13 0 0 1 60 394 H43 A13 13 0 0 1 30 381 V364 A13 13 0 0 1 43 351 Z" fill="#e1e4fa" />
+                <text id="Testo-SER" x="39.9063" y="376.0938" fill="#434b85" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="23.1875" lengthAdjust="spacingAndGlyphs">SER</text>
+              </g>
+              <g id="ts-detail-copy-3" aria-label="ts-detail-copy">
+                <text id="Testo-Sera" x="85" y="367.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="31.4063" lengthAdjust="spacingAndGlyphs">Sera</text>
+                <g id="small-3" aria-label="small">
+                  <text id="Testo-18-00-24-00" x="85" y="387.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="74.6719" lengthAdjust="spacingAndGlyphs">18:00 – 24:00</text>
+                </g>
+              </g>
+              <g id="Modifica-Sera" aria-label="Modifica Sera">
+                <g id="lucide-pencil-3" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 364.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 364.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-4" aria-label="ts-catalog-item">
+              <path d="M33 419 H357 A19 19 0 0 1 376 438 V475 A19 19 0 0 1 357 494 H33 A19 19 0 0 1 14 475 V438 A19 19 0 0 1 33 419 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-4" aria-label="ts-detail-badge">
+                <path d="M43 435 H60 A13 13 0 0 1 73 448 V465 A13 13 0 0 1 60 478 H43 A13 13 0 0 1 30 465 V448 A13 13 0 0 1 43 435 Z" fill="#e9e0f4" />
+                <text id="Testo-NOT" x="39.0313" y="460.0938" fill="#574174" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="24.9375" lengthAdjust="spacingAndGlyphs">NOT</text>
+              </g>
+              <g id="ts-detail-copy-4" aria-label="ts-detail-copy">
+                <text id="Testo-Notte" x="85" y="451.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="38.7656" lengthAdjust="spacingAndGlyphs">Notte</text>
+                <g id="small-4" aria-label="small">
+                  <text id="Testo-22-00-06-00" x="85" y="471.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="77.7031" lengthAdjust="spacingAndGlyphs">22:00 – 06:00</text>
+                </g>
+              </g>
+              <g id="Modifica-Notte" aria-label="Modifica Notte">
+                <g id="lucide-pencil-4" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 448.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 448.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-5" aria-label="ts-catalog-item">
+              <path d="M33 503 H357 A19 19 0 0 1 376 522 V559 A19 19 0 0 1 357 578 H33 A19 19 0 0 1 14 559 V522 A19 19 0 0 1 33 503 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-5" aria-label="ts-detail-badge">
+                <path d="M43 519 H60 A13 13 0 0 1 73 532 V549 A13 13 0 0 1 60 562 H43 A13 13 0 0 1 30 549 V532 A13 13 0 0 1 43 519 Z" fill="#d2edf0" />
+                <text id="Testo-SMO" x="37.7656" y="544.0938" fill="#225962" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="27.4688" lengthAdjust="spacingAndGlyphs">SMO</text>
+              </g>
+              <g id="ts-detail-copy-5" aria-label="ts-detail-copy">
+                <text id="Testo-Smonto" x="85" y="535.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="53.875" lengthAdjust="spacingAndGlyphs">Smonto</text>
+                <g id="small-5" aria-label="small">
+                  <text id="Testo-Tutto-il-giorno" x="85" y="555.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="77.2813" lengthAdjust="spacingAndGlyphs">Tutto il giorno</text>
+                </g>
+              </g>
+              <g id="Modifica-Smonto" aria-label="Modifica Smonto">
+                <g id="lucide-pencil-5" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 532.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 532.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-6" aria-label="ts-catalog-item">
+              <path d="M33 587 H357 A19 19 0 0 1 376 606 V643 A19 19 0 0 1 357 662 H33 A19 19 0 0 1 14 643 V606 A19 19 0 0 1 33 587 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-6" aria-label="ts-detail-badge">
+                <path d="M43 603 H60 A13 13 0 0 1 73 616 V633 A13 13 0 0 1 60 646 H43 A13 13 0 0 1 30 633 V616 A13 13 0 0 1 43 603 Z" fill="#e3e8f0" />
+                <text id="Testo-RIP" x="41.7969" y="628.0938" fill="#465770" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="19.4063" lengthAdjust="spacingAndGlyphs">RIP</text>
+              </g>
+              <g id="ts-detail-copy-6" aria-label="ts-detail-copy">
+                <text id="Testo-Riposo" x="85" y="619.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="46.8906" lengthAdjust="spacingAndGlyphs">Riposo</text>
+                <g id="small-6" aria-label="small">
+                  <text id="Testo-Tutto-il-giorno-2" x="85" y="639.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="77.2813" lengthAdjust="spacingAndGlyphs">Tutto il giorno</text>
+                </g>
+              </g>
+              <g id="Modifica-Riposo" aria-label="Modifica Riposo">
+                <g id="lucide-pencil-6" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 616.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 616.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-7" aria-label="ts-catalog-item">
+              <path d="M33 671 H357 A19 19 0 0 1 376 690 V727 A19 19 0 0 1 357 746 H33 A19 19 0 0 1 14 727 V690 A19 19 0 0 1 33 671 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-7" aria-label="ts-detail-badge">
+                <path d="M43 687 H60 A13 13 0 0 1 73 700 V717 A13 13 0 0 1 60 730 H43 A13 13 0 0 1 30 717 V700 A13 13 0 0 1 43 687 Z" fill="#d8ebe1" />
+                <text id="Testo-FER" x="40.75" y="712.0938" fill="#30594b" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="21.4844" lengthAdjust="spacingAndGlyphs">FER</text>
+              </g>
+              <g id="ts-detail-copy-7" aria-label="ts-detail-copy">
+                <text id="Testo-Ferie" x="85" y="703.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="33.8125" lengthAdjust="spacingAndGlyphs">Ferie</text>
+                <g id="small-7" aria-label="small">
+                  <text id="Testo-Tutto-il-giorno-3" x="85" y="723.7969" fill="#516078" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="77.2813" lengthAdjust="spacingAndGlyphs">Tutto il giorno</text>
+                </g>
+              </g>
+              <g id="Modifica-Ferie" aria-label="Modifica Ferie">
+                <g id="lucide-pencil-7" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 700.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 700.5)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-catalog-item-8" aria-label="ts-catalog-item">
+              <path d="M33 755 H357 A19 19 0 0 1 376 774 V811 A19 19 0 0 1 357 830 H33 A19 19 0 0 1 14 811 V774 A19 19 0 0 1 33 755 Z" fill="#ffffff" />
+              <g id="ts-detail-badge-8" aria-label="ts-detail-badge">
+                <path d="M43 771 H60 A13 13 0 0 1 73 784 V801 A13 13 0 0 1 60 814 H43 A13 13 0 0 1 30 801 V784 A13 13 0 0 1 43 771 Z" fill="#ebe6d8" />
+                <text id="Testo-ASS" x="39.375" y="796.0938" fill="#5c533f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="24.25" lengthAdjust="spacingAndGlyphs">ASS</text>
+              </g>
+              <g id="ts-detail-copy-8" aria-label="ts-detail-copy">
+                <text id="Testo-Assistenza-clienti" x="85" y="787.2031" fill="#1b253c" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="120.4219" lengthAdjust="spacingAndGlyphs">Assistenza clienti</text>
+              </g>
+              <g id="Modifica-Assistenza-clienti" aria-label="Modifica Assistenza clienti">
+                <g id="lucide-pencil-8" aria-label="lucide-pencil">
+                  <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 784.5)" />
+                  <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1b253c" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 784.5)" />
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="ts-overlay" aria-label="ts-overlay" />
+      <g id="ts-home-indicator" aria-label="ts-home-indicator" opacity="0.6">
+        <path d="M143 806 H247 A2 2 0 0 1 249 808 V808 A2 2 0 0 1 247 810 H143 A2 2 0 0 1 141 808 V808 A2 2 0 0 1 143 806 Z" fill="#1b253c" />
+      </g>
+    </g>
+  </g>
+</svg>

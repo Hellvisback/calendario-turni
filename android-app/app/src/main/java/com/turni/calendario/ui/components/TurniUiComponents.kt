@@ -586,7 +586,7 @@ fun DayInspectionCard(
                                 text = "OGGI",
                                 fontSize = 9.5.sp,
                                 fontWeight = FontWeight.Black,
-                                color = ObsidianBackground,
+                                color = OnBrand,
                                 modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp)
                             )
                         }
@@ -773,7 +773,7 @@ fun DayInspectionCard(
                                                 Icon(
                                                     imageVector = Icons.Default.Tune,
                                                     contentDescription = "Altre informazioni turno (straordinari, note)",
-                                                    tint = if (hasExtraInfo) ObsidianPrimary else TextSecondary,
+                                                    tint = if (hasExtraInfo) BrandInk else TextSecondary,
                                                     modifier = Modifier.size(17.dp)
                                                 )
                                             }
@@ -838,7 +838,7 @@ fun DayInspectionCard(
                                                     Icon(
                                                         imageVector = Icons.Default.Schedule,
                                                         contentDescription = null,
-                                                        tint = ObsidianPrimary,
+                                                        tint = BrandInk,
                                                         modifier = Modifier.size(11.dp)
                                                     )
                                                     Spacer(modifier = Modifier.width(3.dp))
@@ -851,7 +851,7 @@ fun DayInspectionCard(
                                                         text = otLabel,
                                                         fontSize = 10.5.sp,
                                                         fontWeight = FontWeight.Bold,
-                                                        color = ObsidianPrimary
+                                                        color = BrandInk
                                                     )
                                                 }
                                             }
@@ -1174,7 +1174,7 @@ fun DayInspectionCard(
                             Icon(
                                 imageVector = Icons.Default.Add,
                                 contentDescription = null,
-                                tint = ObsidianPrimary,
+                                tint = BrandInk,
                                 modifier = Modifier.size(17.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -1182,7 +1182,7 @@ fun DayInspectionCard(
                                 text = "Aggiungi Turno",
                                 fontSize = 13.5.sp,
                                 fontWeight = FontWeight.ExtraBold,
-                                color = ObsidianPrimary
+                                color = BrandInk
                             )
                         }
                     }
@@ -1205,7 +1205,7 @@ fun DayInspectionCard(
                             Icon(
                                 imageVector = Icons.Default.SwapHoriz,
                                 contentDescription = null,
-                                tint = ObsidianPrimary,
+                                tint = BrandInk,
                                 modifier = Modifier.size(16.dp)
                             )
                             Spacer(modifier = Modifier.width(6.dp))
@@ -1213,7 +1213,7 @@ fun DayInspectionCard(
                                 text = "Cambia Turno",
                                 fontSize = 12.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = ObsidianPrimary,
+                                color = BrandInk,
                                 maxLines = 1
                             )
                         }
@@ -1345,7 +1345,7 @@ fun OvertimeAndEndTimeDialog(
         onDismissRequest = onDismiss,
         title = {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Icon(Icons.Default.Schedule, contentDescription = null, tint = ObsidianPrimary, modifier = Modifier.size(20.dp))
+                Icon(Icons.Default.Schedule, contentDescription = null, tint = BrandInk, modifier = Modifier.size(20.dp))
                 Spacer(modifier = Modifier.width(8.dp))
                 Text("Straordinario & Stacco", fontWeight = FontWeight.ExtraBold, fontSize = 17.sp, color = Color.White)
             }
@@ -1374,7 +1374,7 @@ fun OvertimeAndEndTimeDialog(
                                 text = "⏱️ Orario Stacco",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedTab == 0) ObsidianBackground else TextSecondary
+                                color = if (selectedTab == 0) OnBrand else TextSecondary
                             )
                         }
                     }
@@ -1392,7 +1392,7 @@ fun OvertimeAndEndTimeDialog(
                                 text = "✍️ Ore Manuali",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedTab == 1) ObsidianBackground else TextSecondary
+                                color = if (selectedTab == 1) OnBrand else TextSecondary
                             )
                         }
                     }
@@ -1454,7 +1454,7 @@ fun OvertimeAndEndTimeDialog(
                                     text = "+${mins}m",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ObsidianPrimary,
+                                    color = BrandInk,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 5.dp)
                                 )
@@ -1484,7 +1484,7 @@ fun OvertimeAndEndTimeDialog(
                                 text = if (diffMinutes > 0) "+$diffMinutes min (+${String.format(Locale.US, "%.2f", calculatedOvertime).trimEnd('0').trimEnd('.')}h)" else "0 min",
                                 fontWeight = FontWeight.ExtraBold,
                                 fontSize = 12.sp,
-                                color = if (diffMinutes > 0) ObsidianPrimary else TextMuted
+                                color = if (diffMinutes > 0) BrandInk else TextMuted
                             )
                         }
                     }
@@ -1538,7 +1538,7 @@ fun OvertimeAndEndTimeDialog(
                                     text = label,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = if (isNeg) Color(0xFFEF4444) else ObsidianPrimary,
+                                    color = if (isNeg) Color(0xFFEF4444) else BrandInk,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 5.dp)
                                 )
@@ -1569,7 +1569,7 @@ fun OvertimeAndEndTimeDialog(
                                     text = "+${if (h % 1f == 0f) h.toInt().toString() else String.format(Locale.US, "%.2f", h).trimEnd('0').trimEnd('.')}h",
                                     fontSize = 10.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ObsidianPrimary,
+                                    color = BrandInk,
                                     textAlign = TextAlign.Center,
                                     modifier = Modifier.padding(vertical = 5.dp)
                                 )
@@ -1592,14 +1592,15 @@ fun OvertimeAndEndTimeDialog(
                 shape = RoundedCornerShape(12.dp),
                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary)
             ) {
-                Text("Applica", color = ObsidianBackground, fontWeight = FontWeight.Bold)
+                Text("Applica", color = OnBrand, fontWeight = FontWeight.Bold)
             }
         },
         dismissButton = {
             TextButton(
                 onClick = {
                     onConfirm(null, 0f)
-                }
+                },
+                colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)
             ) {
                 Text("Azzera", color = TextSecondary)
             }
@@ -1705,7 +1706,7 @@ fun ShiftExtraDetailsDialog(
                                 text = "⏱️ Straordinario",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedTab == 0) ObsidianBackground else TextSecondary
+                                color = if (selectedTab == 0) OnBrand else TextSecondary
                             )
                         }
                     }
@@ -1723,7 +1724,7 @@ fun ShiftExtraDetailsDialog(
                                 text = "📝 Note Turno",
                                 fontSize = 11.5.sp,
                                 fontWeight = FontWeight.Bold,
-                                color = if (selectedTab == 1) ObsidianBackground else TextSecondary
+                                color = if (selectedTab == 1) OnBrand else TextSecondary
                             )
                         }
                     }
@@ -1774,7 +1775,7 @@ fun ShiftExtraDetailsDialog(
                                             textAlign = TextAlign.Center
                                         ),
                                         modifier = Modifier.width(96.dp).height(50.dp),
-                                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                                        colors = OutlinedTextFieldDefaults.colors(
                                             focusedBorderColor = ObsidianPrimary,
                                             unfocusedBorderColor = ObsidianBorderSubtle
                                         )
@@ -1800,7 +1801,7 @@ fun ShiftExtraDetailsDialog(
                             currentOtHours = parsed.coerceAtLeast(0f)
                         },
                         placeholder = { Text("0.0", color = TextMuted) },
-                        trailingIcon = { Text("ore", color = ObsidianPrimary, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp)) },
+                        trailingIcon = { Text("ore", color = BrandInk, fontWeight = FontWeight.Bold, modifier = Modifier.padding(end = 12.dp)) },
                         singleLine = true,
                         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal),
                         textStyle = androidx.compose.ui.text.TextStyle(
@@ -1809,7 +1810,7 @@ fun ShiftExtraDetailsDialog(
                             fontSize = 16.sp
                         ),
                         modifier = Modifier.fillMaxWidth(),
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = ObsidianPrimary,
                             unfocusedBorderColor = ObsidianBorderSubtle
                         )
@@ -1839,7 +1840,7 @@ fun ShiftExtraDetailsDialog(
                                     text = label,
                                     fontSize = 11.sp,
                                     fontWeight = FontWeight.Bold,
-                                    color = ObsidianPrimary,
+                                    color = BrandInk,
                                     modifier = Modifier.padding(horizontal = 9.dp, vertical = 6.dp)
                                 )
                             }
@@ -1881,7 +1882,7 @@ fun ShiftExtraDetailsDialog(
                         modifier = Modifier
                             .fillMaxWidth()
                             .heightIn(min = 90.dp, max = 130.dp),
-                        colors = TextFieldDefaults.outlinedTextFieldColors(
+                        colors = OutlinedTextFieldDefaults.colors(
                             focusedBorderColor = Color(0xFF38BDF8),
                             unfocusedBorderColor = ObsidianBorderSubtle
                         )
@@ -1933,11 +1934,11 @@ fun ShiftExtraDetailsDialog(
                 colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary),
                 shape = RoundedCornerShape(10.dp)
             ) {
-                Text("Salva informazioni", color = ObsidianBackground, fontWeight = FontWeight.ExtraBold)
+                Text("Salva informazioni", color = OnBrand, fontWeight = FontWeight.ExtraBold)
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) {
                 Text("Annulla", color = TextSecondary)
             }
         },
@@ -2041,7 +2042,7 @@ fun DayNoteDialog(
             }
         },
         dismissButton = {
-            TextButton(onClick = onDismiss) {
+            TextButton(onClick = onDismiss, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)) {
                 Text("Annulla", color = TextSecondary)
             }
         },

@@ -18,7 +18,7 @@ object LocalDatabaseStore {
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private var started = false
     private var persistenceBlocked = false
-    private var lastSaved: DatabaseSnapshot? = null
+    @Volatile private var lastSaved: DatabaseSnapshot? = null
     var loadError by mutableStateOf<String?>(null)
         private set
 
@@ -79,6 +79,13 @@ object LocalDatabaseStore {
                     }
                 }
         }
+    }
+
+    /** First-run completion waits for the ordinary atomic autosave rather than racing it. */
+    suspend fun awaitCurrentSave() {
+        check(!persistenceBlocked) { "Ripristina prima una copia valida dei dati locali." }
+        val expected=DatabaseSnapshot.capture()
+        withTimeout(8000) { while(lastSaved!=expected) delay(40) }
     }
 
     /** Explicit, validated user restore may replace an unreadable local file. */

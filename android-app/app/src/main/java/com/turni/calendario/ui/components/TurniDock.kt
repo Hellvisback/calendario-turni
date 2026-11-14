@@ -59,7 +59,7 @@ fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit
     val context=LocalContext.current.applicationContext
     val contours by produceState(DockContourAssets.cache,context){if(value==null)value=withContext(Dispatchers.IO){DockContourAssets.load(context)}}
     val showSatellites by remember{derivedStateOf{progress.value>.015f}}
-    val body=DockBody;val active=ObsidianPrimary
+    val body=DockBody;val active=DockSelected
     BoxWithConstraints(modifier.fillMaxWidth().padding(horizontal=8.dp).height(92.dp),contentAlignment=Alignment.Center){
         val width=maxWidth.value;val scale=width/380f;val left=width*.425f;val right=width*.575f
         Canvas(Modifier.fillMaxSize()){
@@ -78,15 +78,15 @@ fun TurniDock(calendarSelected:Boolean,onCalendar:()->Unit,onStatistics:()->Unit
         DockAction("report","Statistiche",Modifier.offset(x=(left-width/2).dp).size(44.dp).zIndex(1f),!calendarSelected&&primarySelected,onStatistics)
         DockAction("calendar","Calendario",Modifier.offset(x=(right-width/2).dp).size(44.dp).zIndex(1f),calendarSelected&&primarySelected,onCalendar)
         if(showSatellites){
-            DockAction("edit","Modifica turni",Modifier.offset{IntOffset(((left-width/2-71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onEdit)
-            DockAction("clock","Turni e lavori",Modifier.offset{IntOffset(((right-width/2+71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onModels)
+            DockAction("edit","Modifica turni",Modifier.offset{IntOffset(((left-width/2-71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onEdit,enabled=calendarSelected)
+            DockAction("clock","Turni e lavori",Modifier.offset{IntOffset(((right-width/2+71*scale*smooth(.06f,.96f,progress.value)).dp).roundToPx(),0)}.size(44.dp).graphicsLayer{alpha=smooth(.10f,.56f,progress.value)},false,onModels,enabled=calendarSelected)
         }
     }
 }
 @Composable
-private fun DockAction(name:String,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit){
+private fun DockAction(name:String,label:String,modifier:Modifier,selected:Boolean,onClick:()->Unit,enabled:Boolean=true){
     val motion=remember{Animatable(0f)};val scope=rememberCoroutineScope()
-    Box(modifier.clip(CircleShape).bouncyClickable{scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
-        SiteIconMotion(name,label,Modifier.size(23.dp),if(selected)OnBrand else DockInk){motion.value}
+    Box(modifier.clip(CircleShape).bouncyClickable(enabled=enabled){scope.launch{motion.stop();motion.snapTo(0f);motion.animateTo(1f,tween(if(name=="clock")760 else 720,easing=FastOutSlowInEasing));motion.snapTo(0f)};onClick()},contentAlignment=Alignment.Center){
+        SiteIconMotion(name,label,Modifier.size(23.dp),if(selected)DockOnSelected else DockInk){motion.value}
     }
 }

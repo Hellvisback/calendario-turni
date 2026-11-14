@@ -1,3 +1,7 @@
+> **Stato aggiornato al 14/11/2026: beta.17 (62).** Per riprendere da remoto leggere prima [docs/CLOUD_HANDOFF.md](docs/CLOUD_HANDOFF.md). Le sezioni successive sono storico: versioni, percorsi e comandi più vecchi non prevalgono sulla guida cloud.
+
+> Aggiornamento 13/11/2026: 1.8.0-beta.12 (57) installata e caricata su Drive. Ridimensionamento del calendario con molla e hit target coordinati, tratteggio più visibile, riempimento senza riquadro anticipato e contrazione verso il badge in uscita. Centratura ottica dei numeri e icona nota stabile. Note/etichette/creazione in una sola superficie, X chiude tutto e freccia torna indietro; dimensionamento del corpo con footer fermo, tastiera gestita. Rimossa la ripple grigia della griglia. 469 test passati; acquisizioni native dei fotogrammi e misura del footer su 15 frame. Database personale identico prima/dopo. Dettagli e limiti: [docs/VERIFICA_v1.8.0-beta.12.md](docs/VERIFICA_v1.8.0-beta.12.md).
+> Aggiornamento 13/11/2026: beta 1.8.0-beta.11 (56) compilata con target SDK 36, AGP 8.10.1/Gradle 8.11.1/JDK17 e Compose 1.7.8. Installata sul Realme e caricata su Drive. Completati etichette dei giorni e statistiche, primo avvio con guida interattiva e ripristino protetto, tema nei backup, contrasto barre di sistema nei pannelli chiari. 469 test superati; dati invariati eccetto nuovo campo themeMode, verificato con impronta normalizzata. Lorenzo aggiunto agli utenti OAuth di test. Sito ufficiale privato per decisione dell'utente: verifica Google pubblica e rilascio store ancora da completare. Restano frame lenti nel profiling; vedere [docs/VERIFICA_v1.8.0-beta.11.md](docs/VERIFICA_v1.8.0-beta.11.md). Non usare JRE11; non consegnare gli APK setupqa. Firma storica conservata, non ancora firma store definitiva.
 > Aggiornamento 28/10/2026: 1.8.0-beta.2 (47), APK R8 installato. Corretto il reset tardivo delle statistiche/ingresso delle destinazioni e i totali obsoleti al cambio periodo. Conferma nome AI con pulsante, feedback e chiusura tastiera; contatori accessibili. 432 test per variante, lint 0 errori/135 avvisi, dati invariati. Restano frame lenti: vedere docs/VERIFICA_v1.8.0-beta.2.md. Non pubblicata.
 
 > Aggiornamento 28/10/2026: 1.8.0-beta.1 (46), APK beta R8 non debuggable installato con firma precedente, circa 3,3 MB. Categorie rimosse solo dalla UI; conferma AI centrata e azioni semantiche. Rimossi oltre 5.000 righe di UI obsolete, corrette API sveglia Android26, cache etichette animate, condivisione PDF obsoleto e transizioni senza doppio buffer pieno. 432 test per variante, lint Beta zero errori/135 warning, rendering e sveglia reale verificati; dati invariati. Restano frame lenti nel profiling: non promettere zero lag. Dettagli e limiti: [docs/VERIFICA_v1.8.0-beta.1.md](docs/VERIFICA_v1.8.0-beta.1.md).
@@ -188,4 +192,26 @@ powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1
 - **Pulizia UI**: Rimossa icona `Tune` non funzionante in `TurniModelsScreen.kt`.
 - **Deploy & Test**: APK testato e verificato su Realme 8 Pro (`cb08bc57`), rilasciato su OneDrive (`C:\Users\marco\OneDrive\app-release-latest.apk`).
 
+
+
+
+## Aggiornamento 14 novembre 2026 — beta.13 (58)
+
+Installata e caricata su Drive 1.8.0-beta.13. Vedere docs/VERIFICA_v1.8.0-beta.13.md per modifiche, prove e artefatto. Completati Reperibilità, guida interattiva con toolbar reale, etichette inline nelle statistiche (lazy), formato AM/PM, importazione AI paste-only, restyling PDF; ulteriori correzioni onda calendario/replay/gomma/etichette/X. 476 test superati, lint beta passato. Database personale invariato anche dopo i controlli; app di QA rimosse. Nessun commit o pubblicazione GitHub eseguiti, modifiche precedenti del workspace preservate.
+
+
+## Aggiornamento 14 novembre 2026 — beta.14 (59)
+
+Installata e caricata su Drive beta.14: priorità nota/etichetta sul calendario, pulsante notebook stabile, chip compatti con FlowRow naturale nella selezione e nel dettaglio. 477 test superati, lint beta passato, dati personali invariati. Vedere docs/VERIFICA_v1.8.0-beta.14.md. Nessun commit o pubblicazione GitHub; QA rimossa dal telefono.
+
+## 14 novembre 2026 — beta.15 (60)
+Corrette onde di entrata/uscita della modifica e ricreazione griglia al cambio campanella; migliorata gomma su giorni colorati. Sistemati inset tastiera nelle note turno, rotella con segnali indipendenti straordinario/nota e trasferta ad alto contrasto. 480 test passati, lintVitalBeta riuscito. Installata su Realme 8 Pro, dati personali identici prima/dopo. Dettagli, evidenze, SHA e Drive in docs/VERIFICA_v1.8.0-beta.15.md.
+
+
+## 14 novembre 2026 — beta.16 (61)
+Turni calendario a dimensioni fisse, overflow con pallini centrati nei colori originali; avviso riposo minimo in fascia separata e dettaglio ambra allineato/scorrevole. 480 test superati, lintVitalBeta riuscito. Installata su Realme 8 Pro, database personale identico prima/dopo. Evidenze, hash APK e Drive in docs/VERIFICA_v1.8.0-beta.16.md. Nessun commit o rilascio GitHub; modifiche precedenti preservate.
+
+
+## 14 novembre 2026 — beta.17 (62)
+Contorni calendario arretrati e assottigliati, curve interne coerenti; rimossa fascia rossa grande della gomma, sostituita da indicatore data 16 dp. Rifiniti frecce, note/campanella e contorno festività. Provate selezioni su celle colorate in chiaro/scuro e intervalli in entrambe le direzioni; 480 test passati e lintVitalBeta riuscito. Installata su Realme 8 Pro, database personale invariato. Dettagli, screenshot e Drive in docs/VERIFICA_v1.8.0-beta.17.md.
 

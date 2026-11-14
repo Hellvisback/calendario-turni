@@ -1,18 +1,39 @@
-# Regole Operative per Agenti Antigravity
+# Istruzioni per lavorare su TurniSync
 
-## 1. Comunicazione
-- Comunica e rispondi **sempre in lingua italiana** con l'utente in ogni sessione e spiegazione.
-- Mantieni codice sorgente, nomi di funzioni, variabili, classi, log e comandi shell in **inglese**.
+## Contesto e comunicazione
 
-## 2. Architettura & Stile Grafico
-- Progetto Android nativo in Kotlin Jetpack Compose (`android-app/`).
-- Stile grafico: **Obsidian Liquid Glass** + **Riccardo Breccia UX** (Thumb Zone ergonomica, bottom sheets e floating dock, feedback tattile elastico).
-- Notifiche: mai inserire card verdi o rosse statiche inline che spostano il layout della schermata! Usare `AnimatedStatusPopup` con overlay animato dal basso (`Alignment.BottomCenter`).
-- Schermate: un solo pulsante indietro in alto a sinistra (`Icons.Default.ArrowBack`, 38-40dp), mai doppioni in basso.
+- Rispondere in italiano; mantenere identificatori, commenti tecnici e log del codice in inglese.
+- Leggere prima `docs/CLOUD_HANDOFF.md` e la verifica della beta corrente. Le sezioni datate degli handover sono archivio, non requisiti aggiornati.
+- L'app effettiva è Android nativa Kotlin/Compose in `android-app/`. Non sostituirla con i prototipi HTML di design né con `esApp/`.
+- Usare il checkout corrente e percorsi relativi al repository. Nessuno script nuovo deve dipendere da `C:\Users\marco`.
 
-## 3. Ambiente di Esecuzione
-- Java Home: `$env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"`
-- Compilazione: `.\gradlew.bat assembleDebug` in `android-app/`
-- Device test ADB: Realme 8 Pro (`cb08bc57`)
-- Rilascio APK su GitHub: OGNI release DEVE incrementare `versionCode` (intero progressivo 1, 2, 3...) e aggiornare `versionName` (semantico es. 1.1.1 o 1.2.0) in `android-app/app/build.gradle.kts`. MAI sovrascrivere vecchie release con `gh release upload v1.0.0 --clobber`. REQUISITO TASSATIVO: caricare ESCLUSIVAMENTE il singolo file APK versionato (`app-release-vX.Y.Z.apk`). MAI caricare `app-release-latest.apk` o `Calendario_Turni_Antigravity_Export.zip` nelle release di GitHub! MAI aggiornare o copiare l'APK su OneDrive! Usare sempre lo script automatizzato: `powershell -ExecutionPolicy Bypass -File .\scripts\release.ps1` che compila, genera il singolo asset versionato, esegue git push e crea la nuova release `vX.Y.Z` su GitHub.
-- Consulta `HANDOVER_NOTES.md` per i dettagli completi su repository, logiche di calcolo turni e sincronizzazione Google Calendar.
+## Design e comportamento da preservare
+
+- Material 3 Expressive: base Grafite, accento cobalto condiviso tramite `TurniPalette.kt`, dock grigio con indicatore attivo blu e sole icone.
+- Temi chiaro, scuro e automatico. Colori turno distinti e leggibili nei due temi, nei weekend e nelle anteprime del mese adiacente.
+- Transizioni fluide e micro-interazioni coerenti; evitare ricreazioni della griglia al cambio strumento e replay degli eventi di colorazione.
+- Riquadri turno a dimensioni fisse, eccedenze rappresentate da pallini centrati; non comprimere i turni per farne entrare altri.
+- Contorni della cella interni al riempimento e raccordati; indicatore di intervallo compatto, senza grandi fasce rosse.
+- Un solo comando indietro nei flussi annidati; X rossa chiude il flusso. Non sovrapporre pannelli al dock o alla tastiera.
+- Feedback delle azioni in overlay animato; non aggiungere notifiche statiche che spostano il contenuto. Gli avvisi informativi del giorno, come il riposo minimo, restano parte del suo dettaglio.
+- Preservare tutte le funzioni e il modello dati: lavori, modelli, assegnazioni, turno originale della rotazione, reperibilità, straordinari, stacco effettivo, trasferte, note, etichette, regole statistiche e impostazioni.
+
+## Build e verifiche
+
+- JDK 17; SDK compile/target 36, min 26; Build Tools 35.0.0; wrapper Gradle 8.11.1.
+- Linux/cloud: `bash scripts/cloud-setup.sh` con SDK/licenze già configurati, poi `bash scripts/check-android.sh`.
+- Per installare un SDK nuovo leggere la guida; il flag `--accept-licenses` è un consenso esplicito alle licenze SDK.
+- Windows: `scripts/check-android.ps1 -JavaHome <jdk17>`.
+- Controlli richiesti: `assembleBeta testDebugUnitTest` in `android-app/`. La beta esegue anche lint vitale e ottimizzazione R8.
+- I test unitari non sostituiscono il controllo visivo o le prove di consegna sveglie/OAuth su Android.
+- Il telefono USB locale non è automaticamente raggiungibile in una chat cloud. Non dichiarare prove fisiche non effettuate.
+- Per dati sintetici usare `-PsetupProbe`: package separato `com.turni.calendario.setupqa`. Non sostituire mai il database personale con fixture e non cancellare l'app personale per risolvere un problema di firma.
+
+## Sicurezza e pubblicazione
+
+- Mai commettere keystore, token, password, file `.env`, `local.properties`, backup, database personali o documenti estranei al progetto.
+- Le variabili `TURNISYNC_KEYSTORE_*` sono segreti esterni. Non mostrarne i valori nei log o nelle descrizioni di commit.
+- Un push dei sorgenti non è una release APK. Non creare tag o release senza richiesta.
+- Ogni nuova release APK deve incrementare `versionCode` rispetto alle versioni già distribuite e aggiornare `versionName`.
+- Le release GitHub vanno effettuate esclusivamente con `scripts/release.ps1`, caricando il solo APK versionato. Mai usare `--clobber`, `app-release-latest.apk`, archivi ZIP di progetto o OneDrive per la distribuzione.
+- Conservare dati, modifiche locali non pertinenti e configurazioni private. Non cambiare la visibilità del repository o dei servizi collegati senza istruzione esplicita.

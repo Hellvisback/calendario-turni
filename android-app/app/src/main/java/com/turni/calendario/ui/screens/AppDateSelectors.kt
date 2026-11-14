@@ -73,7 +73,7 @@ internal fun SelectorSheet(title:String,onDismiss:()->Unit,content:@Composable C
         Row(Modifier.fillMaxWidth().padding(bottom=14.dp),verticalAlignment=Alignment.CenterVertically) {
             Text(title,Modifier.weight(1f),color=TextPrimary,fontSize=19.sp,fontWeight=FontWeight.SemiBold)
             Box(Modifier.size(36.dp).clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).bouncyClickable(onClick=close),contentAlignment=Alignment.Center) {
-                SiteIcon("x","Chiudi",Modifier.size(19.dp),TextSecondary)
+                SiteIcon("x","Chiudi",Modifier.size(19.dp),ColorNegative)
             }
         }
         content(close)

@@ -10,6 +10,9 @@ import kotlinx.coroutines.launch
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.screens.MainScreen
 import com.turni.calendario.ui.theme.CalendarioTurniTheme
+import com.turni.calendario.ui.theme.TurniThemeState
+import com.turni.calendario.ui.theme.ObsidianBackground
+import androidx.compose.ui.graphics.toArgb
 import com.turni.calendario.widget.WidgetUpdateManager
 import java.time.LocalDate
 
@@ -19,15 +22,14 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         androidx.core.view.WindowCompat.setDecorFitsSystemWindows(window, false)
 
-        // Sincronizza lo sfondo delle barre di sistema (status bar e navigation bar) con ObsidianBackground (#080B11)
-        // per rimuovere qualsiasi bordino o contrasto ai bordi superiore e inferiore dello schermo
-        val obsidianDarkColor = android.graphics.Color.parseColor("#080B11")
-        window.statusBarColor = obsidianDarkColor
-        window.navigationBarColor = obsidianDarkColor
-        window.decorView.setBackgroundColor(obsidianDarkColor)
+        // Match the stored theme before Compose draws its first frame.
+        val backgroundColor = ObsidianBackground.toArgb()
+        window.statusBarColor = backgroundColor
+        window.navigationBarColor = backgroundColor
+        window.decorView.setBackgroundColor(backgroundColor)
         androidx.core.view.WindowCompat.getInsetsController(window, window.decorView).apply {
-            isAppearanceLightStatusBars = false
-            isAppearanceLightNavigationBars = false
+            isAppearanceLightStatusBars = !TurniThemeState.dark
+            isAppearanceLightNavigationBars = !TurniThemeState.dark
         }
 
         // LocalDatabaseStore coalesces durable saves, widget refreshes and alarm scheduling off main.
@@ -45,12 +47,16 @@ class MainActivity : ComponentActivity() {
 
         setContent {
             CalendarioTurniTheme {
-                MainScreen()
+                androidx.compose.animation.Crossfade(com.turni.calendario.repository.FirstRunStore.required,
+                    animationSpec=androidx.compose.animation.core.tween(300)) { setup ->
+                    if(setup)com.turni.calendario.ui.screens.FirstRunScreen()
+                    else MainScreen()
+                }
             }
         }
     }
 
-    override fun onNewIntent(intent: Intent?) {
+    override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         handleWidgetDeepLink(intent)
     }

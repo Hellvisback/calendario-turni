@@ -1,0 +1,51 @@
+name: Android build and tests
+
+on:
+  push:
+    branches: [main]
+    paths: ['android-app/**', 'scripts/**', '.github/workflows/android.yml', '.gitattributes']
+  pull_request:
+    branches: [main]
+    paths: ['android-app/**', 'scripts/**', '.github/workflows/android.yml', '.gitattributes']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: android-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  android:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880 # v6.3.0
+        with:
+          distribution: temurin
+          java-version: '17'
+          cache: gradle
+          cache-dependency-path: |
+            android-app/**/*.gradle.kts
+            android-app/gradle/wrapper/gradle-wrapper.properties
+      - name: Verify official Gradle wrapper
+        run: echo '2db75c40782f5e8ba1fc278a5574bab070adccb2d21ca5a6e5ed840888448046  android-app/gradle/wrapper/gradle-wrapper.jar' | sha256sum -c -
+      - name: Configure Android SDK
+        run: bash scripts/cloud-setup.sh --skip-warmup
+      - name: Build optimized beta and run unit tests
+        run: bash scripts/check-android.sh
+      - name: Save test and lint reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: android-checks-${{ github.sha }}
+          path: |
+            android-app/app/build/reports/tests/
+            android-app/app/build/test-results/
+            android-app/app/build/reports/lint-results*
+          if-no-files-found: ignore
+          retention-days: 14

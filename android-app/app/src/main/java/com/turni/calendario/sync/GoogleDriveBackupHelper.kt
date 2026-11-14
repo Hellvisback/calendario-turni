@@ -30,7 +30,11 @@ object GoogleDriveBackupHelper {
      */
     fun exportDatabaseToJson(snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): String {
         val root = JSONObject()
-        root.put("version", 4)
+        root.put("version", 5)
+        root.put("dayTags", JSONArray().apply { snapshot.dayTags.forEach { tag ->
+            put(JSONObject().put("id", tag.id).put("name", tag.name).put("iconKey", tag.iconKey)
+                .put("colorHex", tag.colorHex).put("archived", tag.archived))
+        } })
         root.put("statisticsRules", JSONArray().apply { snapshot.statisticsRules.forEach { rule -> put(JSONObject().put("id",rule.id).put("displayedShiftId",rule.displayedShiftId).put("originalShiftIds",JSONArray(rule.originalShiftIds.toList())).put("enabled",rule.enabled)) } })
         root.put("exportDate", LocalDate.now().toString())
         root.put("activeWorkProfileId", snapshot.activeWorkProfileId)
@@ -113,6 +117,7 @@ object GoogleDriveBackupHelper {
                 put("hideExShift", extra.hideExShift)
                 put("rotationCleared", extra.rotationCleared)
                 put("notes", extra.notes)
+                put("tagIds", JSONArray(extra.tagIds))
                 put("actualEndTime", extra.actualEndTime ?: "")
                 put("isOnCallManual", extra.isOnCallManual ?: JSONObject.NULL)
             }
@@ -156,6 +161,7 @@ object GoogleDriveBackupHelper {
             put("autoBackupDaily", snapshot.preferences.autoBackupDaily)
             put("excludeVacationOnHolidays", snapshot.preferences.excludeVacationOnHolidays)
             put("holidayExcludedShiftIds", JSONArray(snapshot.preferences.holidayExcludedShiftIds.toList()))
+            snapshot.preferences.themeMode?.let { put("themeMode",it) }
         }
         root.put("appPreferences", prefObj)
         root.put("enabledHolidayIds", JSONArray(snapshot.holidayIds.toList()))

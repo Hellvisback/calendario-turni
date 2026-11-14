@@ -41,6 +41,7 @@ import java.time.format.TextStyle
 import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.abs
+import kotlin.math.roundToInt
 
 data class CalendarDayInfo(val date:LocalDate,val isCurrentMonth:Boolean)
 enum class CalendarEditMode(val label:String,val icon:ImageVector) {
@@ -79,6 +80,10 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     var selectedDate by remember{mutableStateOf<LocalDate?>(null)}
     var lastDate by remember{mutableStateOf(LocalDate.now())}
     var editing by remember{mutableStateOf(false)}
+    var editSession by remember{mutableStateOf(0L)}
+    // One clock drives visible viewport geometry and matching hit targets.
+    val editProgress=animateFloatAsState(if(editing)1f else 0f,
+        spring(dampingRatio=1f,stiffness=170f),label="calendarEditGeometry")
     var mode by remember{mutableStateOf(CalendarEditMode.REPLACE)}
     var brush by remember{mutableStateOf(ShiftRepository.shiftDefinitions.firstOrNull()?.id?:"")}
     var rotationId by remember{mutableStateOf(ShiftRepository.defaultRotationId.ifBlank{ShiftRepository.activeRotationId})}
@@ -93,20 +98,22 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     var workMenu by remember{mutableStateOf(false)}
     var feedback by remember{mutableStateOf<ActionFeedback?>(null)}
     var paintRequest by remember{mutableStateOf<CalendarPaintRequest?>(null)}
-    fun paintDay(date:LocalDate,definitionId:String){paintRequest=CalendarPaintRequest(date,definitionId,(paintRequest?.sequence?:0L)+1L)}
+    var paintSequence by remember{mutableStateOf(0L)}
+    fun nextPaintSequence():Long{paintSequence+=1L;return paintSequence}
+    fun paintDay(date:LocalDate,definitionId:String){paintRequest=CalendarPaintRequest(date,definitionId,nextPaintSequence())}
     val scope=rememberCoroutineScope();val drag=remember{mutableStateOf(0f)}
     var motion by remember{mutableStateOf<Job?>(null)}
     var width by remember{mutableStateOf(1f)}
     var dragging by remember{mutableStateOf(false)}
     val density=LocalDensity.current.density
-    LaunchedEffect(editRequest){if(editRequest>0){editing=true;selectedDate=null}}
+    LaunchedEffect(editRequest){if(editRequest>0){if(!editing){editSession+=1L;paintRequest=null};editing=true;selectedDate=null}}
     LaunchedEffect(editing,active){onEditModeActiveChanged(active&&editing)}
     LaunchedEffect(active){if(!active){selectedDate=null;workMenu=false;anchor=null;rangeEnd=null;rangeGesture=null;eraseAnchor=null}}
     DisposableEffect(Unit){onDispose{onEditModeActiveChanged(false)}}
     LaunchedEffect(active,ShiftRepository.selectedDateFromWidget){if(active)ShiftRepository.selectedDateFromWidget?.let{
         monthKey=YearMonth.from(it).toString();lastDate=it;selectedDate=it;ShiftRepository.selectedDateFromWidget=null
     }}
-    fun closeEditor(){editing=false;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null}
+    fun closeEditor(){editing=false;paintRequest=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null}
     BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};rangeGesture!=null->{rangeGesture=null;anchor=null;rangeEnd=null;feedback=null};else->closeEditor()}}
     fun changeMonth(direction:Int){
         motion?.cancel()
@@ -135,7 +142,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             val first=eraseAnchor
             if(first==null)removeAt(date)else{
                 ShiftRepository.clearWorkShiftRange(first,date)
-                paintRequest=CalendarPaintRequest(first,"",(paintRequest?.sequence?:0L)+1L,date)
+                paintRequest=CalendarPaintRequest(first,"",nextPaintSequence(),date)
                 eraseAnchor=null;anchor=null;rangeEnd=null
                 feedback=ActionFeedback("Periodo cancellato · puoi annullare",true)
             }
@@ -151,7 +158,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             val first=anchor!!
             val adding=rangeGesture==CalendarEditMode.ADD
             ShiftRepository.applyShiftRange(brush,first,date,addSecondary=adding)
-            paintRequest=CalendarPaintRequest(first,brush,(paintRequest?.sequence?:0L)+1L,date)
+            paintRequest=CalendarPaintRequest(first,brush,nextPaintSequence(),date)
             anchor=null;rangeEnd=null;rangeGesture=null
             feedback=ActionFeedback(if(adding)"Turni aggiunti al periodo" else "Periodo applicato")
             return
@@ -166,7 +173,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             CalendarEditMode.RANGE->if(anchor==null){anchor=date;rangeEnd=null}else{
                 val start=minOf(anchor!!,date);val end=maxOf(anchor!!,date)
                 ShiftRepository.applyShiftRange(brush,start,end)
-                paintRequest=CalendarPaintRequest(start,if(brush=="eraser")"" else brush,(paintRequest?.sequence?:0L)+1L,end)
+                paintRequest=CalendarPaintRequest(start,if(brush=="eraser")"" else brush,nextPaintSequence(),end)
                 anchor=null;rangeEnd=null;feedback=ActionFeedback(if(brush=="eraser")"Turni eliminati" else "Periodo applicato",brush=="eraser")
             }
             CalendarEditMode.ROTATION->if(anchor==null||date.isBefore(anchor)){anchor=date}else{
@@ -185,7 +192,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                     IconButton(onClick={changeMonth(-1)},modifier=Modifier.size(32.dp)){SiteIcon("chevron-left","Mese precedente",Modifier.size(21.dp))}
                     Text(androidx.compose.ui.text.buildAnnotatedString {
                         append(month.month.getDisplayName(TextStyle.FULL,Locale.ITALIAN).replaceFirstChar{it.titlecase(Locale.ITALIAN)})
-                        pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=14.sp,fontWeight=FontWeight.Medium,color=TextSecondary))
+                        pushStyle(androidx.compose.ui.text.SpanStyle(fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=ObsidianSecondary))
                         append(" "+month.year);pop()
                     },color=TextPrimary,fontSize=18.sp,fontWeight=FontWeight.Bold,maxLines=1,overflow=TextOverflow.Ellipsis,
                         modifier=Modifier.weight(1f,fill=false))
@@ -225,9 +232,15 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                     }
                 }
             }
-            Row(Modifier.fillMaxWidth().height(28.dp).background(CalendarSurface,RoundedCornerShape(topStart=20.dp,topEnd=20.dp)),verticalAlignment=Alignment.CenterVertically){
+            Row(Modifier.fillMaxWidth().height(28.dp).clip(RoundedCornerShape(topStart=20.dp,topEnd=20.dp)).background(CalendarSurface),verticalAlignment=Alignment.CenterVertically){
                 val days=if(ShiftRepository.appPreferences.weekStartMonday)listOf("L","M","M","G","V","S","D")else listOf("D","L","M","M","G","V","S")
-                days.forEach{Text(it,Modifier.weight(1f),color=TextSecondary,fontSize=12.sp,textAlign=TextAlign.Center)}
+                days.forEachIndexed { index, day ->
+                    val weekend = if (ShiftRepository.appPreferences.weekStartMonday) index >= 5 else index == 0 || index == 6
+                    Box(Modifier.weight(1f).fillMaxHeight().background(if (weekend) CalendarWeekend else CalendarSurface),
+                        contentAlignment=Alignment.Center) {
+                        Text(day,color=TextSecondary,fontSize=12.sp,textAlign=TextAlign.Center)
+                    }
+                }
             }
             Box(Modifier.weight(1f).fillMaxWidth().padding(bottom=62.dp)
                 .clip(RoundedCornerShape(bottomStart=20.dp,bottomEnd=20.dp)).onSizeChanged{width=it.width.toFloat()}
@@ -244,10 +257,11 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                 // Precomposed neighbors: motion updates layer translation, not 42 cell compositions per frame.
                 for(delta in -1..1) {
                     key(month.plusMonths(delta.toLong())) {
+                    // Keep the callback present: nullable branches here replace the page and its wave state.
                     NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,if(eraseAnchor!=null||rangeGesture!=null)CalendarEditMode.RANGE else mode,if(eraseAnchor!=null)"eraser" else brush,rotationId,eraseAnchor?:anchor,if(eraseAnchor!=null)null else rangeEnd,
                         Modifier.fillMaxSize().graphicsLayer{translationX=delta*width+drag.value},
-                        paintRequest=paintRequest,animate=delta==0,onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null&&editTool!="eraser")rangeEnd=it},
-                        onLongClick=if(editing&&editTool!="bell"&&(editTool=="eraser"||mode==CalendarEditMode.REPLACE||mode==CalendarEditMode.ADD))({date->
+                        paintRequest=paintRequest,editSession=editSession,editProgress=editProgress,animate=delta==0,onPaintConsumed={sequence->if(paintRequest?.sequence==sequence)paintRequest=null},onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null&&editTool!="eraser")rangeEnd=it},
+                        longPressEnabled=editing&&editTool!="bell"&&(editTool=="eraser"||mode==CalendarEditMode.REPLACE||mode==CalendarEditMode.ADD),onLongClick={date->
                             if(editTool=="eraser"){
                                 eraseAnchor=date;anchor=null;rangeEnd=null;rangeGesture=null
                                 feedback=ActionFeedback("Inizio selezionato · tocca l’ultimo giorno da cancellare")
@@ -255,14 +269,14 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                                 rangeGesture=mode;anchor=date;rangeEnd=null;eraseAnchor=null
                                 feedback=ActionFeedback(if(mode==CalendarEditMode.ADD)"Inizio selezionato · aggiungi turni fino all’ultimo giorno" else "Inizio selezionato · tocca l’ultimo giorno del periodo")
                             }
-                        })else null)
+                        })
                     }
                 }
             }
         }
-        AnimatedVisibility(selectedDate!=null&&!editing,enter=slideInVertically(spring(.9f,340f)){it/2}+fadeIn(),
-            exit=slideOutVertically(spring(1f,440f)){it/2}+fadeOut(),
-            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(start=17.dp,end=17.dp,bottom=86.dp)) {
+        AnimatedVisibility(selectedDate!=null&&!editing,enter=slideInVertically(spring(.9f,340f)){(56*density).roundToInt()}+fadeIn(),
+            exit=slideOutVertically(spring(1f,440f)){(56*density).roundToInt()}+fadeOut(),
+            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(start=17.dp,end=17.dp,bottom=keyboardAwarePanelClearance(86.dp))) {
             NativeDayCard(lastDate,onClose={selectedDate=null},onSelectShift={addSecondary=it;selectShift=lastDate},
                 onFeedback={feedback=it},onDateChange={lastDate=it;selectedDate=it;if(YearMonth.from(it)!=month)monthKey=YearMonth.from(it).toString()})
         }
@@ -312,10 +326,10 @@ private fun CalendarTodayButton(enabled:Boolean,onClick:()->Unit) {
         Box(
             Modifier.size(width=42.dp,height=32.dp)
                 .graphicsLayer{translationY=offset*density}
-                .background(fill,shape).border(1.dp,ObsidianPrimary.copy(alpha=.5f),shape),
+                .background(fill,shape).border(1.dp,BrandInk.copy(alpha=.65f),shape),
             contentAlignment=Alignment.Center
         ) {
-            Text("Oggi",color=ObsidianPrimary,fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
+            Text("Oggi",color=BrandInk,fontSize=11.sp,fontWeight=FontWeight.SemiBold,maxLines=1)
         }
     }
 }

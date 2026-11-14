@@ -1,0 +1,311 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="1359" viewBox="0 0 390 1359">
+  <title>TurniSync · Aspetto · Vista estesa · lime-botanico · scuro</title>
+  <defs>
+    <clipPath id="Ritaglio">
+      <path d="M32 0 H358 A32 32 0 0 1 390 32 V1327 A32 32 0 0 1 358 1359 H32 A32 32 0 0 1 0 1327 V32 A32 32 0 0 1 32 0 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-2">
+      <path d="M0 40 H390 L390 40 V1331 L390 1331 H0 L0 1331 V40 L0 40 Z" />
+    </clipPath>
+  </defs>
+  <g id="TurniSync" aria-label="TurniSync">
+    <path d="M32 0 H358 A32 32 0 0 1 390 32 V1327 A32 32 0 0 1 358 1359 H32 A32 32 0 0 1 0 1327 V32 A32 32 0 0 1 32 0 Z" fill="#111410" />
+    <g clip-path="url(#Ritaglio)">
+      <g id="ts-status" aria-label="ts-status">
+        <g id="span" aria-label="span">
+          <text id="Testo-9-41" x="26" y="24.2969" fill="#f2f5ec" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0.2" textLength="22.9219" lengthAdjust="spacingAndGlyphs">9:41</text>
+        </g>
+        <g id="Passa-al-tema-chiaro" aria-label="Passa al tema chiaro">
+          <path d="M173.875 6 H216.125 A14.5 14.5 0 0 1 230.625 20.5 V20.5 A14.5 14.5 0 0 1 216.125 35 H173.875 A14.5 14.5 0 0 1 159.375 20.5 V20.5 A14.5 14.5 0 0 1 173.875 6 Z" fill="#293127" />
+          <g id="lucide-moon" aria-label="lucide-moon">
+            <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 168.375 12.5)" />
+          </g>
+          <text id="Testo-Scuro" x="190.375" y="24.7969" fill="#f2f5ec" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="31.25" lengthAdjust="spacingAndGlyphs">Scuro</text>
+        </g>
+        <g id="ts-system" aria-label="ts-system">
+          <g id="lucide-signal" aria-label="lucide-signal">
+            <path d="M2 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M7 20v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M12 20v-8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M17 20V8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M22 4v16" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+          </g>
+          <g id="lucide-wifi" aria-label="lucide-wifi">
+            <path d="M12 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M2 8.82a15 15 0 0 1 20 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M5 12.859a10 10 0 0 1 14 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M8.5 16.429a5 5 0 0 1 7 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+          </g>
+          <g id="lucide-battery-full" aria-label="lucide-battery-full">
+            <path d="M10 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M14 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M22 14v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M6 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <rect x="2" y="6" width="16" height="12" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+          </g>
+        </g>
+      </g>
+      <g id="ts-body" aria-label="ts-body">
+        <g clip-path="url(#Ritaglio-2)">
+          <g id="ts-enter" aria-label="ts-enter">
+            <g id="ts-header" aria-label="ts-header">
+              <g id="Indietro" aria-label="Indietro">
+                <g id="lucide-arrow-left" aria-label="lucide-arrow-left">
+                  <path d="m12 19-7-7 7-7" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 24 64)" />
+                  <path d="M19 12H5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#f2f5ec" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 24 64)" />
+                </g>
+              </g>
+              <g id="ts-page-title" aria-label="ts-page-title">
+                <text id="Testo-Aspetto" x="63" y="83" fill="#f2f5ec" font-family="Manrope" font-size="27" font-weight="800" letter-spacing="-1" textLength="98.3906" lengthAdjust="spacingAndGlyphs">Aspetto</text>
+              </g>
+            </g>
+            <g id="ts-theme-options" aria-label="ts-theme-options">
+              <g id="Tema-scuro" aria-label="Tema scuro">
+                <path d="M28 117 H177 A14 14 0 0 1 191 131 V145 A14 14 0 0 1 177 159 H28 A14 14 0 0 1 14 145 V131 A14 14 0 0 1 28 117 Z" fill="#34451c" />
+                <path d="M28 117 H177 A14 14 0 0 1 191 131 V145 A14 14 0 0 1 177 159 H28 A14 14 0 0 1 14 145 V131 A14 14 0 0 1 28 117 Z M28 118.5 H177 A12.5 12.5 0 0 1 189.5 131 V145 A12.5 12.5 0 0 1 177 157.5 H28 A12.5 12.5 0 0 1 15.5 145 V131 A12.5 12.5 0 0 1 28 118.5 Z" fill="#d0ef78" fill-rule="evenodd" />
+                <g id="lucide-moon-2" aria-label="lucide-moon">
+                  <path d="M20.985 12.486a9 9 0 1 1-9.473-9.472c.405-.022.617.46.402.803a6 6 0 0 0 8.268 8.268c.344-.215.825-.004.803.401" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#d0ef78" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 73.7969 130)" />
+                </g>
+                <text id="Testo-Scuro-2" x="96.7969" y="141.5938" fill="#d0ef78" font-family="Manrope" font-size="12" font-weight="700" letter-spacing="0" textLength="34.3906" lengthAdjust="spacingAndGlyphs">Scuro</text>
+              </g>
+              <g id="Tema-chiaro" aria-label="Tema chiaro">
+                <path d="M213 117 H362 A14 14 0 0 1 376 131 V145 A14 14 0 0 1 362 159 H213 A14 14 0 0 1 199 145 V131 A14 14 0 0 1 213 117 Z" fill="#293127" />
+                <g id="lucide-sun" aria-label="lucide-sun">
+                  <circle cx="12" cy="12" r="4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="M12 2v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="M12 20v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="m4.93 4.93 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="m17.66 17.66 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="M2 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="M20 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="m6.34 17.66-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                  <path d="m19.07 4.93-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 256.625 130)" />
+                </g>
+                <text id="Testo-Chiaro" x="279.625" y="141.5938" fill="#b9c2b2" font-family="Manrope" font-size="12" font-weight="700" letter-spacing="0" textLength="38.7344" lengthAdjust="spacingAndGlyphs">Chiaro</text>
+              </g>
+            </g>
+            <g id="ts-section-heading" aria-label="ts-section-heading">
+              <text id="Testo-Lime-botanico" x="17" y="195" fill="#f2f5ec" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="-0.3" textLength="99.5313" lengthAdjust="spacingAndGlyphs">Lime botanico</text>
+            </g>
+            <g id="ts-setting-group" aria-label="ts-setting-group">
+              <path d="M36 211 H354 A22 22 0 0 1 376 233 V552 A22 22 0 0 1 354 574 H36 A22 22 0 0 1 14 552 V233 A22 22 0 0 1 36 211 Z" fill="#1b2019" />
+              <g id="ts-palette-row" aria-label="ts-palette-row">
+                <rect x="29" y="274" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch" aria-label="ts-swatch">
+                  <path d="M41 228 H51 A12 12 0 0 1 63 240 V250 A12 12 0 0 1 51 262 H41 A12 12 0 0 1 29 250 V240 A12 12 0 0 1 41 228 Z" fill="#111410" />
+                  <text id="Testo-Aa" x="38.4531" y="248.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy" aria-label="ts-palette-copy">
+                  <text id="Testo-Sfondo" x="73" y="248.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="41.5156" lengthAdjust="spacingAndGlyphs">Sfondo</text>
+                </g>
+                <g id="small" aria-label="small">
+                  <text id="Testo--111410" x="318.6563" y="248" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#111410</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-2" aria-label="ts-palette-row">
+                <rect x="29" y="333" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-2" aria-label="ts-swatch">
+                  <path d="M41 287 H51 A12 12 0 0 1 63 299 V309 A12 12 0 0 1 51 321 H41 A12 12 0 0 1 29 309 V299 A12 12 0 0 1 41 287 Z" fill="#1b2019" />
+                  <text id="Testo-Aa-2" x="38.4531" y="307.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy-2" aria-label="ts-palette-copy">
+                  <text id="Testo-Superficie" x="73" y="307.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="59.6094" lengthAdjust="spacingAndGlyphs">Superficie</text>
+                </g>
+                <g id="small-2" aria-label="small">
+                  <text id="Testo--1B2019" x="318.6563" y="307" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#1B2019</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-3" aria-label="ts-palette-row">
+                <rect x="29" y="392" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-3" aria-label="ts-swatch">
+                  <path d="M41 346 H51 A12 12 0 0 1 63 358 V368 A12 12 0 0 1 51 380 H41 A12 12 0 0 1 29 368 V358 A12 12 0 0 1 41 346 Z" fill="#293127" />
+                  <text id="Testo-Aa-3" x="38.4531" y="366.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy-3" aria-label="ts-palette-copy">
+                  <text id="Testo-Controlli" x="73" y="366.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="50.5469" lengthAdjust="spacingAndGlyphs">Controlli</text>
+                </g>
+                <g id="small-3" aria-label="small">
+                  <text id="Testo--293127" x="318.6563" y="366" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#293127</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-4" aria-label="ts-palette-row">
+                <rect x="29" y="451" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-4" aria-label="ts-swatch">
+                  <path d="M41 405 H51 A12 12 0 0 1 63 417 V427 A12 12 0 0 1 51 439 H41 A12 12 0 0 1 29 427 V417 A12 12 0 0 1 41 405 Z" fill="#d0ef78" />
+                  <text id="Testo-Aa-4" x="38.4531" y="425.5938" fill="#263500" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy-4" aria-label="ts-palette-copy">
+                  <text id="Testo-Accento" x="73" y="425.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="48" lengthAdjust="spacingAndGlyphs">Accento</text>
+                </g>
+                <g id="small-4" aria-label="small">
+                  <text id="Testo--D0EF78" x="318.6563" y="425" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#D0EF78</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-5" aria-label="ts-palette-row">
+                <rect x="29" y="510" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-5" aria-label="ts-swatch">
+                  <path d="M41 464 H51 A12 12 0 0 1 63 476 V486 A12 12 0 0 1 51 498 H41 A12 12 0 0 1 29 486 V476 A12 12 0 0 1 41 464 Z" fill="#34451c" />
+                  <text id="Testo-Aa-5" x="38.4531" y="484.5938" fill="#ddf6aa" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy-5" aria-label="ts-palette-copy">
+                  <text id="Testo-Selezione" x="73" y="484.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="57.0625" lengthAdjust="spacingAndGlyphs">Selezione</text>
+                </g>
+                <g id="small-5" aria-label="small">
+                  <text id="Testo--34451C" x="318.6563" y="484" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#34451C</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-6" aria-label="ts-palette-row">
+                <g id="ts-swatch-6" aria-label="ts-swatch">
+                  <path d="M41 523 H51 A12 12 0 0 1 63 535 V545 A12 12 0 0 1 51 557 H41 A12 12 0 0 1 29 545 V535 A12 12 0 0 1 41 523 Z" fill="#a6d8c6" />
+                  <text id="Testo-Aa-6" x="38.4531" y="543.5938" fill="#153b30" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="15.0781" lengthAdjust="spacingAndGlyphs">Aa</text>
+                </g>
+                <g id="ts-palette-copy-6" aria-label="ts-palette-copy">
+                  <text id="Testo-Secondario" x="73" y="543.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="66" lengthAdjust="spacingAndGlyphs">Secondario</text>
+                </g>
+                <g id="small-6" aria-label="small">
+                  <text id="Testo--A6D8C6" x="318.6563" y="543" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#A6D8C6</text>
+                </g>
+              </g>
+            </g>
+            <g id="ts-section-heading-2" aria-label="ts-section-heading">
+              <text id="Testo-Colori-dei-turni" x="17" y="609" fill="#f2f5ec" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="-0.3" textLength="104.3594" lengthAdjust="spacingAndGlyphs">Colori dei turni</text>
+            </g>
+            <g id="ts-setting-group-2" aria-label="ts-setting-group">
+              <path d="M36 625 H354 A22 22 0 0 1 376 647 V1084 A22 22 0 0 1 354 1106 H36 A22 22 0 0 1 14 1084 V647 A22 22 0 0 1 36 625 Z" fill="#1b2019" />
+              <g id="ts-palette-row-7" aria-label="ts-palette-row">
+                <rect x="29" y="688" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-7" aria-label="ts-swatch">
+                  <path d="M41 642 H51 A12 12 0 0 1 63 654 V664 A12 12 0 0 1 51 676 H41 A12 12 0 0 1 29 664 V654 A12 12 0 0 1 41 642 Z" fill="#594a26" />
+                  <text id="Testo-MAT" x="33.5" y="662.5938" fill="#ffe8af" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="25" lengthAdjust="spacingAndGlyphs">MAT</text>
+                </g>
+                <g id="ts-palette-copy-7" aria-label="ts-palette-copy">
+                  <text id="Testo-Mattina" x="73" y="662.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="44.25" lengthAdjust="spacingAndGlyphs">Mattina</text>
+                </g>
+                <g id="small-7" aria-label="small">
+                  <text id="Testo--594A26" x="318.6563" y="662" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#594A26</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-8" aria-label="ts-palette-row">
+                <rect x="29" y="747" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-8" aria-label="ts-swatch">
+                  <path d="M41 701 H51 A12 12 0 0 1 63 713 V723 A12 12 0 0 1 51 735 H41 A12 12 0 0 1 29 723 V713 A12 12 0 0 1 41 701 Z" fill="#3d512d" />
+                  <text id="Testo-POM" x="32.4531" y="721.5938" fill="#ddeebf" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="27.0781" lengthAdjust="spacingAndGlyphs">POM</text>
+                </g>
+                <g id="ts-palette-copy-8" aria-label="ts-palette-copy">
+                  <text id="Testo-Pomeriggio" x="73" y="721.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="65.9844" lengthAdjust="spacingAndGlyphs">Pomeriggio</text>
+                </g>
+                <g id="small-8" aria-label="small">
+                  <text id="Testo--3D512D" x="318.6563" y="721" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#3D512D</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-9" aria-label="ts-palette-row">
+                <rect x="29" y="806" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-9" aria-label="ts-swatch">
+                  <path d="M41 760 H51 A12 12 0 0 1 63 772 V782 A12 12 0 0 1 51 794 H41 A12 12 0 0 1 29 782 V772 A12 12 0 0 1 41 760 Z" fill="#245346" />
+                  <text id="Testo-SER" x="34.5" y="780.5938" fill="#c1ebdd" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="23" lengthAdjust="spacingAndGlyphs">SER</text>
+                </g>
+                <g id="ts-palette-copy-9" aria-label="ts-palette-copy">
+                  <text id="Testo-Sera" x="73" y="780.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="26.4375" lengthAdjust="spacingAndGlyphs">Sera</text>
+                </g>
+                <g id="small-9" aria-label="small">
+                  <text id="Testo--245346" x="318.6563" y="780" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#245346</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-10" aria-label="ts-palette-row">
+                <rect x="29" y="865" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-10" aria-label="ts-swatch">
+                  <path d="M41 819 H51 A12 12 0 0 1 63 831 V841 A12 12 0 0 1 51 853 H41 A12 12 0 0 1 29 841 V831 A12 12 0 0 1 41 819 Z" fill="#484469" />
+                  <text id="Testo-NOT" x="33.5938" y="839.5938" fill="#e6dfff" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="24.7969" lengthAdjust="spacingAndGlyphs">NOT</text>
+                </g>
+                <g id="ts-palette-copy-10" aria-label="ts-palette-copy">
+                  <text id="Testo-Notte" x="73" y="839.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="32.6719" lengthAdjust="spacingAndGlyphs">Notte</text>
+                </g>
+                <g id="small-10" aria-label="small">
+                  <text id="Testo--484469" x="318.6563" y="839" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#484469</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-11" aria-label="ts-palette-row">
+                <rect x="29" y="924" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-11" aria-label="ts-swatch">
+                  <path d="M41 878 H51 A12 12 0 0 1 63 890 V900 A12 12 0 0 1 51 912 H41 A12 12 0 0 1 29 900 V890 A12 12 0 0 1 41 878 Z" fill="#2d4f64" />
+                  <text id="Testo-SMO" x="32.3438" y="898.5938" fill="#cbe8f8" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="27.3125" lengthAdjust="spacingAndGlyphs">SMO</text>
+                </g>
+                <g id="ts-palette-copy-11" aria-label="ts-palette-copy">
+                  <text id="Testo-Smonto" x="73" y="898.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="45.4063" lengthAdjust="spacingAndGlyphs">Smonto</text>
+                </g>
+                <g id="small-11" aria-label="small">
+                  <text id="Testo--2D4F64" x="318.6563" y="898" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#2D4F64</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-12" aria-label="ts-palette-row">
+                <rect x="29" y="983" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-12" aria-label="ts-swatch">
+                  <path d="M41 937 H51 A12 12 0 0 1 63 949 V959 A12 12 0 0 1 51 971 H41 A12 12 0 0 1 29 959 V949 A12 12 0 0 1 41 937 Z" fill="#444d50" />
+                  <text id="Testo-RIP" x="36.4063" y="957.5938" fill="#e0e7e8" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="19.1719" lengthAdjust="spacingAndGlyphs">RIP</text>
+                </g>
+                <g id="ts-palette-copy-12" aria-label="ts-palette-copy">
+                  <text id="Testo-Riposo" x="73" y="957.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="39.5625" lengthAdjust="spacingAndGlyphs">Riposo</text>
+                </g>
+                <g id="small-12" aria-label="small">
+                  <text id="Testo--444D50" x="318.6563" y="957" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#444D50</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-13" aria-label="ts-palette-row">
+                <rect x="29" y="1042" width="332" height="1" fill="#333a30" />
+                <g id="ts-swatch-13" aria-label="ts-swatch">
+                  <path d="M41 996 H51 A12 12 0 0 1 63 1008 V1018 A12 12 0 0 1 51 1030 H41 A12 12 0 0 1 29 1018 V1008 A12 12 0 0 1 41 996 Z" fill="#46594a" />
+                  <text id="Testo-FER" x="35.3125" y="1016.5938" fill="#dcebdd" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="21.3594" lengthAdjust="spacingAndGlyphs">FER</text>
+                </g>
+                <g id="ts-palette-copy-13" aria-label="ts-palette-copy">
+                  <text id="Testo-Ferie" x="73" y="1016.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="28.4375" lengthAdjust="spacingAndGlyphs">Ferie</text>
+                </g>
+                <g id="small-13" aria-label="small">
+                  <text id="Testo--46594A" x="318.6563" y="1016" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#46594A</text>
+                </g>
+              </g>
+              <g id="ts-palette-row-14" aria-label="ts-palette-row">
+                <g id="ts-swatch-14" aria-label="ts-swatch">
+                  <path d="M41 1055 H51 A12 12 0 0 1 63 1067 V1077 A12 12 0 0 1 51 1089 H41 A12 12 0 0 1 29 1077 V1067 A12 12 0 0 1 41 1055 Z" fill="#554c40" />
+                  <text id="Testo-ASS" x="34" y="1075.5938" fill="#eee4d2" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="24" lengthAdjust="spacingAndGlyphs">ASS</text>
+                </g>
+                <g id="ts-palette-copy-14" aria-label="ts-palette-copy">
+                  <text id="Testo-Assistenza-clienti" x="73" y="1075.5938" fill="#f2f5ec" font-family="Manrope" font-size="12" font-weight="650" letter-spacing="0" textLength="101.3438" lengthAdjust="spacingAndGlyphs">Assistenza clienti</text>
+                </g>
+                <g id="small-14" aria-label="small">
+                  <text id="Testo--554C40" x="318.6563" y="1075" fill="#b9c2b2" font-family="Consolas" font-size="11" font-weight="400" letter-spacing="0" textLength="42.3438" lengthAdjust="spacingAndGlyphs">#554C40</text>
+                </g>
+              </g>
+            </g>
+            <g id="ts-setting-group-3" aria-label="ts-setting-group">
+              <path d="M36 1125 H354 A22 22 0 0 1 376 1147 V1185 A22 22 0 0 1 354 1207 H36 A22 22 0 0 1 14 1185 V1147 A22 22 0 0 1 36 1125 Z" fill="#1b2019" />
+              <g id="Forme-Material-3" aria-label="Forme Material 3">
+                <g id="ts-setting-icon" aria-label="ts-setting-icon">
+                  <path d="M41 1148 H53 A12 12 0 0 1 65 1160 V1172 A12 12 0 0 1 53 1184 H41 A12 12 0 0 1 29 1172 V1160 A12 12 0 0 1 41 1148 Z" fill="#293127" />
+                  <g id="lucide-shapes" aria-label="lucide-shapes">
+                    <path d="M8.3 10a.7.7 0 0 1-.626-1.079L11.4 3a.7.7 0 0 1 1.198-.043L16.3 8.9a.7.7 0 0 1-.572 1.1Z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#d0ef78" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 39 1158)" />
+                    <rect x="3" y="14" width="7" height="7" rx="1" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#d0ef78" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 39 1158)" />
+                    <circle cx="17.5" cy="17.5" r="3.5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#d0ef78" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 39 1158)" />
+                  </g>
+                </g>
+                <g id="ts-setting-copy" aria-label="ts-setting-copy">
+                  <text id="Testo-Forme-Material-3" x="77" y="1160.4063" fill="#f2f5ec" font-family="Manrope" font-size="13" font-weight="700" letter-spacing="0" textLength="103.6719" lengthAdjust="spacingAndGlyphs">Forme Material 3</text>
+                  <g id="small-15" aria-label="small">
+                    <text id="Testo-35-sagome-ufficiali" x="77" y="1180.5938" fill="#b9c2b2" font-family="Manrope" font-size="11" font-weight="500" letter-spacing="0" textLength="95.6094" lengthAdjust="spacingAndGlyphs">35 sagome ufficiali</text>
+                  </g>
+                </g>
+                <g id="lucide-chevron-right" aria-label="lucide-chevron-right">
+                  <path d="m9 18 6-6-6-6" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#b9c2b2" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 345 1158)" />
+                </g>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="ts-overlay" aria-label="ts-overlay" />
+      <g id="ts-home-indicator" aria-label="ts-home-indicator" opacity="0.6">
+        <path d="M143 1347 H247 A2 2 0 0 1 249 1349 V1349 A2 2 0 0 1 247 1351 H143 A2 2 0 0 1 141 1349 V1349 A2 2 0 0 1 143 1347 Z" fill="#f2f5ec" />
+      </g>
+    </g>
+  </g>
+</svg>

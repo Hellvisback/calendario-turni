@@ -98,7 +98,7 @@ fun TurniModelsScreen(onEditorActiveChanged:((Boolean)->Unit)?=null,initialTab:I
                                 val preferred=rotation.id==ShiftRepository.defaultRotationId
                                 val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
                                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)) {
-                                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(colors.primaryContainer),contentAlignment=Alignment.Center){SiteIcon("rotation",null,Modifier.size(21.dp),colors.primary)}
+                                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(11.dp)).background(colors.primaryContainer),contentAlignment=Alignment.Center){SiteIcon("rotation",null,Modifier.size(21.dp),com.turni.calendario.ui.theme.BrandInk)}
                                     Column(Modifier.weight(1f)){Text(rotation.name,fontSize=14.sp,fontWeight=FontWeight.SemiBold);Text("${rotation.daySequence.size} giorni · ${(rotation.daySequence.size+6)/7} settimane"+(if(preferred)" · Predefinita" else ""),fontSize=10.sp,color=colors.onSurfaceVariant,modifier=Modifier.padding(top=3.dp))}
                                     Box(Modifier.size(34.dp).clip(RoundedCornerShape(11.dp)).background(colors.surfaceVariant).clickable{
                                         ShiftRepository.toggleDefaultRotation(rotation.id)

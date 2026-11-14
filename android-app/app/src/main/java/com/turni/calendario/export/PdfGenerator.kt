@@ -8,6 +8,9 @@ import android.graphics.Paint
 import android.graphics.RectF
 import android.graphics.pdf.PdfDocument
 import androidx.core.content.FileProvider
+import androidx.compose.ui.graphics.Color as ComposeColor
+import androidx.compose.ui.graphics.toArgb
+import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
 import com.turni.calendario.repository.ShiftRepository
@@ -20,7 +23,7 @@ import java.time.LocalTime
 import kotlin.math.roundToInt
 
 data class PdfShiftRow(val code: String, val name: String, val color: Int, val time: String?, val details: List<String>)
-data class PdfDayRow(val date: LocalDate, val shifts: List<PdfShiftRow>, val details: List<String>)
+data class PdfDayRow(val date: LocalDate, val shifts: List<PdfShiftRow>, val details: List<String>, val holiday: Boolean = false)
 data class PdfExportSnapshot(val work: String, val options: PdfExportOptions, val days: List<PdfDayRow>)
 
 /** Capture repository state on the UI thread; render this immutable snapshot on IO. */
@@ -61,8 +64,9 @@ object PdfGenerator {
                 if (ShiftRepository.isOnCall(date)) add("Reperibilità")
                 if (options.includeEvents) ShiftRepository.isHoliday(date)?.let { add(it.name) }
                 if (options.includeNotes && extra.notes.isNotBlank()) add(extra.notes)
+                if (options.includeNotes) extra.tagIds.mapNotNull { id -> ShiftRepository.dayTags.firstOrNull { it.id == id }?.name }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(" · ")) }
             }
-            PdfDayRow(date, rows, dayLines)
+            PdfDayRow(date, rows, dayLines, options.includeEvents && ShiftRepository.isHoliday(date)!=null)
         }
         return PdfExportSnapshot(work.name, options, days)
     }
@@ -108,10 +112,10 @@ object PdfGenerator {
     private fun formatMinutes(minutes: Int) = "${minutes / 60} h ${minutes % 60} min"
 
     private class DocumentWriter(val doc: PdfDocument, val data: PdfExportSnapshot, val width:Float, val height:Float) {
-        private val ink=Color.rgb(20,26,36)
-        private val muted=Color.rgb(48,57,72)
-        private val accent=Color.rgb(56,102,232)
-        private val paper=Color.rgb(244,246,249)
+        private val ink=Color.rgb(25,28,34)
+        private val muted=Color.rgb(65,72,84)
+        private val accent=Color.rgb(54,91,225)
+        private val paper=Color.rgb(243,245,249)
         private val paint=Paint(Paint.ANTI_ALIAS_FLAG)
         private lateinit var canvas:Canvas
         private val margin=26f
@@ -126,8 +130,8 @@ object PdfGenerator {
             paint.style=Paint.Style.FILL;paint.color=color
             canvas.drawRoundRect(RectF(x,y,x+w,y+h),radius,radius,paint)
         }
-        private fun lines(value:String,available:Float,size:Float):List<String> {
-            paint.textSize=size;paint.isFakeBoldText=false
+        private fun lines(value:String,available:Float,size:Float,bold:Boolean=false):List<String> {
+            paint.textSize=size;paint.isFakeBoldText=bold
             if(Regex("^\\d{2}(?::\\d{2})?–\\d{2}(?::\\d{2})?$").matches(value)) {
                 // A clock range is an indivisible unit. Never split a minute or hour in half.
                 return if(paint.measureText(value)*6.5f/size>available)value.split("–")else listOf(value)
@@ -155,19 +159,24 @@ object PdfGenerator {
                 PdfExportMode.ANNO->"Calendario ${data.options.selectedYear}"
                 else->if(calendar)"Calendario del periodo" else "Elenco del periodo"
             }
-            text(if(data.options.includeLogo)"TurniSync" else "Prospetto turni",margin,29f,9f,accent,true)
-            text(title,margin,55f,20f,ink,true)
-            var top=72f
-            lines(data.work,width-2*margin,10f).forEach{text(it,margin,top,10f,muted);top+=13f}
+            box(margin,20f,width-2*margin,68f,ink,12f)
+            text(if(data.options.includeLogo)"TURNISYNC" else "PROSPETTO TURNI",margin+14f,36f,8f,Color.rgb(178,198,255),true)
+            text(title,margin+14f,61f,20f,Color.WHITE,true)
+            text(if(calendar)"CALENDARIO" else "ELENCO",width-margin-78f,36f,7f,Color.rgb(216,224,244),true)
+            var top=105f
+            lines(data.work,width-2*margin,11f,true).forEach{text(it,margin,top,11f,ink,true);top+=14f}
             val range=PdfExportPlan.range(data.options)
-            text("${range.first.format(format)} - ${range.second.format(format)}",margin,top,8f,muted);top+=18f
+            text("${range.first.format(format)} – ${range.second.format(format)}",margin,top,9f,muted);top+=17f
+            val assignments=data.days.sumOf{it.shifts.size}
+            text("${data.days.count{it.shifts.isNotEmpty()}} giorni con turni · $assignments turni",margin,top,8f,accent,true);top+=21f
             if(data.options.headerNotes.isNotBlank()) {
                 lines(data.options.headerNotes,width-2*margin,8f).forEach{text(it,margin,top,8f);top+=10f}
                 top+=8f
             }
             require(top<height-100f){crowded}
             if(calendar)calendars(months,top) else list(top)
-            text("Generato il ${LocalDate.now().format(format)}",margin,height-18f,7f,muted)
+            box(margin,height-30f,width-2*margin,1f,Color.rgb(220,224,232),0f)
+            text("TurniSync · Generato il ${LocalDate.now().format(format)}",margin,height-18f,7f,muted)
             text("1 / 1",width-margin-22f,height-18f,7f,muted)
             } finally {doc.finishPage(page)}
         }
@@ -190,22 +199,22 @@ object PdfGenerator {
                 for(columns in 1..3) {
                     val gap=12f
                     val columnWidth=(width-2*margin-gap*(columns-1))/columns
-                    val detailWidth=columnWidth-16f
+                    val detailWidth=columnWidth-24f
                     val wrapped=blocks.map { block ->
-                        lines("${block.date}  ${block.title}",detailWidth,font) +
+                        lines("${block.date}  ${block.title}",detailWidth,font,true) +
                             if(block.detail.isBlank())emptyList() else lines(block.detail,detailWidth,font-.5f)
                     }
-                    val heights=wrapped.map{it.size*(font+2f)+9f}
+                    val heights=wrapped.map{it.size*(font+2f)+12f}
                     val packed=packPdfColumns(heights,columns,available)?:continue
                     packed.forEachIndexed { column,indexes ->
                         var y=top
                         val x=margin+column*(columnWidth+gap)
                         indexes.forEach { index ->
                             val block=blocks[index]
-                            box(x,y,columnWidth,heights[index]-3f,if(index%2==0)paper else Color.WHITE)
-                            block.color?.let{box(x,y+4f,3f,heights[index]-11f,it,1.5f)}
+                            box(x,y,columnWidth,heights[index]-3f,paper,7f)
+                            block.color?.let{box(x+4f,y+5f,3f,heights[index]-14f,it,1.5f)}
                             wrapped[index].forEachIndexed { line,value ->
-                                text(value,x+8f,y+font+3f+line*(font+2f),if(line==0)font else font-.5f,if(line==0)ink else muted,line==0)
+                                text(value,x+12f,y+font+4f+line*(font+2f),if(line==0)font else font-.5f,if(line==0)ink else muted,line==0)
                             }
                             y+=heights[index]
                         }
@@ -237,19 +246,30 @@ object PdfGenerator {
                 val x=margin+(index%columns)*(tileW+gap)
                 val y=top+(index/columns)*(tileH+gap)
                 val title=month.atDay(1).format(DateTimeFormatter.ofPattern("MMMM yyyy",Locale.ITALIAN)).replaceFirstChar{it.uppercase()}
-                if(months.size>1)text(title,x+3f,y+12f,10f,ink,true)
-                val gridTop=y+if(months.size==1)18f else 33f
+                if(months.size>1){box(x,y,tileW,19f,ink,5f);text(title,x+8f,y+13f,10f,Color.WHITE,true)}
+                val gridTop=y+if(months.size==1)20f else 37f
                 val weekCount=(month.atDay(1).dayOfWeek.value-1+month.lengthOfMonth()+6)/7
                 val cellW=tileW/7f
-                val cellH=(tileH-if(months.size==1)18f else 33f)/weekCount
-                listOf("L","M","M","G","V","S","D").forEachIndexed { day,label -> text(label,x+day*cellW+5f,y+if(months.size==1)11f else 26f,7f,muted,true) }
+                val cellH=(tileH-if(months.size==1)20f else 37f)/weekCount
+                listOf("Lun","Mar","Mer","Gio","Ven","Sab","Dom").forEachIndexed { day,label ->
+                    paint.textSize=7f;paint.isFakeBoldText=true
+                    text(label,x+(day+.5f)*cellW-paint.measureText(label)/2f,y+if(months.size==1)12f else 31f,7f,if(day>=5)accent else muted,true)
+                }
                 val offset=month.atDay(1).dayOfWeek.value-1
                 for(day in 1..month.lengthOfMonth()) {
                     val date=month.atDay(day);val position=offset+day-1
                     val left=x+position%7*cellW;val cellTop=gridTop+position/7*cellH
                     val row=byDate[date]
-                    box(left+1f,cellTop,cellW-2f,cellH-3f,if(position%7>=5)Color.rgb(230,237,247)else paper,4f)
-                    text(day.toString(),left+4f,cellTop+if(months.size==1)10f else 8f,if(months.size==1)10f else 8f,ink,true)
+                    box(left+1f,cellTop,cellW-2f,cellH-3f,if(position%7>=5)Color.rgb(229,234,244)else paper,4f)
+                    val daySize=if(months.size==1)10f else 8f
+                    val dayCenter=left+cellW/2f
+                    val dayY=cellTop+if(months.size==1)10f else 8f
+                    paint.textSize=daySize;paint.isFakeBoldText=true
+                    if(row?.holiday==true){
+                        paint.style=Paint.Style.STROKE;paint.strokeWidth=.8f;paint.color=Color.rgb(178,47,63)
+                        canvas.drawRoundRect(RectF(dayCenter-7f,cellTop+1f,dayCenter+7f,cellTop+if(months.size==1)13f else 11f),2f,2f,paint)
+                    }
+                    text(day.toString(),dayCenter-paint.measureText(day.toString())/2f,dayY,daySize,ink,true)
                     if(row==null)continue
                     val compact=months.size>1
                     var selected:List<Pair<String,PdfShiftRow?>>?=null
@@ -258,24 +278,26 @@ object PdfGenerator {
                         val content=buildList<Pair<String,PdfShiftRow?>> {
                             row.shifts.forEach { shift ->
                                 val titleLine=if(compact||shift.name.isBlank())shift.code else shift.name
-                                lines(titleLine,cellW-6f,font).forEach{add(it to shift)}
+                                lines(titleLine,cellW-6f,font,true).forEach{add(it to shift)}
                                 shift.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                             }
                             row.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                         }
-                        if(content.size*(font+2f)<=cellH-if(compact)12f else 17f){selected=content;break}
+                        if(content.size*(font+2f)<=cellH-if(compact)16f else 21f){selected=content;break}
                         font-=.5f
                     }
                     require(selected!=null){crowded}
-                    var cursor=cellTop+if(compact)10f else 13f
+                    var cursor=cellTop+if(compact)14f else 17f
                     selected.forEach { (value,shift) ->
+                        var lineInk=ink
                         if(shift!=null&&data.options.includeIcon) {
-                            val tint=Color.rgb((Color.red(shift.color)+255*2)/3,(Color.green(shift.color)+255*2)/3,(Color.blue(shift.color)+255*2)/3)
+                            val tint=Color.rgb((Color.red(shift.color)*2+255)/3,(Color.green(shift.color)*2+255)/3,(Color.blue(shift.color)*2+255)/3)
                             box(left+3f,cursor-1f,cellW-6f,font+3f,tint,2f)
+                            lineInk=readableInk(ComposeColor(tint),ComposeColor(ink)).toArgb()
                         }
                         paint.textSize=font;paint.isFakeBoldText=shift!=null
                         val fittedFont=minOf(font,font*(cellW-10f)/paint.measureText(value).coerceAtLeast(1f))
-                        text(value,left+5f,cursor+font,fittedFont,ink,shift!=null)
+                        text(value,left+5f,cursor+font,fittedFont,lineInk,shift!=null)
                         cursor+=font+2f
                     }
                 }

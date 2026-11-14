@@ -1,19 +1,13 @@
+@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class)
 package com.turni.calendario.ui.screens
 
-import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
+import androidx.compose.animation.core.*
+import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
-import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.material3.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -21,631 +15,167 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.unit.Dp
-import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.turni.calendario.model.ReperibilitaMode
-import com.turni.calendario.model.SeasonalReperibilitaConfig
+import androidx.compose.ui.unit.*
+import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
-import com.turni.calendario.ui.components.AnimatedStatusPopup
-import com.turni.calendario.ui.components.PopupType
-import com.turni.calendario.ui.components.bouncyClickable
+import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
-import java.time.LocalDate
+import java.time.*
+import java.time.format.DateTimeFormatter
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+internal fun annualDayInMonth(month:Int,day:Int):Int=day.coerceIn(1,Month.of(month).maxLength())
+internal fun manualOnCallDates(dates:Set<LocalDate>,overrides:Map<LocalDate,Boolean?>):Set<LocalDate> =
+    (dates+overrides.filterValues{it==true}.keys).filterTo(mutableSetOf()){overrides[it]!=false}
+
 @Composable
-fun ReperibilitaSettingsScreen(
-    onDismiss: () -> Unit
-) {
-    var config by remember { mutableStateOf(ShiftRepository.reperibilitaConfig) }
-    var saveSuccessMessage by remember { mutableStateOf<String?>(null) }
-
-    BackHandler(onBack = onDismiss)
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-    ) {
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        // Top Bar
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Surface(
-                onClick = onDismiss,
-                shape = CircleShape,
-                color = ObsidianSurfaceContainer,
-                modifier = Modifier.size(44.dp)
-            ) {
-                Box(contentAlignment = Alignment.Center) {
-                    Icon(
-                        Icons.Outlined.ArrowBack,
-                        contentDescription = "Indietro",
-                        tint = TextPrimary,
-                        modifier = Modifier.size(20.dp)
-                    )
-                }
-            }
-            Spacer(modifier = Modifier.width(14.dp))
-            Column {
-                Text(
-                    text = "Gestione Reperibilità",
-                    fontSize = 20.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = TextPrimary
-                )
-                Text(
-                    text = "Configura la modalità di reperibilità software",
-                    fontSize = 12.sp,
-                    color = TextSecondary
-                )
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-
-
-        // Selettore Modalità Reperibilità
-        Text(
-            text = "MODALITÀ REPERIBILITÀ",
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = TextMuted,
-            letterSpacing = 1.2.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
-        )
-
-        ReperibilitaMode.values().forEach { mode ->
-            val isSelected = config.mode == mode
-            Card(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(vertical = 4.dp)
-                    .bouncyClickable {
-                        config = config.copy(mode = mode)
-                        ShiftRepository.reperibilitaConfig = config
-                    },
-                shape = RoundedCornerShape(16.dp),
-                colors = CardDefaults.cardColors(
-                    containerColor = if (isSelected) ObsidianSurfaceHighest else ObsidianSurface
-                ),
-                border = androidx.compose.foundation.BorderStroke(
-                    width = if (isSelected) 1.5.dp else 1.dp,
-                    color = if (isSelected) ColorReperibilita else ObsidianBorder
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(14.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    RadioButton(
-                        selected = isSelected,
-                        onClick = {
-                            config = config.copy(mode = mode)
-                            ShiftRepository.reperibilitaConfig = config
-                        },
-                        colors = RadioButtonDefaults.colors(
-                            selectedColor = ColorReperibilita,
-                            unselectedColor = TextMuted
-                        )
-                    )
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Column(modifier = Modifier.weight(1f)) {
-                        Text(
-                            text = mode.label,
-                            fontSize = 14.5.sp,
-                            fontWeight = FontWeight.Bold,
-                            color = if (isSelected) ColorReperibilita else TextPrimary
-                        )
-                        Spacer(modifier = Modifier.height(2.dp))
-                        Text(
-                            text = mode.description,
-                            fontSize = 12.sp,
-                            color = TextSecondary
-                        )
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        // Dettaglio Configurazione in base alla modalità selezionata
-        when (config.mode) {
-            ReperibilitaMode.MANUALE -> {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.TouchApp, contentDescription = null, tint = ColorReperibilita)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Reperibilità Singola / Manuale", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Puoi assegnare o rimuovere la reperibilità in qualsiasi momento toccando il giorno nel calendario e premendo sul chip 'Reperibilità'.",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-                        Surface(
-                            shape = RoundedCornerShape(10.dp),
-                            color = ObsidianSurfaceContainer
-                        ) {
-                            Text(
-                                text = "Date contrassegnate manualmente: ${config.manualDates.size}",
-                                color = ObsidianPrimary,
-                                fontSize = 12.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                modifier = Modifier.padding(horizontal = 10.dp, vertical = 6.dp)
-                            )
-                        }
-                    }
-                }
-            }
-
-            ReperibilitaMode.TURNO_SPECIFICO -> {
-                Card(
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = RoundedCornerShape(18.dp),
-                    colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-                ) {
-                    Column(modifier = Modifier.padding(16.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Icon(Icons.Outlined.Schedule, contentDescription = null, tint = ColorReperibilita)
-                            Spacer(modifier = Modifier.width(8.dp))
-                            Text("Seleziona i Turni di Reperibilità", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                        }
-                        Spacer(modifier = Modifier.height(8.dp))
-                        Text(
-                            "Tutti i giorni in cui lavori uno dei turni selezionati sotto avranno automaticamente la reperibilità attiva nel calendario.",
-                            color = TextSecondary,
-                            fontSize = 12.sp
-                        )
-                        Spacer(modifier = Modifier.height(12.dp))
-
-                        val availableShifts = ShiftRepository.shiftDefinitions.toList()
-                        if (availableShifts.isEmpty()) {
-                            Surface(
-                                shape = RoundedCornerShape(12.dp),
-                                color = ObsidianSurfaceContainer,
-                                modifier = Modifier.fillMaxWidth()
-                            ) {
-                                Row(
-                                    modifier = Modifier.padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Icon(Icons.Outlined.Info, contentDescription = null, tint = TextMuted, modifier = Modifier.size(18.dp))
-                                    Spacer(modifier = Modifier.width(8.dp))
-                                    Text("Nessun turno configurato. Crea prima i tuoi turni personalizzati nella sezione Turni.", color = TextMuted, fontSize = 12.sp)
-                                }
-                            }
-                        } else {
-                            // SimpleFlowRow elastico che racchiude TUTTI i turni dell'utente senza tagli
-                            SimpleFlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalSpacing = 8.dp,
-                                verticalSpacing = 8.dp
-                            ) {
-                                availableShifts.forEach { shiftDef ->
-                                    val isChosen = shiftDef.id in config.shiftSpecificIds
-                                    Surface(
-                                        onClick = {
-                                            val newIds = if (isChosen) config.shiftSpecificIds - shiftDef.id else config.shiftSpecificIds + shiftDef.id
-                                            config = config.copy(shiftSpecificIds = newIds)
-                                            ShiftRepository.reperibilitaConfig = config
-                                        },
-                                        shape = RoundedCornerShape(10.dp),
-                                        color = if (isChosen) shiftDef.color.copy(alpha = 0.25f) else ObsidianSurfaceHigh,
-                                        border = androidx.compose.foundation.BorderStroke(
-                                            width = 1.dp,
-                                            color = if (isChosen) shiftDef.color else ObsidianBorderSubtle
-                                        )
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 10.dp, vertical = 7.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(8.dp)
-                                                    .clip(CircleShape)
-                                                    .background(shiftDef.color)
-                                            )
-                                            Spacer(modifier = Modifier.width(6.dp))
-                                            Text(
-                                                text = "${shiftDef.shortCode} • ${shiftDef.name}",
-                                                fontSize = 12.sp,
-                                                fontWeight = if (isChosen) FontWeight.Bold else FontWeight.Normal,
-                                                color = if (isChosen) TextPrimary else TextSecondary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-
-            ReperibilitaMode.ALTERNATA_STAGIONALE -> {
-                val seasonal = config.seasonal
-                val monthNames = mapOf(
-                    1 to "Gen", 2 to "Feb", 3 to "Mar", 4 to "Apr",
-                    5 to "Mag", 6 to "Giu", 7 to "Lug", 8 to "Ago",
-                    9 to "Set", 10 to "Ott", 11 to "Nov", 12 to "Dic"
-                )
-
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    // Card Periodo Invernale
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.AcUnit, contentDescription = null, tint = ObsidianPrimary)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Inverno: Reperibilità su Turni (Data A ➜ Data B)", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                "Nel periodo invernale (ripetuto in loop ogni anno), la reperibilità è attiva nei giorni con i turni selezionati sotto.",
-                                color = TextSecondary,
-                                fontSize = 11.5.sp
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Selettore Data A (Inizio) e Data B (Fine)
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(8.dp)
-                            ) {
-                                // Data A Inizio
-                                Surface(
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianSurfaceContainer,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Text("DATA A (INIZIO)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ObsidianPrimary)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            "${seasonal.winterStartDay} ${monthNames[seasonal.winterStartMonth] ?: "Ott"}",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = TextPrimary
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = ObsidianSurfaceHigh,
-                                                modifier = Modifier.size(26.dp).bouncyClickable {
-                                                    val newM = if (seasonal.winterStartMonth == 1) 12 else seasonal.winterStartMonth - 1
-                                                    config = config.copy(seasonal = seasonal.copy(winterStartMonth = newM))
-                                                    ShiftRepository.reperibilitaConfig = config
-                                                }
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) { Text("M-", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary) }
-                                            }
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = ObsidianSurfaceHigh,
-                                                modifier = Modifier.size(26.dp).bouncyClickable {
-                                                    val newM = if (seasonal.winterStartMonth == 12) 1 else seasonal.winterStartMonth + 1
-                                                    config = config.copy(seasonal = seasonal.copy(winterStartMonth = newM))
-                                                    ShiftRepository.reperibilitaConfig = config
-                                                }
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) { Text("M+", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary) }
-                                            }
-                                        }
-                                    }
-                                }
-
-                                // Data B Fine
-                                Surface(
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    color = ObsidianSurfaceContainer,
-                                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                                ) {
-                                    Column(modifier = Modifier.padding(10.dp)) {
-                                        Text("DATA B (FINE)", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ObsidianPrimary)
-                                        Spacer(modifier = Modifier.height(4.dp))
-                                        Text(
-                                            "${seasonal.winterEndDay} ${monthNames[seasonal.winterEndMonth] ?: "Mag"}",
-                                            fontSize = 14.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = TextPrimary
-                                        )
-                                        Spacer(modifier = Modifier.height(6.dp))
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            horizontalArrangement = Arrangement.SpaceBetween
-                                        ) {
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = ObsidianSurfaceHigh,
-                                                modifier = Modifier.size(26.dp).bouncyClickable {
-                                                    val newM = if (seasonal.winterEndMonth == 1) 12 else seasonal.winterEndMonth - 1
-                                                    config = config.copy(seasonal = seasonal.copy(winterEndMonth = newM))
-                                                    ShiftRepository.reperibilitaConfig = config
-                                                }
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) { Text("M-", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary) }
-                                            }
-                                            Surface(
-                                                shape = CircleShape,
-                                                color = ObsidianSurfaceHigh,
-                                                modifier = Modifier.size(26.dp).bouncyClickable {
-                                                    val newM = if (seasonal.winterEndMonth == 12) 1 else seasonal.winterEndMonth + 1
-                                                    config = config.copy(seasonal = seasonal.copy(winterEndMonth = newM))
-                                                    ShiftRepository.reperibilitaConfig = config
-                                                }
-                                            ) {
-                                                Box(contentAlignment = Alignment.Center) { Text("M+", fontSize = 9.sp, fontWeight = FontWeight.Bold, color = TextSecondary) }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-                            Text("Turni in reperibilità d'inverno:", fontSize = 11.5.sp, color = TextMuted, fontWeight = FontWeight.SemiBold)
-                            Spacer(modifier = Modifier.height(6.dp))
-
-                            // Chip turni per inverno con SimpleFlowRow elastico
-                            SimpleFlowRow(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalSpacing = 6.dp,
-                                verticalSpacing = 6.dp
-                            ) {
-                                val availableShifts = ShiftRepository.shiftDefinitions.toList()
-                                availableShifts.forEach { sDef ->
-                                    val isWinterActive = sDef.id in seasonal.winterShiftIds
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = if (isWinterActive) sDef.color.copy(alpha = 0.25f) else ObsidianSurfaceHigh,
-                                        border = androidx.compose.foundation.BorderStroke(1.dp, if (isWinterActive) sDef.color else ObsidianBorderSubtle),
-                                        modifier = Modifier.bouncyClickable {
-                                            val newShiftIds = if (isWinterActive) seasonal.winterShiftIds - sDef.id else seasonal.winterShiftIds + sDef.id
-                                            config = config.copy(seasonal = seasonal.copy(winterShiftIds = newShiftIds))
-                                            ShiftRepository.reperibilitaConfig = config
-                                        }
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(horizontal = 8.dp, vertical = 5.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(7.dp)
-                                                    .clip(CircleShape)
-                                                    .background(sDef.color)
-                                            )
-                                            Spacer(modifier = Modifier.width(5.dp))
-                                            Text(
-                                                text = "${sDef.shortCode} • ${sDef.name}",
-                                                fontSize = 11.sp,
-                                                fontWeight = FontWeight.Bold,
-                                                color = if (isWinterActive) TextPrimary else TextSecondary
-                                            )
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-
-                    // Card Periodo Estivo a Settimane
-                    Card(
-                        modifier = Modifier.fillMaxWidth(),
-                        shape = RoundedCornerShape(18.dp),
-                        colors = CardDefaults.cardColors(containerColor = ObsidianSurface),
-                        border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-                    ) {
-                        Column(modifier = Modifier.padding(16.dp)) {
-                            Row(verticalAlignment = Alignment.CenterVertically) {
-                                Icon(Icons.Outlined.WbSunny, contentDescription = null, tint = ColorReperibilita)
-                                Spacer(modifier = Modifier.width(8.dp))
-                                Text("Estate: Rotazione a Settimane (Data B ➜ Data A)", fontWeight = FontWeight.Bold, color = TextPrimary, fontSize = 14.sp)
-                            }
-                            Spacer(modifier = Modifier.height(6.dp))
-                            Text(
-                                "Dalla data B alla data A, la reperibilità ruota a blocchi settimanali a partire dal giorno di inizio configurato.",
-                                color = TextSecondary,
-                                fontSize = 11.5.sp
-                            )
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Data inizio ciclo estivo (Ancora)
-                            Surface(
-                                modifier = Modifier.fillMaxWidth(),
-                                shape = RoundedCornerShape(12.dp),
-                                color = ObsidianSurfaceContainer,
-                                border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(10.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Column {
-                                        Text("INIZIO 1ª SETTIMANA REPERIBILITÀ", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = ColorReperibilita)
-                                        val refDate = seasonal.summerCycleReferenceDate
-                                        Text(
-                                            "${refDate.dayOfMonth} ${monthNames[refDate.monthValue] ?: ""} ${refDate.year}",
-                                            fontSize = 14.5.sp,
-                                            fontWeight = FontWeight.ExtraBold,
-                                            color = TextPrimary
-                                        )
-                                    }
-
-                                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = ObsidianSurfaceHigh,
-                                            modifier = Modifier.size(28.dp).bouncyClickable {
-                                                val prev = seasonal.summerCycleReferenceDate.minusWeeks(1)
-                                                config = config.copy(seasonal = seasonal.copy(summerCycleReferenceDate = prev))
-                                                ShiftRepository.reperibilitaConfig = config
-                                            }
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) { Text("-7g", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary) }
-                                        }
-                                        Surface(
-                                            shape = CircleShape,
-                                            color = ObsidianSurfaceHigh,
-                                            modifier = Modifier.size(28.dp).bouncyClickable {
-                                                val next = seasonal.summerCycleReferenceDate.plusWeeks(1)
-                                                config = config.copy(seasonal = seasonal.copy(summerCycleReferenceDate = next))
-                                                ShiftRepository.reperibilitaConfig = config
-                                            }
-                                        ) {
-                                            Box(contentAlignment = Alignment.Center) { Text("+7g", fontSize = 10.sp, fontWeight = FontWeight.Bold, color = TextPrimary) }
-                                        }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            // Controlli Settimane di lavoro e reperibilità
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text("Settimane Turno Ordinario", fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                                    Text("Senza reperibilità", fontSize = 10.5.sp, color = TextMuted)
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = ObsidianSurfaceHigh,
-                                        modifier = Modifier.size(28.dp).bouncyClickable {
-                                            val next = (seasonal.summerCycleWorkWeeks - 1).coerceAtLeast(1)
-                                            config = config.copy(seasonal = seasonal.copy(summerCycleWorkWeeks = next))
-                                            ShiftRepository.reperibilitaConfig = config
-                                        }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) { Text("-", color = TextPrimary, fontWeight = FontWeight.Bold) }
-                                    }
-                                    Text("${seasonal.summerCycleWorkWeeks} sett.", color = ObsidianPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = ObsidianSurfaceHigh,
-                                        modifier = Modifier.size(28.dp).bouncyClickable {
-                                            val next = seasonal.summerCycleWorkWeeks + 1
-                                            config = config.copy(seasonal = seasonal.copy(summerCycleWorkWeeks = next))
-                                            ShiftRepository.reperibilitaConfig = config
-                                        }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) { Text("+", color = TextPrimary, fontWeight = FontWeight.Bold) }
-                                    }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(10.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Column {
-                                    Text("Settimane Reperibilità", fontSize = 12.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
-                                    Text("Reperibile tutta la settimana", fontSize = 10.5.sp, color = TextMuted)
-                                }
-                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = ObsidianSurfaceHigh,
-                                        modifier = Modifier.size(28.dp).bouncyClickable {
-                                            val next = (seasonal.summerCycleOnCallWeeks - 1).coerceAtLeast(1)
-                                            config = config.copy(seasonal = seasonal.copy(summerCycleOnCallWeeks = next))
-                                            ShiftRepository.reperibilitaConfig = config
-                                        }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) { Text("-", color = TextPrimary, fontWeight = FontWeight.Bold) }
-                                    }
-                                    Text("${seasonal.summerCycleOnCallWeeks} sett.", color = ColorReperibilita, fontWeight = FontWeight.Bold, fontSize = 13.sp)
-                                    Surface(
-                                        shape = CircleShape,
-                                        color = ObsidianSurfaceHigh,
-                                        modifier = Modifier.size(28.dp).bouncyClickable {
-                                            val next = seasonal.summerCycleOnCallWeeks + 1
-                                            config = config.copy(seasonal = seasonal.copy(summerCycleOnCallWeeks = next))
-                                            ShiftRepository.reperibilitaConfig = config
-                                        }
-                                    ) {
-                                        Box(contentAlignment = Alignment.Center) { Text("+", color = TextPrimary, fontWeight = FontWeight.Bold) }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(24.dp))
-
-        // Tasto Salva Configurazione
-        Button(
-            onClick = {
-                ShiftRepository.reperibilitaConfig = config
-                saveSuccessMessage = "Configurazione Reperibilità salvata con successo!"
-            },
-            colors = ButtonDefaults.buttonColors(containerColor = ColorReperibilita),
-            shape = RoundedCornerShape(14.dp),
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(48.dp)
-        ) {
-            Icon(Icons.Outlined.Save, contentDescription = null, tint = Color.Black, modifier = Modifier.size(18.dp))
-            Spacer(modifier = Modifier.width(8.dp))
-            Text("Salva Regole Reperibilità", color = Color.Black, fontWeight = FontWeight.ExtraBold, fontSize = 14.sp)
-        }
-
-        Spacer(modifier = Modifier.height(80.dp))
+fun ReperibilitaSettingsScreen(onDismiss:()->Unit) {
+    val config=ShiftRepository.reperibilitaConfig
+    fun update(change:(ReperibilitaConfig)->ReperibilitaConfig){
+        ShiftRepository.reperibilitaConfig=change(ShiftRepository.reperibilitaConfig)
     }
+    val titles=listOf("Scelgo i giorni","Segue i miei turni","Cambia durante l’anno")
+    val descriptions=listOf("La aggiungi tu con la campanella.","Si attiva sui modelli che scegli.","Turni in un periodo, settimane nel resto dell’anno.")
+    val icons=listOf("bell","clock","calendar")
+    CloudFeatureScaffold("Reperibilità",onDismiss,null,{}) {
+        CloudCard("La campanella sul calendario","Segna i giorni in cui devi essere disponibile. Questa impostazione non crea una sveglia: gli avvisi si gestiscono in Sveglie dei turni.") {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(currentTurniPalette.onCall.fill)).padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                SiteIcon("bell",null,Modifier.size(24.dp),ColorReperibilita)
+                Text(titles[config.mode.ordinal],color=readableInk(Color(currentTurniPalette.onCall.fill),TextPrimary),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
+            }
+        }
+        CloudCard("Come vuoi aggiungerla?") {
+            ReperibilitaMode.values().forEachIndexed { index,mode ->
+                val selected=config.mode==mode
+                val fill by animateColorAsState(if(selected)ObsidianPrimarySubtle else ObsidianSurfaceContainer,tween(220))
+                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(fill)
+                    .border(if(selected)1.5.dp else 0.dp,if(selected)BrandInk else Color.Transparent,RoundedCornerShape(14.dp))
+                    .bouncyClickable{update{it.copy(mode=mode)}}.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                    SiteIcon(icons[index],null,Modifier.size(22.dp),if(selected)BrandInk else TextSecondary)
+                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                        Text(titles[index],fontSize=14.sp,color=TextPrimary,fontWeight=FontWeight.SemiBold)
+                        Text(descriptions[index],fontSize=12.sp,lineHeight=17.sp,color=TextSecondary)
+                    }
+                    if(selected)SiteIcon("check","Modalità selezionata",Modifier.size(18.dp),BrandInk)
+                }
+            }
+        }
+        AnimatedContent(config.mode,transitionSpec={
+            (fadeIn(tween(220,delayMillis=60)) togetherWith fadeOut(tween(120))) using SizeTransform{_,_->tween(320)}
+        }) { mode ->
+            Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                when(mode) {
+                    ReperibilitaMode.MANUALE -> CloudCard("Scegli dal calendario","Apri un giorno e tocca la campanella. Puoi farlo anche dalla barra di modifica: lo stesso strumento funziona con Cambia, Più turni e Rotazioni.") {
+                        val count=manualOnCallDates(config.manualDates,ShiftRepository.dayExtraInfo.mapValues{it.value.isOnCallManual}).size
+                        Text("$count ${if(count==1)"giorno attivato" else "giorni attivati"} manualmente",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=BrandInk)
+                        Text("Non vengono aggiunti altri giorni automaticamente.",fontSize=12.sp,color=TextSecondary)
+                    }
+                    ReperibilitaMode.TURNO_SPECIFICO -> CloudCard("Quali turni la attivano?","La campanella si accende nei giorni che contengono almeno uno dei modelli selezionati. Se cambi il turno, la regola si aggiorna.") {
+                        OnCallModelChoices(config.shiftSpecificIds){ids->update{it.copy(shiftSpecificIds=ids)}}
+                    }
+                    ReperibilitaMode.ALTERNATA_STAGIONALE -> {
+                        CloudCard("1 · Un periodo segue i turni","Il periodo si ripete ogni anno. Le date iniziale e finale sono comprese; puoi anche attraversare Capodanno, per esempio da ottobre a maggio.") {
+                            AnnualOnCallDate("Dal",config.seasonal.winterStartMonth,config.seasonal.winterStartDay){month,day->update{it.copy(seasonal=it.seasonal.copy(winterStartMonth=month,winterStartDay=day))}}
+                            AnnualOnCallDate("Al",config.seasonal.winterEndMonth,config.seasonal.winterEndDay){month,day->update{it.copy(seasonal=it.seasonal.copy(winterEndMonth=month,winterEndDay=day))}}
+                            Text("In questo periodo la campanella segue questi modelli:",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
+                            OnCallModelChoices(config.seasonal.winterShiftIds){ids->update{it.copy(seasonal=it.seasonal.copy(winterShiftIds=ids))}}
+                        }
+                        CloudCard("2 · Nel resto dell’anno alterna settimane","Fuori dalle date qui sopra, conta i giorni a blocchi di 7 dalla data scelta, anche se non è lunedì. Le settimane reperibili valgono per tutti i giorni, anche senza turno.") {
+                            OnCallReferenceDate(config.seasonal.summerCycleReferenceDate){date->update{it.copy(seasonal=it.seasonal.copy(summerCycleReferenceDate=date))}}
+                            OnCallWeekCount("Settimane con reperibilità",config.seasonal.summerCycleOnCallWeeks){value->update{it.copy(seasonal=it.seasonal.copy(summerCycleOnCallWeeks=value))}}
+                            OnCallWeekCount("Poi settimane senza",config.seasonal.summerCycleWorkWeeks){value->update{it.copy(seasonal=it.seasonal.copy(summerCycleWorkWeeks=value))}}
+                            Text("Il ciclo si ripete: ${config.seasonal.summerCycleOnCallWeeks} con reperibilità, poi ${config.seasonal.summerCycleWorkWeeks} senza. La data scelta avvia il primo blocco reperibile.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
+                        }
+                    }
+                }
+            }
+        }
+        CloudCard("Puoi sempre cambiare un singolo giorno","La scelta manuale sul giorno ha la precedenza sulla regola: campanella accesa significa reperibile, spenta significa non reperibile. Le impostazioni si salvano automaticamente.") {
+            Text("Prossimi 7 giorni",color=TextPrimary,fontWeight=FontWeight.SemiBold,fontSize=13.sp)
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                repeat(7){offset->val date=LocalDate.now().plusDays(offset.toLong());val on=ShiftRepository.isOnCall(date)
+                    val fill=if(on)Color(currentTurniPalette.onCall.fill)else ObsidianSurfaceContainer
+                    Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(fill).padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
+                        Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW,Locale.ITALIAN),fontSize=10.sp,color=TextSecondary)
+                        Text("${date.dayOfMonth}",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=readableInk(fill,TextPrimary))
+                        SiteIcon(if(on)"bell" else "minus",null,Modifier.size(13.dp),if(on)ColorReperibilita else TextMuted)
+                    }
+                }
+            }
+        }
+    }
+}
 
-    AnimatedStatusPopup(
-        message = saveSuccessMessage,
-        type = PopupType.SUCCESS,
-        onDismiss = { saveSuccessMessage = null }
-    )
+@Composable
+private fun OnCallModelChoices(selected:List<String>,onChange:(List<String>)->Unit) {
+    val all=ShiftRepository.shiftDefinitions.toList()
+    if(all.isEmpty())Text("Non hai ancora modelli. Creali in Turni e lavori, poi torna qui per sceglierli.",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
+    all.groupBy{it.workProfileId}.forEach{(work,models)->
+        if(ShiftRepository.workProfiles.size>1)Text(ShiftRepository.workProfiles.firstOrNull{it.id==work}?.name?:"Altro lavoro",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=TextSecondary)
+        models.chunked(2).forEach{row->Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+            row.forEach{model->val chosen=model.id in selected;val tone=shiftColorStyle(model.color,TurniThemeState.dark,ObsidianSurface)
+                val fill by animateColorAsState(if(chosen)tone.codeFill else ObsidianSurfaceContainer,tween(220))
+                Row(Modifier.weight(1f).heightIn(min=50.dp).clip(RoundedCornerShape(12.dp)).background(fill)
+                    .bouncyClickable{onChange(if(chosen)selected-model.id else selected+model.id)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        Text(model.shortCode,color=if(chosen)tone.codeInk else TextPrimary,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                        Text(model.name,color=if(chosen)tone.codeInk else TextSecondary,fontSize=11.sp,lineHeight=15.sp)
+                    }
+                    if(chosen)SiteIcon("check","Selezionato",Modifier.size(16.dp),tone.codeInk)
+                }
+            }
+            if(row.size==1)Spacer(Modifier.weight(1f))
+        }}
+    }
+}
+
+@Composable
+private fun AnnualOnCallDate(label:String,month:Int,day:Int,onDate:(Int,Int)->Unit) {
+    var open by remember{mutableStateOf(false)}
+    var shown by remember(month){mutableStateOf(month)}
+    val value=LocalDate.of(2028,month,annualDayInMonth(month,day)).format(DateTimeFormatter.ofPattern("d MMMM",Locale.ITALIAN))
+    Column {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).bouncyClickable{open=!open;shown=month}.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)){Text("$label · ogni anno",fontSize=11.sp,color=TextSecondary);Text(value,fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary)}
+            SiteIcon("calendar","Scegli data",Modifier.size(21.dp),BrandInk)
+        }
+        AnimatedVisibility(open,enter=expandVertically(tween(300))+fadeIn(),exit=shrinkVertically(tween(220))+fadeOut()) {
+            Column(Modifier.padding(top=8.dp)) {
+                Row(verticalAlignment=Alignment.CenterVertically) {
+                    PanelIcon("chevron-left","Mese precedente",{shown=if(shown==1)12 else shown-1},width=36.dp)
+                    Text(Month.of(shown).getDisplayName(java.time.format.TextStyle.FULL,Locale.ITALIAN),Modifier.weight(1f),textAlign=androidx.compose.ui.text.style.TextAlign.Center,color=TextPrimary,fontSize=14.sp)
+                    PanelIcon("chevron-right","Mese successivo",{shown=if(shown==12)1 else shown+1},width=36.dp)
+                }
+                (1..Month.of(shown).maxLength()).toList().chunked(7).forEach{week->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)){
+                    week.forEach{number->Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp)).background(if(shown==month&&number==day)ObsidianPrimary else ObsidianSurfaceContainer).bouncyClickable{onDate(shown,number);open=false},contentAlignment=Alignment.Center){Text("$number",color=if(shown==month&&number==day)OnBrand else TextPrimary,fontSize=12.sp)}}
+                    repeat(7-week.size){Spacer(Modifier.weight(1f))}
+                };Spacer(Modifier.height(3.dp))}
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnCallReferenceDate(value:LocalDate,onDate:(LocalDate)->Unit) {
+    var open by remember{mutableStateOf(false)};var month by remember(value){mutableStateOf(YearMonth.from(value))}
+    Column {
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).bouncyClickable{open=!open}.padding(12.dp),verticalAlignment=Alignment.CenterVertically) {
+            Column(Modifier.weight(1f)){Text("Inizio della prima settimana reperibile",fontSize=11.sp,color=TextSecondary);Text(value.format(DateTimeFormatter.ofPattern("d MMMM yyyy",Locale.ITALIAN)),fontSize=15.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary)}
+            SiteIcon("calendar","Scegli inizio ciclo",Modifier.size(21.dp),BrandInk)
+        }
+        AnimatedVisibility(open,enter=expandVertically(tween(300))+fadeIn(),exit=shrinkVertically(tween(220))+fadeOut()) {
+            AppDateGrid(month,value,{month=it},compact=true,select={onDate(it);open=false})
+        }
+    }
+}
+
+@Composable
+private fun OnCallWeekCount(label:String,value:Int,onChange:(Int)->Unit) {
+    Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
+        Text(label,Modifier.weight(1f),fontSize=13.sp,lineHeight=18.sp,color=TextPrimary)
+        PanelIcon("minus","Riduci $label",{if(value>1)onChange(value-1)},width=34.dp,height=34.dp,background=ObsidianSurfaceContainer)
+        Text("$value",Modifier.widthIn(min=24.dp),fontSize=16.sp,color=BrandInk,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
+        PanelIcon("plus","Aumenta $label",{if(value<Int.MAX_VALUE)onChange(value+1)},width=34.dp,height=34.dp,background=ObsidianSurfaceContainer)
     }
 }
 

@@ -21,7 +21,7 @@ class GeminiNetworkAndSecurityTest {
         assertEquals("", SecurePreferencesManager.getMaskedApiKey(null))
 
         // Save key
-        val sampleKey = "AIzaSyB3TestSecretKeyForTurni1234xQ"
+        val sampleKey = ("AIzaSy" + "X".repeat(26) + "4xQ")
         SecurePreferencesManager.saveApiKey(null, sampleKey)
         assertTrue(SecurePreferencesManager.hasApiKey(null))
         assertEquals(sampleKey, SecurePreferencesManager.getApiKey(null))

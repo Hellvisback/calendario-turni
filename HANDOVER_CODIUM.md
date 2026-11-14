@@ -1,3 +1,5 @@
+> **Stato aggiornato al 14/11/2026: beta.17 (62).** Per riprendere da remoto leggere prima [docs/CLOUD_HANDOFF.md](docs/CLOUD_HANDOFF.md). Le sezioni successive sono storico: versioni, percorsi e comandi più vecchi non prevalgono sulla guida cloud.
+
 > Aggiornamento 28/10/2026: 1.8.0-beta.2 (47), APK R8 installato. Corretto il reset tardivo delle statistiche/ingresso delle destinazioni e i totali obsoleti al cambio periodo. Conferma nome AI con pulsante, feedback e chiusura tastiera; contatori accessibili. 432 test per variante, lint 0 errori/135 avvisi, dati invariati. Restano frame lenti: vedere docs/VERIFICA_v1.8.0-beta.2.md. Non pubblicata.
 
 > Candidata corrente: 1.8.0-beta.1 (46), build assembleBeta ottimizzata; vedere docs/VERIFICA_v1.8.0-beta.1.md per prove, simboli R8, firma e limiti prestazioni/cloud. Non pubblicata.

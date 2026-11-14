@@ -1,0 +1,1281 @@
+<?xml version='1.0' encoding='utf-8'?>
+<svg xmlns="http://www.w3.org/2000/svg" width="390" height="818" viewBox="0 0 390 818">
+  <title>TurniSync · Dettaglio con nota, reperibilità e straordinario · acqua-iris · chiaro</title>
+  <defs>
+    <clipPath id="Ritaglio">
+      <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-2">
+      <path d="M0 40 H390 L390 40 V790 L390 790 H0 L0 790 V40 L0 40 Z" />
+    </clipPath>
+    <clipPath id="Ritaglio-3">
+      <path d="M38 102 H352 A24 24 0 0 1 376 126 V645 A24 24 0 0 1 352 669 H38 A24 24 0 0 1 14 645 V126 A24 24 0 0 1 38 102 Z" />
+    </clipPath>
+  </defs>
+  <g id="TurniSync" aria-label="TurniSync">
+    <path d="M32 0 H358 A32 32 0 0 1 390 32 V786 A32 32 0 0 1 358 818 H32 A32 32 0 0 1 0 786 V32 A32 32 0 0 1 32 0 Z" fill="#f2f7f6" />
+    <g clip-path="url(#Ritaglio)">
+      <g id="ts-status" aria-label="ts-status">
+        <g id="span" aria-label="span">
+          <text id="Testo-9-41" x="26" y="24.2969" fill="#1c302e" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0.2" textLength="22.9219" lengthAdjust="spacingAndGlyphs">9:41</text>
+        </g>
+        <g id="Passa-al-tema-scuro" aria-label="Passa al tema scuro">
+          <path d="M171.9063 6 H218.0938 A14.5 14.5 0 0 1 232.5938 20.5 V20.5 A14.5 14.5 0 0 1 218.0938 35 H171.9063 A14.5 14.5 0 0 1 157.4063 20.5 V20.5 A14.5 14.5 0 0 1 171.9063 6 Z" fill="#e5efec" />
+          <g id="lucide-sun" aria-label="lucide-sun">
+            <circle cx="12" cy="12" r="4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 2v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M12 20v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m4.93 4.93 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m17.66 17.66 1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M2 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="M20 12h2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m6.34 17.66-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+            <path d="m19.07 4.93-1.41 1.41" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 166.4063 12.5)" />
+          </g>
+          <text id="Testo-Chiaro" x="188.4063" y="24.7969" fill="#1c302e" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="35.1875" lengthAdjust="spacingAndGlyphs">Chiaro</text>
+        </g>
+        <g id="ts-system" aria-label="ts-system">
+          <g id="lucide-signal" aria-label="lucide-signal">
+            <path d="M2 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M7 20v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M12 20v-8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M17 20V8" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+            <path d="M22 4v16" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 304 12)" />
+          </g>
+          <g id="lucide-wifi" aria-label="lucide-wifi">
+            <path d="M12 20h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M2 8.82a15 15 0 0 1 20 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M5 12.859a10 10 0 0 1 14 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+            <path d="M8.5 16.429a5 5 0 0 1 7 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 326 12)" />
+          </g>
+          <g id="lucide-battery-full" aria-label="lucide-battery-full">
+            <path d="M10 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M14 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M22 14v-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <path d="M6 10v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+            <rect x="2" y="6" width="16" height="12" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 348 12)" />
+          </g>
+        </g>
+      </g>
+      <g id="ts-body" aria-label="ts-body">
+        <g clip-path="url(#Ritaglio-2)">
+          <g id="div" aria-label="div">
+            <g id="ts-header" aria-label="ts-header">
+              <g id="ts-month" aria-label="ts-month">
+                <g id="Mese-precedente" aria-label="Mese precedente">
+                  <g id="lucide-chevron-left" aria-label="lucide-chevron-left">
+                    <path d="m15 18-6-6 6-6" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 18 64)" />
+                  </g>
+                </g>
+                <g id="strong" aria-label="strong">
+                  <text id="Testo-Novembre" x="40" y="78.7031" fill="#1c302e" font-family="Manrope" font-size="19" font-weight="800" letter-spacing="-0.75" textLength="89.5156" lengthAdjust="spacingAndGlyphs">Novembre</text>
+                  <g id="ts-year" aria-label="ts-year">
+                    <text id="Testo-2026" x="133.5156" y="78.7031" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="-0.75" textLength="23.8125" lengthAdjust="spacingAndGlyphs">2026</text>
+                  </g>
+                </g>
+                <g id="Mese-successivo" aria-label="Mese successivo">
+                  <g id="lucide-chevron-right" aria-label="lucide-chevron-right">
+                    <path d="m9 18 6-6-6-6" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 163.3281 64)" />
+                  </g>
+                </g>
+              </g>
+              <g id="Seleziona-lavoro" aria-label="Seleziona lavoro">
+                <g id="lucide-briefcase-business" aria-label="lucide-briefcase-business">
+                  <path d="M12 12h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 270.6563 63.9844)" />
+                  <path d="M16 6V4a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 270.6563 63.9844)" />
+                  <path d="M22 13a18.15 18.15 0 0 1-20 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 270.6563 63.9844)" />
+                  <rect x="2" y="6" width="20" height="14" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 270.6563 63.9844)" />
+                </g>
+                <g id="span-2" aria-label="span">
+                  <text id="Testo-Studio" x="291.6563" y="75.5938" fill="#1c302e" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="36.3438" lengthAdjust="spacingAndGlyphs">Studio</text>
+                </g>
+              </g>
+              <g id="Impostazioni" aria-label="Impostazioni">
+                <path d="M358 54 H358 A18 18 0 0 1 376 72 V72 A18 18 0 0 1 358 90 H358 A18 18 0 0 1 340 72 V72 A18 18 0 0 1 358 54 Z" fill="#ffffff" />
+                <g id="lucide-settings-2" aria-label="lucide-settings-2">
+                  <path d="M14 17H5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <path d="M19 7h-9" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <circle cx="17" cy="17" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                  <circle cx="7" cy="7" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 350 64)" />
+                </g>
+              </g>
+            </g>
+            <g id="ts-calendar" aria-label="ts-calendar">
+              <path d="M38 102 H352 A24 24 0 0 1 376 126 V645 A24 24 0 0 1 352 669 H38 A24 24 0 0 1 14 645 V126 A24 24 0 0 1 38 102 Z" fill="#ffffff" />
+              <g clip-path="url(#Ritaglio-3)">
+                <g id="ts-weekdays" aria-label="ts-weekdays">
+                  <g id="span-3" aria-label="span">
+                    <text id="Testo-L" x="40.3594" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="5.8281" lengthAdjust="spacingAndGlyphs">L</text>
+                  </g>
+                  <g id="span-4" aria-label="span">
+                    <text id="Testo-M" x="89.1563" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="9.3906" lengthAdjust="spacingAndGlyphs">M</text>
+                  </g>
+                  <g id="span-5" aria-label="span">
+                    <text id="Testo-M-2" x="139.7188" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="9.3906" lengthAdjust="spacingAndGlyphs">M</text>
+                  </g>
+                  <g id="span-6" aria-label="span">
+                    <text id="Testo-G" x="190.9844" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="8.0156" lengthAdjust="spacingAndGlyphs">G</text>
+                  </g>
+                  <g id="span-7" aria-label="span">
+                    <text id="Testo-V" x="242.0625" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="6.9844" lengthAdjust="spacingAndGlyphs">V</text>
+                  </g>
+                  <g id="span-8" aria-label="span">
+                    <text id="Testo-S" x="292.5469" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="7.1563" lengthAdjust="spacingAndGlyphs">S</text>
+                  </g>
+                  <g id="span-9" aria-label="span">
+                    <text id="Testo-D" x="342.875" y="127.2969" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="650" letter-spacing="0" textLength="7.6563" lengthAdjust="spacingAndGlyphs">D</text>
+                  </g>
+                </g>
+                <g id="ts-days" aria-label="ts-days">
+                  <g id="Livello-26-altro-mese-Pomeriggio" aria-label="26 altro mese, Pomeriggio">
+                    <g id="ts-date-row" aria-label="ts-date-row">
+                      <g id="ts-date" aria-label="ts-date">
+                        <text id="Testo-26" x="33.1094" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">26</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift" aria-label="ts-shift">
+                      <path d="M27 173 H57.8438 A7 7 0 0 1 64.8438 180 V205 A7 7 0 0 1 57.8438 212 H27 A7 7 0 0 1 20 205 V180 A7 7 0 0 1 27 173 Z" fill="#e5efec" />
+                      <g id="strong-2" aria-label="strong">
+                        <text id="Testo-POM" x="29.1094" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-10" aria-label="span">
+                        <text id="Testo-14-00" x="26.9688" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-27-altro-mese-Pomeriggio" aria-label="27 altro mese, Pomeriggio">
+                    <g id="ts-date-row-2" aria-label="ts-date-row">
+                      <g id="ts-date-2" aria-label="ts-date">
+                        <text id="Testo-27" x="83.9688" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">27</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-2" aria-label="ts-shift">
+                      <path d="M77.8438 173 H108.7032 A7 7 0 0 1 115.7032 180 V205 A7 7 0 0 1 108.7032 212 H77.8438 A7 7 0 0 1 70.8438 205 V180 A7 7 0 0 1 77.8438 173 Z" fill="#e5efec" />
+                      <g id="strong-3" aria-label="strong">
+                        <text id="Testo-POM-2" x="79.9531" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-11" aria-label="span">
+                        <text id="Testo-14-00-2" x="77.8281" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-28-altro-mese-Notte" aria-label="28 altro mese, Notte">
+                    <g id="ts-date-row-3" aria-label="ts-date-row">
+                      <g id="ts-date-3" aria-label="ts-date">
+                        <text id="Testo-28" x="134.8281" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">28</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-3" aria-label="ts-shift">
+                      <path d="M128.7031 173 H159.5625 A7 7 0 0 1 166.5625 180 V205 A7 7 0 0 1 159.5625 212 H128.7031 A7 7 0 0 1 121.7031 205 V180 A7 7 0 0 1 128.7031 173 Z" fill="#e5efec" />
+                      <g id="strong-4" aria-label="strong">
+                        <text id="Testo-NOT" x="131.9688" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.3281" lengthAdjust="spacingAndGlyphs">NOT</text>
+                      </g>
+                      <g id="span-12" aria-label="span">
+                        <text id="Testo-22-00" x="128.6875" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">22:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-29-altro-mese-Smonto" aria-label="29 altro mese, Smonto">
+                    <g id="ts-date-row-4" aria-label="ts-date-row">
+                      <g id="ts-date-4" aria-label="ts-date">
+                        <text id="Testo-29" x="185.6875" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">29</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-4" aria-label="ts-shift">
+                      <path d="M179.5625 173 H210.4219 A7 7 0 0 1 217.4219 180 V205 A7 7 0 0 1 210.4219 212 H179.5625 A7 7 0 0 1 172.5625 205 V180 A7 7 0 0 1 179.5625 173 Z" fill="#e5efec" />
+                      <g id="strong-5" aria-label="strong">
+                        <text id="Testo-SMO" x="181.5469" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.875" lengthAdjust="spacingAndGlyphs">SMO</text>
+                      </g>
+                      <g id="span-13" aria-label="span">
+                        <text id="Testo" x="190.6875" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-30-altro-mese-Riposo" aria-label="30 altro mese, Riposo">
+                    <g id="ts-date-row-5" aria-label="ts-date-row">
+                      <g id="ts-date-5" aria-label="ts-date">
+                        <text id="Testo-30" x="236.5469" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">30</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-5" aria-label="ts-shift">
+                      <path d="M230.4219 173 H261.2813 A7 7 0 0 1 268.2813 180 V205 A7 7 0 0 1 261.2813 212 H230.4219 A7 7 0 0 1 223.4219 205 V180 A7 7 0 0 1 230.4219 173 Z" fill="#e5efec" />
+                      <g id="strong-6" aria-label="strong">
+                        <text id="Testo-RIP" x="236.4531" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="18.7969" lengthAdjust="spacingAndGlyphs">RIP</text>
+                      </g>
+                      <g id="span-14" aria-label="span">
+                        <text id="Testo-2" x="241.5469" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-31-altro-mese-Mattina" aria-label="31 altro mese, Mattina">
+                    <path d="M283.2813 138 H310.1407 A11 11 0 0 1 321.1407 149 V212 A11 11 0 0 1 310.1407 223 H283.2813 A11 11 0 0 1 272.2813 212 V149 A11 11 0 0 1 283.2813 138 Z" fill="#e5efec" />
+                    <g id="ts-date-row-6" aria-label="ts-date-row">
+                      <g id="ts-date-6" aria-label="ts-date">
+                        <text id="Testo-31" x="287.4063" y="162" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">31</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-6" aria-label="ts-shift">
+                      <path d="M281.2813 173 H312.1407 A7 7 0 0 1 319.1407 180 V205 A7 7 0 0 1 312.1407 212 H281.2813 A7 7 0 0 1 274.2813 205 V180 A7 7 0 0 1 281.2813 173 Z" fill="#e5efec" />
+                      <g id="strong-7" aria-label="strong">
+                        <text id="Testo-MAT" x="284.4375" y="189.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-15" aria-label="span">
+                        <text id="Testo-06-00" x="281.2656" y="204.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-1-novembre-Mattina-Ognissanti-reperibilit" aria-label="1 novembre, Mattina, Ognissanti, reperibilità">
+                    <path d="M334.1406 138 H361 A11 11 0 0 1 372 149 V212 A11 11 0 0 1 361 223 H334.1406 A11 11 0 0 1 323.1406 212 V149 A11 11 0 0 1 334.1406 138 Z" fill="#e5efec" />
+                    <g id="ts-date-row-7" aria-label="ts-date-row">
+                      <g id="ts-date-7" aria-label="ts-date">
+                        <path d="M342.5781 144.5 H352.5781 A7 7 0 0 1 359.5781 151.5 V161.5 A7 7 0 0 1 352.5781 168.5 H342.5781 A7 7 0 0 1 335.5781 161.5 V151.5 A7 7 0 0 1 342.5781 144.5 Z M342.5781 145.7 H352.5781 A5.8 5.8 0 0 1 358.3781 151.5 V161.5 A5.8 5.8 0 0 1 352.5781 167.3 H342.5781 A5.8 5.8 0 0 1 336.7781 161.5 V151.5 A5.8 5.8 0 0 1 342.5781 145.7 Z" fill="#ac2940" fill-rule="evenodd" />
+                        <text id="Testo-1" x="342.9219" y="162" fill="#7f5500" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">1</text>
+                      </g>
+                      <g id="lucide-bell" aria-label="lucide-bell">
+                        <path d="M10.268 21a2 2 0 0 0 3.464 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 360.5781 151.5)" />
+                        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 360.5781 151.5)" />
+                      </g>
+                    </g>
+                    <g id="ts-shift-7" aria-label="ts-shift">
+                      <path d="M332.1406 173 H363 A7 7 0 0 1 370 180 V205 A7 7 0 0 1 363 212 H332.1406 A7 7 0 0 1 325.1406 205 V180 A7 7 0 0 1 332.1406 173 Z" fill="#e5ebbf" />
+                      <g id="strong-8" aria-label="strong">
+                        <text id="Testo-MAT-2" x="335.2969" y="189.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-16" aria-label="span">
+                        <text id="Testo-06-00-2" x="332.125" y="204.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-2-novembre-Pomeriggio" aria-label="2 novembre, Pomeriggio">
+                    <g id="ts-date-row-8" aria-label="ts-date-row">
+                      <g id="ts-date-8" aria-label="ts-date">
+                        <text id="Testo-2-2" x="37.7656" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">2</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-8" aria-label="ts-shift">
+                      <path d="M27 261 H57.8438 A7 7 0 0 1 64.8438 268 V293 A7 7 0 0 1 57.8438 300 H27 A7 7 0 0 1 20 293 V268 A7 7 0 0 1 27 261 Z" fill="#cfeae3" />
+                      <g id="strong-9" aria-label="strong">
+                        <text id="Testo-POM-3" x="29.1094" y="277.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-17" aria-label="span">
+                        <text id="Testo-14-00-3" x="26.9688" y="292.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-3-novembre-Pomeriggio" aria-label="3 novembre, Pomeriggio">
+                    <g id="ts-date-row-9" aria-label="ts-date-row">
+                      <g id="ts-date-9" aria-label="ts-date">
+                        <text id="Testo-3" x="88.625" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">3</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-9" aria-label="ts-shift">
+                      <path d="M77.8438 261 H108.7032 A7 7 0 0 1 115.7032 268 V293 A7 7 0 0 1 108.7032 300 H77.8438 A7 7 0 0 1 70.8438 293 V268 A7 7 0 0 1 77.8438 261 Z" fill="#cfeae3" />
+                      <g id="strong-10" aria-label="strong">
+                        <text id="Testo-POM-4" x="79.9531" y="277.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-18" aria-label="span">
+                        <text id="Testo-14-00-4" x="77.8281" y="292.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-4-novembre-Notte" aria-label="4 novembre, Notte">
+                    <g id="ts-date-row-10" aria-label="ts-date-row">
+                      <g id="ts-date-10" aria-label="ts-date">
+                        <text id="Testo-4" x="139.4844" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">4</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-10" aria-label="ts-shift">
+                      <path d="M128.7031 261 H159.5625 A7 7 0 0 1 166.5625 268 V293 A7 7 0 0 1 159.5625 300 H128.7031 A7 7 0 0 1 121.7031 293 V268 A7 7 0 0 1 128.7031 261 Z" fill="#e4dff7" />
+                      <g id="strong-11" aria-label="strong">
+                        <text id="Testo-NOT-2" x="131.9688" y="277.5" fill="#4e4380" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.3281" lengthAdjust="spacingAndGlyphs">NOT</text>
+                      </g>
+                      <g id="span-19" aria-label="span">
+                        <text id="Testo-22-00-2" x="128.6875" y="292.5" fill="#4e4380" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">22:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-5-novembre-Smonto" aria-label="5 novembre, Smonto">
+                    <path d="M181.5625 226 H208.4219 A11 11 0 0 1 219.4219 237 V300 A11 11 0 0 1 208.4219 311 H181.5625 A11 11 0 0 1 170.5625 300 V237 A11 11 0 0 1 181.5625 226 Z" fill="#c8eee3" />
+                    <g id="ts-date-row-11" aria-label="ts-date-row">
+                      <g id="ts-date-11" aria-label="ts-date">
+                        <path d="M190 232.5 H200 A7 7 0 0 1 207 239.5 V249.5 A7 7 0 0 1 200 256.5 H190 A7 7 0 0 1 183 249.5 V239.5 A7 7 0 0 1 190 232.5 Z" fill="#09675d" />
+                        <text id="Testo-5" x="190.3438" y="250" fill="#ffffff" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">5</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-11" aria-label="ts-shift">
+                      <path d="M179.5625 261 H210.4219 A7 7 0 0 1 217.4219 268 V293 A7 7 0 0 1 210.4219 300 H179.5625 A7 7 0 0 1 172.5625 293 V268 A7 7 0 0 1 179.5625 261 Z" fill="#ecdef0" />
+                      <g id="strong-12" aria-label="strong">
+                        <text id="Testo-SMO-2" x="181.5469" y="277.5" fill="#65456d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.875" lengthAdjust="spacingAndGlyphs">SMO</text>
+                      </g>
+                      <g id="span-20" aria-label="span">
+                        <text id="Testo-6" x="190.6875" y="292.5" fill="#65456d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-6-novembre-Ferie" aria-label="6 novembre, Ferie">
+                    <g id="ts-date-row-12" aria-label="ts-date-row">
+                      <g id="ts-date-12" aria-label="ts-date">
+                        <text id="Testo-6-2" x="241.2031" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">6</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-12" aria-label="ts-shift">
+                      <path d="M230.4219 261 H261.2813 A7 7 0 0 1 268.2813 268 V293 A7 7 0 0 1 261.2813 300 H230.4219 A7 7 0 0 1 223.4219 293 V268 A7 7 0 0 1 230.4219 261 Z" fill="#dfecda" />
+                      <g id="strong-13" aria-label="strong">
+                        <text id="Testo-FER" x="235.4063" y="277.5" fill="#435f3d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="20.8906" lengthAdjust="spacingAndGlyphs">FER</text>
+                      </g>
+                      <g id="span-21" aria-label="span">
+                        <text id="Testo-7" x="241.5469" y="292.5" fill="#435f3d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-7-novembre-Ferie" aria-label="7 novembre, Ferie">
+                    <path d="M283.2813 226 H310.1407 A11 11 0 0 1 321.1407 237 V300 A11 11 0 0 1 310.1407 311 H283.2813 A11 11 0 0 1 272.2813 300 V237 A11 11 0 0 1 283.2813 226 Z" fill="#e5efec" />
+                    <g id="ts-date-row-13" aria-label="ts-date-row">
+                      <g id="ts-date-13" aria-label="ts-date">
+                        <text id="Testo-7-2" x="292.0625" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">7</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-13" aria-label="ts-shift">
+                      <path d="M281.2813 261 H312.1407 A7 7 0 0 1 319.1407 268 V293 A7 7 0 0 1 312.1407 300 H281.2813 A7 7 0 0 1 274.2813 293 V268 A7 7 0 0 1 281.2813 261 Z" fill="#dfecda" />
+                      <g id="strong-14" aria-label="strong">
+                        <text id="Testo-FER-2" x="286.2656" y="277.5" fill="#435f3d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="20.8906" lengthAdjust="spacingAndGlyphs">FER</text>
+                      </g>
+                      <g id="span-22" aria-label="span">
+                        <text id="Testo-8" x="292.4063" y="292.5" fill="#435f3d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-8-novembre-Ferie" aria-label="8 novembre, Ferie">
+                    <path d="M334.1406 226 H361 A11 11 0 0 1 372 237 V300 A11 11 0 0 1 361 311 H334.1406 A11 11 0 0 1 323.1406 300 V237 A11 11 0 0 1 334.1406 226 Z" fill="#e5efec" />
+                    <g id="ts-date-row-14" aria-label="ts-date-row">
+                      <g id="ts-date-14" aria-label="ts-date">
+                        <text id="Testo-8-2" x="342.9219" y="250" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">8</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-14" aria-label="ts-shift">
+                      <path d="M332.1406 261 H363 A7 7 0 0 1 370 268 V293 A7 7 0 0 1 363 300 H332.1406 A7 7 0 0 1 325.1406 293 V268 A7 7 0 0 1 332.1406 261 Z" fill="#dfecda" />
+                      <g id="strong-15" aria-label="strong">
+                        <text id="Testo-FER-3" x="337.125" y="277.5" fill="#435f3d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="20.8906" lengthAdjust="spacingAndGlyphs">FER</text>
+                      </g>
+                      <g id="span-23" aria-label="span">
+                        <text id="Testo-9" x="343.2656" y="292.5" fill="#435f3d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-9-novembre-Pomeriggio-reperibilit-nota" aria-label="9 novembre, Pomeriggio, reperibilità, nota">
+                    <path d="M29 314 H55.8438 A11 11 0 0 1 66.8438 325 V388 A11 11 0 0 1 55.8438 399 H29 A11 11 0 0 1 18 388 V325 A11 11 0 0 1 29 314 Z" fill="#c8eee3" />
+                    <path d="M29 314 H55.8438 A11 11 0 0 1 66.8438 325 V388 A11 11 0 0 1 55.8438 399 H29 A11 11 0 0 1 18 388 V325 A11 11 0 0 1 29 314 Z M29 316 H55.8438 A9 9 0 0 1 64.8438 325 V388 A9 9 0 0 1 55.8438 397 H29 A9 9 0 0 1 20 388 V325 A9 9 0 0 1 29 316 Z" fill="#09675d" fill-rule="evenodd" />
+                    <g id="ts-date-row-15" aria-label="ts-date-row">
+                      <g id="lucide-message-square" aria-label="lucide-message-square">
+                        <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#4e6460" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(-0.4167 0 0 0.4167 29.4219 327.5)" />
+                      </g>
+                      <g id="ts-date-15" aria-label="ts-date">
+                        <text id="Testo-9-2" x="37.7656" y="338" fill="#7f5500" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">9</text>
+                      </g>
+                      <g id="lucide-bell-2" aria-label="lucide-bell">
+                        <path d="M10.268 21a2 2 0 0 0 3.464 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 55.4219 327.5)" />
+                        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 55.4219 327.5)" />
+                      </g>
+                    </g>
+                    <g id="ts-shift-15" aria-label="ts-shift">
+                      <path d="M27 349 H57.8438 A7 7 0 0 1 64.8438 356 V381 A7 7 0 0 1 57.8438 388 H27 A7 7 0 0 1 20 381 V356 A7 7 0 0 1 27 349 Z" fill="#cfeae3" />
+                      <g id="strong-16" aria-label="strong">
+                        <text id="Testo-POM-5" x="29.1094" y="365.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-24" aria-label="span">
+                        <text id="Testo-14-00-5" x="26.9688" y="380.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                    <g id="ts-extra-line" aria-label="ts-extra-line">
+                      <text id="Testo--1-h" x="32.6094" y="400" fill="#00657e" font-family="Manrope" font-size="10" font-weight="400" letter-spacing="0" textLength="19.6094" lengthAdjust="spacingAndGlyphs">+ 1 h</text>
+                    </g>
+                  </g>
+                  <g id="Livello-10-novembre-Pomeriggio-reperibilit" aria-label="10 novembre, Pomeriggio, reperibilità">
+                    <g id="ts-date-row-16" aria-label="ts-date-row">
+                      <g id="ts-date-16" aria-label="ts-date">
+                        <text id="Testo-10" x="83.9688" y="338" fill="#7f5500" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">10</text>
+                      </g>
+                      <g id="lucide-bell-3" aria-label="lucide-bell">
+                        <path d="M10.268 21a2 2 0 0 0 3.464 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 106.2813 327.5)" />
+                        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 106.2813 327.5)" />
+                      </g>
+                    </g>
+                    <g id="ts-shift-16" aria-label="ts-shift">
+                      <path d="M77.8438 349 H108.7032 A7 7 0 0 1 115.7032 356 V381 A7 7 0 0 1 108.7032 388 H77.8438 A7 7 0 0 1 70.8438 381 V356 A7 7 0 0 1 77.8438 349 Z" fill="#cfeae3" />
+                      <g id="strong-17" aria-label="strong">
+                        <text id="Testo-POM-6" x="79.9531" y="365.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-25" aria-label="span">
+                        <text id="Testo-14-00-6" x="77.8281" y="380.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-11-novembre-Mattina-Pomeriggio" aria-label="11 novembre, Mattina, Pomeriggio">
+                    <g id="ts-date-row-17" aria-label="ts-date-row">
+                      <g id="ts-date-17" aria-label="ts-date">
+                        <text id="Testo-11" x="134.8281" y="338" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">11</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-17" aria-label="ts-shift">
+                      <path d="M127.7031 349 H160.5625 A6 6 0 0 1 166.5625 355 V366 A6 6 0 0 1 160.5625 372 H127.7031 A6 6 0 0 1 121.7031 366 V355 A6 6 0 0 1 127.7031 349 Z" fill="#e5ebbf" />
+                      <g id="strong-18" aria-label="strong">
+                        <text id="Testo-MAT-3" x="133.9531" y="359" fill="#4c5621" font-family="Manrope" font-size="10" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="20.3438" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-26" aria-label="span">
+                        <text id="Testo-06-00-3" x="130.0781" y="370" fill="#4c5621" font-family="Manrope" font-size="10" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="28.0938" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-18" aria-label="ts-shift">
+                      <path d="M127.7031 374 H160.5625 A6 6 0 0 1 166.5625 380 V391 A6 6 0 0 1 160.5625 397 H127.7031 A6 6 0 0 1 121.7031 391 V380 A6 6 0 0 1 127.7031 374 Z" fill="#cfeae3" />
+                      <g id="strong-19" aria-label="strong">
+                        <text id="Testo-POM-7" x="133.0781" y="384" fill="#235a4f" font-family="Manrope" font-size="10" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="22.0938" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-27" aria-label="span">
+                        <text id="Testo-14-00-7" x="130.0781" y="395" fill="#235a4f" font-family="Manrope" font-size="10" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="28.0938" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-12-novembre-Smonto" aria-label="12 novembre, Smonto">
+                    <g id="ts-date-row-18" aria-label="ts-date-row">
+                      <g id="ts-date-18" aria-label="ts-date">
+                        <text id="Testo-12" x="185.6875" y="338" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">12</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-19" aria-label="ts-shift">
+                      <path d="M179.5625 349 H210.4219 A7 7 0 0 1 217.4219 356 V381 A7 7 0 0 1 210.4219 388 H179.5625 A7 7 0 0 1 172.5625 381 V356 A7 7 0 0 1 179.5625 349 Z" fill="#ecdef0" />
+                      <g id="strong-20" aria-label="strong">
+                        <text id="Testo-SMO-3" x="181.5469" y="365.5" fill="#65456d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.875" lengthAdjust="spacingAndGlyphs">SMO</text>
+                      </g>
+                      <g id="span-28" aria-label="span">
+                        <text id="Testo-13" x="190.6875" y="380.5" fill="#65456d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-13-novembre-Riposo" aria-label="13 novembre, Riposo">
+                    <g id="ts-date-row-19" aria-label="ts-date-row">
+                      <g id="ts-date-19" aria-label="ts-date">
+                        <text id="Testo-13-2" x="236.5469" y="338" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">13</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-20" aria-label="ts-shift">
+                      <path d="M230.4219 349 H261.2813 A7 7 0 0 1 268.2813 356 V381 A7 7 0 0 1 261.2813 388 H230.4219 A7 7 0 0 1 223.4219 381 V356 A7 7 0 0 1 230.4219 349 Z" fill="#e2e9eb" />
+                      <g id="strong-21" aria-label="strong">
+                        <text id="Testo-RIP-2" x="236.4531" y="365.5" fill="#475b63" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="18.7969" lengthAdjust="spacingAndGlyphs">RIP</text>
+                      </g>
+                      <g id="span-29" aria-label="span">
+                        <text id="Testo-14" x="241.5469" y="380.5" fill="#475b63" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-14-novembre-Mattina" aria-label="14 novembre, Mattina">
+                    <path d="M283.2813 314 H310.1407 A11 11 0 0 1 321.1407 325 V388 A11 11 0 0 1 310.1407 399 H283.2813 A11 11 0 0 1 272.2813 388 V325 A11 11 0 0 1 283.2813 314 Z" fill="#e5efec" />
+                    <g id="ts-date-row-20" aria-label="ts-date-row">
+                      <g id="ts-date-20" aria-label="ts-date">
+                        <text id="Testo-14-2" x="287.4063" y="338" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">14</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-21" aria-label="ts-shift">
+                      <path d="M281.2813 349 H312.1407 A7 7 0 0 1 319.1407 356 V381 A7 7 0 0 1 312.1407 388 H281.2813 A7 7 0 0 1 274.2813 381 V356 A7 7 0 0 1 281.2813 349 Z" fill="#e5ebbf" />
+                      <g id="strong-22" aria-label="strong">
+                        <text id="Testo-MAT-4" x="284.4375" y="365.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-30" aria-label="span">
+                        <text id="Testo-06-00-4" x="281.2656" y="380.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                    <g id="ts-extra-line-2" aria-label="ts-extra-line">
+                      <g id="lucide-plane" aria-label="lucide-plane">
+                        <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#68519b" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 275.3125 388)" />
+                      </g>
+                      <text id="Testo-trasf" x="294.3125" y="400" fill="#68519b" font-family="Manrope" font-size="10" font-weight="400" letter-spacing="0" textLength="23.7969" lengthAdjust="spacingAndGlyphs">trasf.</text>
+                    </g>
+                  </g>
+                  <g id="Livello-15-novembre-Mattina" aria-label="15 novembre, Mattina">
+                    <path d="M334.1406 314 H361 A11 11 0 0 1 372 325 V388 A11 11 0 0 1 361 399 H334.1406 A11 11 0 0 1 323.1406 388 V325 A11 11 0 0 1 334.1406 314 Z" fill="#e5efec" />
+                    <g id="ts-date-row-21" aria-label="ts-date-row">
+                      <g id="ts-date-21" aria-label="ts-date">
+                        <text id="Testo-15" x="338.2656" y="338" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">15</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-22" aria-label="ts-shift">
+                      <path d="M332.1406 349 H363 A7 7 0 0 1 370 356 V381 A7 7 0 0 1 363 388 H332.1406 A7 7 0 0 1 325.1406 381 V356 A7 7 0 0 1 332.1406 349 Z" fill="#e5ebbf" />
+                      <g id="strong-23" aria-label="strong">
+                        <text id="Testo-MAT-5" x="335.2969" y="365.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-31" aria-label="span">
+                        <text id="Testo-06-00-5" x="332.125" y="380.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-16-novembre-Pomeriggio" aria-label="16 novembre, Pomeriggio">
+                    <g id="ts-date-row-22" aria-label="ts-date-row">
+                      <g id="ts-date-22" aria-label="ts-date">
+                        <text id="Testo-16" x="33.1094" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">16</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-23" aria-label="ts-shift">
+                      <path d="M27 437 H57.8438 A7 7 0 0 1 64.8438 444 V469 A7 7 0 0 1 57.8438 476 H27 A7 7 0 0 1 20 469 V444 A7 7 0 0 1 27 437 Z" fill="#cfeae3" />
+                      <g id="strong-24" aria-label="strong">
+                        <text id="Testo-POM-8" x="29.1094" y="453.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-32" aria-label="span">
+                        <text id="Testo-14-00-8" x="26.9688" y="468.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-17-novembre-Pomeriggio" aria-label="17 novembre, Pomeriggio">
+                    <g id="ts-date-row-23" aria-label="ts-date-row">
+                      <g id="ts-date-23" aria-label="ts-date">
+                        <text id="Testo-17" x="83.9688" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">17</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-24" aria-label="ts-shift">
+                      <path d="M77.8438 437 H108.7032 A7 7 0 0 1 115.7032 444 V469 A7 7 0 0 1 108.7032 476 H77.8438 A7 7 0 0 1 70.8438 469 V444 A7 7 0 0 1 77.8438 437 Z" fill="#cfeae3" />
+                      <g id="strong-25" aria-label="strong">
+                        <text id="Testo-POM-9" x="79.9531" y="453.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-33" aria-label="span">
+                        <text id="Testo-14-00-9" x="77.8281" y="468.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-18-novembre-Notte" aria-label="18 novembre, Notte">
+                    <g id="ts-date-row-24" aria-label="ts-date-row">
+                      <g id="ts-date-24" aria-label="ts-date">
+                        <text id="Testo-18" x="134.8281" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">18</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-25" aria-label="ts-shift">
+                      <path d="M128.7031 437 H159.5625 A7 7 0 0 1 166.5625 444 V469 A7 7 0 0 1 159.5625 476 H128.7031 A7 7 0 0 1 121.7031 469 V444 A7 7 0 0 1 128.7031 437 Z" fill="#e4dff7" />
+                      <g id="strong-26" aria-label="strong">
+                        <text id="Testo-NOT-3" x="131.9688" y="453.5" fill="#4e4380" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.3281" lengthAdjust="spacingAndGlyphs">NOT</text>
+                      </g>
+                      <g id="span-34" aria-label="span">
+                        <text id="Testo-22-00-3" x="128.6875" y="468.5" fill="#4e4380" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">22:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-19-novembre-Sera" aria-label="19 novembre, Sera">
+                    <g id="ts-date-row-25" aria-label="ts-date-row">
+                      <g id="ts-date-25" aria-label="ts-date">
+                        <text id="Testo-19" x="185.6875" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">19</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-26" aria-label="ts-shift">
+                      <path d="M179.5625 437 H210.4219 A7 7 0 0 1 217.4219 444 V469 A7 7 0 0 1 210.4219 476 H179.5625 A7 7 0 0 1 172.5625 469 V444 A7 7 0 0 1 179.5625 437 Z" fill="#d6e8f2" />
+                      <g id="strong-27" aria-label="strong">
+                        <text id="Testo-SER" x="183.7031" y="453.5" fill="#30556f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="22.5781" lengthAdjust="spacingAndGlyphs">SER</text>
+                      </g>
+                      <g id="span-35" aria-label="span">
+                        <text id="Testo-18-00" x="179.5469" y="468.5" fill="#30556f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">18:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-20-novembre-Riposo" aria-label="20 novembre, Riposo">
+                    <g id="ts-date-row-26" aria-label="ts-date-row">
+                      <g id="ts-date-26" aria-label="ts-date">
+                        <text id="Testo-20" x="236.5469" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">20</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-27" aria-label="ts-shift">
+                      <path d="M230.4219 437 H261.2813 A7 7 0 0 1 268.2813 444 V469 A7 7 0 0 1 261.2813 476 H230.4219 A7 7 0 0 1 223.4219 469 V444 A7 7 0 0 1 230.4219 437 Z" fill="#e2e9eb" />
+                      <g id="strong-28" aria-label="strong">
+                        <text id="Testo-RIP-3" x="236.4531" y="453.5" fill="#475b63" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="18.7969" lengthAdjust="spacingAndGlyphs">RIP</text>
+                      </g>
+                      <g id="span-36" aria-label="span">
+                        <text id="Testo-21" x="241.5469" y="468.5" fill="#475b63" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-21-novembre-Mattina" aria-label="21 novembre, Mattina">
+                    <path d="M283.2813 402 H310.1407 A11 11 0 0 1 321.1407 413 V476 A11 11 0 0 1 310.1407 487 H283.2813 A11 11 0 0 1 272.2813 476 V413 A11 11 0 0 1 283.2813 402 Z" fill="#e5efec" />
+                    <g id="ts-date-row-27" aria-label="ts-date-row">
+                      <g id="ts-date-27" aria-label="ts-date">
+                        <text id="Testo-21-2" x="287.4063" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">21</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-28" aria-label="ts-shift">
+                      <path d="M281.2813 437 H312.1407 A7 7 0 0 1 319.1407 444 V469 A7 7 0 0 1 312.1407 476 H281.2813 A7 7 0 0 1 274.2813 469 V444 A7 7 0 0 1 281.2813 437 Z" fill="#e5ebbf" />
+                      <g id="strong-29" aria-label="strong">
+                        <text id="Testo-MAT-6" x="284.4375" y="453.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-37" aria-label="span">
+                        <text id="Testo-06-00-6" x="281.2656" y="468.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-22-novembre-Mattina" aria-label="22 novembre, Mattina">
+                    <path d="M334.1406 402 H361 A11 11 0 0 1 372 413 V476 A11 11 0 0 1 361 487 H334.1406 A11 11 0 0 1 323.1406 476 V413 A11 11 0 0 1 334.1406 402 Z" fill="#e5efec" />
+                    <g id="ts-date-row-28" aria-label="ts-date-row">
+                      <g id="ts-date-28" aria-label="ts-date">
+                        <text id="Testo-22" x="338.2656" y="426" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">22</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-29" aria-label="ts-shift">
+                      <path d="M332.1406 437 H363 A7 7 0 0 1 370 444 V469 A7 7 0 0 1 363 476 H332.1406 A7 7 0 0 1 325.1406 469 V444 A7 7 0 0 1 332.1406 437 Z" fill="#e5ebbf" />
+                      <g id="strong-30" aria-label="strong">
+                        <text id="Testo-MAT-7" x="335.2969" y="453.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-38" aria-label="span">
+                        <text id="Testo-06-00-7" x="332.125" y="468.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-23-novembre-Pomeriggio-reperibilit" aria-label="23 novembre, Pomeriggio, reperibilità">
+                    <g id="ts-date-row-29" aria-label="ts-date-row">
+                      <g id="ts-date-29" aria-label="ts-date">
+                        <text id="Testo-23" x="33.1094" y="514" fill="#7f5500" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">23</text>
+                      </g>
+                      <g id="lucide-bell-4" aria-label="lucide-bell">
+                        <path d="M10.268 21a2 2 0 0 0 3.464 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 55.4219 503.5)" />
+                        <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.4167 0 0 0.4167 55.4219 503.5)" />
+                      </g>
+                    </g>
+                    <g id="ts-shift-30" aria-label="ts-shift">
+                      <path d="M27 525 H57.8438 A7 7 0 0 1 64.8438 532 V557 A7 7 0 0 1 57.8438 564 H27 A7 7 0 0 1 20 557 V532 A7 7 0 0 1 27 525 Z" fill="#cfeae3" />
+                      <g id="strong-31" aria-label="strong">
+                        <text id="Testo-POM-10" x="29.1094" y="541.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-39" aria-label="span">
+                        <text id="Testo-14-00-10" x="26.9688" y="556.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-24-novembre-Assistenza-clienti" aria-label="24 novembre, Assistenza clienti">
+                    <g id="ts-date-row-30" aria-label="ts-date-row">
+                      <g id="ts-date-30" aria-label="ts-date">
+                        <text id="Testo-24" x="83.9688" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">24</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-31" aria-label="ts-shift">
+                      <path d="M77.8438 525 H108.7032 A7 7 0 0 1 115.7032 532 V557 A7 7 0 0 1 108.7032 564 H77.8438 A7 7 0 0 1 70.8438 557 V532 A7 7 0 0 1 77.8438 525 Z" fill="#eee7d6" />
+                      <g id="strong-32" aria-label="strong">
+                        <text id="Testo-ASS" x="81.4531" y="541.5" fill="#625439" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="23.6406" lengthAdjust="spacingAndGlyphs">ASS</text>
+                      </g>
+                      <g id="span-40" aria-label="span">
+                        <text id="Testo-09-00" x="77.8281" y="556.5" fill="#625439" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">09:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-25-novembre-Notte" aria-label="25 novembre, Notte">
+                    <g id="ts-date-row-31" aria-label="ts-date-row">
+                      <g id="ts-date-31" aria-label="ts-date">
+                        <text id="Testo-25" x="134.8281" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">25</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-32" aria-label="ts-shift">
+                      <path d="M128.7031 525 H159.5625 A7 7 0 0 1 166.5625 532 V557 A7 7 0 0 1 159.5625 564 H128.7031 A7 7 0 0 1 121.7031 557 V532 A7 7 0 0 1 128.7031 525 Z" fill="#e4dff7" />
+                      <g id="strong-33" aria-label="strong">
+                        <text id="Testo-NOT-4" x="131.9688" y="541.5" fill="#4e4380" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.3281" lengthAdjust="spacingAndGlyphs">NOT</text>
+                      </g>
+                      <g id="span-41" aria-label="span">
+                        <text id="Testo-22-00-4" x="128.6875" y="556.5" fill="#4e4380" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">22:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-26-novembre-Smonto" aria-label="26 novembre, Smonto">
+                    <g id="ts-date-row-32" aria-label="ts-date-row">
+                      <g id="ts-date-32" aria-label="ts-date">
+                        <text id="Testo-26-2" x="185.6875" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">26</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-33" aria-label="ts-shift">
+                      <path d="M179.5625 525 H210.4219 A7 7 0 0 1 217.4219 532 V557 A7 7 0 0 1 210.4219 564 H179.5625 A7 7 0 0 1 172.5625 557 V532 A7 7 0 0 1 179.5625 525 Z" fill="#ecdef0" />
+                      <g id="strong-34" aria-label="strong">
+                        <text id="Testo-SMO-4" x="181.5469" y="541.5" fill="#65456d" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.875" lengthAdjust="spacingAndGlyphs">SMO</text>
+                      </g>
+                      <g id="span-42" aria-label="span">
+                        <text id="Testo-32" x="190.6875" y="556.5" fill="#65456d" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-27-novembre-Riposo" aria-label="27 novembre, Riposo">
+                    <g id="ts-date-row-33" aria-label="ts-date-row">
+                      <g id="ts-date-33" aria-label="ts-date">
+                        <text id="Testo-27-2" x="236.5469" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">27</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-34" aria-label="ts-shift">
+                      <path d="M230.4219 525 H261.2813 A7 7 0 0 1 268.2813 532 V557 A7 7 0 0 1 261.2813 564 H230.4219 A7 7 0 0 1 223.4219 557 V532 A7 7 0 0 1 230.4219 525 Z" fill="#e2e9eb" />
+                      <g id="strong-35" aria-label="strong">
+                        <text id="Testo-RIP-4" x="236.4531" y="541.5" fill="#475b63" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="18.7969" lengthAdjust="spacingAndGlyphs">RIP</text>
+                      </g>
+                      <g id="span-43" aria-label="span">
+                        <text id="Testo-33" x="241.5469" y="556.5" fill="#475b63" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-28-novembre-Mattina" aria-label="28 novembre, Mattina">
+                    <path d="M283.2813 490 H310.1407 A11 11 0 0 1 321.1407 501 V564 A11 11 0 0 1 310.1407 575 H283.2813 A11 11 0 0 1 272.2813 564 V501 A11 11 0 0 1 283.2813 490 Z" fill="#e5efec" />
+                    <g id="ts-date-row-34" aria-label="ts-date-row">
+                      <g id="ts-date-34" aria-label="ts-date">
+                        <text id="Testo-28-2" x="287.4063" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">28</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-35" aria-label="ts-shift">
+                      <path d="M281.2813 525 H312.1407 A7 7 0 0 1 319.1407 532 V557 A7 7 0 0 1 312.1407 564 H281.2813 A7 7 0 0 1 274.2813 557 V532 A7 7 0 0 1 281.2813 525 Z" fill="#e5ebbf" />
+                      <g id="strong-36" aria-label="strong">
+                        <text id="Testo-MAT-8" x="284.4375" y="541.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-44" aria-label="span">
+                        <text id="Testo-06-00-8" x="281.2656" y="556.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-29-novembre-Mattina" aria-label="29 novembre, Mattina">
+                    <path d="M334.1406 490 H361 A11 11 0 0 1 372 501 V564 A11 11 0 0 1 361 575 H334.1406 A11 11 0 0 1 323.1406 564 V501 A11 11 0 0 1 334.1406 490 Z" fill="#e5efec" />
+                    <g id="ts-date-row-35" aria-label="ts-date-row">
+                      <g id="ts-date-35" aria-label="ts-date">
+                        <text id="Testo-29-2" x="338.2656" y="514" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">29</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-36" aria-label="ts-shift">
+                      <path d="M332.1406 525 H363 A7 7 0 0 1 370 532 V557 A7 7 0 0 1 363 564 H332.1406 A7 7 0 0 1 325.1406 557 V532 A7 7 0 0 1 332.1406 525 Z" fill="#e5ebbf" />
+                      <g id="strong-37" aria-label="strong">
+                        <text id="Testo-MAT-9" x="335.2969" y="541.5" fill="#4c5621" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-45" aria-label="span">
+                        <text id="Testo-06-00-9" x="332.125" y="556.5" fill="#4c5621" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-30-novembre-Pomeriggio" aria-label="30 novembre, Pomeriggio">
+                    <g id="ts-date-row-36" aria-label="ts-date-row">
+                      <g id="ts-date-36" aria-label="ts-date">
+                        <text id="Testo-30-2" x="33.1094" y="602" fill="#1c302e" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="18.6094" lengthAdjust="spacingAndGlyphs">30</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-37" aria-label="ts-shift">
+                      <path d="M27 613 H57.8438 A7 7 0 0 1 64.8438 620 V645 A7 7 0 0 1 57.8438 652 H27 A7 7 0 0 1 20 645 V620 A7 7 0 0 1 27 613 Z" fill="#cfeae3" />
+                      <g id="strong-38" aria-label="strong">
+                        <text id="Testo-POM-11" x="29.1094" y="629.5" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-46" aria-label="span">
+                        <text id="Testo-14-00-11" x="26.9688" y="644.5" fill="#235a4f" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-1-altro-mese-Pomeriggio" aria-label="1 altro mese, Pomeriggio">
+                    <g id="ts-date-row-37" aria-label="ts-date-row">
+                      <g id="ts-date-37" aria-label="ts-date">
+                        <text id="Testo-1-2" x="88.625" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">1</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-38" aria-label="ts-shift">
+                      <path d="M77.8438 613 H108.7032 A7 7 0 0 1 115.7032 620 V645 A7 7 0 0 1 108.7032 652 H77.8438 A7 7 0 0 1 70.8438 645 V620 A7 7 0 0 1 77.8438 613 Z" fill="#e5efec" />
+                      <g id="strong-39" aria-label="strong">
+                        <text id="Testo-POM-12" x="79.9531" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.625" lengthAdjust="spacingAndGlyphs">POM</text>
+                      </g>
+                      <g id="span-47" aria-label="span">
+                        <text id="Testo-14-00-12" x="77.8281" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">14:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-2-altro-mese-Notte" aria-label="2 altro mese, Notte">
+                    <g id="ts-date-row-38" aria-label="ts-date-row">
+                      <g id="ts-date-38" aria-label="ts-date">
+                        <text id="Testo-2-3" x="139.4844" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">2</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-39" aria-label="ts-shift">
+                      <path d="M128.7031 613 H159.5625 A7 7 0 0 1 166.5625 620 V645 A7 7 0 0 1 159.5625 652 H128.7031 A7 7 0 0 1 121.7031 645 V620 A7 7 0 0 1 128.7031 613 Z" fill="#e5efec" />
+                      <g id="strong-40" aria-label="strong">
+                        <text id="Testo-NOT-5" x="131.9688" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.3281" lengthAdjust="spacingAndGlyphs">NOT</text>
+                      </g>
+                      <g id="span-48" aria-label="span">
+                        <text id="Testo-22-00-5" x="128.6875" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">22:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-3-altro-mese-Smonto" aria-label="3 altro mese, Smonto">
+                    <g id="ts-date-row-39" aria-label="ts-date-row">
+                      <g id="ts-date-39" aria-label="ts-date">
+                        <text id="Testo-3-2" x="190.3438" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">3</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-40" aria-label="ts-shift">
+                      <path d="M179.5625 613 H210.4219 A7 7 0 0 1 217.4219 620 V645 A7 7 0 0 1 210.4219 652 H179.5625 A7 7 0 0 1 172.5625 645 V620 A7 7 0 0 1 179.5625 613 Z" fill="#e5efec" />
+                      <g id="strong-41" aria-label="strong">
+                        <text id="Testo-SMO-5" x="181.5469" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="26.875" lengthAdjust="spacingAndGlyphs">SMO</text>
+                      </g>
+                      <g id="span-49" aria-label="span">
+                        <text id="Testo-34" x="190.6875" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-4-altro-mese-Riposo" aria-label="4 altro mese, Riposo">
+                    <g id="ts-date-row-40" aria-label="ts-date-row">
+                      <g id="ts-date-40" aria-label="ts-date">
+                        <text id="Testo-4-2" x="241.2031" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">4</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-41" aria-label="ts-shift">
+                      <path d="M230.4219 613 H261.2813 A7 7 0 0 1 268.2813 620 V645 A7 7 0 0 1 261.2813 652 H230.4219 A7 7 0 0 1 223.4219 645 V620 A7 7 0 0 1 230.4219 613 Z" fill="#e5efec" />
+                      <g id="strong-42" aria-label="strong">
+                        <text id="Testo-RIP-5" x="236.4531" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="18.7969" lengthAdjust="spacingAndGlyphs">RIP</text>
+                      </g>
+                      <g id="span-50" aria-label="span">
+                        <text id="Testo-35" x="241.5469" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="8.5938" lengthAdjust="spacingAndGlyphs">—</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-5-altro-mese-Mattina" aria-label="5 altro mese, Mattina">
+                    <path d="M283.2813 578 H310.1407 A11 11 0 0 1 321.1407 589 V652 A11 11 0 0 1 310.1407 663 H283.2813 A11 11 0 0 1 272.2813 652 V589 A11 11 0 0 1 283.2813 578 Z" fill="#e5efec" />
+                    <g id="ts-date-row-41" aria-label="ts-date-row">
+                      <g id="ts-date-41" aria-label="ts-date">
+                        <text id="Testo-5-2" x="292.0625" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">5</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-42" aria-label="ts-shift">
+                      <path d="M281.2813 613 H312.1407 A7 7 0 0 1 319.1407 620 V645 A7 7 0 0 1 312.1407 652 H281.2813 A7 7 0 0 1 274.2813 645 V620 A7 7 0 0 1 281.2813 613 Z" fill="#e5efec" />
+                      <g id="strong-43" aria-label="strong">
+                        <text id="Testo-MAT-10" x="284.4375" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-51" aria-label="span">
+                        <text id="Testo-06-00-10" x="281.2656" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                  <g id="Livello-6-altro-mese-Mattina" aria-label="6 altro mese, Mattina">
+                    <path d="M334.1406 578 H361 A11 11 0 0 1 372 589 V652 A11 11 0 0 1 361 663 H334.1406 A11 11 0 0 1 323.1406 652 V589 A11 11 0 0 1 334.1406 578 Z" fill="#e5efec" />
+                    <g id="ts-date-row-42" aria-label="ts-date-row">
+                      <g id="ts-date-42" aria-label="ts-date">
+                        <text id="Testo-6-3" x="342.9219" y="602" fill="#4e6460" font-family="Manrope" font-size="15" font-weight="750" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="9.3125" lengthAdjust="spacingAndGlyphs">6</text>
+                      </g>
+                    </g>
+                    <g id="ts-shift-43" aria-label="ts-shift">
+                      <path d="M332.1406 613 H363 A7 7 0 0 1 370 620 V645 A7 7 0 0 1 363 652 H332.1406 A7 7 0 0 1 325.1406 645 V620 A7 7 0 0 1 332.1406 613 Z" fill="#e5efec" />
+                      <g id="strong-44" aria-label="strong">
+                        <text id="Testo-MAT-11" x="335.2969" y="629.5" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="-0.2" style="font-variant-numeric:tabular-nums" textLength="24.5313" lengthAdjust="spacingAndGlyphs">MAT</text>
+                      </g>
+                      <g id="span-52" aria-label="span">
+                        <text id="Testo-06-00-11" x="332.125" y="644.5" fill="#4e6460" font-family="Manrope" font-size="11" font-weight="600" letter-spacing="0" style="font-variant-numeric:tabular-nums" textLength="30.8906" lengthAdjust="spacingAndGlyphs">06:00</text>
+                      </g>
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </g>
+            <g id="ts-month-foot" aria-label="ts-month-foot">
+              <g id="span-53" aria-label="span">
+                <text id="Testo-Novembre-in-sintesi" x="20" y="693" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="107.9063" lengthAdjust="spacingAndGlyphs">Novembre in sintesi</text>
+              </g>
+              <g id="span-54" aria-label="span">
+                <g id="strong-45" aria-label="strong">
+                  <text id="Testo-175-h" x="288.6875" y="693" fill="#1c302e" font-family="Manrope" font-size="12" font-weight="700" letter-spacing="0" textLength="28.6094" lengthAdjust="spacingAndGlyphs">175 h</text>
+                </g>
+                <text id="Testo--21-giorni" x="319.6875" y="693" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="50.3125" lengthAdjust="spacingAndGlyphs">· 21 giorni</text>
+              </g>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="Navigazione-principale" aria-label="Navigazione principale">
+        <g id="Modifica-i-turni" aria-label="Modifica i turni">
+          <g id="Ombra" aria-label="Ombra">
+            <path d="M72.4063 729 H72.4063 A39 39 0 0 1 111.4063 768 V768 A39 39 0 0 1 72.4063 807 H72.4063 A39 39 0 0 1 33.4063 768 V768 A39 39 0 0 1 72.4063 729 Z" fill="#000000" fill-opacity="0.00031" />
+            <path d="M72.4063 729.5 H72.4063 A38.5 38.5 0 0 1 110.9063 768 V768 A38.5 38.5 0 0 1 72.4063 806.5 H72.4063 A38.5 38.5 0 0 1 33.9063 768 V768 A38.5 38.5 0 0 1 72.4063 729.5 Z" fill="#000000" fill-opacity="0.00009" />
+            <path d="M72.4063 730 H72.4063 A38 38 0 0 1 110.4063 768 V768 A38 38 0 0 1 72.4063 806 H72.4063 A38 38 0 0 1 34.4063 768 V768 A38 38 0 0 1 72.4063 730 Z" fill="#000000" fill-opacity="0.00011" />
+            <path d="M72.4063 730.5 H72.4063 A37.5 37.5 0 0 1 109.9063 768 V768 A37.5 37.5 0 0 1 72.4063 805.5 H72.4063 A37.5 37.5 0 0 1 34.9063 768 V768 A37.5 37.5 0 0 1 72.4063 730.5 Z" fill="#000000" fill-opacity="0.00013" />
+            <path d="M72.4063 731 H72.4063 A37 37 0 0 1 109.4063 768 V768 A37 37 0 0 1 72.4063 805 H72.4063 A37 37 0 0 1 35.4063 768 V768 A37 37 0 0 1 72.4063 731 Z" fill="#000000" fill-opacity="0.00016" />
+            <path d="M72.4063 731.5 H72.4063 A36.5 36.5 0 0 1 108.9063 768 V768 A36.5 36.5 0 0 1 72.4063 804.5 H72.4063 A36.5 36.5 0 0 1 35.9063 768 V768 A36.5 36.5 0 0 1 72.4063 731.5 Z" fill="#000000" fill-opacity="0.0002" />
+            <path d="M72.4063 732 H72.4063 A36 36 0 0 1 108.4063 768 V768 A36 36 0 0 1 72.4063 804 H72.4063 A36 36 0 0 1 36.4063 768 V768 A36 36 0 0 1 72.4063 732 Z" fill="#000000" fill-opacity="0.00024" />
+            <path d="M72.4063 732.5 H72.4063 A35.5 35.5 0 0 1 107.9063 768 V768 A35.5 35.5 0 0 1 72.4063 803.5 H72.4063 A35.5 35.5 0 0 1 36.9063 768 V768 A35.5 35.5 0 0 1 72.4063 732.5 Z" fill="#000000" fill-opacity="0.00029" />
+            <path d="M72.4063 733 H72.4063 A35 35 0 0 1 107.4063 768 V768 A35 35 0 0 1 72.4063 803 H72.4063 A35 35 0 0 1 37.4063 768 V768 A35 35 0 0 1 72.4063 733 Z" fill="#000000" fill-opacity="0.00034" />
+            <path d="M72.4063 733.5 H72.4063 A34.5 34.5 0 0 1 106.9063 768 V768 A34.5 34.5 0 0 1 72.4063 802.5 H72.4063 A34.5 34.5 0 0 1 37.9063 768 V768 A34.5 34.5 0 0 1 72.4063 733.5 Z" fill="#000000" fill-opacity="0.0004" />
+            <path d="M72.4063 734 H72.4063 A34 34 0 0 1 106.4063 768 V768 A34 34 0 0 1 72.4063 802 H72.4063 A34 34 0 0 1 38.4063 768 V768 A34 34 0 0 1 72.4063 734 Z" fill="#000000" fill-opacity="0.00047" />
+            <path d="M72.4063 734.5 H72.4063 A33.5 33.5 0 0 1 105.9063 768 V768 A33.5 33.5 0 0 1 72.4063 801.5 H72.4063 A33.5 33.5 0 0 1 38.9063 768 V768 A33.5 33.5 0 0 1 72.4063 734.5 Z" fill="#000000" fill-opacity="0.00055" />
+            <path d="M72.4063 735 H72.4063 A33 33 0 0 1 105.4063 768 V768 A33 33 0 0 1 72.4063 801 H72.4063 A33 33 0 0 1 39.4063 768 V768 A33 33 0 0 1 72.4063 735 Z" fill="#000000" fill-opacity="0.00064" />
+            <path d="M72.4063 735.5 H72.4063 A32.5 32.5 0 0 1 104.9063 768 V768 A32.5 32.5 0 0 1 72.4063 800.5 H72.4063 A32.5 32.5 0 0 1 39.9063 768 V768 A32.5 32.5 0 0 1 72.4063 735.5 Z" fill="#000000" fill-opacity="0.00073" />
+            <path d="M72.4063 736 H72.4063 A32 32 0 0 1 104.4063 768 V768 A32 32 0 0 1 72.4063 800 H72.4063 A32 32 0 0 1 40.4063 768 V768 A32 32 0 0 1 72.4063 736 Z" fill="#000000" fill-opacity="0.00083" />
+            <path d="M72.4063 736.5 H72.4063 A31.5 31.5 0 0 1 103.9063 768 V768 A31.5 31.5 0 0 1 72.4063 799.5 H72.4063 A31.5 31.5 0 0 1 40.9063 768 V768 A31.5 31.5 0 0 1 72.4063 736.5 Z" fill="#000000" fill-opacity="0.00095" />
+            <path d="M72.4063 737 H72.4063 A31 31 0 0 1 103.4063 768 V768 A31 31 0 0 1 72.4063 799 H72.4063 A31 31 0 0 1 41.4063 768 V768 A31 31 0 0 1 72.4063 737 Z" fill="#000000" fill-opacity="0.00107" />
+            <path d="M72.4063 737.5 H72.4063 A30.5 30.5 0 0 1 102.9063 768 V768 A30.5 30.5 0 0 1 72.4063 798.5 H72.4063 A30.5 30.5 0 0 1 41.9063 768 V768 A30.5 30.5 0 0 1 72.4063 737.5 Z" fill="#000000" fill-opacity="0.00119" />
+            <path d="M72.4063 738 H72.4063 A30 30 0 0 1 102.4063 768 V768 A30 30 0 0 1 72.4063 798 H72.4063 A30 30 0 0 1 42.4063 768 V768 A30 30 0 0 1 72.4063 738 Z" fill="#000000" fill-opacity="0.00133" />
+            <path d="M72.4063 738.5 H72.4063 A29.5 29.5 0 0 1 101.9063 768 V768 A29.5 29.5 0 0 1 72.4063 797.5 H72.4063 A29.5 29.5 0 0 1 42.9063 768 V768 A29.5 29.5 0 0 1 72.4063 738.5 Z" fill="#000000" fill-opacity="0.00146" />
+            <path d="M72.4063 739 H72.4063 A29 29 0 0 1 101.4063 768 V768 A29 29 0 0 1 72.4063 797 H72.4063 A29 29 0 0 1 43.4063 768 V768 A29 29 0 0 1 72.4063 739 Z" fill="#000000" fill-opacity="0.0016" />
+            <path d="M72.4063 739.5 H72.4063 A28.5 28.5 0 0 1 100.9063 768 V768 A28.5 28.5 0 0 1 72.4063 796.5 H72.4063 A28.5 28.5 0 0 1 43.9063 768 V768 A28.5 28.5 0 0 1 72.4063 739.5 Z" fill="#000000" fill-opacity="0.00174" />
+            <path d="M72.4063 740 H72.4063 A28 28 0 0 1 100.4063 768 V768 A28 28 0 0 1 72.4063 796 H72.4063 A28 28 0 0 1 44.4063 768 V768 A28 28 0 0 1 72.4063 740 Z" fill="#000000" fill-opacity="0.00189" />
+            <path d="M72.4063 740.5 H72.4063 A27.5 27.5 0 0 1 99.9063 768 V768 A27.5 27.5 0 0 1 72.4063 795.5 H72.4063 A27.5 27.5 0 0 1 44.9063 768 V768 A27.5 27.5 0 0 1 72.4063 740.5 Z" fill="#000000" fill-opacity="0.00203" />
+            <path d="M72.4063 741 H72.4063 A27 27 0 0 1 99.4063 768 V768 A27 27 0 0 1 72.4063 795 H72.4063 A27 27 0 0 1 45.4063 768 V768 A27 27 0 0 1 72.4063 741 Z" fill="#000000" fill-opacity="0.00216" />
+            <path d="M72.4063 741.5 H72.4063 A26.5 26.5 0 0 1 98.9063 768 V768 A26.5 26.5 0 0 1 72.4063 794.5 H72.4063 A26.5 26.5 0 0 1 45.9063 768 V768 A26.5 26.5 0 0 1 72.4063 741.5 Z" fill="#000000" fill-opacity="0.00229" />
+            <path d="M72.4063 742 H72.4063 A26 26 0 0 1 98.4063 768 V768 A26 26 0 0 1 72.4063 794 H72.4063 A26 26 0 0 1 46.4063 768 V768 A26 26 0 0 1 72.4063 742 Z" fill="#000000" fill-opacity="0.00241" />
+            <path d="M72.4063 742.5 H72.4063 A25.5 25.5 0 0 1 97.9063 768 V768 A25.5 25.5 0 0 1 72.4063 793.5 H72.4063 A25.5 25.5 0 0 1 46.9063 768 V768 A25.5 25.5 0 0 1 72.4063 742.5 Z" fill="#000000" fill-opacity="0.00252" />
+            <path d="M72.4063 743 H72.4063 A25 25 0 0 1 97.4063 768 V768 A25 25 0 0 1 72.4063 793 H72.4063 A25 25 0 0 1 47.4063 768 V768 A25 25 0 0 1 72.4063 743 Z" fill="#000000" fill-opacity="0.00261" />
+            <path d="M72.4063 743.5 H72.4063 A24.5 24.5 0 0 1 96.9063 768 V768 A24.5 24.5 0 0 1 72.4063 792.5 H72.4063 A24.5 24.5 0 0 1 47.9063 768 V768 A24.5 24.5 0 0 1 72.4063 743.5 Z" fill="#000000" fill-opacity="0.00269" />
+            <path d="M72.4063 744 H72.4063 A24 24 0 0 1 96.4063 768 V768 A24 24 0 0 1 72.4063 792 H72.4063 A24 24 0 0 1 48.4063 768 V768 A24 24 0 0 1 72.4063 744 Z" fill="#000000" fill-opacity="0.00276" />
+            <path d="M72.4063 744.5 H72.4063 A23.5 23.5 0 0 1 95.9063 768 V768 A23.5 23.5 0 0 1 72.4063 791.5 H72.4063 A23.5 23.5 0 0 1 48.9063 768 V768 A23.5 23.5 0 0 1 72.4063 744.5 Z" fill="#000000" fill-opacity="0.0028" />
+            <path d="M72.4063 745 H72.4063 A23 23 0 0 1 95.4063 768 V768 A23 23 0 0 1 72.4063 791 H72.4063 A23 23 0 0 1 49.4063 768 V768 A23 23 0 0 1 72.4063 745 Z" fill="#000000" fill-opacity="0.00283" />
+            <path d="M72.4063 745.5 H72.4063 A22.5 22.5 0 0 1 94.9063 768 V768 A22.5 22.5 0 0 1 72.4063 790.5 H72.4063 A22.5 22.5 0 0 1 49.9063 768 V768 A22.5 22.5 0 0 1 72.4063 745.5 Z" fill="#000000" fill-opacity="0.00284" />
+            <path d="M72.4063 746 H72.4063 A22 22 0 0 1 94.4063 768 V768 A22 22 0 0 1 72.4063 790 H72.4063 A22 22 0 0 1 50.4063 768 V768 A22 22 0 0 1 72.4063 746 Z" fill="#000000" fill-opacity="0.00283" />
+            <path d="M72.4063 746.5 H72.4063 A21.5 21.5 0 0 1 93.9063 768 V768 A21.5 21.5 0 0 1 72.4063 789.5 H72.4063 A21.5 21.5 0 0 1 50.9063 768 V768 A21.5 21.5 0 0 1 72.4063 746.5 Z" fill="#000000" fill-opacity="0.0028" />
+            <path d="M72.4063 747 H72.4063 A21 21 0 0 1 93.4063 768 V768 A21 21 0 0 1 72.4063 789 H72.4063 A21 21 0 0 1 51.4063 768 V768 A21 21 0 0 1 72.4063 747 Z" fill="#000000" fill-opacity="0.00275" />
+            <path d="M72.4063 747.5 H72.4063 A20.5 20.5 0 0 1 92.9063 768 V768 A20.5 20.5 0 0 1 72.4063 788.5 H72.4063 A20.5 20.5 0 0 1 51.9063 768 V768 A20.5 20.5 0 0 1 72.4063 747.5 Z" fill="#000000" fill-opacity="0.00268" />
+            <path d="M72.4063 748 H72.4063 A20 20 0 0 1 92.4063 768 V768 A20 20 0 0 1 72.4063 788 H72.4063 A20 20 0 0 1 52.4063 768 V768 A20 20 0 0 1 72.4063 748 Z" fill="#000000" fill-opacity="0.00259" />
+            <path d="M72.4063 748.5 H72.4063 A19.5 19.5 0 0 1 91.9063 768 V768 A19.5 19.5 0 0 1 72.4063 787.5 H72.4063 A19.5 19.5 0 0 1 52.9063 768 V768 A19.5 19.5 0 0 1 72.4063 748.5 Z" fill="#000000" fill-opacity="0.0025" />
+            <path d="M72.4063 749 H72.4063 A19 19 0 0 1 91.4063 768 V768 A19 19 0 0 1 72.4063 787 H72.4063 A19 19 0 0 1 53.4063 768 V768 A19 19 0 0 1 72.4063 749 Z" fill="#000000" fill-opacity="0.00238" />
+            <path d="M72.4063 749.5 H72.4063 A18.5 18.5 0 0 1 90.9063 768 V768 A18.5 18.5 0 0 1 72.4063 786.5 H72.4063 A18.5 18.5 0 0 1 53.9063 768 V768 A18.5 18.5 0 0 1 72.4063 749.5 Z" fill="#000000" fill-opacity="0.00226" />
+            <path d="M72.4063 750 H72.4063 A18 18 0 0 1 90.4063 768 V768 A18 18 0 0 1 72.4063 786 H72.4063 A18 18 0 0 1 54.4063 768 V768 A18 18 0 0 1 72.4063 750 Z" fill="#000000" fill-opacity="0.00213" />
+            <path d="M72.4063 750.5 H72.4063 A17.5 17.5 0 0 1 89.9063 768 V768 A17.5 17.5 0 0 1 72.4063 785.5 H72.4063 A17.5 17.5 0 0 1 54.9063 768 V768 A17.5 17.5 0 0 1 72.4063 750.5 Z" fill="#000000" fill-opacity="0.00199" />
+            <path d="M72.4063 751 H72.4063 A17 17 0 0 1 89.4063 768 V768 A17 17 0 0 1 72.4063 785 H72.4063 A17 17 0 0 1 55.4063 768 V768 A17 17 0 0 1 72.4063 751 Z" fill="#000000" fill-opacity="0.00185" />
+            <path d="M72.4063 751.5 H72.4063 A16.5 16.5 0 0 1 88.9063 768 V768 A16.5 16.5 0 0 1 72.4063 784.5 H72.4063 A16.5 16.5 0 0 1 55.9063 768 V768 A16.5 16.5 0 0 1 72.4063 751.5 Z" fill="#000000" fill-opacity="0.0017" />
+            <path d="M72.4063 752 H72.4063 A16 16 0 0 1 88.4063 768 V768 A16 16 0 0 1 72.4063 784 H72.4063 A16 16 0 0 1 56.4063 768 V768 A16 16 0 0 1 72.4063 752 Z" fill="#000000" fill-opacity="0.00156" />
+            <path d="M72.4063 752.5 H72.4063 A15.5 15.5 0 0 1 87.9063 768 V768 A15.5 15.5 0 0 1 72.4063 783.5 H72.4063 A15.5 15.5 0 0 1 56.9063 768 V768 A15.5 15.5 0 0 1 72.4063 752.5 Z" fill="#000000" fill-opacity="0.00142" />
+            <path d="M72.4063 753 H72.4063 A15 15 0 0 1 87.4063 768 V768 A15 15 0 0 1 72.4063 783 H72.4063 A15 15 0 0 1 57.4063 768 V768 A15 15 0 0 1 72.4063 753 Z" fill="#000000" fill-opacity="0.00128" />
+            <path d="M72.4063 753.5 H72.4063 A14.5 14.5 0 0 1 86.9063 768 V768 A14.5 14.5 0 0 1 72.4063 782.5 H72.4063 A14.5 14.5 0 0 1 57.9063 768 V768 A14.5 14.5 0 0 1 72.4063 753.5 Z" fill="#000000" fill-opacity="0.00114" />
+            <path d="M72.4063 754 H72.4063 A14 14 0 0 1 86.4063 768 V768 A14 14 0 0 1 72.4063 782 H72.4063 A14 14 0 0 1 58.4063 768 V768 A14 14 0 0 1 72.4063 754 Z" fill="#000000" fill-opacity="0.00102" />
+            <path d="M72.4063 754.5 H72.4063 A13.5 13.5 0 0 1 85.9063 768 V768 A13.5 13.5 0 0 1 72.4063 781.5 H72.4063 A13.5 13.5 0 0 1 58.9063 768 V768 A13.5 13.5 0 0 1 72.4063 754.5 Z" fill="#000000" fill-opacity="0.0009" />
+            <path d="M72.4063 755 H72.4063 A13 13 0 0 1 85.4063 768 V768 A13 13 0 0 1 72.4063 781 H72.4063 A13 13 0 0 1 59.4063 768 V768 A13 13 0 0 1 72.4063 755 Z" fill="#000000" fill-opacity="0.00079" />
+            <path d="M72.4063 755.5 H72.4063 A12.5 12.5 0 0 1 84.9063 768 V768 A12.5 12.5 0 0 1 72.4063 780.5 H72.4063 A12.5 12.5 0 0 1 59.9063 768 V768 A12.5 12.5 0 0 1 72.4063 755.5 Z" fill="#000000" fill-opacity="0.00069" />
+            <path d="M72.4063 756 H72.4063 A12 12 0 0 1 84.4063 768 V768 A12 12 0 0 1 72.4063 780 H72.4063 A12 12 0 0 1 60.4063 768 V768 A12 12 0 0 1 72.4063 756 Z" fill="#000000" fill-opacity="0.00059" />
+            <path d="M72.4063 756.5 H72.4063 A11.5 11.5 0 0 1 83.9063 768 V768 A11.5 11.5 0 0 1 72.4063 779.5 H72.4063 A11.5 11.5 0 0 1 60.9063 768 V768 A11.5 11.5 0 0 1 72.4063 756.5 Z" fill="#000000" fill-opacity="0.00051" />
+            <path d="M72.4063 757 H72.4063 A11 11 0 0 1 83.4063 768 V768 A11 11 0 0 1 72.4063 779 H72.4063 A11 11 0 0 1 61.4063 768 V768 A11 11 0 0 1 72.4063 757 Z" fill="#000000" fill-opacity="0.00044" />
+            <path d="M72.4063 757.5 H72.4063 A10.5 10.5 0 0 1 82.9063 768 V768 A10.5 10.5 0 0 1 72.4063 778.5 H72.4063 A10.5 10.5 0 0 1 61.9063 768 V768 A10.5 10.5 0 0 1 72.4063 757.5 Z" fill="#000000" fill-opacity="0.00037" />
+            <path d="M72.4063 758 H72.4063 A10 10 0 0 1 82.4063 768 V768 A10 10 0 0 1 72.4063 778 H72.4063 A10 10 0 0 1 62.4063 768 V768 A10 10 0 0 1 72.4063 758 Z" fill="#000000" fill-opacity="0.00031" />
+            <path d="M72.4063 758.5 H72.4063 A9.5 9.5 0 0 1 81.9063 768 V768 A9.5 9.5 0 0 1 72.4063 777.5 H72.4063 A9.5 9.5 0 0 1 62.9063 768 V768 A9.5 9.5 0 0 1 72.4063 758.5 Z" fill="#000000" fill-opacity="0.00026" />
+            <path d="M72.4063 759 H72.4063 A9 9 0 0 1 81.4063 768 V768 A9 9 0 0 1 72.4063 777 H72.4063 A9 9 0 0 1 63.4063 768 V768 A9 9 0 0 1 72.4063 759 Z" fill="#000000" fill-opacity="0.00021" />
+            <path d="M72.4063 759.5 H72.4063 A8.5 8.5 0 0 1 80.9063 768 V768 A8.5 8.5 0 0 1 72.4063 776.5 H72.4063 A8.5 8.5 0 0 1 63.9063 768 V768 A8.5 8.5 0 0 1 72.4063 759.5 Z" fill="#000000" fill-opacity="0.00018" />
+            <path d="M72.4063 760 H72.4063 A8 8 0 0 1 80.4063 768 V768 A8 8 0 0 1 72.4063 776 H72.4063 A8 8 0 0 1 64.4063 768 V768 A8 8 0 0 1 72.4063 760 Z" fill="#000000" fill-opacity="0.00014" />
+            <path d="M72.4063 760.5 H72.4063 A7.5 7.5 0 0 1 79.9063 768 V768 A7.5 7.5 0 0 1 72.4063 775.5 H72.4063 A7.5 7.5 0 0 1 64.9063 768 V768 A7.5 7.5 0 0 1 72.4063 760.5 Z" fill="#000000" fill-opacity="0.00012" />
+            <path d="M72.4063 761 H72.4063 A7 7 0 0 1 79.4063 768 V768 A7 7 0 0 1 72.4063 775 H72.4063 A7 7 0 0 1 65.4063 768 V768 A7 7 0 0 1 72.4063 761 Z" fill="#000000" fill-opacity="0.00009" />
+          </g>
+          <path d="M72.4063 741 H72.4063 A23 23 0 0 1 95.4063 764 V764 A23 23 0 0 1 72.4063 787 H72.4063 A23 23 0 0 1 49.4063 764 V764 A23 23 0 0 1 72.4063 741 Z" fill="#e5efec" />
+          <path d="M72.4063 741 H72.4063 A23 23 0 0 1 95.4063 764 V764 A23 23 0 0 1 72.4063 787 H72.4063 A23 23 0 0 1 49.4063 764 V764 A23 23 0 0 1 72.4063 741 Z M72.4063 742 H72.4063 A22 22 0 0 1 94.4063 764 V764 A22 22 0 0 1 72.4063 786 H72.4063 A22 22 0 0 1 50.4063 764 V764 A22 22 0 0 1 72.4063 742 Z" fill="#dfe4e3" fill-rule="evenodd" />
+          <g id="lucide-pencil" aria-label="lucide-pencil">
+            <path d="M21.174 6.812a1 1 0 0 0-3.986-3.987L3.842 16.174a2 2 0 0 0-.5.83l-1.321 4.352a.5.5 0 0 0 .623.622l4.353-1.32a2 2 0 0 0 .83-.497z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 64.4063 756)" />
+            <path d="m15 5 4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 64.4063 756)" />
+          </g>
+        </g>
+        <g id="ts-tabs" aria-label="ts-tabs">
+          <g id="Ombra-2" aria-label="Ombra">
+            <path d="M139.4063 713.33333 H250.5938 A55.66667 55.66667 0 0 1 306.26047 769 V769 A55.66667 55.66667 0 0 1 250.5938 824.66667 H139.4063 A55.66667 55.66667 0 0 1 83.73963 769 V769 A55.66667 55.66667 0 0 1 139.4063 713.33333 Z" fill="#000000" fill-opacity="0.00036" />
+            <path d="M139.4063 714.16667 H250.5938 A54.83333 54.83333 0 0 1 305.42713 769 V769 A54.83333 54.83333 0 0 1 250.5938 823.83333 H139.4063 A54.83333 54.83333 0 0 1 84.57297 769 V769 A54.83333 54.83333 0 0 1 139.4063 714.16667 Z" fill="#000000" fill-opacity="0.0001" />
+            <path d="M139.4063 715 H250.5938 A54 54 0 0 1 304.5938 769 V769 A54 54 0 0 1 250.5938 823 H139.4063 A54 54 0 0 1 85.4063 769 V769 A54 54 0 0 1 139.4063 715 Z" fill="#000000" fill-opacity="0.00012" />
+            <path d="M139.4063 715.83333 H250.5938 A53.16667 53.16667 0 0 1 303.76047 769 V769 A53.16667 53.16667 0 0 1 250.5938 822.16667 H139.4063 A53.16667 53.16667 0 0 1 86.23963 769 V769 A53.16667 53.16667 0 0 1 139.4063 715.83333 Z" fill="#000000" fill-opacity="0.00015" />
+            <path d="M139.4063 716.66667 H250.5938 A52.33333 52.33333 0 0 1 302.92713 769 V769 A52.33333 52.33333 0 0 1 250.5938 821.33333 H139.4063 A52.33333 52.33333 0 0 1 87.07297 769 V769 A52.33333 52.33333 0 0 1 139.4063 716.66667 Z" fill="#000000" fill-opacity="0.00019" />
+            <path d="M139.4063 717.5 H250.5938 A51.5 51.5 0 0 1 302.0938 769 V769 A51.5 51.5 0 0 1 250.5938 820.5 H139.4063 A51.5 51.5 0 0 1 87.9063 769 V769 A51.5 51.5 0 0 1 139.4063 717.5 Z" fill="#000000" fill-opacity="0.00023" />
+            <path d="M139.4063 718.33333 H250.5938 A50.66667 50.66667 0 0 1 301.26047 769 V769 A50.66667 50.66667 0 0 1 250.5938 819.66667 H139.4063 A50.66667 50.66667 0 0 1 88.73963 769 V769 A50.66667 50.66667 0 0 1 139.4063 718.33333 Z" fill="#000000" fill-opacity="0.00027" />
+            <path d="M139.4063 719.16667 H250.5938 A49.83333 49.83333 0 0 1 300.42713 769 V769 A49.83333 49.83333 0 0 1 250.5938 818.83333 H139.4063 A49.83333 49.83333 0 0 1 89.57297 769 V769 A49.83333 49.83333 0 0 1 139.4063 719.16667 Z" fill="#000000" fill-opacity="0.00033" />
+            <path d="M139.4063 720 H250.5938 A49 49 0 0 1 299.5938 769 V769 A49 49 0 0 1 250.5938 818 H139.4063 A49 49 0 0 1 90.4063 769 V769 A49 49 0 0 1 139.4063 720 Z" fill="#000000" fill-opacity="0.00039" />
+            <path d="M139.4063 720.83333 H250.5938 A48.16667 48.16667 0 0 1 298.76047 769 V769 A48.16667 48.16667 0 0 1 250.5938 817.16667 H139.4063 A48.16667 48.16667 0 0 1 91.23963 769 V769 A48.16667 48.16667 0 0 1 139.4063 720.83333 Z" fill="#000000" fill-opacity="0.00046" />
+            <path d="M139.4063 721.66667 H250.5938 A47.33333 47.33333 0 0 1 297.92713 769 V769 A47.33333 47.33333 0 0 1 250.5938 816.33333 H139.4063 A47.33333 47.33333 0 0 1 92.07297 769 V769 A47.33333 47.33333 0 0 1 139.4063 721.66667 Z" fill="#000000" fill-opacity="0.00054" />
+            <path d="M139.4063 722.5 H250.5938 A46.5 46.5 0 0 1 297.0938 769 V769 A46.5 46.5 0 0 1 250.5938 815.5 H139.4063 A46.5 46.5 0 0 1 92.9063 769 V769 A46.5 46.5 0 0 1 139.4063 722.5 Z" fill="#000000" fill-opacity="0.00063" />
+            <path d="M139.4063 723.33333 H250.5938 A45.66667 45.66667 0 0 1 296.26047 769 V769 A45.66667 45.66667 0 0 1 250.5938 814.66667 H139.4063 A45.66667 45.66667 0 0 1 93.73963 769 V769 A45.66667 45.66667 0 0 1 139.4063 723.33333 Z" fill="#000000" fill-opacity="0.00073" />
+            <path d="M139.4063 724.16667 H250.5938 A44.83333 44.83333 0 0 1 295.42713 769 V769 A44.83333 44.83333 0 0 1 250.5938 813.83333 H139.4063 A44.83333 44.83333 0 0 1 94.57297 769 V769 A44.83333 44.83333 0 0 1 139.4063 724.16667 Z" fill="#000000" fill-opacity="0.00084" />
+            <path d="M139.4063 725 H250.5938 A44 44 0 0 1 294.5938 769 V769 A44 44 0 0 1 250.5938 813 H139.4063 A44 44 0 0 1 95.4063 769 V769 A44 44 0 0 1 139.4063 725 Z" fill="#000000" fill-opacity="0.00096" />
+            <path d="M139.4063 725.83333 H250.5938 A43.16667 43.16667 0 0 1 293.76047 769 V769 A43.16667 43.16667 0 0 1 250.5938 812.16667 H139.4063 A43.16667 43.16667 0 0 1 96.23963 769 V769 A43.16667 43.16667 0 0 1 139.4063 725.83333 Z" fill="#000000" fill-opacity="0.00109" />
+            <path d="M139.4063 726.66667 H250.5938 A42.33333 42.33333 0 0 1 292.92713 769 V769 A42.33333 42.33333 0 0 1 250.5938 811.33333 H139.4063 A42.33333 42.33333 0 0 1 97.07297 769 V769 A42.33333 42.33333 0 0 1 139.4063 726.66667 Z" fill="#000000" fill-opacity="0.00122" />
+            <path d="M139.4063 727.5 H250.5938 A41.5 41.5 0 0 1 292.0938 769 V769 A41.5 41.5 0 0 1 250.5938 810.5 H139.4063 A41.5 41.5 0 0 1 97.9063 769 V769 A41.5 41.5 0 0 1 139.4063 727.5 Z" fill="#000000" fill-opacity="0.00137" />
+            <path d="M139.4063 728.33333 H250.5938 A40.66667 40.66667 0 0 1 291.26047 769 V769 A40.66667 40.66667 0 0 1 250.5938 809.66667 H139.4063 A40.66667 40.66667 0 0 1 98.73963 769 V769 A40.66667 40.66667 0 0 1 139.4063 728.33333 Z" fill="#000000" fill-opacity="0.00152" />
+            <path d="M139.4063 729.16667 H250.5938 A39.83333 39.83333 0 0 1 290.42713 769 V769 A39.83333 39.83333 0 0 1 250.5938 808.83333 H139.4063 A39.83333 39.83333 0 0 1 99.57297 769 V769 A39.83333 39.83333 0 0 1 139.4063 729.16667 Z" fill="#000000" fill-opacity="0.00168" />
+            <path d="M139.4063 730 H250.5938 A39 39 0 0 1 289.5938 769 V769 A39 39 0 0 1 250.5938 808 H139.4063 A39 39 0 0 1 100.4063 769 V769 A39 39 0 0 1 139.4063 730 Z" fill="#000000" fill-opacity="0.00184" />
+            <path d="M139.4063 730.83333 H250.5938 A38.16667 38.16667 0 0 1 288.76047 769 V769 A38.16667 38.16667 0 0 1 250.5938 807.16667 H139.4063 A38.16667 38.16667 0 0 1 101.23963 769 V769 A38.16667 38.16667 0 0 1 139.4063 730.83333 Z" fill="#000000" fill-opacity="0.002" />
+            <path d="M139.4063 731.66667 H250.5938 A37.33333 37.33333 0 0 1 287.92713 769 V769 A37.33333 37.33333 0 0 1 250.5938 806.33333 H139.4063 A37.33333 37.33333 0 0 1 102.07297 769 V769 A37.33333 37.33333 0 0 1 139.4063 731.66667 Z" fill="#000000" fill-opacity="0.00217" />
+            <path d="M139.4063 732.5 H250.5938 A36.5 36.5 0 0 1 287.0938 769 V769 A36.5 36.5 0 0 1 250.5938 805.5 H139.4063 A36.5 36.5 0 0 1 102.9063 769 V769 A36.5 36.5 0 0 1 139.4063 732.5 Z" fill="#000000" fill-opacity="0.00233" />
+            <path d="M139.4063 733.33333 H250.5938 A35.66667 35.66667 0 0 1 286.26047 769 V769 A35.66667 35.66667 0 0 1 250.5938 804.66667 H139.4063 A35.66667 35.66667 0 0 1 103.73963 769 V769 A35.66667 35.66667 0 0 1 139.4063 733.33333 Z" fill="#000000" fill-opacity="0.00248" />
+            <path d="M139.4063 734.16667 H250.5938 A34.83333 34.83333 0 0 1 285.42713 769 V769 A34.83333 34.83333 0 0 1 250.5938 803.83333 H139.4063 A34.83333 34.83333 0 0 1 104.57297 769 V769 A34.83333 34.83333 0 0 1 139.4063 734.16667 Z" fill="#000000" fill-opacity="0.00263" />
+            <path d="M139.4063 735 H250.5938 A34 34 0 0 1 284.5938 769 V769 A34 34 0 0 1 250.5938 803 H139.4063 A34 34 0 0 1 105.4063 769 V769 A34 34 0 0 1 139.4063 735 Z" fill="#000000" fill-opacity="0.00277" />
+            <path d="M139.4063 735.83333 H250.5938 A33.16667 33.16667 0 0 1 283.76047 769 V769 A33.16667 33.16667 0 0 1 250.5938 802.16667 H139.4063 A33.16667 33.16667 0 0 1 106.23963 769 V769 A33.16667 33.16667 0 0 1 139.4063 735.83333 Z" fill="#000000" fill-opacity="0.0029" />
+            <path d="M139.4063 736.66667 H250.5938 A32.33333 32.33333 0 0 1 282.92713 769 V769 A32.33333 32.33333 0 0 1 250.5938 801.33333 H139.4063 A32.33333 32.33333 0 0 1 107.07297 769 V769 A32.33333 32.33333 0 0 1 139.4063 736.66667 Z" fill="#000000" fill-opacity="0.00301" />
+            <path d="M139.4063 737.5 H250.5938 A31.5 31.5 0 0 1 282.0938 769 V769 A31.5 31.5 0 0 1 250.5938 800.5 H139.4063 A31.5 31.5 0 0 1 107.9063 769 V769 A31.5 31.5 0 0 1 139.4063 737.5 Z" fill="#000000" fill-opacity="0.0031" />
+            <path d="M139.4063 738.33333 H250.5938 A30.66667 30.66667 0 0 1 281.26047 769 V769 A30.66667 30.66667 0 0 1 250.5938 799.66667 H139.4063 A30.66667 30.66667 0 0 1 108.73963 769 V769 A30.66667 30.66667 0 0 1 139.4063 738.33333 Z" fill="#000000" fill-opacity="0.00318" />
+            <path d="M139.4063 739.16667 H250.5938 A29.83333 29.83333 0 0 1 280.42713 769 V769 A29.83333 29.83333 0 0 1 250.5938 798.83333 H139.4063 A29.83333 29.83333 0 0 1 109.57297 769 V769 A29.83333 29.83333 0 0 1 139.4063 739.16667 Z" fill="#000000" fill-opacity="0.00323" />
+            <path d="M139.4063 740 H250.5938 A29 29 0 0 1 279.5938 769 V769 A29 29 0 0 1 250.5938 798 H139.4063 A29 29 0 0 1 110.4063 769 V769 A29 29 0 0 1 139.4063 740 Z" fill="#000000" fill-opacity="0.00326" />
+            <path d="M139.4063 740.83333 H250.5938 A28.16667 28.16667 0 0 1 278.76047 769 V769 A28.16667 28.16667 0 0 1 250.5938 797.16667 H139.4063 A28.16667 28.16667 0 0 1 111.23963 769 V769 A28.16667 28.16667 0 0 1 139.4063 740.83333 Z" fill="#000000" fill-opacity="0.00328" />
+            <path d="M139.4063 741.66667 H250.5938 A27.33333 27.33333 0 0 1 277.92713 769 V769 A27.33333 27.33333 0 0 1 250.5938 796.33333 H139.4063 A27.33333 27.33333 0 0 1 112.07297 769 V769 A27.33333 27.33333 0 0 1 139.4063 741.66667 Z" fill="#000000" fill-opacity="0.00326" />
+            <path d="M139.4063 742.5 H250.5938 A26.5 26.5 0 0 1 277.0938 769 V769 A26.5 26.5 0 0 1 250.5938 795.5 H139.4063 A26.5 26.5 0 0 1 112.9063 769 V769 A26.5 26.5 0 0 1 139.4063 742.5 Z" fill="#000000" fill-opacity="0.00323" />
+            <path d="M139.4063 743.33333 H250.5938 A25.66667 25.66667 0 0 1 276.26047 769 V769 A25.66667 25.66667 0 0 1 250.5938 794.66667 H139.4063 A25.66667 25.66667 0 0 1 113.73963 769 V769 A25.66667 25.66667 0 0 1 139.4063 743.33333 Z" fill="#000000" fill-opacity="0.00317" />
+            <path d="M139.4063 744.16667 H250.5938 A24.83333 24.83333 0 0 1 275.42713 769 V769 A24.83333 24.83333 0 0 1 250.5938 793.83333 H139.4063 A24.83333 24.83333 0 0 1 114.57297 769 V769 A24.83333 24.83333 0 0 1 139.4063 744.16667 Z" fill="#000000" fill-opacity="0.0031" />
+            <path d="M139.4063 745 H250.5938 A24 24 0 0 1 274.5938 769 V769 A24 24 0 0 1 250.5938 793 H139.4063 A24 24 0 0 1 115.4063 769 V769 A24 24 0 0 1 139.4063 745 Z" fill="#000000" fill-opacity="0.003" />
+            <path d="M139.4063 745.83333 H250.5938 A23.16667 23.16667 0 0 1 273.76047 769 V769 A23.16667 23.16667 0 0 1 250.5938 792.16667 H139.4063 A23.16667 23.16667 0 0 1 116.23963 769 V769 A23.16667 23.16667 0 0 1 139.4063 745.83333 Z" fill="#000000" fill-opacity="0.00289" />
+            <path d="M139.4063 746.66667 H250.5938 A22.33333 22.33333 0 0 1 272.92713 769 V769 A22.33333 22.33333 0 0 1 250.5938 791.33333 H139.4063 A22.33333 22.33333 0 0 1 117.07297 769 V769 A22.33333 22.33333 0 0 1 139.4063 746.66667 Z" fill="#000000" fill-opacity="0.00276" />
+            <path d="M139.4063 747.5 H250.5938 A21.5 21.5 0 0 1 272.0938 769 V769 A21.5 21.5 0 0 1 250.5938 790.5 H139.4063 A21.5 21.5 0 0 1 117.9063 769 V769 A21.5 21.5 0 0 1 139.4063 747.5 Z" fill="#000000" fill-opacity="0.00262" />
+            <path d="M139.4063 748.33333 H250.5938 A20.66667 20.66667 0 0 1 271.26047 769 V769 A20.66667 20.66667 0 0 1 250.5938 789.66667 H139.4063 A20.66667 20.66667 0 0 1 118.73963 769 V769 A20.66667 20.66667 0 0 1 139.4063 748.33333 Z" fill="#000000" fill-opacity="0.00246" />
+            <path d="M139.4063 749.16667 H250.5938 A19.83333 19.83333 0 0 1 270.42713 769 V769 A19.83333 19.83333 0 0 1 250.5938 788.83333 H139.4063 A19.83333 19.83333 0 0 1 119.57297 769 V769 A19.83333 19.83333 0 0 1 139.4063 749.16667 Z" fill="#000000" fill-opacity="0.0023" />
+            <path d="M139.4063 750 H250.5938 A19 19 0 0 1 269.5938 769 V769 A19 19 0 0 1 250.5938 788 H139.4063 A19 19 0 0 1 120.4063 769 V769 A19 19 0 0 1 139.4063 750 Z" fill="#000000" fill-opacity="0.00214" />
+            <path d="M139.4063 750.83333 H250.5938 A18.16667 18.16667 0 0 1 268.76047 769 V769 A18.16667 18.16667 0 0 1 250.5938 787.16667 H139.4063 A18.16667 18.16667 0 0 1 121.23963 769 V769 A18.16667 18.16667 0 0 1 139.4063 750.83333 Z" fill="#000000" fill-opacity="0.00197" />
+            <path d="M139.4063 751.66667 H250.5938 A17.33333 17.33333 0 0 1 267.92713 769 V769 A17.33333 17.33333 0 0 1 250.5938 786.33333 H139.4063 A17.33333 17.33333 0 0 1 122.07297 769 V769 A17.33333 17.33333 0 0 1 139.4063 751.66667 Z" fill="#000000" fill-opacity="0.00181" />
+            <path d="M139.4063 752.5 H250.5938 A16.5 16.5 0 0 1 267.0938 769 V769 A16.5 16.5 0 0 1 250.5938 785.5 H139.4063 A16.5 16.5 0 0 1 122.9063 769 V769 A16.5 16.5 0 0 1 139.4063 752.5 Z" fill="#000000" fill-opacity="0.00164" />
+            <path d="M139.4063 753.33333 H250.5938 A15.66667 15.66667 0 0 1 266.26047 769 V769 A15.66667 15.66667 0 0 1 250.5938 784.66667 H139.4063 A15.66667 15.66667 0 0 1 123.73963 769 V769 A15.66667 15.66667 0 0 1 139.4063 753.33333 Z" fill="#000000" fill-opacity="0.00148" />
+            <path d="M139.4063 754.16667 H250.5938 A14.83333 14.83333 0 0 1 265.42713 769 V769 A14.83333 14.83333 0 0 1 250.5938 783.83333 H139.4063 A14.83333 14.83333 0 0 1 124.57297 769 V769 A14.83333 14.83333 0 0 1 139.4063 754.16667 Z" fill="#000000" fill-opacity="0.00133" />
+            <path d="M139.4063 755 H250.5938 A14 14 0 0 1 264.5938 769 V769 A14 14 0 0 1 250.5938 783 H139.4063 A14 14 0 0 1 125.4063 769 V769 A14 14 0 0 1 139.4063 755 Z" fill="#000000" fill-opacity="0.00118" />
+            <path d="M139.4063 755.83333 H250.5938 A13.16667 13.16667 0 0 1 263.76047 769 V769 A13.16667 13.16667 0 0 1 250.5938 782.16667 H139.4063 A13.16667 13.16667 0 0 1 126.23963 769 V769 A13.16667 13.16667 0 0 1 139.4063 755.83333 Z" fill="#000000" fill-opacity="0.00104" />
+            <path d="M139.4063 756.66667 H250.5938 A12.33333 12.33333 0 0 1 262.92713 769 V769 A12.33333 12.33333 0 0 1 250.5938 781.33333 H139.4063 A12.33333 12.33333 0 0 1 127.07297 769 V769 A12.33333 12.33333 0 0 1 139.4063 756.66667 Z" fill="#000000" fill-opacity="0.00092" />
+            <path d="M139.4063 757.5 H250.5938 A11.5 11.5 0 0 1 262.0938 769 V769 A11.5 11.5 0 0 1 250.5938 780.5 H139.4063 A11.5 11.5 0 0 1 127.9063 769 V769 A11.5 11.5 0 0 1 139.4063 757.5 Z" fill="#000000" fill-opacity="0.0008" />
+            <path d="M139.4063 758.33333 H250.5938 A10.66667 10.66667 0 0 1 261.26047 769 V769 A10.66667 10.66667 0 0 1 250.5938 779.66667 H139.4063 A10.66667 10.66667 0 0 1 128.73963 769 V769 A10.66667 10.66667 0 0 1 139.4063 758.33333 Z" fill="#000000" fill-opacity="0.00069" />
+            <path d="M139.4063 759.16667 H250.5938 A9.83333 9.83333 0 0 1 260.42713 769 V769 A9.83333 9.83333 0 0 1 250.5938 778.83333 H139.4063 A9.83333 9.83333 0 0 1 129.57297 769 V769 A9.83333 9.83333 0 0 1 139.4063 759.16667 Z" fill="#000000" fill-opacity="0.00059" />
+            <path d="M139.4063 760 H250.5938 A9 9 0 0 1 259.5938 769 V769 A9 9 0 0 1 250.5938 778 H139.4063 A9 9 0 0 1 130.4063 769 V769 A9 9 0 0 1 139.4063 760 Z" fill="#000000" fill-opacity="0.00051" />
+            <path d="M139.4063 760.83333 H250.5938 A8.16667 8.16667 0 0 1 258.76047 769 V769 A8.16667 8.16667 0 0 1 250.5938 777.16667 H139.4063 A8.16667 8.16667 0 0 1 131.23963 769 V769 A8.16667 8.16667 0 0 1 139.4063 760.83333 Z" fill="#000000" fill-opacity="0.00043" />
+            <path d="M139.4063 761.66667 H250.5938 A7.33333 7.33333 0 0 1 257.92713 769 V769 A7.33333 7.33333 0 0 1 250.5938 776.33333 H139.4063 A7.33333 7.33333 0 0 1 132.07297 769 V769 A7.33333 7.33333 0 0 1 139.4063 761.66667 Z" fill="#000000" fill-opacity="0.00036" />
+            <path d="M139.4063 762.5 H250.5938 A6.5 6.5 0 0 1 257.0938 769 V769 A6.5 6.5 0 0 1 250.5938 775.5 H139.4063 A6.5 6.5 0 0 1 132.9063 769 V769 A6.5 6.5 0 0 1 139.4063 762.5 Z" fill="#000000" fill-opacity="0.0003" />
+            <path d="M139.4063 763.33333 H250.5938 A5.66667 5.66667 0 0 1 256.26047 769 V769 A5.66667 5.66667 0 0 1 250.5938 774.66667 H139.4063 A5.66667 5.66667 0 0 1 133.73963 769 V769 A5.66667 5.66667 0 0 1 139.4063 763.33333 Z" fill="#000000" fill-opacity="0.00025" />
+            <path d="M139.4063 764.16667 H250.5938 A4.83333 4.83333 0 0 1 255.42713 769 V769 A4.83333 4.83333 0 0 1 250.5938 773.83333 H139.4063 A4.83333 4.83333 0 0 1 134.57297 769 V769 A4.83333 4.83333 0 0 1 139.4063 764.16667 Z" fill="#000000" fill-opacity="0.00021" />
+            <path d="M139.4063 765 H250.5938 A4 4 0 0 1 254.5938 769 V769 A4 4 0 0 1 250.5938 773 H139.4063 A4 4 0 0 1 135.4063 769 V769 A4 4 0 0 1 139.4063 765 Z" fill="#000000" fill-opacity="0.00017" />
+            <path d="M139.4063 765.83333 H250.5938 A3.16667 3.16667 0 0 1 253.76047 769 V769 A3.16667 3.16667 0 0 1 250.5938 772.16667 H139.4063 A3.16667 3.16667 0 0 1 136.23963 769 V769 A3.16667 3.16667 0 0 1 139.4063 765.83333 Z" fill="#000000" fill-opacity="0.00014" />
+            <path d="M139.4063 766.66667 H250.5938 A2.33333 2.33333 0 0 1 252.92713 769 V769 A2.33333 2.33333 0 0 1 250.5938 771.33333 H139.4063 A2.33333 2.33333 0 0 1 137.07297 769 V769 A2.33333 2.33333 0 0 1 139.4063 766.66667 Z" fill="#000000" fill-opacity="0.00011" />
+          </g>
+          <path d="M139.4063 735 H250.5938 A29 29 0 0 1 279.5938 764 V764 A29 29 0 0 1 250.5938 793 H139.4063 A29 29 0 0 1 110.4063 764 V764 A29 29 0 0 1 139.4063 735 Z" fill="#e5efec" />
+          <g id="Calendario" aria-label="Calendario">
+            <path d="M139.4063 740 H198.5938 A24 24 0 0 1 222.5938 764 V764 A24 24 0 0 1 198.5938 788 H139.4063 A24 24 0 0 1 115.4063 764 V764 A24 24 0 0 1 139.4063 740 Z" fill="#09675d" />
+            <g id="lucide-calendar-days" aria-label="lucide-calendar-days">
+              <path d="M8 2v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M16 2v4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <rect x="3" y="4" width="18" height="18" rx="2" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M3 10h18" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M8 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M12 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M16 14h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M8 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M12 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+              <path d="M16 18h.01" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 128.4063 756)" />
+            </g>
+            <g id="ts-tab-label" aria-label="ts-tab-label">
+              <text id="Testo-Calendario" x="151.4063" y="768.2969" fill="#ffffff" font-family="Manrope" font-size="11" font-weight="700" letter-spacing="0" textLength="58.1875" lengthAdjust="spacingAndGlyphs">Calendario</text>
+            </g>
+          </g>
+          <g id="Statistiche" aria-label="Statistiche">
+            <g id="lucide-chart-no-axes-combined" aria-label="lucide-chart-no-axes-combined">
+              <path d="M12 16v5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+              <path d="M16 14.639V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+              <path d="M20 10.656V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+              <path d="m22 3-8.646 8.646a.5.5 0 0 1-.708 0L9.354 8.354a.5.5 0 0 0-.707 0L2 15" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+              <path d="M4 18.463V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+              <path d="M8 14.656V21" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 242.5938 756)" />
+            </g>
+          </g>
+        </g>
+        <g id="Turni-e-lavori" aria-label="Turni e lavori">
+          <g id="Ombra-3" aria-label="Ombra">
+            <path d="M317.5938 729 H317.5938 A39 39 0 0 1 356.5938 768 V768 A39 39 0 0 1 317.5938 807 H317.5938 A39 39 0 0 1 278.5938 768 V768 A39 39 0 0 1 317.5938 729 Z" fill="#000000" fill-opacity="0.00031" />
+            <path d="M317.5938 729.5 H317.5938 A38.5 38.5 0 0 1 356.0938 768 V768 A38.5 38.5 0 0 1 317.5938 806.5 H317.5938 A38.5 38.5 0 0 1 279.0938 768 V768 A38.5 38.5 0 0 1 317.5938 729.5 Z" fill="#000000" fill-opacity="0.00009" />
+            <path d="M317.5938 730 H317.5938 A38 38 0 0 1 355.5938 768 V768 A38 38 0 0 1 317.5938 806 H317.5938 A38 38 0 0 1 279.5938 768 V768 A38 38 0 0 1 317.5938 730 Z" fill="#000000" fill-opacity="0.00011" />
+            <path d="M317.5938 730.5 H317.5938 A37.5 37.5 0 0 1 355.0938 768 V768 A37.5 37.5 0 0 1 317.5938 805.5 H317.5938 A37.5 37.5 0 0 1 280.0938 768 V768 A37.5 37.5 0 0 1 317.5938 730.5 Z" fill="#000000" fill-opacity="0.00013" />
+            <path d="M317.5938 731 H317.5938 A37 37 0 0 1 354.5938 768 V768 A37 37 0 0 1 317.5938 805 H317.5938 A37 37 0 0 1 280.5938 768 V768 A37 37 0 0 1 317.5938 731 Z" fill="#000000" fill-opacity="0.00016" />
+            <path d="M317.5938 731.5 H317.5938 A36.5 36.5 0 0 1 354.0938 768 V768 A36.5 36.5 0 0 1 317.5938 804.5 H317.5938 A36.5 36.5 0 0 1 281.0938 768 V768 A36.5 36.5 0 0 1 317.5938 731.5 Z" fill="#000000" fill-opacity="0.0002" />
+            <path d="M317.5938 732 H317.5938 A36 36 0 0 1 353.5938 768 V768 A36 36 0 0 1 317.5938 804 H317.5938 A36 36 0 0 1 281.5938 768 V768 A36 36 0 0 1 317.5938 732 Z" fill="#000000" fill-opacity="0.00024" />
+            <path d="M317.5938 732.5 H317.5938 A35.5 35.5 0 0 1 353.0938 768 V768 A35.5 35.5 0 0 1 317.5938 803.5 H317.5938 A35.5 35.5 0 0 1 282.0938 768 V768 A35.5 35.5 0 0 1 317.5938 732.5 Z" fill="#000000" fill-opacity="0.00029" />
+            <path d="M317.5938 733 H317.5938 A35 35 0 0 1 352.5938 768 V768 A35 35 0 0 1 317.5938 803 H317.5938 A35 35 0 0 1 282.5938 768 V768 A35 35 0 0 1 317.5938 733 Z" fill="#000000" fill-opacity="0.00034" />
+            <path d="M317.5938 733.5 H317.5938 A34.5 34.5 0 0 1 352.0938 768 V768 A34.5 34.5 0 0 1 317.5938 802.5 H317.5938 A34.5 34.5 0 0 1 283.0938 768 V768 A34.5 34.5 0 0 1 317.5938 733.5 Z" fill="#000000" fill-opacity="0.0004" />
+            <path d="M317.5938 734 H317.5938 A34 34 0 0 1 351.5938 768 V768 A34 34 0 0 1 317.5938 802 H317.5938 A34 34 0 0 1 283.5938 768 V768 A34 34 0 0 1 317.5938 734 Z" fill="#000000" fill-opacity="0.00047" />
+            <path d="M317.5938 734.5 H317.5938 A33.5 33.5 0 0 1 351.0938 768 V768 A33.5 33.5 0 0 1 317.5938 801.5 H317.5938 A33.5 33.5 0 0 1 284.0938 768 V768 A33.5 33.5 0 0 1 317.5938 734.5 Z" fill="#000000" fill-opacity="0.00055" />
+            <path d="M317.5938 735 H317.5938 A33 33 0 0 1 350.5938 768 V768 A33 33 0 0 1 317.5938 801 H317.5938 A33 33 0 0 1 284.5938 768 V768 A33 33 0 0 1 317.5938 735 Z" fill="#000000" fill-opacity="0.00064" />
+            <path d="M317.5938 735.5 H317.5938 A32.5 32.5 0 0 1 350.0938 768 V768 A32.5 32.5 0 0 1 317.5938 800.5 H317.5938 A32.5 32.5 0 0 1 285.0938 768 V768 A32.5 32.5 0 0 1 317.5938 735.5 Z" fill="#000000" fill-opacity="0.00073" />
+            <path d="M317.5938 736 H317.5938 A32 32 0 0 1 349.5938 768 V768 A32 32 0 0 1 317.5938 800 H317.5938 A32 32 0 0 1 285.5938 768 V768 A32 32 0 0 1 317.5938 736 Z" fill="#000000" fill-opacity="0.00083" />
+            <path d="M317.5938 736.5 H317.5938 A31.5 31.5 0 0 1 349.0938 768 V768 A31.5 31.5 0 0 1 317.5938 799.5 H317.5938 A31.5 31.5 0 0 1 286.0938 768 V768 A31.5 31.5 0 0 1 317.5938 736.5 Z" fill="#000000" fill-opacity="0.00095" />
+            <path d="M317.5938 737 H317.5938 A31 31 0 0 1 348.5938 768 V768 A31 31 0 0 1 317.5938 799 H317.5938 A31 31 0 0 1 286.5938 768 V768 A31 31 0 0 1 317.5938 737 Z" fill="#000000" fill-opacity="0.00107" />
+            <path d="M317.5938 737.5 H317.5938 A30.5 30.5 0 0 1 348.0938 768 V768 A30.5 30.5 0 0 1 317.5938 798.5 H317.5938 A30.5 30.5 0 0 1 287.0938 768 V768 A30.5 30.5 0 0 1 317.5938 737.5 Z" fill="#000000" fill-opacity="0.00119" />
+            <path d="M317.5938 738 H317.5938 A30 30 0 0 1 347.5938 768 V768 A30 30 0 0 1 317.5938 798 H317.5938 A30 30 0 0 1 287.5938 768 V768 A30 30 0 0 1 317.5938 738 Z" fill="#000000" fill-opacity="0.00133" />
+            <path d="M317.5938 738.5 H317.5938 A29.5 29.5 0 0 1 347.0938 768 V768 A29.5 29.5 0 0 1 317.5938 797.5 H317.5938 A29.5 29.5 0 0 1 288.0938 768 V768 A29.5 29.5 0 0 1 317.5938 738.5 Z" fill="#000000" fill-opacity="0.00146" />
+            <path d="M317.5938 739 H317.5938 A29 29 0 0 1 346.5938 768 V768 A29 29 0 0 1 317.5938 797 H317.5938 A29 29 0 0 1 288.5938 768 V768 A29 29 0 0 1 317.5938 739 Z" fill="#000000" fill-opacity="0.0016" />
+            <path d="M317.5938 739.5 H317.5938 A28.5 28.5 0 0 1 346.0938 768 V768 A28.5 28.5 0 0 1 317.5938 796.5 H317.5938 A28.5 28.5 0 0 1 289.0938 768 V768 A28.5 28.5 0 0 1 317.5938 739.5 Z" fill="#000000" fill-opacity="0.00174" />
+            <path d="M317.5938 740 H317.5938 A28 28 0 0 1 345.5938 768 V768 A28 28 0 0 1 317.5938 796 H317.5938 A28 28 0 0 1 289.5938 768 V768 A28 28 0 0 1 317.5938 740 Z" fill="#000000" fill-opacity="0.00189" />
+            <path d="M317.5938 740.5 H317.5938 A27.5 27.5 0 0 1 345.0938 768 V768 A27.5 27.5 0 0 1 317.5938 795.5 H317.5938 A27.5 27.5 0 0 1 290.0938 768 V768 A27.5 27.5 0 0 1 317.5938 740.5 Z" fill="#000000" fill-opacity="0.00203" />
+            <path d="M317.5938 741 H317.5938 A27 27 0 0 1 344.5938 768 V768 A27 27 0 0 1 317.5938 795 H317.5938 A27 27 0 0 1 290.5938 768 V768 A27 27 0 0 1 317.5938 741 Z" fill="#000000" fill-opacity="0.00216" />
+            <path d="M317.5938 741.5 H317.5938 A26.5 26.5 0 0 1 344.0938 768 V768 A26.5 26.5 0 0 1 317.5938 794.5 H317.5938 A26.5 26.5 0 0 1 291.0938 768 V768 A26.5 26.5 0 0 1 317.5938 741.5 Z" fill="#000000" fill-opacity="0.00229" />
+            <path d="M317.5938 742 H317.5938 A26 26 0 0 1 343.5938 768 V768 A26 26 0 0 1 317.5938 794 H317.5938 A26 26 0 0 1 291.5938 768 V768 A26 26 0 0 1 317.5938 742 Z" fill="#000000" fill-opacity="0.00241" />
+            <path d="M317.5938 742.5 H317.5938 A25.5 25.5 0 0 1 343.0938 768 V768 A25.5 25.5 0 0 1 317.5938 793.5 H317.5938 A25.5 25.5 0 0 1 292.0938 768 V768 A25.5 25.5 0 0 1 317.5938 742.5 Z" fill="#000000" fill-opacity="0.00252" />
+            <path d="M317.5938 743 H317.5938 A25 25 0 0 1 342.5938 768 V768 A25 25 0 0 1 317.5938 793 H317.5938 A25 25 0 0 1 292.5938 768 V768 A25 25 0 0 1 317.5938 743 Z" fill="#000000" fill-opacity="0.00261" />
+            <path d="M317.5938 743.5 H317.5938 A24.5 24.5 0 0 1 342.0938 768 V768 A24.5 24.5 0 0 1 317.5938 792.5 H317.5938 A24.5 24.5 0 0 1 293.0938 768 V768 A24.5 24.5 0 0 1 317.5938 743.5 Z" fill="#000000" fill-opacity="0.00269" />
+            <path d="M317.5938 744 H317.5938 A24 24 0 0 1 341.5938 768 V768 A24 24 0 0 1 317.5938 792 H317.5938 A24 24 0 0 1 293.5938 768 V768 A24 24 0 0 1 317.5938 744 Z" fill="#000000" fill-opacity="0.00276" />
+            <path d="M317.5938 744.5 H317.5938 A23.5 23.5 0 0 1 341.0938 768 V768 A23.5 23.5 0 0 1 317.5938 791.5 H317.5938 A23.5 23.5 0 0 1 294.0938 768 V768 A23.5 23.5 0 0 1 317.5938 744.5 Z" fill="#000000" fill-opacity="0.0028" />
+            <path d="M317.5938 745 H317.5938 A23 23 0 0 1 340.5938 768 V768 A23 23 0 0 1 317.5938 791 H317.5938 A23 23 0 0 1 294.5938 768 V768 A23 23 0 0 1 317.5938 745 Z" fill="#000000" fill-opacity="0.00283" />
+            <path d="M317.5938 745.5 H317.5938 A22.5 22.5 0 0 1 340.0938 768 V768 A22.5 22.5 0 0 1 317.5938 790.5 H317.5938 A22.5 22.5 0 0 1 295.0938 768 V768 A22.5 22.5 0 0 1 317.5938 745.5 Z" fill="#000000" fill-opacity="0.00284" />
+            <path d="M317.5938 746 H317.5938 A22 22 0 0 1 339.5938 768 V768 A22 22 0 0 1 317.5938 790 H317.5938 A22 22 0 0 1 295.5938 768 V768 A22 22 0 0 1 317.5938 746 Z" fill="#000000" fill-opacity="0.00283" />
+            <path d="M317.5938 746.5 H317.5938 A21.5 21.5 0 0 1 339.0938 768 V768 A21.5 21.5 0 0 1 317.5938 789.5 H317.5938 A21.5 21.5 0 0 1 296.0938 768 V768 A21.5 21.5 0 0 1 317.5938 746.5 Z" fill="#000000" fill-opacity="0.0028" />
+            <path d="M317.5938 747 H317.5938 A21 21 0 0 1 338.5938 768 V768 A21 21 0 0 1 317.5938 789 H317.5938 A21 21 0 0 1 296.5938 768 V768 A21 21 0 0 1 317.5938 747 Z" fill="#000000" fill-opacity="0.00275" />
+            <path d="M317.5938 747.5 H317.5938 A20.5 20.5 0 0 1 338.0938 768 V768 A20.5 20.5 0 0 1 317.5938 788.5 H317.5938 A20.5 20.5 0 0 1 297.0938 768 V768 A20.5 20.5 0 0 1 317.5938 747.5 Z" fill="#000000" fill-opacity="0.00268" />
+            <path d="M317.5938 748 H317.5938 A20 20 0 0 1 337.5938 768 V768 A20 20 0 0 1 317.5938 788 H317.5938 A20 20 0 0 1 297.5938 768 V768 A20 20 0 0 1 317.5938 748 Z" fill="#000000" fill-opacity="0.00259" />
+            <path d="M317.5938 748.5 H317.5938 A19.5 19.5 0 0 1 337.0938 768 V768 A19.5 19.5 0 0 1 317.5938 787.5 H317.5938 A19.5 19.5 0 0 1 298.0938 768 V768 A19.5 19.5 0 0 1 317.5938 748.5 Z" fill="#000000" fill-opacity="0.0025" />
+            <path d="M317.5938 749 H317.5938 A19 19 0 0 1 336.5938 768 V768 A19 19 0 0 1 317.5938 787 H317.5938 A19 19 0 0 1 298.5938 768 V768 A19 19 0 0 1 317.5938 749 Z" fill="#000000" fill-opacity="0.00238" />
+            <path d="M317.5938 749.5 H317.5938 A18.5 18.5 0 0 1 336.0938 768 V768 A18.5 18.5 0 0 1 317.5938 786.5 H317.5938 A18.5 18.5 0 0 1 299.0938 768 V768 A18.5 18.5 0 0 1 317.5938 749.5 Z" fill="#000000" fill-opacity="0.00226" />
+            <path d="M317.5938 750 H317.5938 A18 18 0 0 1 335.5938 768 V768 A18 18 0 0 1 317.5938 786 H317.5938 A18 18 0 0 1 299.5938 768 V768 A18 18 0 0 1 317.5938 750 Z" fill="#000000" fill-opacity="0.00213" />
+            <path d="M317.5938 750.5 H317.5938 A17.5 17.5 0 0 1 335.0938 768 V768 A17.5 17.5 0 0 1 317.5938 785.5 H317.5938 A17.5 17.5 0 0 1 300.0938 768 V768 A17.5 17.5 0 0 1 317.5938 750.5 Z" fill="#000000" fill-opacity="0.00199" />
+            <path d="M317.5938 751 H317.5938 A17 17 0 0 1 334.5938 768 V768 A17 17 0 0 1 317.5938 785 H317.5938 A17 17 0 0 1 300.5938 768 V768 A17 17 0 0 1 317.5938 751 Z" fill="#000000" fill-opacity="0.00185" />
+            <path d="M317.5938 751.5 H317.5938 A16.5 16.5 0 0 1 334.0938 768 V768 A16.5 16.5 0 0 1 317.5938 784.5 H317.5938 A16.5 16.5 0 0 1 301.0938 768 V768 A16.5 16.5 0 0 1 317.5938 751.5 Z" fill="#000000" fill-opacity="0.0017" />
+            <path d="M317.5938 752 H317.5938 A16 16 0 0 1 333.5938 768 V768 A16 16 0 0 1 317.5938 784 H317.5938 A16 16 0 0 1 301.5938 768 V768 A16 16 0 0 1 317.5938 752 Z" fill="#000000" fill-opacity="0.00156" />
+            <path d="M317.5938 752.5 H317.5938 A15.5 15.5 0 0 1 333.0938 768 V768 A15.5 15.5 0 0 1 317.5938 783.5 H317.5938 A15.5 15.5 0 0 1 302.0938 768 V768 A15.5 15.5 0 0 1 317.5938 752.5 Z" fill="#000000" fill-opacity="0.00142" />
+            <path d="M317.5938 753 H317.5938 A15 15 0 0 1 332.5938 768 V768 A15 15 0 0 1 317.5938 783 H317.5938 A15 15 0 0 1 302.5938 768 V768 A15 15 0 0 1 317.5938 753 Z" fill="#000000" fill-opacity="0.00128" />
+            <path d="M317.5938 753.5 H317.5938 A14.5 14.5 0 0 1 332.0938 768 V768 A14.5 14.5 0 0 1 317.5938 782.5 H317.5938 A14.5 14.5 0 0 1 303.0938 768 V768 A14.5 14.5 0 0 1 317.5938 753.5 Z" fill="#000000" fill-opacity="0.00114" />
+            <path d="M317.5938 754 H317.5938 A14 14 0 0 1 331.5938 768 V768 A14 14 0 0 1 317.5938 782 H317.5938 A14 14 0 0 1 303.5938 768 V768 A14 14 0 0 1 317.5938 754 Z" fill="#000000" fill-opacity="0.00102" />
+            <path d="M317.5938 754.5 H317.5938 A13.5 13.5 0 0 1 331.0938 768 V768 A13.5 13.5 0 0 1 317.5938 781.5 H317.5938 A13.5 13.5 0 0 1 304.0938 768 V768 A13.5 13.5 0 0 1 317.5938 754.5 Z" fill="#000000" fill-opacity="0.0009" />
+            <path d="M317.5938 755 H317.5938 A13 13 0 0 1 330.5938 768 V768 A13 13 0 0 1 317.5938 781 H317.5938 A13 13 0 0 1 304.5938 768 V768 A13 13 0 0 1 317.5938 755 Z" fill="#000000" fill-opacity="0.00079" />
+            <path d="M317.5938 755.5 H317.5938 A12.5 12.5 0 0 1 330.0938 768 V768 A12.5 12.5 0 0 1 317.5938 780.5 H317.5938 A12.5 12.5 0 0 1 305.0938 768 V768 A12.5 12.5 0 0 1 317.5938 755.5 Z" fill="#000000" fill-opacity="0.00069" />
+            <path d="M317.5938 756 H317.5938 A12 12 0 0 1 329.5938 768 V768 A12 12 0 0 1 317.5938 780 H317.5938 A12 12 0 0 1 305.5938 768 V768 A12 12 0 0 1 317.5938 756 Z" fill="#000000" fill-opacity="0.00059" />
+            <path d="M317.5938 756.5 H317.5938 A11.5 11.5 0 0 1 329.0938 768 V768 A11.5 11.5 0 0 1 317.5938 779.5 H317.5938 A11.5 11.5 0 0 1 306.0938 768 V768 A11.5 11.5 0 0 1 317.5938 756.5 Z" fill="#000000" fill-opacity="0.00051" />
+            <path d="M317.5938 757 H317.5938 A11 11 0 0 1 328.5938 768 V768 A11 11 0 0 1 317.5938 779 H317.5938 A11 11 0 0 1 306.5938 768 V768 A11 11 0 0 1 317.5938 757 Z" fill="#000000" fill-opacity="0.00044" />
+            <path d="M317.5938 757.5 H317.5938 A10.5 10.5 0 0 1 328.0938 768 V768 A10.5 10.5 0 0 1 317.5938 778.5 H317.5938 A10.5 10.5 0 0 1 307.0938 768 V768 A10.5 10.5 0 0 1 317.5938 757.5 Z" fill="#000000" fill-opacity="0.00037" />
+            <path d="M317.5938 758 H317.5938 A10 10 0 0 1 327.5938 768 V768 A10 10 0 0 1 317.5938 778 H317.5938 A10 10 0 0 1 307.5938 768 V768 A10 10 0 0 1 317.5938 758 Z" fill="#000000" fill-opacity="0.00031" />
+            <path d="M317.5938 758.5 H317.5938 A9.5 9.5 0 0 1 327.0938 768 V768 A9.5 9.5 0 0 1 317.5938 777.5 H317.5938 A9.5 9.5 0 0 1 308.0938 768 V768 A9.5 9.5 0 0 1 317.5938 758.5 Z" fill="#000000" fill-opacity="0.00026" />
+            <path d="M317.5938 759 H317.5938 A9 9 0 0 1 326.5938 768 V768 A9 9 0 0 1 317.5938 777 H317.5938 A9 9 0 0 1 308.5938 768 V768 A9 9 0 0 1 317.5938 759 Z" fill="#000000" fill-opacity="0.00021" />
+            <path d="M317.5938 759.5 H317.5938 A8.5 8.5 0 0 1 326.0938 768 V768 A8.5 8.5 0 0 1 317.5938 776.5 H317.5938 A8.5 8.5 0 0 1 309.0938 768 V768 A8.5 8.5 0 0 1 317.5938 759.5 Z" fill="#000000" fill-opacity="0.00018" />
+            <path d="M317.5938 760 H317.5938 A8 8 0 0 1 325.5938 768 V768 A8 8 0 0 1 317.5938 776 H317.5938 A8 8 0 0 1 309.5938 768 V768 A8 8 0 0 1 317.5938 760 Z" fill="#000000" fill-opacity="0.00014" />
+            <path d="M317.5938 760.5 H317.5938 A7.5 7.5 0 0 1 325.0938 768 V768 A7.5 7.5 0 0 1 317.5938 775.5 H317.5938 A7.5 7.5 0 0 1 310.0938 768 V768 A7.5 7.5 0 0 1 317.5938 760.5 Z" fill="#000000" fill-opacity="0.00012" />
+            <path d="M317.5938 761 H317.5938 A7 7 0 0 1 324.5938 768 V768 A7 7 0 0 1 317.5938 775 H317.5938 A7 7 0 0 1 310.5938 768 V768 A7 7 0 0 1 317.5938 761 Z" fill="#000000" fill-opacity="0.00009" />
+          </g>
+          <path d="M317.5938 741 H317.5938 A23 23 0 0 1 340.5938 764 V764 A23 23 0 0 1 317.5938 787 H317.5938 A23 23 0 0 1 294.5938 764 V764 A23 23 0 0 1 317.5938 741 Z" fill="#e5efec" />
+          <path d="M317.5938 741 H317.5938 A23 23 0 0 1 340.5938 764 V764 A23 23 0 0 1 317.5938 787 H317.5938 A23 23 0 0 1 294.5938 764 V764 A23 23 0 0 1 317.5938 741 Z M317.5938 742 H317.5938 A22 22 0 0 1 339.5938 764 V764 A22 22 0 0 1 317.5938 786 H317.5938 A22 22 0 0 1 295.5938 764 V764 A22 22 0 0 1 317.5938 742 Z" fill="#dfe4e3" fill-rule="evenodd" />
+          <g id="lucide-clock-3" aria-label="lucide-clock-3">
+            <circle cx="12" cy="12" r="10" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 309.5938 756)" />
+            <path d="M12 6v6h4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 309.5938 756)" />
+          </g>
+        </g>
+      </g>
+      <g id="ts-overlay" aria-label="ts-overlay">
+        <g id="Dettaglio-del-giorno" aria-label="Dettaglio del giorno">
+          <g id="Ombra-4" aria-label="Ombra">
+            <path d="M39 394.55213 H351 A67.66667 67.66667 0 0 1 418.66667 462.2188 V704.0001 A67.66667 67.66667 0 0 1 351 771.66677 H39 A67.66667 67.66667 0 0 1 -28.66667 704.0001 V462.2188 A67.66667 67.66667 0 0 1 39 394.55213 Z" fill="#000000" fill-opacity="0.0006" />
+            <path d="M39 395.88547 H351 A66.33333 66.33333 0 0 1 417.33333 462.2188 V704.0001 A66.33333 66.33333 0 0 1 351 770.33343 H39 A66.33333 66.33333 0 0 1 -27.33333 704.0001 V462.2188 A66.33333 66.33333 0 0 1 39 395.88547 Z" fill="#000000" fill-opacity="0.00017" />
+            <path d="M39 397.2188 H351 A65 65 0 0 1 416 462.2188 V704.0001 A65 65 0 0 1 351 769.0001 H39 A65 65 0 0 1 -26 704.0001 V462.2188 A65 65 0 0 1 39 397.2188 Z" fill="#000000" fill-opacity="0.00021" />
+            <path d="M39 398.55213 H351 A63.66667 63.66667 0 0 1 414.66667 462.2188 V704.0001 A63.66667 63.66667 0 0 1 351 767.66677 H39 A63.66667 63.66667 0 0 1 -24.66667 704.0001 V462.2188 A63.66667 63.66667 0 0 1 39 398.55213 Z" fill="#000000" fill-opacity="0.00025" />
+            <path d="M39 399.88547 H351 A62.33333 62.33333 0 0 1 413.33333 462.2188 V704.0001 A62.33333 62.33333 0 0 1 351 766.33343 H39 A62.33333 62.33333 0 0 1 -23.33333 704.0001 V462.2188 A62.33333 62.33333 0 0 1 39 399.88547 Z" fill="#000000" fill-opacity="0.00031" />
+            <path d="M39 401.2188 H351 A61 61 0 0 1 412 462.2188 V704.0001 A61 61 0 0 1 351 765.0001 H39 A61 61 0 0 1 -22 704.0001 V462.2188 A61 61 0 0 1 39 401.2188 Z" fill="#000000" fill-opacity="0.00038" />
+            <path d="M39 402.55213 H351 A59.66667 59.66667 0 0 1 410.66667 462.2188 V704.0001 A59.66667 59.66667 0 0 1 351 763.66677 H39 A59.66667 59.66667 0 0 1 -20.66667 704.0001 V462.2188 A59.66667 59.66667 0 0 1 39 402.55213 Z" fill="#000000" fill-opacity="0.00046" />
+            <path d="M39 403.88547 H351 A58.33333 58.33333 0 0 1 409.33333 462.2188 V704.0001 A58.33333 58.33333 0 0 1 351 762.33343 H39 A58.33333 58.33333 0 0 1 -19.33333 704.0001 V462.2188 A58.33333 58.33333 0 0 1 39 403.88547 Z" fill="#000000" fill-opacity="0.00055" />
+            <path d="M39 405.2188 H351 A57 57 0 0 1 408 462.2188 V704.0001 A57 57 0 0 1 351 761.0001 H39 A57 57 0 0 1 -18 704.0001 V462.2188 A57 57 0 0 1 39 405.2188 Z" fill="#000000" fill-opacity="0.00065" />
+            <path d="M39 406.55213 H351 A55.66667 55.66667 0 0 1 406.66667 462.2188 V704.0001 A55.66667 55.66667 0 0 1 351 759.66677 H39 A55.66667 55.66667 0 0 1 -16.66667 704.0001 V462.2188 A55.66667 55.66667 0 0 1 39 406.55213 Z" fill="#000000" fill-opacity="0.00077" />
+            <path d="M39 407.88547 H351 A54.33333 54.33333 0 0 1 405.33333 462.2188 V704.0001 A54.33333 54.33333 0 0 1 351 758.33343 H39 A54.33333 54.33333 0 0 1 -15.33333 704.0001 V462.2188 A54.33333 54.33333 0 0 1 39 407.88547 Z" fill="#000000" fill-opacity="0.0009" />
+            <path d="M39 409.2188 H351 A53 53 0 0 1 404 462.2188 V704.0001 A53 53 0 0 1 351 757.0001 H39 A53 53 0 0 1 -14 704.0001 V462.2188 A53 53 0 0 1 39 409.2188 Z" fill="#000000" fill-opacity="0.00105" />
+            <path d="M39 410.55213 H351 A51.66667 51.66667 0 0 1 402.66667 462.2188 V704.0001 A51.66667 51.66667 0 0 1 351 755.66677 H39 A51.66667 51.66667 0 0 1 -12.66667 704.0001 V462.2188 A51.66667 51.66667 0 0 1 39 410.55213 Z" fill="#000000" fill-opacity="0.00122" />
+            <path d="M39 411.88547 H351 A50.33333 50.33333 0 0 1 401.33333 462.2188 V704.0001 A50.33333 50.33333 0 0 1 351 754.33343 H39 A50.33333 50.33333 0 0 1 -11.33333 704.0001 V462.2188 A50.33333 50.33333 0 0 1 39 411.88547 Z" fill="#000000" fill-opacity="0.00141" />
+            <path d="M39 413.2188 H351 A49 49 0 0 1 400 462.2188 V704.0001 A49 49 0 0 1 351 753.0001 H39 A49 49 0 0 1 -10 704.0001 V462.2188 A49 49 0 0 1 39 413.2188 Z" fill="#000000" fill-opacity="0.00161" />
+            <path d="M39 414.55213 H351 A47.66667 47.66667 0 0 1 398.66667 462.2188 V704.0001 A47.66667 47.66667 0 0 1 351 751.66677 H39 A47.66667 47.66667 0 0 1 -8.66667 704.0001 V462.2188 A47.66667 47.66667 0 0 1 39 414.55213 Z" fill="#000000" fill-opacity="0.00182" />
+            <path d="M39 415.88547 H351 A46.33333 46.33333 0 0 1 397.33333 462.2188 V704.0001 A46.33333 46.33333 0 0 1 351 750.33343 H39 A46.33333 46.33333 0 0 1 -7.33333 704.0001 V462.2188 A46.33333 46.33333 0 0 1 39 415.88547 Z" fill="#000000" fill-opacity="0.00205" />
+            <path d="M39 417.2188 H351 A45 45 0 0 1 396 462.2188 V704.0001 A45 45 0 0 1 351 749.0001 H39 A45 45 0 0 1 -6 704.0001 V462.2188 A45 45 0 0 1 39 417.2188 Z" fill="#000000" fill-opacity="0.0023" />
+            <path d="M39 418.55213 H351 A43.66667 43.66667 0 0 1 394.66667 462.2188 V704.0001 A43.66667 43.66667 0 0 1 351 747.66677 H39 A43.66667 43.66667 0 0 1 -4.66667 704.0001 V462.2188 A43.66667 43.66667 0 0 1 39 418.55213 Z" fill="#000000" fill-opacity="0.00256" />
+            <path d="M39 419.88547 H351 A42.33333 42.33333 0 0 1 393.33333 462.2188 V704.0001 A42.33333 42.33333 0 0 1 351 746.33343 H39 A42.33333 42.33333 0 0 1 -3.33333 704.0001 V462.2188 A42.33333 42.33333 0 0 1 39 419.88547 Z" fill="#000000" fill-opacity="0.00283" />
+            <path d="M39 421.2188 H351 A41 41 0 0 1 392 462.2188 V704.0001 A41 41 0 0 1 351 745.0001 H39 A41 41 0 0 1 -2 704.0001 V462.2188 A41 41 0 0 1 39 421.2188 Z" fill="#000000" fill-opacity="0.0031" />
+            <path d="M39 422.55213 H351 A39.66667 39.66667 0 0 1 390.66667 462.2188 V704.0001 A39.66667 39.66667 0 0 1 351 743.66677 H39 A39.66667 39.66667 0 0 1 -0.66667 704.0001 V462.2188 A39.66667 39.66667 0 0 1 39 422.55213 Z" fill="#000000" fill-opacity="0.00338" />
+            <path d="M39 423.88547 H351 A38.33333 38.33333 0 0 1 389.33333 462.2188 V704.0001 A38.33333 38.33333 0 0 1 351 742.33343 H39 A38.33333 38.33333 0 0 1 0.66667 704.0001 V462.2188 A38.33333 38.33333 0 0 1 39 423.88547 Z" fill="#000000" fill-opacity="0.00366" />
+            <path d="M39 425.2188 H351 A37 37 0 0 1 388 462.2188 V704.0001 A37 37 0 0 1 351 741.0001 H39 A37 37 0 0 1 2 704.0001 V462.2188 A37 37 0 0 1 39 425.2188 Z" fill="#000000" fill-opacity="0.00394" />
+            <path d="M39 426.55213 H351 A35.66667 35.66667 0 0 1 386.66667 462.2188 V704.0001 A35.66667 35.66667 0 0 1 351 739.66677 H39 A35.66667 35.66667 0 0 1 3.33333 704.0001 V462.2188 A35.66667 35.66667 0 0 1 39 426.55213 Z" fill="#000000" fill-opacity="0.00421" />
+            <path d="M39 427.88547 H351 A34.33333 34.33333 0 0 1 385.33333 462.2188 V704.0001 A34.33333 34.33333 0 0 1 351 738.33343 H39 A34.33333 34.33333 0 0 1 4.66667 704.0001 V462.2188 A34.33333 34.33333 0 0 1 39 427.88547 Z" fill="#000000" fill-opacity="0.00447" />
+            <path d="M39 429.2188 H351 A33 33 0 0 1 384 462.2188 V704.0001 A33 33 0 0 1 351 737.0001 H39 A33 33 0 0 1 6 704.0001 V462.2188 A33 33 0 0 1 39 429.2188 Z" fill="#000000" fill-opacity="0.00471" />
+            <path d="M39 430.55213 H351 A31.66667 31.66667 0 0 1 382.66667 462.2188 V704.0001 A31.66667 31.66667 0 0 1 351 735.66677 H39 A31.66667 31.66667 0 0 1 7.33333 704.0001 V462.2188 A31.66667 31.66667 0 0 1 39 430.55213 Z" fill="#000000" fill-opacity="0.00494" />
+            <path d="M39 431.88547 H351 A30.33333 30.33333 0 0 1 381.33333 462.2188 V704.0001 A30.33333 30.33333 0 0 1 351 734.33343 H39 A30.33333 30.33333 0 0 1 8.66667 704.0001 V462.2188 A30.33333 30.33333 0 0 1 39 431.88547 Z" fill="#000000" fill-opacity="0.00514" />
+            <path d="M39 433.2188 H351 A29 29 0 0 1 380 462.2188 V704.0001 A29 29 0 0 1 351 733.0001 H39 A29 29 0 0 1 10 704.0001 V462.2188 A29 29 0 0 1 39 433.2188 Z" fill="#000000" fill-opacity="0.00531" />
+            <path d="M39 434.55213 H351 A27.66667 27.66667 0 0 1 378.66667 462.2188 V704.0001 A27.66667 27.66667 0 0 1 351 731.66677 H39 A27.66667 27.66667 0 0 1 11.33333 704.0001 V462.2188 A27.66667 27.66667 0 0 1 39 434.55213 Z" fill="#000000" fill-opacity="0.00545" />
+            <path d="M39 435.88547 H351 A26.33333 26.33333 0 0 1 377.33333 462.2188 V704.0001 A26.33333 26.33333 0 0 1 351 730.33343 H39 A26.33333 26.33333 0 0 1 12.66667 704.0001 V462.2188 A26.33333 26.33333 0 0 1 39 435.88547 Z" fill="#000000" fill-opacity="0.00556" />
+            <path d="M39 437.2188 H351 A25 25 0 0 1 376 462.2188 V704.0001 A25 25 0 0 1 351 729.0001 H39 A25 25 0 0 1 14 704.0001 V462.2188 A25 25 0 0 1 39 437.2188 Z" fill="#000000" fill-opacity="0.00563" />
+            <path d="M39 438.55213 H351 A23.66667 23.66667 0 0 1 374.66667 462.2188 V704.0001 A23.66667 23.66667 0 0 1 351 727.66677 H39 A23.66667 23.66667 0 0 1 15.33333 704.0001 V462.2188 A23.66667 23.66667 0 0 1 39 438.55213 Z" fill="#000000" fill-opacity="0.00566" />
+            <path d="M39 439.88547 H351 A22.33333 22.33333 0 0 1 373.33333 462.2188 V704.0001 A22.33333 22.33333 0 0 1 351 726.33343 H39 A22.33333 22.33333 0 0 1 16.66667 704.0001 V462.2188 A22.33333 22.33333 0 0 1 39 439.88547 Z" fill="#000000" fill-opacity="0.00565" />
+            <path d="M39 441.2188 H351 A21 21 0 0 1 372 462.2188 V704.0001 A21 21 0 0 1 351 725.0001 H39 A21 21 0 0 1 18 704.0001 V462.2188 A21 21 0 0 1 39 441.2188 Z" fill="#000000" fill-opacity="0.0056" />
+            <path d="M39 442.55213 H351 A19.66667 19.66667 0 0 1 370.66667 462.2188 V704.0001 A19.66667 19.66667 0 0 1 351 723.66677 H39 A19.66667 19.66667 0 0 1 19.33333 704.0001 V462.2188 A19.66667 19.66667 0 0 1 39 442.55213 Z" fill="#000000" fill-opacity="0.00552" />
+            <path d="M39 443.88547 H351 A18.33333 18.33333 0 0 1 369.33333 462.2188 V704.0001 A18.33333 18.33333 0 0 1 351 722.33343 H39 A18.33333 18.33333 0 0 1 20.66667 704.0001 V462.2188 A18.33333 18.33333 0 0 1 39 443.88547 Z" fill="#000000" fill-opacity="0.0054" />
+            <path d="M39 445.2188 H351 A17 17 0 0 1 368 462.2188 V704.0001 A17 17 0 0 1 351 721.0001 H39 A17 17 0 0 1 22 704.0001 V462.2188 A17 17 0 0 1 39 445.2188 Z" fill="#000000" fill-opacity="0.00524" />
+            <path d="M39 446.55213 H351 A15.66667 15.66667 0 0 1 366.66667 462.2188 V704.0001 A15.66667 15.66667 0 0 1 351 719.66677 H39 A15.66667 15.66667 0 0 1 23.33333 704.0001 V462.2188 A15.66667 15.66667 0 0 1 39 446.55213 Z" fill="#000000" fill-opacity="0.00506" />
+            <path d="M39 447.88547 H351 A14.33333 14.33333 0 0 1 365.33333 462.2188 V704.0001 A14.33333 14.33333 0 0 1 351 718.33343 H39 A14.33333 14.33333 0 0 1 24.66667 704.0001 V462.2188 A14.33333 14.33333 0 0 1 39 447.88547 Z" fill="#000000" fill-opacity="0.00484" />
+            <path d="M39 449.2188 H351 A13 13 0 0 1 364 462.2188 V704.0001 A13 13 0 0 1 351 717.0001 H39 A13 13 0 0 1 26 704.0001 V462.2188 A13 13 0 0 1 39 449.2188 Z" fill="#000000" fill-opacity="0.0046" />
+            <path d="M39 450.55213 H351 A11.66667 11.66667 0 0 1 362.66667 462.2188 V704.0001 A11.66667 11.66667 0 0 1 351 715.66677 H39 A11.66667 11.66667 0 0 1 27.33333 704.0001 V462.2188 A11.66667 11.66667 0 0 1 39 450.55213 Z" fill="#000000" fill-opacity="0.00434" />
+            <path d="M39 451.88547 H351 A10.33333 10.33333 0 0 1 361.33333 462.2188 V704.0001 A10.33333 10.33333 0 0 1 351 714.33343 H39 A10.33333 10.33333 0 0 1 28.66667 704.0001 V462.2188 A10.33333 10.33333 0 0 1 39 451.88547 Z" fill="#000000" fill-opacity="0.00407" />
+            <path d="M39 453.2188 H351 A9 9 0 0 1 360 462.2188 V704.0001 A9 9 0 0 1 351 713.0001 H39 A9 9 0 0 1 30 704.0001 V462.2188 A9 9 0 0 1 39 453.2188 Z" fill="#000000" fill-opacity="0.00379" />
+            <path d="M39 454.55213 H351 A7.66667 7.66667 0 0 1 358.66667 462.2188 V704.0001 A7.66667 7.66667 0 0 1 351 711.66677 H39 A7.66667 7.66667 0 0 1 31.33333 704.0001 V462.2188 A7.66667 7.66667 0 0 1 39 454.55213 Z" fill="#000000" fill-opacity="0.0035" />
+            <path d="M39 455.88547 H351 A6.33333 6.33333 0 0 1 357.33333 462.2188 V704.0001 A6.33333 6.33333 0 0 1 351 710.33343 H39 A6.33333 6.33333 0 0 1 32.66667 704.0001 V462.2188 A6.33333 6.33333 0 0 1 39 455.88547 Z" fill="#000000" fill-opacity="0.00321" />
+            <path d="M39 457.2188 H351 A5 5 0 0 1 356 462.2188 V704.0001 A5 5 0 0 1 351 709.0001 H39 A5 5 0 0 1 34 704.0001 V462.2188 A5 5 0 0 1 39 457.2188 Z" fill="#000000" fill-opacity="0.00292" />
+            <path d="M39 458.55213 H351 A3.66667 3.66667 0 0 1 354.66667 462.2188 V704.0001 A3.66667 3.66667 0 0 1 351 707.66677 H39 A3.66667 3.66667 0 0 1 35.33333 704.0001 V462.2188 A3.66667 3.66667 0 0 1 39 458.55213 Z" fill="#000000" fill-opacity="0.00264" />
+            <path d="M39 459.88547 H351 A2.33333 2.33333 0 0 1 353.33333 462.2188 V704.0001 A2.33333 2.33333 0 0 1 351 706.33343 H39 A2.33333 2.33333 0 0 1 36.66667 704.0001 V462.2188 A2.33333 2.33333 0 0 1 39 459.88547 Z" fill="#000000" fill-opacity="0.00237" />
+            <path d="M39 461.2188 H351 A1 1 0 0 1 352 462.2188 V704.0001 A1 1 0 0 1 351 705.0001 H39 A1 1 0 0 1 38 704.0001 V462.2188 A1 1 0 0 1 39 461.2188 Z" fill="#000000" fill-opacity="0.00211" />
+            <path d="M39.33333 462.55213 H350.66667 L350.66667 462.55213 V703.66677 L350.66667 703.66677 H39.33333 L39.33333 703.66677 V462.55213 L39.33333 462.55213 Z" fill="#000000" fill-opacity="0.00186" />
+            <path d="M40.66667 463.88547 H349.33333 L349.33333 463.88547 V702.33343 L349.33333 702.33343 H40.66667 L40.66667 702.33343 V463.88547 L40.66667 463.88547 Z" fill="#000000" fill-opacity="0.00164" />
+            <path d="M42 465.2188 H348 L348 465.2188 V701.0001 L348 701.0001 H42 L42 701.0001 V465.2188 L42 465.2188 Z" fill="#000000" fill-opacity="0.00143" />
+            <path d="M43.33333 466.55213 H346.66667 L346.66667 466.55213 V699.66677 L346.66667 699.66677 H43.33333 L43.33333 699.66677 V466.55213 L43.33333 466.55213 Z" fill="#000000" fill-opacity="0.00124" />
+            <path d="M44.66667 467.88547 H345.33333 L345.33333 467.88547 V698.33343 L345.33333 698.33343 H44.66667 L44.66667 698.33343 V467.88547 L44.66667 467.88547 Z" fill="#000000" fill-opacity="0.00106" />
+            <path d="M46 469.2188 H344 L344 469.2188 V697.0001 L344 697.0001 H46 L46 697.0001 V469.2188 L46 469.2188 Z" fill="#000000" fill-opacity="0.00091" />
+            <path d="M47.33333 470.55213 H342.66667 L342.66667 470.55213 V695.66677 L342.66667 695.66677 H47.33333 L47.33333 695.66677 V470.55213 L47.33333 470.55213 Z" fill="#000000" fill-opacity="0.00077" />
+            <path d="M48.66667 471.88547 H341.33333 L341.33333 471.88547 V694.33343 L341.33333 694.33343 H48.66667 L48.66667 694.33343 V471.88547 L48.66667 471.88547 Z" fill="#000000" fill-opacity="0.00065" />
+            <path d="M50 473.2188 H340 L340 473.2188 V693.0001 L340 693.0001 H50 L50 693.0001 V473.2188 L50 473.2188 Z" fill="#000000" fill-opacity="0.00054" />
+            <path d="M51.33333 474.55213 H338.66667 L338.66667 474.55213 V691.66677 L338.66667 691.66677 H51.33333 L51.33333 691.66677 V474.55213 L51.33333 474.55213 Z" fill="#000000" fill-opacity="0.00045" />
+            <path d="M52.66667 475.88547 H337.33333 L337.33333 475.88547 V690.33343 L337.33333 690.33343 H52.66667 L52.66667 690.33343 V475.88547 L52.66667 475.88547 Z" fill="#000000" fill-opacity="0.00037" />
+            <path d="M54 477.2188 H336 L336 477.2188 V689.0001 L336 689.0001 H54 L54 689.0001 V477.2188 L54 477.2188 Z" fill="#000000" fill-opacity="0.0003" />
+            <path d="M55.33333 478.55213 H334.66667 L334.66667 478.55213 V687.66677 L334.66667 687.66677 H55.33333 L55.33333 687.66677 V478.55213 L55.33333 478.55213 Z" fill="#000000" fill-opacity="0.00025" />
+            <path d="M56.66667 479.88547 H333.33333 L333.33333 479.88547 V686.33343 L333.33333 686.33343 H56.66667 L56.66667 686.33343 V479.88547 L56.66667 479.88547 Z" fill="#000000" fill-opacity="0.0002" />
+          </g>
+          <path d="M39 425.2188 H351 A25 25 0 0 1 376 450.2188 V692.0001 A25 25 0 0 1 351 717.0001 H39 A25 25 0 0 1 14 692.0001 V450.2188 A25 25 0 0 1 39 425.2188 Z" fill="#e5efec" />
+          <path d="M39 425.2188 H351 A25 25 0 0 1 376 450.2188 V692.0001 A25 25 0 0 1 351 717.0001 H39 A25 25 0 0 1 14 692.0001 V450.2188 A25 25 0 0 1 39 425.2188 Z M39 426.2188 H351 A24 24 0 0 1 375 450.2188 V692.0001 A24 24 0 0 1 351 716.0001 H39 A24 24 0 0 1 15 692.0001 V450.2188 A24 24 0 0 1 39 426.2188 Z" fill="#dfe4e3" fill-rule="evenodd" />
+          <g id="ts-sheet-header" aria-label="ts-sheet-header">
+            <g id="span-55" aria-label="span">
+              <text id="Testo-Luned-9-novembre" x="32" y="464.0156" fill="#1c302e" font-family="Manrope" font-size="16" font-weight="750" letter-spacing="-0.3" textLength="142.25" lengthAdjust="spacingAndGlyphs">Lunedì 9 novembre</text>
+            </g>
+            <g id="Chiudi-dettaglio" aria-label="Chiudi dettaglio">
+              <path d="M343 443.2188 H343 A15 15 0 0 1 358 458.2188 V458.2188 A15 15 0 0 1 343 473.2188 H343 A15 15 0 0 1 328 458.2188 V458.2188 A15 15 0 0 1 343 443.2188 Z" fill="#ffffff" />
+              <g id="lucide-x" aria-label="lucide-x">
+                <path d="M18 6 6 18" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#4e6460" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 335 450.2188)" />
+                <path d="m6 6 12 12" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#4e6460" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 335 450.2188)" />
+              </g>
+            </g>
+          </g>
+          <g id="ts-detail-row" aria-label="ts-detail-row">
+            <g id="ts-detail-badge" aria-label="ts-detail-badge">
+              <path d="M45 486.2188 H62 A13 13 0 0 1 75 499.2188 V516.2188 A13 13 0 0 1 62 529.2188 H45 A13 13 0 0 1 32 516.2188 V499.2188 A13 13 0 0 1 45 486.2188 Z" fill="#cfeae3" />
+              <text id="Testo-POM-13" x="39.8906" y="511.3125" fill="#235a4f" font-family="Manrope" font-size="12" font-weight="800" letter-spacing="0" textLength="27.2188" lengthAdjust="spacingAndGlyphs">POM</text>
+            </g>
+            <g id="ts-detail-copy" aria-label="ts-detail-copy">
+              <text id="Testo-Pomeriggio" x="86" y="502.4219" fill="#1c302e" font-family="Manrope" font-size="14" font-weight="750" letter-spacing="0" textLength="78.4844" lengthAdjust="spacingAndGlyphs">Pomeriggio</text>
+              <g id="small" aria-label="small">
+                <text id="Testo-14-00-22-00" x="86" y="523.0156" fill="#4e6460" font-family="Manrope" font-size="12" font-weight="500" letter-spacing="0" textLength="74.7656" lengthAdjust="spacingAndGlyphs">14:00 – 22:00</text>
+              </g>
+            </g>
+            <g id="ts-detail-actions" aria-label="ts-detail-actions">
+              <g id="Impostazioni-turno" aria-label="Impostazioni turno">
+                <g id="lucide-settings-2-2" aria-label="lucide-settings-2">
+                  <path d="M14 17H5" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 300 499.7188)" />
+                  <path d="M19 7h-9" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 300 499.7188)" />
+                  <circle cx="17" cy="17" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 300 499.7188)" />
+                  <circle cx="7" cy="7" r="3" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 300 499.7188)" />
+                </g>
+              </g>
+              <g id="Trasferta" aria-label="Trasferta">
+                <g id="lucide-plane-2" aria-label="lucide-plane">
+                  <path d="M17.8 19.2 16 11l3.5-3.5C21 6 21.5 4 21 3c-1-.5-3 0-4.5 1.5L13 8 4.8 6.2c-.5-.1-.9.1-1.1.5l-.3.5c-.2.5-.1 1 .3 1.3L9 12l-2 3H4l-1 1 3 2 2 3 1-1v-3l3-2 3.5 5.3c.3.4.8.5 1.3.3l.5-.2c.4-.3.6-.7.5-1.2z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 334 499.7188)" />
+                </g>
+              </g>
+            </g>
+          </g>
+          <g id="ts-detail-extra" aria-label="ts-detail-extra">
+            <g id="lucide-clock-3-2" aria-label="lucide-clock-3">
+              <circle cx="12" cy="12" r="10" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#00657e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 32 541.2188)" />
+              <path d="M12 6v6h4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#00657e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 32 541.2188)" />
+            </g>
+            <text id="Testo-Straordinario-1-h-uscita-alle-23-00" x="56" y="553.2188" fill="#00657e" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="195.5938" lengthAdjust="spacingAndGlyphs">Straordinario + 1 h · uscita alle 23:00</text>
+          </g>
+          <g id="ts-detail-extra-2" aria-label="ts-detail-extra">
+            <path d="M44 570.0156 H346 A12 12 0 0 1 358 582.0156 V599.2031 A12 12 0 0 1 346 611.2031 H44 A12 12 0 0 1 32 599.2031 V582.0156 A12 12 0 0 1 44 570.0156 Z" fill="#ffffff" />
+            <g id="lucide-message-square-2" aria-label="lucide-message-square">
+              <path d="M22 17a2 2 0 0 1-2 2H6.828a2 2 0 0 0-1.414.586l-2.202 2.202A.71.71 0 0 1 2 21.286V5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2z" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 43 581.0156)" />
+            </g>
+            <text id="Testo-Ricordati-il-passaggio-di-consegne" x="67" y="595.0156" fill="#1c302e" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="189.7969" lengthAdjust="spacingAndGlyphs">Ricordati il passaggio di consegne.</text>
+          </g>
+          <g id="ts-detail-extra-3" aria-label="ts-detail-extra">
+            <g id="lucide-bell-5" aria-label="lucide-bell">
+              <path d="M10.268 21a2 2 0 0 0 3.464 0" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 32 623.2031)" />
+              <path d="M3.262 15.326A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.673C19.41 13.956 18 12.499 18 8A6 6 0 0 0 6 8c0 4.499-1.411 5.956-2.738 7.326" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#7f5500" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 32 623.2031)" />
+            </g>
+            <text id="Testo-Reperibilit-attiva" x="56" y="635.2031" fill="#7f5500" font-family="Manrope" font-size="12" font-weight="400" letter-spacing="0" textLength="95.7969" lengthAdjust="spacingAndGlyphs">Reperibilità attiva</text>
+          </g>
+          <g id="ts-sheet-footer" aria-label="ts-sheet-footer">
+            <g id="Cambia-turno" aria-label="Cambia turno">
+              <path d="M45 657 H178 A13 13 0 0 1 191 670 V686 A13 13 0 0 1 178 699 H45 A13 13 0 0 1 32 686 V670 A13 13 0 0 1 45 657 Z" fill="#ffffff" />
+              <g id="lucide-arrow-left-right" aria-label="lucide-arrow-left-right">
+                <path d="M8 3 4 7l4 4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 60.1719 670)" />
+                <path d="M4 7h16" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 60.1719 670)" />
+                <path d="m16 21 4-4-4-4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 60.1719 670)" />
+                <path d="M20 17H4" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#1c302e" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 60.1719 670)" />
+              </g>
+              <text id="Testo-Cambia-turno" x="83.1719" y="681.5938" fill="#1c302e" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="79.6406" lengthAdjust="spacingAndGlyphs">Cambia turno</text>
+            </g>
+            <g id="Aggiungi-turno" aria-label="Aggiungi turno">
+              <path d="M212 657 H345 A13 13 0 0 1 358 670 V686 A13 13 0 0 1 345 699 H212 A13 13 0 0 1 199 686 V670 A13 13 0 0 1 212 657 Z" fill="#09675d" />
+              <g id="lucide-plus" aria-label="lucide-plus">
+                <path d="M5 12h14" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 240.75 670)" />
+                <path d="M12 5v14" fill="none" fill-opacity="1" fill-rule="nonzero" stroke="#ffffff" stroke-opacity="1" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" stroke-miterlimit="4" stroke-dashoffset="0" opacity="1" transform="matrix(0.6667 0 0 0.6667 240.75 670)" />
+              </g>
+              <text id="Testo-Aggiungi" x="263.75" y="681.5938" fill="#ffffff" font-family="Manrope" font-size="12" font-weight="750" letter-spacing="0" textLength="52.5" lengthAdjust="spacingAndGlyphs">Aggiungi</text>
+            </g>
+          </g>
+        </g>
+      </g>
+      <g id="ts-home-indicator" aria-label="ts-home-indicator" opacity="0.6">
+        <path d="M143 806 H247 A2 2 0 0 1 249 808 V808 A2 2 0 0 1 247 810 H143 A2 2 0 0 1 141 808 V808 A2 2 0 0 1 143 806 Z" fill="#1c302e" />
+      </g>
+    </g>
+  </g>
+</svg>

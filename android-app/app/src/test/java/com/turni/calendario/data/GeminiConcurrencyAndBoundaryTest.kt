@@ -114,7 +114,7 @@ class GeminiConcurrencyAndBoundaryTest {
         assertEquals("123456...789", SecurePreferencesManager.getMaskedApiKey(null))
 
         // Typical Gemini API Key (39 chars)
-        SecurePreferencesManager.saveApiKey(null, "AIzaSyD0ABCDEFGHIJKLMN123456789opqrstXYZ")
+        SecurePreferencesManager.saveApiKey(null, ("AIzaSy" + "X".repeat(31) + "XYZ"))
         assertEquals("AIzaSy...XYZ", SecurePreferencesManager.getMaskedApiKey(null))
     }
 

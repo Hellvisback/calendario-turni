@@ -60,4 +60,38 @@ class CompleteBackupRoundTripTest {
             assertNull(ShiftRepository.calendarShifts.getValue(day).first().originalShiftDefId)
         }finally{DatabaseRestore.apply(before)}
     }
+
+    @Test fun doubleShiftKeepsIndependentOvertimeTravelAndNotesAfterRestore() {
+        val base=complete()
+        val first=base.shifts.getValue(day).first().copy(
+            actualEndTime="23:15",overtimeHours=1.25f,isTrasferta=true,
+            notes="Prima attività: verifica \"uscita\"\nNota su due righe")
+        val second=first.copy(id="second-assignment",shiftDefId="night",originalShiftDefId=null,
+            customStartTime="23:30",customEndTime="06:00",actualEndTime="06:45",
+            overtimeHours=.75f,isTrasferta=false,notes="Seconda attività · città è più lontana")
+        val extra=DayExtraInfo(day,overtimeHours=2f,isTrasferta=true,
+            notes="Nota della giornata, distinta dalle due note dei turni",actualEndTime="06:45")
+        val expected=base.copy(shifts=mapOf(day to listOf(first,second)),extras=mapOf(day to extra))
+        val before=DatabaseSnapshot.capture()
+        try {
+            DatabaseRestore.apply(DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(expected),before))
+            assertEquals(expected,DatabaseSnapshot.capture())
+            ShiftRepository.setShiftNotes(day,first.id,"Nota modificata dopo il ripristino")
+            assertEquals(second,ShiftRepository.calendarShifts.getValue(day)[1])
+            assertEquals(extra,ShiftRepository.getDayExtraInfo(day))
+        } finally { DatabaseRestore.apply(before) }
+    }
+
+    @Test fun notesAndDayExtrasSurviveEvenWhenTheCalendarHasNoAssignments() {
+        val base=complete()
+        val notesOnly=DayExtraInfo(day,notes="Promemoria senza turno\nPortare il documento 📄")
+        val anotherDay=day.plusDays(1)
+        val dayData=DayExtraInfo(anotherDay,overtimeHours=.5f,isTrasferta=true,
+            notes="Informazioni della giornata senza un turno assegnato",actualEndTime="00:30")
+        val expected=base.copy(shifts=emptyMap(),extras=mapOf(day to notesOnly,anotherDay to dayData))
+        val restored=DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(expected),
+            base.copy(extras=emptyMap()))
+        assertEquals(expected,restored)
+        assertTrue(restored.shifts.isEmpty())
+    }
 }

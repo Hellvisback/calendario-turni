@@ -16,6 +16,7 @@ class PdfCaptureTest {
     private fun isolated(block:()->Unit){
         val definitions=ShiftRepository.shiftDefinitions.toList()
         val profiles=ShiftRepository.workProfiles.toList()
+        val tags=ShiftRepository.dayTags.toList()
         val shifts=ShiftRepository.calendarShifts.mapValues{it.value.toList()}
         val extras=ShiftRepository.dayExtraInfo.toMap()
         try{ShiftRepository.calendarShifts.clear();ShiftRepository.dayExtraInfo.clear();block()}
@@ -24,6 +25,7 @@ class PdfCaptureTest {
             ShiftRepository.workProfiles.clear();ShiftRepository.workProfiles.addAll(profiles)
             ShiftRepository.calendarShifts.clear();shifts.forEach{(date,list)->ShiftRepository.calendarShifts[date]=mutableStateListOf<AssignedShift>().apply{addAll(list)}}
             ShiftRepository.dayExtraInfo.clear();ShiftRepository.dayExtraInfo.putAll(extras)
+            ShiftRepository.dayTags.clear();ShiftRepository.dayTags.addAll(tags)
         }
     }
     @Test fun capturesAllAssignmentsOfTheSelectedWorkOnly()=isolated {
@@ -58,4 +60,16 @@ class PdfCaptureTest {
         assertNull(row.time)
         assertTrue(row.details.isEmpty())
     }
+    @Test fun dayActivitiesAndNotesRespectTheNotesExportOption()=isolated {
+        val tag=DayTag("pdf-training","Formazione")
+        ShiftRepository.dayTags.add(tag)
+        ShiftRepository.dayExtraInfo[date]=DayExtraInfo(date,notes="Day details",tagIds=listOf(tag.id))
+        val shown=PdfGenerator.capture(options).days.single().details
+        assertTrue(shown.contains("Formazione"))
+        assertTrue(shown.contains("Day details"))
+        val hidden=PdfGenerator.capture(options.copy(includeNotes=false)).days.single().details
+        assertFalse(hidden.contains("Formazione"))
+        assertFalse(hidden.contains("Day details"))
+    }
+
 }

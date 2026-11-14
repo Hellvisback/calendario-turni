@@ -3,9 +3,13 @@ package com.turni.calendario.ui.screens
 import android.graphics.Paint
 import android.graphics.Typeface
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.*
 import androidx.compose.runtime.*
@@ -22,6 +26,9 @@ import androidx.compose.ui.unit.dp
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.LocalTime
 import java.time.YearMonth
@@ -30,16 +37,35 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 import kotlin.math.roundToInt
 
+private val compactStartFormatter = DateTimeFormatter.ofPattern("h:mm a", Locale.ROOT)
 internal fun calendarStartLabel(value: String, use24Hours: Boolean): String =
     if (use24Hours) value else runCatching {
-        LocalTime.parse(value).format(DateTimeFormatter.ofPattern("h:mma", Locale.ROOT)).lowercase(Locale.ROOT)
+        LocalTime.parse(value).format(compactStartFormatter)
     }.getOrDefault(value)
 
+/** Day and assignment notes take precedence; opening the detail never changes this indicator. */
+internal fun calendarAnnotationIcon(hasNotes:Boolean,hasTags:Boolean):String? = when {
+    hasNotes -> "message"
+    hasTags -> "tag"
+    else -> null
+}
+
 private data class PaintedDay(val info:CalendarDayInfo,val shifts:List<Pair<AssignedShift,ShiftDefinition>>,
-    val preview:Boolean,val onCall:Boolean,val original:String?,val holidayName:String?,val hasNotes:Boolean)
+    val preview:Boolean,val onCall:Boolean,val original:String?,val holidayName:String?,val hasNotes:Boolean,val hasTags:Boolean)
 private data class CalendarExtraState(val overtime:Float,val travel:Boolean)
-private data class CalendarCellPaint(val definitionId:String,val assignmentIds:Set<String>)
+private data class CalendarCellPaint(val definitionId:String,val assignmentIds:Set<String>,val origin:Offset)
 internal data class CalendarPaintRequest(val date:LocalDate,val definitionId:String,val sequence:Long,val endDate:LocalDate=date)
+
+/** Rendering consumes a paint event once; tool and metadata changes cannot replay it. */
+internal fun calendarPaintPending(sequence:Long?,consumed:Long?,editing:Boolean):Boolean =
+    editing && sequence!=null && sequence!=consumed
+
+/** Reach the farthest corner from the actual press, without fading the whole cell at once. */
+internal fun calendarWaveRadius(width:Float,height:Float,originX:Float,originY:Float,progress:Float):Float {
+    val x=originX.coerceIn(0f,width.coerceAtLeast(0f));val y=originY.coerceIn(0f,height.coerceAtLeast(0f))
+    val farX=maxOf(x,width-x);val farY=maxOf(y,height-y)
+    return kotlin.math.sqrt(farX*farX+farY*farY)*progress.coerceIn(0f,1f)
+}
 
 internal fun calendarPaintDates(request:CalendarPaintRequest,visibleDates:List<LocalDate>):Set<LocalDate> =
     visibleDates.filter{it in minOf(request.date,request.endDate)..maxOf(request.date,request.endDate)}.toSet()
@@ -65,12 +91,34 @@ internal fun calendarOvertimeLabel(hours:Float):String {
 internal fun calendarExtraBandHeight(available:Float,base:Float,rows:Float):Float =
     if(rows<=0f)0f else ((available-base).coerceAtLeast(0f)/rows).coerceAtMost(13f)
 
+internal data class CalendarShiftLayout(val visibleCount: Int, val chipHeight: Float, val gap: Float = 2f, val overflowHeight: Float = 0f)
+
+/** Fixed-size badges: overflow never changes an assignment already on screen.
+ * Keep the marker lane reserved even before overflow, so adding a shift cannot
+ * displace the last visible badge. Metadata belongs to its own assignment.
+ */
+internal fun calendarShiftLayout(availableHeight: Float, shiftCount: Int, fontScale: Float,
+    extraHeights: List<Float> = emptyList()): CalendarShiftLayout {
+    val height = 30f * fontScale.coerceAtLeast(1f)
+    val markerHeight = 6f
+    val budget = (availableHeight - markerHeight).coerceAtLeast(0f)
+    var used = 0f
+    var count = 0
+    for (index in 0 until shiftCount.coerceIn(0, 3)) {
+        val next = height + (extraHeights.getOrNull(index) ?: 0f).coerceAtLeast(0f) + if(index > 0) 2f else 0f
+        if (used + next > budget + .001f) break
+        used += next
+        count++
+    }
+    return CalendarShiftLayout(count, height, overflowHeight = markerHeight)
+}
+
 /** One draw layer per page; transparent semantic cells retain TalkBack and full hit targets. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
 internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolean,mode:CalendarEditMode,
     brush:String,rotationId:String,anchor:LocalDate?,rangeEnd:LocalDate?,modifier:Modifier,
-    paintRequest:CalendarPaintRequest?=null,animate:Boolean=true,onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,onLongClick:((LocalDate)->Unit)?=null) {
+    paintRequest:CalendarPaintRequest?=null,editSession:Long=0L,editProgress:State<Float>,animate:Boolean=true,onPaintConsumed:(Long)->Unit={},onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,longPressEnabled:Boolean=true,onLongClick:((LocalDate)->Unit)?=null) {
     val days=remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
     val defs by remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}
     val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
@@ -86,33 +134,62 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
         val shifts=if(previewId!=null)listOfNotNull(defs[previewId]?.let{AssignedShift("preview",day.date,previewId) to it})else actual.mapNotNull{s->defs[s.shiftDefId]?.let{s to it}}
         val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&ShiftRepository.appPreferences.showExShifts&&previewId==null}
             ?.originalShiftDefId?.let{defs[it]?.shortCode}
-        PaintedDay(day,shifts,previewId!=null,ShiftRepository.isOnCall(day.date),original,ShiftRepository.isHoliday(day.date)?.name,calendarHasNotes(ShiftRepository.getDayExtraInfo(day.date).notes,actual))
+        PaintedDay(day,shifts,previewId!=null,ShiftRepository.isOnCall(day.date),original,ShiftRepository.isHoliday(day.date)?.name,calendarHasNotes(ShiftRepository.getDayExtraInfo(day.date).notes,actual),ShiftRepository.getDayExtraInfo(day.date).tagIds.isNotEmpty())
     }}}
-    val editReveal by animateFloatAsState(if(editing)1f else 0f,if(animate)tween(380,easing=FastOutSlowInEasing)else snap())
+    val settledEditProgress=rememberUpdatedState(if(editing)1f else 0f)
+    // Offscreen pages keep settled geometry; only the visible page redraws on each motion frame.
+    val editReveal by if(animate)editProgress else settledEditProgress
     val dark=TurniThemeState.dark;val surface=CalendarSurface;val text=TextPrimary;val muted=TextMuted;val brand=ObsidianPrimary
     val weekend=CalendarWeekend
     val todayFill=CalendarToday
-    val line=ObsidianBorder;val onBrand=if(dark)Color(0xFF24213F)else Color.White
+    val line=ObsidianBorder;val onBrand=OnBrand;val brandInk=BrandInk
     val amber=ColorReperibilita
-    var painted by remember { mutableStateOf<Map<LocalDate,CalendarCellPaint>>(emptyMap()) }
-    var paintingDates by remember { mutableStateOf<Set<LocalDate>>(emptySet()) }
-    val paintReveal=remember{Animatable(1f)}
-    LaunchedEffect(editing){if(!editing){painted=emptyMap();paintingDates=emptySet()}}
-    LaunchedEffect(paintRequest){
-        val request=paintRequest
-        val affected=request?.let{calendarPaintDates(it,days.map{day->day.date})}.orEmpty()
-        if(editing&&request!=null&&affected.isNotEmpty()){
-            // Every day in this operation animates together; earlier operations stay at rest.
-            painted=if(request.definitionId.isBlank())painted-affected else painted+affected.associateWith{date->
-                CalendarCellPaint(request.definitionId,data.firstOrNull{it.info.date==date}?.shifts.orEmpty().filter{it.first.shiftDefId==request.definitionId}.map{it.first.id}.toSet())
-            }
-            paintingDates=affected
-            if(request.definitionId.isNotBlank()&&animate){
-                paintReveal.snapTo(0f);paintReveal.animateTo(1f,tween(480,easing=FastOutSlowInEasing))
-            }else paintReveal.snapTo(1f)
+    val palette=turniPalette(dark)
+    val shiftPaints=remember(defs,dark,palette) {
+        defs.mapValues { (_, def) ->
+            shiftColorStyle(def.color,dark,Color(palette.surface)) to
+                shiftColorStyle(def.color,dark,Color(palette.calendar),subdued=true)
         }
     }
-    val anchorReveal=remember{Animatable(1f)}
+    val pressOrigins=remember { mutableMapOf<LocalDate,Offset>() }
+    var painted by remember(editSession) { mutableStateOf<Map<LocalDate,CalendarCellPaint>>(emptyMap()) }
+    var paintingDates by remember(editSession) { mutableStateOf<Set<LocalDate>>(emptySet()) }
+    var appliedPaintSequence by remember(editSession) { mutableStateOf<Long?>(null) }
+    val affected=remember(paintRequest,days){paintRequest?.let{calendarPaintDates(it,days.map{day->day.date})}.orEmpty()}
+    val pendingPaint=calendarPaintPending(paintRequest?.sequence,appliedPaintSequence,editing)&&affected.isNotEmpty()
+    // Prepare the transparent first frame synchronously; an effect alone lets the new chip flash.
+    val paintReveal=remember(editSession){Animatable(1f)}
+    val paintExit=remember(editSession){Animatable(if(editing)1f else 0f)}
+    val paintScope=rememberCoroutineScope()
+    var paintJob by remember(editSession){mutableStateOf<Job?>(null)}
+    fun marksForRequest():Map<LocalDate,CalendarCellPaint> = affected.associateWith{date->
+        CalendarCellPaint(paintRequest!!.definitionId,data.firstOrNull{it.info.date==date}?.shifts.orEmpty()
+            .filter{it.first.shiftDefId==paintRequest.definitionId}.map{it.first.id}.toSet(),pressOrigins[date]?:Offset(.5f,.5f))
+    }
+    val visiblePainted=if(pendingPaint) {
+        if(paintRequest!!.definitionId.isBlank())painted-affected else painted+marksForRequest()
+    }else painted
+    val visiblePaintingDates=if(pendingPaint)affected else paintingDates
+    LaunchedEffect(editing,editSession){
+        if(editing)paintExit.snapTo(1f) else {
+            paintJob?.cancel()
+            if(animate)paintExit.animateTo(0f,tween(520,easing=CubicBezierEasing(.3f,0f,.2f,1f))) else paintExit.snapTo(0f)
+            snapshotFlow{editProgress.value}.first{it<=.001f}
+            painted=emptyMap();paintingDates=emptySet()
+        }
+    }
+    LaunchedEffect(paintRequest,editSession){
+        if(pendingPaint){
+            paintJob?.cancel()
+            paintReveal.snapTo(if(paintRequest!!.definitionId.isNotBlank()&&animate)0f else 1f)
+            painted=visiblePainted;paintingDates=affected;appliedPaintSequence=paintRequest.sequence
+            // This job belongs to the page, not the event: acknowledgement must not cancel it.
+            if(paintRequest.definitionId.isNotBlank()&&animate)
+                paintJob=paintScope.launch{paintReveal.animateTo(1f,tween(440,easing=CubicBezierEasing(.2f,0f,.2f,1f)))}
+            if(animate)onPaintConsumed(paintRequest.sequence)
+        }
+    }
+    val anchorReveal=remember(anchor,mode){Animatable(if(anchor!=null&&mode==CalendarEditMode.RANGE)0f else 1f)}
     LaunchedEffect(anchor,mode){if(anchor!=null&&mode==CalendarEditMode.RANGE){anchorReveal.snapTo(0f);anchorReveal.animateTo(1f,tween(420,easing=FastOutSlowInEasing))}}
     // Retain both states through removal: metadata fades and contracts without dropping the shift.
     val extrasKey=data.flatMap{it.shifts}.associate{it.first.id to CalendarExtraState(it.first.overtimeHours,it.first.isTrasferta)}
@@ -125,12 +202,17 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val mediumTypeface=remember{Typeface.create("sans-serif-medium",Typeface.NORMAL)}
     val bellOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M10.27 21a2 2 0 0 0 3.46 0M3.26 15.33A1 1 0 0 0 4 17h16a1 1 0 0 0 .74-1.67C19.41 13.96 18 12.5 18 8A6 6 0 0 0 6 8c0 4.5-1.41 5.96-2.74 7.33").toPath()}
     val messageOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M4 4h16v16l-5-4H4V4ZM8 8h8M8 12h5").toPath()}
+    val tagOutline=remember{androidx.compose.ui.graphics.vector.PathParser().parsePathString("M20.59 13.41 13.42 20.59a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.58a2 2 0 0 1 0 2.83ZM7 7h.01").toPath()}
     val paint=remember{Paint(Paint.ANTI_ALIAS_FLAG).apply{textAlign=Paint.Align.CENTER}}
+    val digitBounds=remember(density.density,density.fontScale){mutableMapOf<String,android.graphics.RectF>()}
+    val digitPath=remember{android.graphics.Path()}
+    val chipClip=remember { Path() }
+    val viewport=remember { Path() }
     val bellSet=data.filter{it.onCall}.map{it.info.date}.toSet()
     var previousBells by remember{mutableStateOf(bellSet)}
     val bellProgress=remember{Animatable(1f)}
     LaunchedEffect(bellSet){if(previousBells!=bellSet){bellProgress.snapTo(0f);bellProgress.animateTo(1f,tween(440));previousBells=bellSet}}
-    val noteSet=data.filter{it.hasNotes}.map{it.info.date}.toSet()
+    val noteSet=data.filter{it.hasNotes||it.hasTags}.map{it.info.date}.toSet()
     var previousNotes by remember{mutableStateOf(noteSet)}
     val noteProgress=remember{Animatable(1f)}
     LaunchedEffect(noteSet){if(previousNotes!=noteSet){noteProgress.snapTo(0f);noteProgress.animateTo(1f,tween(360));previousNotes=noteSet}}
@@ -141,60 +223,192 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             val gridHeight=(size.height-128.dp.toPx()*editReveal).coerceAtLeast(1f)
             val cellHeight=gridHeight/(days.size/7)
             val radius=20.dp.toPx()
-            val viewport=Path().apply{moveTo(0f,0f);lineTo(size.width,0f);lineTo(size.width,gridHeight-radius);quadraticBezierTo(size.width,gridHeight,size.width-radius,gridHeight);lineTo(radius,gridHeight);quadraticBezierTo(0f,gridHeight,0f,gridHeight-radius);close()}
+            viewport.reset()
+            viewport.apply{moveTo(0f,0f);lineTo(size.width,0f);lineTo(size.width,gridHeight-radius);quadraticBezierTo(size.width,gridHeight,size.width-radius,gridHeight);lineTo(radius,gridHeight);quadraticBezierTo(0f,gridHeight,0f,gridHeight-radius);close()}
             drawContext.canvas.save();drawContext.canvas.clipPath(viewport);drawRect(surface)
             val px=density.density;val fontScale=density.fontScale
             fun dp(value:Float)=value*px
-            fun label(value:String,x:Float,y:Float,font:Float,color:Color,bold:Boolean=false,alpha:Float=1f){
+            fun label(value:String,x:Float,y:Float,font:Float,color:Color,bold:Boolean=false,alpha:Float=1f,maxWidth:Float=Float.MAX_VALUE,maxHeight:Float=Float.MAX_VALUE,optical:Boolean=false){
                 paint.color=color.copy(alpha=color.alpha*alpha).toArgb();paint.textSize=dp(font)*fontScale
                 paint.typeface=if(bold)Typeface.DEFAULT_BOLD else mediumTypeface
-                drawContext.canvas.nativeCanvas.drawText(value,x,y-(paint.ascent()+paint.descent())/2,paint)
+                val fit=minOf(1f,dp(maxWidth)/paint.measureText(value).coerceAtLeast(1f),dp(maxHeight)/(paint.descent()-paint.ascent()).coerceAtLeast(1f))
+                paint.textSize*=fit
+                if(optical){
+                    paint.textAlign=Paint.Align.LEFT
+                    val bounds=digitBounds.getOrPut("$value:${paint.textSize.toBits()}:$bold"){
+                        digitPath.rewind();paint.getTextPath(value,0,value.length,0f,0f,digitPath)
+                        android.graphics.RectF().also{digitPath.computeBounds(it,true)}
+                    }
+                    drawContext.canvas.nativeCanvas.drawText(value,x-bounds.centerX(),y-bounds.centerY(),paint)
+                    paint.textAlign=Paint.Align.CENTER
+                }else drawContext.canvas.nativeCanvas.drawText(value,x,y-(paint.ascent()+paint.descent())/2,paint)
             }
-            if(editReveal>0f){var x=-size.height;while(x<size.width){drawLine(line.copy(alpha=.65f*editReveal),Offset(x,size.height),Offset(x+size.height,0f),dp(.6f));x+=dp(12f)}}
+            fun clockLabel(value:String,x:Float,y:Float,font:Float,color:Color,maxWidth:Float) {
+                val suffix=value.takeLast(3)
+                if(suffix!=" AM"&&suffix!=" PM"){label(value,x,y,font,color,maxWidth=maxWidth);return}
+                val time=value.dropLast(3)
+                paint.typeface=mediumTypeface;paint.textSize=dp(font)*fontScale
+                val timeWidth=paint.measureText(time)
+                paint.textSize=dp(font*.68f)*fontScale
+                val suffixWidth=paint.measureText(suffix.trim())
+                val gap=dp(1.8f)*fontScale
+                val fit=minOf(1f,dp(maxWidth)/(timeWidth+gap+suffixWidth))
+                val left=x-(timeWidth+gap+suffixWidth)*fit/2f
+                paint.color=color.toArgb();paint.textAlign=Paint.Align.LEFT
+                paint.textSize=dp(font)*fontScale*fit
+                val baseline=y-(paint.ascent()+paint.descent())/2f
+                drawContext.canvas.nativeCanvas.drawText(time,left,baseline,paint)
+                paint.textSize=dp(font*.68f)*fontScale*fit
+                drawContext.canvas.nativeCanvas.drawText(suffix.trim(),left+(timeWidth+gap)*fit,baseline,paint)
+                paint.textAlign=Paint.Align.CENTER
+            }
+            fun cellMark(item:PaintedDay):CalendarCellPaint? = visiblePainted[item.info.date]?.takeIf { mark ->
+                mark.assignmentIds.isNotEmpty()&&mark.assignmentIds.all{id->
+                    item.shifts.any{it.first.id==id&&it.first.shiftDefId==mark.definitionId}
+                }&&(editing||paintExit.value>.001f||editReveal>.001f)&&!item.preview
+            }
+            fun cellPaint(item:PaintedDay):Color?=cellMark(item)?.let{
+                shiftPaints[it.definitionId]?.let{styles->if(item.info.isCurrentMonth)styles.first.codeFill else styles.second.codeFill}
+            }
+            fun baseCellBackground(item:PaintedDay):Color {
+                val date=item.info.date
+                val base=if(date.dayOfWeek.value>=6)weekend else surface
+                return when {
+                    date==todayDate->todayFill
+                    date==selection||date==anchor->lerp(base,brand,.1f)
+                    else->base
+                }
+            }
+            fun operationReveal(item:PaintedDay)=if(item.info.date in visiblePaintingDates){if(pendingPaint&&animate)0f else paintReveal.value}else 1f
+            fun cellBackground(item:PaintedDay):Color = cellPaint(item)?.let{
+                lerp(baseCellBackground(item),it,paintExit.value*operationReveal(item))
+            }?:baseCellBackground(item)
+            fun extraWeights(shift:AssignedShift):Pair<Float,Float>{
+                val old=fromExtras[shift.id]?:CalendarExtraState(0f,false)
+                val target=toExtras[shift.id]?:CalendarExtraState(shift.overtimeHours,shift.isTrasferta)
+                val t=extrasReveal.value
+                return ((if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t)*(1-editReveal) to
+                    ((if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t)*(1-editReveal)
+            }
+            fun paintDestination(item:PaintedDay,index:Int,mark:CalendarCellPaint):Rect {
+                val x=index%7*cellWidth;val y=index/7*cellHeight
+                val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in restDates)12f else 0f)
+                var cursor=y+dp(27f-2f*editReveal)
+                val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale,item.shifts.map{(shift,_)->extraWeights(shift).let{13f*(it.first+it.second)}})
+                item.shifts.take(layout.visibleCount).forEach{(shift,_)->
+                    val weights=extraWeights(shift)
+                    val band=13f
+                    val height=dp(layout.chipHeight+band*(weights.first+weights.second))
+                    if(shift.id in mark.assignmentIds)return Rect(x+dp(4f),cursor,x+cellWidth-dp(4f),cursor+height)
+                    cursor+=height+dp(layout.gap)
+                }
+                // If the assignment is overflowed, contract into its compact marker instead.
+                return Rect(x+cellWidth/2-dp(1.7f),bottom-dp(4.7f),x+cellWidth/2+dp(1.7f),bottom-dp(1.3f))
+            }
+            // Paint continuous weekend columns first, including the gaps in edit mode.
+            data.take(7).forEachIndexed { column, item ->
+                if (item.info.date.dayOfWeek.value >= 6) {
+                    drawRect(weekend, Offset(column * cellWidth, 0f), Size(cellWidth, gridHeight))
+                }
+            }
+            data.forEachIndexed { index, item ->
+                val inset = dp(1.5f) * editReveal
+                val highlighted = item.info.date == todayDate || item.info.date == selection || item.info.date == anchor
+                drawRoundRect(baseCellBackground(item),
+                    Offset(index % 7 * cellWidth + inset, index / 7 * cellHeight + inset),
+                    Size(cellWidth - inset * 2, cellHeight - inset * 2),
+                    CornerRadius(dp(if(highlighted)10f-2f*editReveal else 8f*editReveal)))
+                cellMark(item)?.let{mark->
+                    val chip=paintDestination(item,index,mark)
+                    val cell=Rect(index%7*cellWidth+inset,index/7*cellHeight+inset,
+                        (index%7+1)*cellWidth-inset,(index/7+1)*cellHeight-inset)
+                    val pigment=cellPaint(item)!!
+                    val shape=chipClip.apply{reset();addRoundRect(RoundRect(cell,CornerRadius(dp(8f))))}
+                    drawContext.canvas.save();drawContext.canvas.clipPath(shape)
+                    if(!editing){
+                        // The wave retreats towards its assignment; the badge grows opaque above it.
+                        drawRoundRect(pigment,chip.topLeft,chip.size,CornerRadius(dp(5f)))
+                        val pressed=Offset(cell.left+cell.width*mark.origin.x,cell.top+cell.height*mark.origin.y)
+                        val origin=androidx.compose.ui.geometry.lerp(chip.center,pressed,paintExit.value)
+                        val radius=calendarWaveRadius(cell.width,cell.height,origin.x-cell.left,origin.y-cell.top,paintExit.value*operationReveal(item))
+                        if(radius>0f)drawCircle(pigment,radius,origin)
+                    }else{
+                        val origin=Offset(cell.left+cell.width*mark.origin.x,cell.top+cell.height*mark.origin.y)
+                        val radius=calendarWaveRadius(cell.width,cell.height,cell.width*mark.origin.x,cell.height*mark.origin.y,operationReveal(item))
+                        if(radius>0f)drawCircle(pigment,radius,origin)
+                    }
+                    drawContext.canvas.restore()
+                }
+            }
+            // One uninterrupted hatch lies above the backgrounds and below all labels/chips.
+            if (editReveal > 0f) {
+                var start = -gridHeight
+                while (start < size.width) {
+                    drawLine((if(dark)Color.White else Color.Black).copy(alpha=(if(dark).065f else .048f) * editReveal), Offset(start, gridHeight),
+                        Offset(start + gridHeight, 0f), dp(.6f))
+                    start += dp(16f)
+                }
+            }
             data.forEachIndexed{index,item->
                 val x=index%7*cellWidth;val y=index/7*cellHeight;val center=x+cellWidth/2
                 val restAlert=item.info.date in restDates
+                val hasAnnotation=item.hasNotes||item.hasTags
                 val date=item.info.date;val today=date==todayDate;val chosen=date==selection||date==anchor
                 val cycle=if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,date,rotation?.daySequence?.size?:0)else null
                 // Leave distinct lanes for the date, cycle badge and on-call bell.
                 val dateCenter=if(cycle!=null)center-dp(2f)else center
                 val periodAnchor=editing&&mode==CalendarEditMode.RANGE&&date==anchor
-                val base=if(date.dayOfWeek.value>=6)weekend else surface
+                val erasingAnchor=periodAnchor&&brush=="eraser"
+                val eraseCueFill=Color(palette.danger.fill)
+                val eraseCueInk=readableInk(eraseCueFill,Color(palette.danger.ink))
+                val anchorInk=if(erasingAnchor)eraseCueInk else brandInk
                 val inset=dp(1.5f)*editReveal
-                val contentBottom=y+cellHeight-dp(if(restAlert)24f else 6f)
-                if(!editing)drawRect(base,Offset(x,y),Size(cellWidth,cellHeight))
-                val paintColor=painted[date]?.takeIf{mark->mark.assignmentIds.isNotEmpty()&&mark.assignmentIds.all{id->item.shifts.any{it.first.id==id&&it.first.shiftDefId==mark.definitionId}}}?.let{defs[it.definitionId]?.color}?.takeIf{editing&&!item.preview}
-                val neutral=if(editing)ObsidianSurface else base
-                val cellFill=if(paintColor!=null)lerp(neutral,paintColor,if(date in paintingDates)paintReveal.value else 1f)else if(today)todayFill else if(chosen)lerp(neutral,brand,.1f)else neutral
-                drawRoundRect(cellFill,Offset(x+inset,y+inset),Size(cellWidth-inset*2,cellHeight-inset*2),CornerRadius(dp(if(editing)8f else if(today||chosen)10f else 0f)))
-                if(chosen)drawRoundRect(brand,Offset(x+inset+dp(1f),y+inset+dp(1f)),Size(cellWidth-inset*2-dp(2f),cellHeight-inset*2-dp(2f)),CornerRadius(dp(if(editing)8f else 10f)),style=Stroke(dp(2f)))
-                if(today&&!editing)drawRoundRect(brand,Offset(center-dp(12.5f),y+dp(4f)),Size(dp(25f),dp(24f)),CornerRadius(dp(6f)))
+                val contentBottom=y+cellHeight-dp(3f)
+                val paintColor=cellPaint(item)
+                val cellFill=cellBackground(item)
+                val annotationBackdrop=cellFill
+                if(chosen){
+                    // Stroke sits fully inside the rounded cell, with the same gap on every side.
+                    val focusInset=inset+dp(2.4f)
+                    val focusRadius=dp(7.6f-2f*editReveal)
+                    val focusInk=if(erasingAnchor)readablePigment(cellFill,ColorNegative)else readableIndicator(cellFill,brandInk)
+                    drawRoundRect(focusInk,Offset(x+focusInset,y+focusInset),
+                        Size(cellWidth-focusInset*2,cellHeight-focusInset*2),CornerRadius(focusRadius),
+                        style=Stroke(dp(if(erasingAnchor)1f else 1.15f)))
+                }
+                if(today&&!periodAnchor)drawRoundRect(brand,Offset(dateCenter-dp(10f),y+dp(3f)),Size(dp(20f),dp(20f)),CornerRadius(dp(5f)))
                 if(periodAnchor){
-                    // The date badge stays separate from the full-cell selection and metadata.
+                    // A compact date badge replaces the full-width destructive banner.
                     val cue=anchorReveal.value
-                    drawRoundRect(brand.copy(alpha=cue),Offset(center-dp(11f),y+dp(6f)),
-                        Size(dp(22f),dp(20f)),CornerRadius(dp(5f)))
+                    drawRoundRect((if(erasingAnchor)eraseCueFill else brand).copy(alpha=cue),
+                        Offset(dateCenter-dp(8f),y+dp(6f)),Size(dp(16f),dp(16f)),CornerRadius(dp(4f)))
                 }
                 if(item.holidayName!=null){
                     // Keep the holiday mark around the date, separate from full-cell selection.
-                    val dateBox=Offset(dateCenter-dp(11f),y+dp(5.5f))
-                    val dateSize=Size(dp(22f),dp(21f))
-                    val corner=CornerRadius(dp(6f))
+                    val dateBox=Offset(dateCenter-dp(if(periodAnchor)8f else 9f),y+dp(if(periodAnchor)6f else 4f))
+                    val dateSize=Size(dp(if(periodAnchor)16f else 18f),dp(if(periodAnchor)16f else 18f))
+                    val corner=CornerRadius(dp(5f))
                     // No outer halo: it could collide with the adjacent on-call bell.
-                    drawRoundRect(Color(holidayDayColor(dark)).copy(alpha=if(item.info.isCurrentMonth)1f else .6f),dateBox,dateSize,corner,style=Stroke(dp(1.35f)))
+                    val dateBackdrop=when {
+                        periodAnchor -> if(erasingAnchor)eraseCueFill else brand.copy(alpha=anchorReveal.value).compositeOver(cellFill)
+                        today -> brand
+                        else -> cellFill
+                    }
+                    val holidayInk=Color(holidayDayColor(dark))
+                    drawRoundRect(readablePigment(dateBackdrop,holidayInk),dateBox,dateSize,corner,style=Stroke(dp(1.1f)))
                 }
-                val dateInk=if(periodAnchor)lerp(text,onBrand,anchorReveal.value) else if(paintColor!=null)catalogInk(cellFill)else if(today&&!editing)onBrand else if(item.onCall||previousBells.contains(date))lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f)else if(item.info.isCurrentMonth)text else muted
-                label(date.dayOfMonth.toString(),dateCenter,y+dp(16f),14f,dateInk,true,if(item.info.isCurrentMonth)1f else .5f)
+                val dateInk=if(erasingAnchor)lerp(readableInk(cellFill,text),eraseCueInk,anchorReveal.value) else if(today)onBrand else if(periodAnchor)lerp(text,onBrand,anchorReveal.value) else if(paintColor!=null)catalogInk(cellFill) else if(item.onCall||previousBells.contains(date))lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f)else if(item.info.isCurrentMonth)text else muted
+                label(date.dayOfMonth.toString(),dateCenter,y+dp(if(periodAnchor)14f else 13f),if(periodAnchor)11.5f else 12.5f,dateInk,true,maxWidth=if(periodAnchor)14f else 18f,maxHeight=if(periodAnchor)14f else 18f,optical=true)
                 if(periodAnchor){
                     val cue=anchorReveal.value
                     // Thin complete arrows stay in the date lane, safely inside the cell outline.
-                    val middle=y+dp(16f)
-                    val left=x+dp(7f);val right=x+cellWidth-dp(7f)
+                    val middle=y+dp(14f)
+                    val left=x+dp(7.5f);val right=x+cellWidth-dp(7.5f)
                     val travel=dp(1f)*(1f-cue)
-                    val ink=brand.copy(alpha=cue)
-                    val stroke=dp(.95f)
+                    val ink=(if(erasingAnchor)readableIndicator(cellFill,ColorNegative) else readableIndicator(cellFill,anchorInk)).copy(alpha=cue)
+                    val stroke=dp(.85f)
                     fun arrow(tip:Float,direction:Float){
-                        val shaft=tip+direction*dp(5f)
+                        val shaft=tip+direction*dp(4f)
                         val shoulder=tip+direction*dp(2.2f)
                         drawLine(ink,Offset(tip,middle),Offset(shaft,middle),stroke,StrokeCap.Round)
                         drawLine(ink,Offset(shoulder,middle-dp(2.2f)),Offset(tip,middle),stroke,StrokeCap.Round)
@@ -205,64 +419,63 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 cycle?.let{number->
                     // Five dp of inset keeps the complete badge inside the selection stroke.
                     val markerX=x+cellWidth-dp(10f)
-                    val markerY=y+dp(10f)
+                    val markerY=y+dp(9f)
                     drawCircle(brand.copy(alpha=.20f),dp(5f),Offset(markerX,markerY))
                     val digits=number.toString()
                     // Fit long-running cycles too, without expanding into the date or border.
                     paint.textSize=dp(8f)*fontScale
                     val fit=(dp(8f)/paint.measureText(digits)).coerceAtMost(1f)
-                    label(digits,markerX,markerY,8f*fit,brand,true)
+                    label(digits,markerX,markerY,8f*fit,brandInk,true,optical=true)
                 }
                 val changed=previousBells.contains(date)!=item.onCall
                 val bellAlpha=if(changed){if(item.onCall)bellProgress.value else 1-bellProgress.value}else if(item.onCall)1f else 0f
                 if(bellAlpha>0){
-                    val bx=center+dp(if(periodAnchor)16f else 18f);val by=y+dp(if(periodAnchor)23.5f else if(cycle!=null)23f else if(editing&&mode==CalendarEditMode.ROTATION)21f else 16f);val color=(if(paintColor!=null)catalogInk(cellFill)else amber).copy(alpha=bellAlpha*(if(item.info.isCurrentMonth)1f else .45f))
-                    val scale=dp(10f)/24f
-                    drawContext.canvas.save();drawContext.canvas.translate(bx-dp(5f),by-dp(5f));drawContext.canvas.scale(scale,scale)
+                    val compactBell=periodAnchor||cycle!=null||(editing&&mode==CalendarEditMode.ROTATION)
+                    val bellSize=dp(if(periodAnchor)7.5f else if(compactBell)8f else 10f)
+                    val bx=center+dp(if(periodAnchor)16f else 18f)
+                    val by=y+dp(if(periodAnchor)20.5f else if(compactBell)19.5f else 13f)
+                    val color=readableIndicator(annotationBackdrop,amber).copy(alpha=bellAlpha)
+                    val scale=bellSize/24f
+                    drawContext.canvas.save();drawContext.canvas.translate(bx-bellSize/2,by-bellSize/2);drawContext.canvas.scale(scale,scale)
                     drawPath(bellOutline,color,style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round));drawContext.canvas.restore()
                 }
-                val noteChanged=previousNotes.contains(date)!=item.hasNotes
-                val noteAlpha=if(noteChanged){if(item.hasNotes)noteProgress.value else 1f-noteProgress.value}else if(item.hasNotes)1f else 0f
+                val noteChanged=previousNotes.contains(date)!=hasAnnotation
+                val noteAlpha=if(noteChanged){if(hasAnnotation)noteProgress.value else 1f-noteProgress.value}else if(hasAnnotation)1f else 0f
                 if(noteAlpha>0f){
-                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)23.5f else 16f)
-                    val scale=dp(10f)/24f
-                    drawContext.canvas.save();drawContext.canvas.translate(nx-dp(5f),ny-dp(5f));drawContext.canvas.scale(scale,scale)
-                    drawPath(messageOutline,(if(paintColor!=null)catalogInk(cellFill)else brand).copy(alpha=noteAlpha*(if(item.info.isCurrentMonth)1f else .45f)),style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round))
+                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)20.5f else 13f)
+                    val noteSize=dp(if(periodAnchor)7.5f else 10f)
+                    val scale=noteSize/24f
+                    drawContext.canvas.save();drawContext.canvas.translate(nx-noteSize/2,ny-noteSize/2);drawContext.canvas.scale(scale,scale)
+                    drawPath(if(calendarAnnotationIcon(item.hasNotes,item.hasTags)=="tag")tagOutline else messageOutline,readableIndicator(annotationBackdrop,Color(palette.secondary)).copy(alpha=noteAlpha),style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round))
                     drawContext.canvas.restore()
                 }
-                if(restAlert){
-                    val warningInk=if(dark)Color(0xFFFFCA80)else Color(0xFF854900)
-                    // A centered, inset badge never intersects the selected cell outline.
-                    val warningCenter=Offset(center,y+cellHeight-dp(15f))
-                    drawRoundRect(if(dark)Color(0xFF553B18)else Color(0xFFFFE5B4),
-                        warningCenter-Offset(dp(9f),dp(7f)),Size(dp(18f),dp(14f)),CornerRadius(dp(4f)))
-                    label("!",warningCenter.x,warningCenter.y,11f,warningInk,true)
-                }
-                val faded=if(item.preview||!item.info.isCurrentMonth).45f else 1f
-                var cursor=y+dp(if(editing)28f else 31f);var shown=0
-                item.shifts.take(2).forEach{(shift,def)->
+                val subdued=item.preview||!item.info.isCurrentMonth
+                var cursor=y+dp(27f-2f*editReveal);var shown=0
+                val assignmentBottom=contentBottom-dp(if(restAlert)12f else 0f)
+                val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale,item.shifts.map{(shift,_)->extraWeights(shift).let{13f*(it.first+it.second)}})
+                item.shifts.take(layout.visibleCount).forEachIndexed{shiftIndex,(shift,def)->
                     val old=fromExtras[shift.id]?:CalendarExtraState(0f,false)
                     val target=toExtras[shift.id]?:CalendarExtraState(shift.overtimeHours,shift.isTrasferta)
                     val t=extrasReveal.value
-                    val overtimeWeight=if(editing)0f else (if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t
-                    val travelWeight=if(editing)0f else (if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t
-                    val baseChip=if(editing)34f else 40f
-                    val available=(contentBottom-cursor)/px
-                    val bandHeight=calendarExtraBandHeight(available,baseChip,overtimeWeight+travelWeight)
+                    val overtimeWeight=((if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t)*(1-editReveal)
+                    val travelWeight=((if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t)*(1-editReveal)
+                    val baseChip=layout.chipHeight
+                    val available=(assignmentBottom-cursor)/px-layout.overflowHeight
+                    val bandHeight=13f
                     val chipHeight=dp(baseChip+bandHeight*(overtimeWeight+travelWeight))
                     // Extras never make an otherwise visible assignment disappear.
-                    if(available>=baseChip){
-                        val fill=lerp(if(dark)ObsidianSurface else Color.White,def.color,if(dark).22f else .26f)
-                        val codeFill=lerp(if(dark)ObsidianSurface else Color.White,def.color,if(dark).28f else .70f)
-                        val left=x+dp(if(editing)4f else 2f);val width=cellWidth-dp(if(editing)8f else 4f)
-                        drawRoundRect(fill.copy(alpha=faded),Offset(left,cursor),Size(width,chipHeight),CornerRadius(dp(7f)))
-                        val topPath=Path().apply{addRoundRect(RoundRect(Rect(left,cursor,left+width,cursor+chipHeight),CornerRadius(dp(7f))))}
-                        drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(codeFill.copy(alpha=faded),Offset(left,cursor),Size(width,dp(if(editing)18f else 20f)));drawContext.canvas.restore()
-                        var codeInk=if(dark)def.color else catalogInk(codeFill)
-                        val a=codeInk.luminance();val b=codeFill.luminance()
-                        if((maxOf(a,b)+.05f)/(minOf(a,b)+.05f)<4.5f)codeInk=catalogInk(codeFill)
-                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(if(editing)9f else 10f),12f,codeInk,true,faded)
-                        label(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,ShiftRepository.appPreferences.timeFormat24h),center,cursor+dp(if(editing)26f else 29f),12f,text,false,faded)
+                    if(available+.01f>=baseChip){
+                        val paints=shiftPaints.getValue(def.id)
+                        val style=if(subdued)paints.second else paints.first
+                        val left=x+dp(4f);val width=cellWidth-dp(8f)
+                        val merged=cellMark(item)?.assignmentIds?.contains(shift.id)==true
+                        val badgeAlpha=if(merged)1f-paintExit.value else 1f
+                        drawRoundRect(style.timeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,chipHeight),CornerRadius(dp(5f)))
+                        val topPath=chipClip.apply{reset();addRoundRect(RoundRect(Rect(left,cursor,left+width,cursor+chipHeight),CornerRadius(dp(5f))))}
+                        drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(style.codeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,dp(baseChip/2)));drawContext.canvas.restore()
+                        if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
+                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
+                        clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,ShiftRepository.appPreferences.timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
                         var bandY=cursor+dp(baseChip)
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath)
                         fun band(labelText:String,weight:Float,fillColor:Color,ink:Color){
@@ -270,36 +483,63 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                             val height=dp(bandHeight*weight)
                             if(bandHeight>=9.5f){
                                 drawContext.canvas.save();drawContext.canvas.clipRect(Rect(left,bandY,left+width,bandY+height))
-                                drawRect(fillColor.copy(alpha=faded*weight),Offset(left,bandY),Size(width,height))
-                                drawLine(surface.copy(alpha=faded),Offset(left,bandY),Offset(left+width,bandY),dp(.7f))
-                                label(labelText,center,bandY+height/2,if(labelText.length>5)9f else 10f,ink,true,faded*weight)
+                                val visibleFill=fillColor.copy(alpha=weight).compositeOver(style.timeFill)
+                                drawRect(visibleFill,Offset(left,bandY),Size(width,height))
+                                drawLine(surface,Offset(left,bandY),Offset(left+width,bandY),dp(.7f))
+                                label(labelText,center,bandY+height/2,if(labelText.length>5)9f else 10f,readableInk(visibleFill,ink),true)
                                 drawContext.canvas.restore()
                             }else{
                                 // Tight six-week cells keep the shift readable and expose metadata as tiny colored markers.
-                                drawCircle(ink.copy(alpha=faded*weight),dp(1.5f),Offset(left+width-dp(if(labelText=="TR")4f else 9f),cursor+dp(baseChip-4f)))
+                                drawCircle(readableIndicator(style.timeFill,ink).copy(alpha=weight),dp(1.5f),Offset(left+width-dp(if(labelText=="TR")4f else 9f),cursor+dp(baseChip-4f)))
                             }
                             bandY+=height
                         }
-                        band(calendarOvertimeLabel(if(target.overtime>0)target.overtime else old.overtime),overtimeWeight,if(dark)Color(0xFF173F58)else Color(0xFFC2E7FF),if(dark)Color(0xFFC0E7FF)else Color(0xFF164967))
-                        band("TR",travelWeight,if(dark)Color(0xFF18483D)else Color(0xFFABE2CF),if(dark)Color(0xFFA5EFD8)else Color(0xFF124D3B))
+                        band(calendarOvertimeLabel(if(target.overtime>0)target.overtime else old.overtime),overtimeWeight,Color(palette.overtime.fill),Color(palette.overtime.ink))
+                        band("TR",travelWeight,Color(palette.travel.fill),Color(palette.travel.ink))
                         drawContext.canvas.restore()
-                        cursor+=chipHeight+dp(if(editing)2f else 3f);shown++
+                        cursor+=chipHeight+dp(layout.gap);shown++
                     }
                 }
-                if(item.original!=null&&cursor+dp(12f)<contentBottom-dp(1f)){label("ex ${item.original}",center,cursor+dp(6f),9f,if(paintColor!=null)catalogInk(cellFill)else muted,false,faded);cursor+=dp(13f)}
-                if(item.shifts.size>shown)item.shifts.drop(shown).take(4).forEachIndexed{i,(_,def)->
-                    drawCircle(def.color.copy(alpha=faded),dp(2f),Offset(center+(i-(item.shifts.size-shown-1)/2f)*dp(6f),minOf(cursor+dp(4f),contentBottom-dp(1f))))
+                if(item.original!=null&&cursor+dp(12f)<assignmentBottom-dp(7f)){label("ex ${item.original}",center,cursor+dp(6f),9f,readableInk(cellFill,muted));cursor+=dp(13f)}
+                if(item.shifts.size>shown) {
+                    val hidden=item.shifts.drop(shown)
+                    val spacing=minOf(dp(6f),(cellWidth-dp(12f))/hidden.size.coerceAtLeast(1))
+                    val radius=minOf(dp(1.8f),spacing*.3f)
+                    hidden.forEachIndexed { i, (_,def) ->
+                        val marker=Offset(center+(i-(hidden.size-1)/2f)*spacing,assignmentBottom-dp(3f))
+                        // Preserve the actual chosen color; the outline separates pale dots.
+                        drawCircle(def.color,radius,marker)
+                        drawCircle(line,radius,marker,style=Stroke(minOf(dp(.35f),radius*.2f)))
+                    }
+                }
+                if(restAlert){
+                    // Dedicated status lane, inset from selection and separate from date metadata.
+                    val warningCenter=Offset(center,contentBottom-dp(5f))
+                    val warningPath=Path().apply {
+                        moveTo(warningCenter.x,warningCenter.y-dp(4.5f))
+                        lineTo(warningCenter.x+dp(5f),warningCenter.y+dp(4f))
+                        lineTo(warningCenter.x-dp(5f),warningCenter.y+dp(4f));close()
+                    }
+                    val fill=Color(palette.warning.fill)
+                    drawPath(warningPath,fill)
+                    drawPath(warningPath,readableIndicator(cellFill,Color(palette.warning.ink)),style=Stroke(dp(.65f),join=StrokeJoin.Round))
+                    label("!",warningCenter.x,warningCenter.y+dp(.6f),7f,Color(palette.warning.ink),true,optical=true)
                 }
             }
-            if(!editing)for(row in 1 until days.size/7)drawLine(line.copy(alpha=.45f),Offset(0f,row*cellHeight),Offset(size.width,row*cellHeight),dp(.5f))
+            if(editReveal<1f)for(row in 1 until days.size/7)drawLine(line.copy(alpha=.45f*(1-editReveal)),Offset(0f,row*cellHeight),Offset(size.width,row*cellHeight),dp(.5f))
             drawContext.canvas.restore()
         }
         if(animate) Column(Modifier.fillMaxSize().graphicsLayer{scaleY=((viewportHeight-128.dp.toPx()*editReveal)/viewportHeight).coerceAtLeast(.1f);transformOrigin=TransformOrigin(0f,0f)}){
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date
-                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");day.shifts.forEach{(_,def)->append(", ${def.name}, ${def.timeRangeFormatted}")};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
-                }.combinedClickable(onClick={onPreview(day.info.date);onClick(day.info.date)},onLongClick=onLongClick?.let{callback->{callback(day.info.date)}}))}
+                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(_,def)->append(", ${def.name}, ${def.timeRangeFormatted}")};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
+                }.pointerInput(day.info.date){
+                    awaitEachGesture{
+                        val down=awaitFirstDown(requireUnconsumed=false)
+                        pressOrigins[day.info.date]=Offset((down.position.x/size.width.coerceAtLeast(1)).coerceIn(0f,1f),(down.position.y/size.height.coerceAtLeast(1)).coerceIn(0f,1f))
+                    }
+                }.combinedClickable(interactionSource=remember{MutableInteractionSource()},indication=null,onClick={onPreview(day.info.date);onClick(day.info.date)},onLongClick=if(longPressEnabled)onLongClick?.let{callback->{callback(day.info.date)}}else null))}
             }}
         }
     }

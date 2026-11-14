@@ -1,0 +1,1087 @@
+<style>
+#ts-palette-study{color:var(--foreground);width:100%;box-sizing:border-box}
+#ts-palette-study *{box-sizing:border-box}
+#ts-palette-study [hidden]{display:none!important}
+#ts-palette-study .ts-top{padding-right:94px;margin-bottom:16px}
+#ts-palette-study .ts-top h2{margin:0 0 4px}
+#ts-palette-study .ts-space{margin-top:18px}
+#ts-palette-study .ts-pair{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:16px}
+#ts-palette-study .ts-board{--ts-bg:#fff;--ts-ink:#1c2b43;--ts-muted:#56657a;--ts-card:#fff;background:var(--ts-bg);color:var(--ts-ink);border-radius:18px;padding:18px;font-family:system-ui,sans-serif;font-size:14px;line-height:1.45}
+#ts-palette-study .ts-board h3{font:600 17px/1.35 system-ui;margin:0 0 12px;color:var(--ts-ink)}
+#ts-palette-study .ts-paint-row{display:grid;grid-template-columns:48px minmax(0,1fr);gap:10px;align-items:center;padding:9px 0}
+#ts-palette-study .ts-swatch{width:48px;height:42px;border-radius:10px;box-shadow:inset 0 0 0 1px rgb(128 128 128 / .2)}
+#ts-palette-study .ts-role{color:var(--ts-ink);font-size:13px}
+#ts-palette-study .ts-code{font:12px/1.5 ui-monospace,monospace;color:var(--ts-muted);overflow-wrap:anywhere}
+#ts-palette-study .ts-board small{color:var(--ts-muted);font-size:12px}
+#ts-palette-study .ts-sample{display:flex;gap:8px;flex-wrap:wrap;margin-top:15px}
+#ts-palette-study .ts-sample span{padding:9px 12px;border-radius:10px;font-size:13px}
+#ts-palette-study .ts-dot{display:inline-block;width:18px;height:18px;border-radius:5px;vertical-align:middle;margin-right:7px;box-shadow:inset 0 0 0 1px rgb(128 128 128 / .2)}
+#ts-palette-study .ts-turns{display:grid;gap:12px;margin-top:16px}
+#ts-palette-study .ts-turn-row{display:grid;grid-template-columns:100px repeat(4,minmax(0,1fr));gap:10px;align-items:center;padding:12px;border-radius:14px;background:var(--ts-bg);color:var(--ts-ink);font-family:system-ui;font-size:13px}
+#ts-palette-study .ts-chip{min-height:66px;text-align:center;border-radius:9px;overflow:hidden;font-family:system-ui,sans-serif}
+#ts-palette-study .ts-chip strong{display:block;font-size:13px;padding:6px 4px;font-weight:650}
+#ts-palette-study .ts-chip small{display:block;font-size:11px;padding:5px 2px}
+#ts-palette-study .ts-chip-label{text-align:center;font-size:11px;color:var(--ts-muted);margin-top:5px;overflow-wrap:anywhere}
+#ts-palette-study .ts-table-cell{display:flex;align-items:center;gap:6px}
+#ts-palette-study .ts-lab{display:grid;grid-template-columns:minmax(270px,350px) minmax(210px,1fr);gap:20px;align-items:start;margin-top:16px}
+#ts-palette-study .ts-phone{background:var(--ts-bg);color:var(--ts-ink);padding:17px 12px 16px;border-radius:25px;font:13px/1.4 system-ui,sans-serif;box-shadow:0 8px 24px rgb(0 0 0 / .12)}
+#ts-palette-study .ts-phone-header{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 3px 16px;font-size:16px;font-weight:650}
+#ts-palette-study .ts-phone-header .ts-phone-icons{display:flex;gap:9px;color:var(--ts-muted)}
+#ts-palette-study .ts-weekdays,#ts-palette-study .ts-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+#ts-palette-study .ts-weekdays{color:var(--ts-muted);text-align:center;font-size:11px;padding:7px 0;background:var(--ts-calendar);border-radius:12px 12px 0 0}
+#ts-palette-study .ts-days{background:var(--ts-calendar);border-radius:0 0 14px 14px;padding:0 2px 7px}
+#ts-palette-study .ts-day{min-height:85px;border-radius:7px;text-align:center;padding:5px 1px 3px;position:relative}
+#ts-palette-study .ts-day.ts-weekend{background:var(--ts-weekend)}
+#ts-palette-study .ts-day.ts-today{background:var(--ts-today)}
+#ts-palette-study .ts-day.ts-selected{box-shadow:inset 0 0 0 1.6px var(--ts-primary)}
+#ts-palette-study .ts-date{height:24px;display:flex;justify-content:center;align-items:center;font-size:14px;font-weight:650;margin-bottom:5px}
+#ts-palette-study .ts-date b{font-weight:650;min-width:22px;line-height:22px;border-radius:5px}
+#ts-palette-study .ts-today .ts-date b{background:var(--ts-primary);color:var(--ts-onbrand)}
+#ts-palette-study .ts-festive .ts-date b{box-shadow:inset 0 0 0 1.2px #ffa6ae}
+#ts-palette-study .ts-day small{font-size:11px;line-height:1.5;display:block}
+#ts-palette-study .ts-day .ts-day-code{border-radius:5px 5px 0 0;font-size:11px;font-weight:650}
+#ts-palette-study .ts-day .ts-day-time{border-radius:0 0 5px 5px;color:var(--ts-ink)}
+#ts-palette-study .ts-bell{position:absolute;right:1px;top:4px;width:10px;height:10px;color:#f4ca70}
+#ts-palette-study .ts-day-detail{background:var(--ts-card);padding:12px;border-radius:13px;margin-top:12px}
+#ts-palette-study .ts-detail-title{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px;font-size:13px}
+#ts-palette-study .ts-bands{display:flex;gap:6px;flex-wrap:wrap;font-size:11px;margin-top:8px}
+#ts-palette-study .ts-bands span{padding:4px 6px;border-radius:6px}
+#ts-palette-study .ts-mini-report{position:relative;background:var(--ts-card);border-radius:13px;padding:12px;margin-top:10px;overflow:hidden;min-height:92px}
+#ts-palette-study .ts-mini-report>span{display:block;position:relative;font-size:12px}
+#ts-palette-study .ts-mini-report strong{font-size:25px;font-weight:650;position:relative}
+#ts-palette-study .ts-ring{position:absolute;width:136px;height:136px;right:-36px;top:-50px;border-radius:50%;mask:radial-gradient(circle,transparent 51%,#000 52%);opacity:.46}
+#ts-palette-study .ts-dock{background:var(--ts-dock);color:var(--ts-dock-ink);border-radius:28px;width:168px;margin:13px auto 0;display:flex;justify-content:space-evenly;align-items:center;padding:5px}
+#ts-palette-study .ts-dock span{width:39px;height:39px;display:flex;align-items:center;justify-content:center;border-radius:50%}
+#ts-palette-study .ts-dock .ts-active{background:var(--ts-primary);color:var(--ts-onbrand)}
+#ts-palette-study .ts-lab-colors{display:grid;gap:4px}
+#ts-palette-study .ts-lab-colors .ts-dot{width:25px;height:25px}
+#ts-palette-study .ts-lab-color-row{display:flex;align-items:center;gap:8px;padding:5px 0}
+#ts-palette-study .ts-lab-color-row code{margin-left:auto}
+#ts-palette-study .ts-note{margin-top:12px;color:var(--muted-foreground)}
+#ts-palette-study .ts-fallback-editors{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:15px}
+@media(max-width:570px){#ts-palette-study .ts-pair{gap:9px}#ts-palette-study .ts-board{padding:11px}#ts-palette-study .ts-paint-row{grid-template-columns:32px minmax(0,1fr);gap:7px}#ts-palette-study .ts-swatch{width:32px;height:38px}#ts-palette-study .ts-role{font-size:12px}#ts-palette-study .ts-lab{grid-template-columns:1fr}#ts-palette-study .ts-phone{max-width:350px;width:100%;margin:auto}#ts-palette-study .ts-turn-row{grid-template-columns:repeat(4,minmax(0,1fr));gap:7px}#ts-palette-study .ts-turn-name{grid-column:1/-1}#ts-palette-study .ts-chip-label{font-size:11px}}
+@media(prefers-reduced-motion:no-preference){#ts-palette-study .ts-phone,#ts-palette-study .ts-day,#ts-palette-study .ts-day-detail,#ts-palette-study .ts-mini-report,#ts-palette-study .ts-dock{transition:background-color .22s ease,color .22s ease,box-shadow .22s ease}}
+</style>
+<div id="ts-palette-study">
+  <div class="ts-top"><h2>La palette di TurniSync</h2><div class="text-small text-muted">Codice nativo · beta.2 · analisi del 4 novembre 2026</div></div>
+  <div class="nav nav-pills" role="tablist" aria-label="Esplora la palette">
+    <button class="nav-link active" id="ts-tab-palette" type="button" role="tab" aria-selected="true" aria-controls="ts-panel-palette" data-view="palette">Chiaro e scuro</button>
+    <button class="nav-link" id="ts-tab-shifts" type="button" role="tab" aria-selected="false" aria-controls="ts-panel-shifts" data-view="shifts">Turni e tinte</button>
+    <button class="nav-link" id="ts-tab-contrast" type="button" role="tab" aria-selected="false" aria-controls="ts-panel-contrast" data-view="contrast">Contrasti</button>
+    <button class="nav-link" id="ts-tab-lab" type="button" role="tab" aria-selected="false" aria-controls="ts-panel-lab" data-view="lab">Prove dark</button>
+  </div>
+  <section id="ts-panel-palette" role="tabpanel" aria-labelledby="ts-tab-palette">
+    <div class="viz-controls ts-space"><label class="form-label">Ruoli cromatici<select id="ts-role-group" class="form-select"><option value="surfaces">Sfondi e superfici</option><option value="type">Testi e accenti</option><option value="calendar">Calendario e barra</option><option value="extras">Straordinari, trasferte e reperibilità</option><option value="feedback">Conferme ed eliminazioni</option><option value="widget">Widget e stelle</option></select></label></div>
+    <div id="ts-current-pair" class="ts-pair" aria-live="polite"></div>
+  </section>
+  <section id="ts-panel-shifts" role="tabpanel" aria-labelledby="ts-tab-shifts" hidden>
+    <div class="viz-controls ts-space"><label class="form-label">Tema del campione<select id="ts-shift-theme" class="form-select"><option value="dark">Scuro attuale</option><option value="light">Chiaro attuale</option></select></label></div>
+    <div id="ts-shift-samples" class="ts-turns" aria-live="polite"></div>
+    <div class="text-small ts-note">I primi sei sono i colori proposti nell’editor. I nomi e i colori dei turni restano personalizzabili.</div>
+  </section>
+  <section id="ts-panel-contrast" role="tabpanel" aria-labelledby="ts-tab-contrast" hidden>
+    <div class="viz-controls ts-space"><label class="form-label">Tema<select id="ts-contrast-theme" class="form-select"><option value="light">Chiaro attuale</option><option value="dark">Scuro attuale</option></select></label></div>
+    <div class="table-responsive ts-space"><table class="table table-sm"><thead><tr><th>Abbinamento</th><th>Campione</th><th class="text-end">Rapporto</th><th>Lettura</th></tr></thead><tbody id="ts-contrast-rows"></tbody></table></div>
+    <div class="text-small ts-note">Riferimenti: testo normale 4,5:1; indicatori essenziali 3:1. Il confronto fra superfici è descrittivo. Non è una certificazione dell’intera interfaccia.</div>
+  </section>
+  <section id="ts-panel-lab" role="tabpanel" aria-labelledby="ts-tab-lab" hidden>
+    <div class="viz-controls ts-space"><label class="form-label">Direzione cromatica<select id="ts-lab-preset" class="form-select"><option value="current">Scuro attuale</option><option value="Grafite neutra">Grafite neutra · proposta</option><option value="Carbone e salvia">Carbone e salvia · proposta</option><option value="custom" disabled>La tua prova</option></select></label></div>
+    <div class="ts-lab">
+      <div id="ts-dark-preview" class="ts-phone" aria-label="Anteprima cromatica del tema scuro"></div>
+      <div><h3 id="ts-lab-title">Scuro attuale</h3><div id="ts-lab-colors" class="ts-lab-colors"></div><div id="ts-lab-contrast" class="text-small ts-note" aria-live="polite"></div><div id="ts-fallback-editors" class="ts-fallback-editors" hidden></div></div>
+    </div>
+    <div class="text-small ts-note">Studio cromatico su dati illustrativi · nessuna modifica all’APK.</div>
+  </section>
+  <script type="application/json" id="ts-palette-data">{
+  "date": "2026-11-04",
+  "sourceVersion": "1.8.0-beta.2 (47)",
+  "tokens": [
+    {
+      "key": "ObsidianBackground",
+      "label": "Sfondo generale",
+      "group": "Superfici",
+      "dark": "#101114",
+      "light": "#F4F6F9",
+      "source": "ui/theme/Color.kt",
+      "line": 39
+    },
+    {
+      "key": "ObsidianSurface",
+      "label": "Card e pannelli",
+      "group": "Superfici",
+      "dark": "#1A1C22",
+      "light": "#FFFFFF",
+      "source": "ui/theme/Color.kt",
+      "line": 40
+    },
+    {
+      "key": "ObsidianSurfaceContainer",
+      "label": "Campi e contenitori",
+      "group": "Superfici",
+      "dark": "#22242C",
+      "light": "#EDF1F8",
+      "source": "ui/theme/Color.kt",
+      "line": 41
+    },
+    {
+      "key": "ObsidianSurfaceHigh",
+      "label": "Controlli rialzati",
+      "group": "Superfici",
+      "dark": "#262932",
+      "light": "#EDF1F8",
+      "source": "ui/theme/Color.kt",
+      "line": 42
+    },
+    {
+      "key": "ObsidianSurfaceHighest",
+      "label": "Superficie più alta",
+      "group": "Superfici",
+      "dark": "#323540",
+      "light": "#DEE5F0",
+      "source": "ui/theme/Color.kt",
+      "line": 43
+    },
+    {
+      "key": "ObsidianBorder",
+      "label": "Bordo standard",
+      "group": "Struttura",
+      "dark": "#383B46",
+      "light": "#E3E9F2",
+      "source": "ui/theme/Color.kt",
+      "line": 44
+    },
+    {
+      "key": "ObsidianBorderSubtle",
+      "label": "Divisore tenue",
+      "group": "Struttura",
+      "dark": "#2C2F38",
+      "light": "#E8ECF3",
+      "source": "ui/theme/Color.kt",
+      "line": 45
+    },
+    {
+      "key": "ObsidianPrimary",
+      "label": "Accento principale",
+      "group": "Interazioni",
+      "dark": "#BCB8FF",
+      "light": "#3866E8",
+      "source": "ui/theme/Color.kt",
+      "line": 47
+    },
+    {
+      "key": "ObsidianPrimaryContainer",
+      "label": "Selezione piena tenue",
+      "group": "Interazioni",
+      "dark": "#454064",
+      "light": "#DFE6FF",
+      "source": "ui/theme/Color.kt",
+      "line": 48
+    },
+    {
+      "key": "ObsidianPrimarySubtle",
+      "label": "Accento molto tenue",
+      "group": "Interazioni",
+      "dark": "#302D45",
+      "light": "#EBEFFF",
+      "source": "ui/theme/Color.kt",
+      "line": 49
+    },
+    {
+      "key": "ObsidianSecondary",
+      "label": "Accento secondario",
+      "group": "Interazioni",
+      "dark": "#C3BBE9",
+      "light": "#655195",
+      "source": "ui/theme/Color.kt",
+      "line": 50
+    },
+    {
+      "key": "ObsidianTertiary",
+      "label": "Accento terziario",
+      "group": "Interazioni",
+      "dark": "#83CDB7",
+      "light": "#166B56",
+      "source": "ui/theme/Color.kt",
+      "line": 51
+    },
+    {
+      "key": "TextPrimary",
+      "label": "Testo principale",
+      "group": "Testi",
+      "dark": "#F4F3F7",
+      "light": "#1C2B43",
+      "source": "ui/theme/Color.kt",
+      "line": 52
+    },
+    {
+      "key": "TextSecondary",
+      "label": "Testo secondario",
+      "group": "Testi",
+      "dark": "#BEC1CD",
+      "light": "#56657A",
+      "source": "ui/theme/Color.kt",
+      "line": 53
+    },
+    {
+      "key": "TextMuted",
+      "label": "Testo attenuato",
+      "group": "Testi",
+      "dark": "#ADB1C0",
+      "light": "#657086",
+      "source": "ui/theme/Color.kt",
+      "line": 54
+    },
+    {
+      "key": "CalendarSurface",
+      "label": "Calendario feriale",
+      "group": "Calendario",
+      "dark": "#16181E",
+      "light": "#FFFFFF",
+      "source": "ui/theme/Color.kt",
+      "line": 55
+    },
+    {
+      "key": "CalendarWeekend",
+      "label": "Sabato e domenica",
+      "group": "Calendario",
+      "dark": "#20222B",
+      "light": "#E6EDF7",
+      "source": "ui/theme/Color.kt",
+      "line": 56
+    },
+    {
+      "key": "CalendarToday",
+      "label": "Sfondo di oggi",
+      "group": "Calendario",
+      "dark": "#343146",
+      "light": "#D6E5FF",
+      "source": "ui/theme/Color.kt",
+      "line": 57
+    },
+    {
+      "key": "DockBody",
+      "label": "Corpo della barra",
+      "group": "Navigazione",
+      "dark": "#2C2D3A",
+      "light": "#E3EBFC",
+      "source": "ui/theme/Color.kt",
+      "line": 58
+    },
+    {
+      "key": "DockInk",
+      "label": "Icone della barra",
+      "group": "Navigazione",
+      "dark": "#E7E5F4",
+      "light": "#36547E",
+      "source": "ui/theme/Color.kt",
+      "line": 59
+    },
+    {
+      "key": "OnBrand",
+      "label": "Testo su accento",
+      "group": "Interazioni",
+      "dark": "#24213F",
+      "light": "#FFFFFF",
+      "source": "ui/theme/Color.kt",
+      "line": 60
+    },
+    {
+      "key": "ColorReperibilita",
+      "label": "Reperibilità",
+      "group": "Significati",
+      "dark": "#F4CA70",
+      "light": "#805100",
+      "source": "ui/theme/Color.kt",
+      "line": 77
+    },
+    {
+      "key": "ColorTrasferta",
+      "label": "Trasferta, token non usato",
+      "group": "Significati",
+      "dark": "#94C4EF",
+      "light": "#235C98",
+      "source": "ui/theme/Color.kt",
+      "line": 78,
+      "usage": "defined-unused"
+    },
+    {
+      "key": "ColorNegative",
+      "label": "Elimina / azione negativa",
+      "group": "Significati",
+      "dark": "#FFA1AB",
+      "light": "#B3263C",
+      "source": "ui/theme/Color.kt",
+      "line": 80
+    }
+  ],
+  "extras": [
+    {
+      "key": "holiday",
+      "label": "Bordo delle festività",
+      "dark": "#FFA6AE",
+      "light": "#AD3045",
+      "source": "ui/theme/HolidayDayStyle.kt"
+    },
+    {
+      "key": "reportInk",
+      "label": "Testo statistiche",
+      "dark": "#F4F3F7",
+      "light": "#1D2D46",
+      "source": "ui/screens/ReportScreen.kt"
+    },
+    {
+      "key": "reportMuted",
+      "label": "Testo secondario statistiche",
+      "dark": "#BEC1CD",
+      "light": "#4E6078",
+      "source": "ui/screens/ReportScreen.kt"
+    },
+    {
+      "key": "panelDanger",
+      "label": "Azione negativa nel dettaglio",
+      "dark": "#EC9C9C",
+      "light": "#A33144",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "overtimeSurface",
+      "label": "Straordinario, fondo",
+      "dark": "#173F58",
+      "light": "#C2E7FF",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "overtimeInk",
+      "label": "Straordinario, testo",
+      "dark": "#C0E7FF",
+      "light": "#164967",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "overtimeAccent",
+      "label": "Straordinario, accento",
+      "dark": "#B5E3FF",
+      "light": "#164967",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "oncallSurface",
+      "label": "Reperibilità, fondo",
+      "dark": "#3D3115",
+      "light": "#FFF0B5",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "oncallInk",
+      "label": "Reperibilità, testo",
+      "dark": "#FFDA77",
+      "light": "#785000",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "travelSurface",
+      "label": "Trasferta nel dettaglio, fondo",
+      "dark": "#163A31",
+      "light": "#D8F2E5",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "travelInk",
+      "label": "Trasferta nel dettaglio, testo",
+      "dark": "#8FE1C0",
+      "light": "#185D48",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "travelBand",
+      "label": "Trasferta nel calendario, fondo",
+      "dark": "#18483D",
+      "light": "#ABE2CF",
+      "source": "ui/screens/NativeMonthCanvas.kt"
+    },
+    {
+      "key": "travelBandInk",
+      "label": "Trasferta nel calendario, testo",
+      "dark": "#A5EFD8",
+      "light": "#124D3B",
+      "source": "ui/screens/NativeMonthCanvas.kt"
+    },
+    {
+      "key": "infoSurface",
+      "label": "Informazione / avviso, fondo",
+      "dark": "#3B301D",
+      "light": "#FFF0D2",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "infoInk",
+      "label": "Informazione / avviso, testo",
+      "dark": "#FFDA90",
+      "light": "#755010",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "restWarning",
+      "label": "Avviso riposo minimo",
+      "dark": "#FFCA80",
+      "light": "#854900",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "successSurface",
+      "label": "Conferma riuscita, fondo",
+      "dark": "#18382C",
+      "light": "#E5F7ED",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "successInk",
+      "label": "Conferma riuscita, testo",
+      "dark": "#DAF9E8",
+      "light": "#194D35",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "successBorder",
+      "label": "Conferma riuscita, bordo",
+      "dark": "#38664E",
+      "light": "#B2D9C2",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "errorSurface",
+      "label": "Eliminazione / errore, fondo",
+      "dark": "#3D2029",
+      "light": "#FFEBEE",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "errorInk",
+      "label": "Eliminazione / errore, testo",
+      "dark": "#FFE1E5",
+      "light": "#93263C",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "errorBorder",
+      "label": "Eliminazione / errore, bordo",
+      "dark": "#81434F",
+      "light": "#E9AEB9",
+      "source": "ui/components/ActionStatusPopup.kt"
+    },
+    {
+      "key": "favoriteStar",
+      "label": "Stella nel catalogo",
+      "dark": "#F2BC3B",
+      "light": "#F2BC3B",
+      "source": "ui/screens/CatalogEditorComponents.kt"
+    },
+    {
+      "key": "rotationStar",
+      "label": "Stella rotazione nel calendario",
+      "dark": "#FFD56B",
+      "light": "#FFD56B",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "rotationStarSurface",
+      "label": "Fondo della stella nel calendario",
+      "dark": "#3B3020",
+      "light": "#3B3020",
+      "source": "ui/screens/NativeCalendarPanels.kt"
+    },
+    {
+      "key": "widgetWeekend",
+      "label": "Widget, fine settimana",
+      "dark": "#22242E",
+      "light": "#E6EDF7",
+      "source": "widget/TurniWidgetRenderer.kt"
+    },
+    {
+      "key": "widgetToday",
+      "label": "Widget, sfondo di oggi",
+      "dark": "#323040",
+      "light": "#E7E2FF",
+      "source": "widget/TurniWidgetRenderer.kt"
+    },
+    {
+      "key": "widgetBrand",
+      "label": "Widget, accento",
+      "dark": "#BCB8FF",
+      "light": "#5743A4",
+      "source": "widget/TurniWidgetRenderer.kt"
+    },
+    {
+      "key": "widgetOnBrand",
+      "label": "Widget, numero di oggi",
+      "dark": "#211D38",
+      "light": "#FFFFFF",
+      "source": "widget/TurniWidgetRenderer.kt"
+    },
+    {
+      "key": "widgetOncallToday",
+      "label": "Widget, oggi reperibile",
+      "dark": "#493000",
+      "light": "#FFF0BA",
+      "source": "widget/TurniWidgetRenderer.kt"
+    },
+    {
+      "key": "onPrimaryContainer",
+      "label": "Testo su contenitore primario",
+      "dark": "#F4F3F7",
+      "light": "#18357A",
+      "source": "ui/theme/Theme.kt"
+    }
+  ],
+  "shiftColors": [
+    {
+      "name": "Ambra",
+      "hex": "#F2C46D",
+      "examples": "Mattina / Mat Dom",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#FCF0DB",
+          "code": "#F6D69C",
+          "stat": "#FBE9CA",
+          "ink": "#171923",
+          "contrast": 12.516945412029045,
+          "statContrast": 11.615994734394144,
+          "widget": "#F5D392",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#433D34",
+          "code": "#4F4639",
+          "stat": "#4F4639",
+          "ink": "#F2C46D",
+          "contrast": 5.685419296216993,
+          "statContrast": 8.38329194274046,
+          "widget": "#6C5B3E",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 10.745742506015775
+    },
+    {
+      "name": "Corallo",
+      "hex": "#EE9C9C",
+      "examples": "Pomeriggio / Donazione",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#FDE5E5",
+          "code": "#F5BAB9",
+          "stat": "#FBD9D9",
+          "ink": "#171923",
+          "contrast": 10.50766755455791,
+          "statContrast": 10.572928082651105,
+          "widget": "#F2B5B5",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#43363A",
+          "code": "#4F3D41",
+          "stat": "#4F3D41",
+          "ink": "#EE9C9C",
+          "contrast": 4.754113220495013,
+          "statContrast": 9.155762360265799,
+          "widget": "#6A4C50",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 8.227417370960925
+    },
+    {
+      "name": "Lavanda",
+      "hex": "#BAAEF6",
+      "examples": "Notte",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#ECEAFE",
+          "code": "#CEC6FA",
+          "stat": "#E4E0FD",
+          "ink": "#171923",
+          "contrast": 10.904254738322882,
+          "statContrast": 10.804116051188636,
+          "widget": "#CBC3F8",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#39384A",
+          "code": "#424156",
+          "stat": "#424156",
+          "ink": "#BAAEF6",
+          "contrast": 4.935101420786271,
+          "statContrast": 8.957883419564109,
+          "widget": "#565372",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 8.729295535228838
+    },
+    {
+      "name": "Menta",
+      "hex": "#83CDB7",
+      "examples": "Smonto / Giornaliero",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#E0F2EC",
+          "code": "#AADCCC",
+          "stat": "#D1ECE3",
+          "ink": "#171923",
+          "contrast": 11.517709613112924,
+          "statContrast": 11.09370388469708,
+          "widget": "#A3DAC9",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#2F3E3F",
+          "code": "#364848",
+          "stat": "#364848",
+          "ink": "#83CDB7",
+          "contrast": 5.227102775491137,
+          "statContrast": 8.730663919979849,
+          "widget": "#415F5A",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 9.486418708247992
+    },
+    {
+      "name": "Azzurro",
+      "hex": "#94C4EF",
+      "examples": "Ferie",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#E3F0FB",
+          "code": "#B4D6F4",
+          "stat": "#D6E9FA",
+          "ink": "#171923",
+          "contrast": 11.557052097034646,
+          "statContrast": 11.144339866493638,
+          "widget": "#AFD3F3",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#323C49",
+          "code": "#394655",
+          "stat": "#394655",
+          "ink": "#94C4EF",
+          "contrast": 5.227166526191217,
+          "statContrast": 8.715315200493544,
+          "widget": "#485B6F",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 9.503241335714012
+    },
+    {
+      "name": "Perla",
+      "hex": "#AAB9CE",
+      "examples": "Riposo / Uffici",
+      "preset": true,
+      "derived": {
+        "light": {
+          "body": "#E8ECF2",
+          "code": "#C3CEDD",
+          "stat": "#DEE4EC",
+          "ink": "#171923",
+          "contrast": 10.996451554397584,
+          "statContrast": 10.827254138259828,
+          "widget": "#C0CBDA",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#363A43",
+          "code": "#3E434D",
+          "stat": "#3E434D",
+          "ink": "#AAB9CE",
+          "contrast": 4.9838173064448785,
+          "statContrast": 8.988774644603499,
+          "widget": "#505763",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 8.785169442278116
+    },
+    {
+      "name": "Verde chiaro",
+      "hex": "#B4D995",
+      "examples": "Malattia, colore iniziale aggiuntivo",
+      "preset": false,
+      "derived": {
+        "light": {
+          "body": "#EBF5E4",
+          "code": "#CAE5B5",
+          "stat": "#E2F1D7",
+          "ink": "#171923",
+          "contrast": 12.824526914586677,
+          "statContrast": 11.739252623723246,
+          "widget": "#C7E2B0",
+          "widgetInk": "#000000"
+        },
+        "dark": {
+          "body": "#38403A",
+          "code": "#404B41",
+          "stat": "#404B41",
+          "ink": "#B4D995",
+          "contrast": 5.780607500632168,
+          "statContrast": 8.262461899932584,
+          "widget": "#54634D",
+          "widgetInk": "#FFFFFF"
+        }
+      },
+      "ink": "#171923",
+      "contrastFull": 11.085429724151947
+    }
+  ],
+  "themes": {
+    "light": {
+      "ObsidianBackground": "#F4F6F9",
+      "ObsidianSurface": "#FFFFFF",
+      "ObsidianSurfaceContainer": "#EDF1F8",
+      "ObsidianSurfaceHigh": "#EDF1F8",
+      "ObsidianSurfaceHighest": "#DEE5F0",
+      "ObsidianBorder": "#E3E9F2",
+      "ObsidianBorderSubtle": "#E8ECF3",
+      "ObsidianPrimary": "#3866E8",
+      "ObsidianPrimaryContainer": "#DFE6FF",
+      "ObsidianPrimarySubtle": "#EBEFFF",
+      "ObsidianSecondary": "#655195",
+      "ObsidianTertiary": "#166B56",
+      "TextPrimary": "#1C2B43",
+      "TextSecondary": "#56657A",
+      "TextMuted": "#657086",
+      "CalendarSurface": "#FFFFFF",
+      "CalendarWeekend": "#E6EDF7",
+      "CalendarToday": "#D6E5FF",
+      "DockBody": "#E3EBFC",
+      "DockInk": "#36547E",
+      "OnBrand": "#FFFFFF",
+      "ColorReperibilita": "#805100",
+      "ColorTrasferta": "#235C98",
+      "ColorNegative": "#B3263C"
+    },
+    "dark": {
+      "ObsidianBackground": "#101114",
+      "ObsidianSurface": "#1A1C22",
+      "ObsidianSurfaceContainer": "#22242C",
+      "ObsidianSurfaceHigh": "#262932",
+      "ObsidianSurfaceHighest": "#323540",
+      "ObsidianBorder": "#383B46",
+      "ObsidianBorderSubtle": "#2C2F38",
+      "ObsidianPrimary": "#BCB8FF",
+      "ObsidianPrimaryContainer": "#454064",
+      "ObsidianPrimarySubtle": "#302D45",
+      "ObsidianSecondary": "#C3BBE9",
+      "ObsidianTertiary": "#83CDB7",
+      "TextPrimary": "#F4F3F7",
+      "TextSecondary": "#BEC1CD",
+      "TextMuted": "#ADB1C0",
+      "CalendarSurface": "#16181E",
+      "CalendarWeekend": "#20222B",
+      "CalendarToday": "#343146",
+      "DockBody": "#2C2D3A",
+      "DockInk": "#E7E5F4",
+      "OnBrand": "#24213F",
+      "ColorReperibilita": "#F4CA70",
+      "ColorTrasferta": "#94C4EF",
+      "ColorNegative": "#FFA1AB"
+    }
+  },
+  "proposals": {
+    "Grafite neutra": {
+      "ObsidianBackground": "#111214",
+      "ObsidianSurface": "#1D1F21",
+      "ObsidianSurfaceContainer": "#272A2D",
+      "ObsidianSurfaceHigh": "#2E3236",
+      "ObsidianSurfaceHighest": "#383C40",
+      "ObsidianBorder": "#454A50",
+      "ObsidianBorderSubtle": "#34383D",
+      "ObsidianPrimary": "#C7C0FF",
+      "ObsidianPrimaryContainer": "#45405F",
+      "ObsidianPrimarySubtle": "#302D40",
+      "ObsidianSecondary": "#C8C2E4",
+      "ObsidianTertiary": "#8DD5BF",
+      "TextPrimary": "#F4F4F2",
+      "TextSecondary": "#C4C7C8",
+      "TextMuted": "#A8ADB0",
+      "CalendarSurface": "#181A1C",
+      "CalendarWeekend": "#232629",
+      "CalendarToday": "#343642",
+      "DockBody": "#2D3034",
+      "DockInk": "#ECEDEE",
+      "OnBrand": "#27223E",
+      "ColorReperibilita": "#F4CA70",
+      "ColorTrasferta": "#94C4EF",
+      "ColorNegative": "#FFA1AB"
+    },
+    "Carbone e salvia": {
+      "ObsidianBackground": "#171614",
+      "ObsidianSurface": "#23211F",
+      "ObsidianSurfaceContainer": "#2D2A27",
+      "ObsidianSurfaceHigh": "#34302C",
+      "ObsidianSurfaceHighest": "#3D3833",
+      "ObsidianBorder": "#514940",
+      "ObsidianBorderSubtle": "#3E3832",
+      "ObsidianPrimary": "#A9D7C1",
+      "ObsidianPrimaryContainer": "#31483D",
+      "ObsidianPrimarySubtle": "#26372F",
+      "ObsidianSecondary": "#D9BFA2",
+      "ObsidianTertiary": "#D8B6BD",
+      "TextPrimary": "#F5F1E9",
+      "TextSecondary": "#CCC3B8",
+      "TextMuted": "#B7AC9F",
+      "CalendarSurface": "#1D1B19",
+      "CalendarWeekend": "#2C2824",
+      "CalendarToday": "#313F36",
+      "DockBody": "#34302B",
+      "DockInk": "#F0E9E0",
+      "OnBrand": "#18382D",
+      "ColorReperibilita": "#F4CA70",
+      "ColorTrasferta": "#94C4EF",
+      "ColorNegative": "#FFA1AB"
+    }
+  },
+  "checks": [
+    {
+      "mode": "light",
+      "label": "Testo principale / card",
+      "foreground": "#1C2B43",
+      "background": "#FFFFFF",
+      "ratio": 14.22787766606201,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Testo secondario / card",
+      "foreground": "#56657A",
+      "background": "#FFFFFF",
+      "ratio": 5.935243072996231,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Testo attenuato / card",
+      "foreground": "#657086",
+      "background": "#FFFFFF",
+      "ratio": 4.981905500239687,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Testo attenuato / superficie alta",
+      "foreground": "#657086",
+      "background": "#DEE5F0",
+      "ratio": 3.9314108849951444,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Testo su pulsante primario",
+      "foreground": "#FFFFFF",
+      "background": "#3866E8",
+      "ratio": 4.959921327398851,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Campanella / calendario",
+      "foreground": "#805100",
+      "background": "#FFFFFF",
+      "ratio": 6.7855523676503395,
+      "kind": "text"
+    },
+    {
+      "mode": "light",
+      "label": "Weekend / feriale",
+      "foreground": "#E6EDF7",
+      "background": "#FFFFFF",
+      "ratio": 1.1783616689015706,
+      "kind": "surface"
+    },
+    {
+      "mode": "light",
+      "label": "Oggi / weekend",
+      "foreground": "#D6E5FF",
+      "background": "#E6EDF7",
+      "ratio": 1.0793655437078882,
+      "kind": "surface"
+    },
+    {
+      "mode": "light",
+      "label": "Stella catalogo / card",
+      "foreground": "#F2BC3B",
+      "background": "#FFFFFF",
+      "ratio": 1.7453616468548891,
+      "kind": "icon"
+    },
+    {
+      "mode": "dark",
+      "label": "Testo principale / card",
+      "foreground": "#F4F3F7",
+      "background": "#1A1C22",
+      "ratio": 15.416095744686864,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Testo secondario / card",
+      "foreground": "#BEC1CD",
+      "background": "#1A1C22",
+      "ratio": 9.48727328790476,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Testo attenuato / card",
+      "foreground": "#ADB1C0",
+      "background": "#1A1C22",
+      "ratio": 7.969084092821336,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Testo attenuato / superficie alta",
+      "foreground": "#ADB1C0",
+      "background": "#323540",
+      "ratio": 5.716958102144488,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Testo su pulsante primario",
+      "foreground": "#24213F",
+      "background": "#BCB8FF",
+      "ratio": 8.38393092345345,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Campanella / calendario",
+      "foreground": "#F4CA70",
+      "background": "#16181E",
+      "ratio": 11.431028532926288,
+      "kind": "text"
+    },
+    {
+      "mode": "dark",
+      "label": "Weekend / feriale",
+      "foreground": "#20222B",
+      "background": "#16181E",
+      "ratio": 1.1196385773812572,
+      "kind": "surface"
+    },
+    {
+      "mode": "dark",
+      "label": "Oggi / weekend",
+      "foreground": "#343146",
+      "background": "#20222B",
+      "ratio": 1.2631234249703285,
+      "kind": "surface"
+    },
+    {
+      "mode": "dark",
+      "label": "Stella catalogo / card",
+      "foreground": "#F2BC3B",
+      "background": "#1A1C22",
+      "ratio": 9.75725388191333,
+      "kind": "icon"
+    }
+  ],
+  "selected": {
+    "light": "#EAF0FF",
+    "dark": "#242631"
+  },
+  "notes": [
+    "Colori ricavati dal codice nativo Kotlin, non dal vecchio prototipo web.",
+    "I colori personalizzati salvati dall’utente possono differire dai valori iniziali.",
+    "Tinte derivate campionate con Compose 1.2.0; l’aspetto dipende anche da opacità, stato e display."
+  ],
+  "diagnostics": [
+    {
+      "label": "Popup diagnostico successo",
+      "background": "#064E3B",
+      "text": "#FFFFFF",
+      "sameBothThemes": true
+    },
+    {
+      "label": "Popup diagnostico errore",
+      "background": "#7F1D1D",
+      "text": "#FFFFFF",
+      "sameBothThemes": true
+    },
+    {
+      "label": "Popup diagnostico avviso",
+      "background": "#78350F",
+      "text": "#FFFFFF",
+      "sameBothThemes": true
+    },
+    {
+      "label": "Popup diagnostico informazione",
+      "background": "#0C4A6E",
+      "text": "#FFFFFF",
+      "sameBothThemes": true
+    }
+  ]
+}</script>
+</div>
+<script>
+(()=>{
+const root=document.getElementById('ts-palette-study');
+const data=JSON.parse(root.querySelector('#ts-palette-data').textContent);
+const $=id=>root.querySelector('#'+id);
+const allowed=['palette','shifts','contrast','lab'];
+const labKeys=[['ObsidianBackground','Sfondo'],['ObsidianSurface','Card'],['ObsidianPrimary','Accento'],['DockBody','Barra'],['TextPrimary','Testo principale'],['TextSecondary','Testo secondario'],['CalendarWeekend','Weekend'],['CalendarToday','Oggi']];
+const validHex=x=>typeof x==='string'&&/^#[0-9a-f]{6}$/i.test(x);
+let state={view:'palette',group:'surfaces',shiftTheme:'dark',contrastTheme:'light',preset:'current',shiftWeight:.28};
+const lab={...data.themes.dark};
+function applySaved(saved){const m=saved?.modelContent??saved;if(m?.paletteStudyVersion!==1)return;Object.assign(state,m.state??{});if(!allowed.includes(state.view))state.view='palette';if(!['light','dark'].includes(state.shiftTheme))state.shiftTheme='dark';if(!['light','dark'].includes(state.contrastTheme))state.contrastTheme='light';if(!Number.isFinite(state.shiftWeight))state.shiftWeight=.28;state.shiftWeight=Math.max(.15,Math.min(.55,state.shiftWeight));for(const [k,v]of Object.entries(m.colors??{}))if(k in lab&&validHex(v))lab[k]=v;}
+applySaved(window.openai?.widgetState);
+function save(){window.openai?.setWidgetState?.({modelContent:{paletteStudyVersion:1,state,colors:lab},privateContent:null})?.catch(()=>{});}
+const rgb=h=>[1,3,5].map(i=>parseInt(h.slice(i,i+2),16)/255);
+const linear=c=>c<=.04045?c/12.92:Math.pow((c+.055)/1.055,2.4);
+const gamma=c=>c<=.0031308?12.92*c:1.055*Math.pow(c,1/2.4)-.055;
+const hex=cs=>'#'+cs.map(x=>Math.round(Math.max(0,Math.min(1,x))*255).toString(16).padStart(2,'0')).join('').toUpperCase();
+const luminance=h=>rgb(h).map(linear).reduce((n,x,i)=>n+x*[.2126,.7152,.0722][i],0);
+const ratio=(a,b)=>{let x=luminance(a),y=luminance(b);return(Math.max(x,y)+.05)/(Math.min(x,y)+.05);};
+const ink=h=>ratio(h,'#171923')>=ratio(h,'#FFFFFF')?'#171923':'#FFFFFF';
+function toLab(h){let[r,g,b]=rgb(h).map(linear);let l=Math.cbrt(.4122214708*r+.5363325363*g+.0514459929*b),m=Math.cbrt(.2119034982*r+.6806995451*g+.1073969566*b),s=Math.cbrt(.0883024619*r+.2817188376*g+.6299787005*b);return[.2104542553*l+.793617785*m-.0040720468*s,1.9779984951*l-2.428592205*m+.4505937099*s,.0259040371*l+.7827717662*m-.808675766*s];}
+function blend(a,b,t){let x=toLab(a),y=toLab(b);let[L,A,B]=x.map((v,i)=>v+(y[i]-v)*t);let l=(L+.3963377774*A+.2158037573*B)**3,m=(L-.1055613458*A-.0638541728*B)**3,s=(L-.0894841775*A-1.291485548*B)**3;return hex([4.0767416621*l-3.3077115913*m+.2309699292*s,-1.2684380046*l+2.6097574011*m-.3413193965*s,-.0041960863*l-.7034186147*m+1.707614701*s].map(gamma));}
+const paintStyle=p=>`--ts-bg:${p.ObsidianBackground};--ts-card:${p.ObsidianSurface};--ts-ink:${p.TextPrimary};--ts-muted:${p.TextSecondary}`;
+function rowsForGroup(){const core=data.tokens;switch(state.group){case'type':return core.filter(x=>['Testi','Interazioni'].includes(x.group));case'calendar':return core.filter(x=>['Calendario','Navigazione','Significati'].includes(x.group)).concat(data.extras.filter(x=>['holiday'].includes(x.key)));case'extras':return data.extras.filter(x=>/^(panel|overtime|oncall|travel|info|rest)/.test(x.key));case'feedback':return data.extras.filter(x=>/^(success|error)/.test(x.key));case'widget':return data.extras.filter(x=>/^(widget|favorite|rotationStar)/.test(x.key));default:return core.filter(x=>['Superfici','Struttura'].includes(x.group));}}
+function renderPairs(){const rows=rowsForGroup();$('ts-current-pair').innerHTML=['light','dark'].map(mode=>{const p=data.themes[mode];return `<div class="ts-board" style="${paintStyle(p)}"><h3>${mode==='light'?'Chiaro attuale':'Scuro attuale'}</h3>${rows.map(t=>`<div class="ts-paint-row"><span class="ts-swatch" style="background:${t[mode]}" aria-hidden="true"></span><div><div class="ts-role">${t.label}</div><div class="ts-code">${t[mode]}</div></div></div>`).join('')}<div class="ts-sample"><span style="background:${p.ObsidianSurface};color:${p.TextPrimary}">Testo su card</span><span style="background:${p.ObsidianPrimary};color:${p.OnBrand}">Selezionato</span></div></div>`;}).join('');}
+function renderShifts(){let mode=state.shiftTheme,p=data.themes[mode];$('ts-shift-samples').innerHTML=data.shiftColors.map((s,i)=>{let d=s.derived[mode],code=['MAT','POM','NOT','SMO','FER','RIP','MAL'][i];return `<div class="ts-turn-row" style="${paintStyle(p)}"><div class="ts-turn-name">${s.name}<div class="ts-code">${s.hex}</div><small>${s.preset?'Palette editor':'Modello iniziale'}</small></div><div><div class="ts-chip" style="background:${s.hex};color:${s.ink}"><strong>${code}</strong><small>${s.hex}</small></div><div class="ts-chip-label">Originale</div></div><div><div class="ts-chip" style="background:${d.body};color:${p.TextPrimary}"><strong style="background:${d.code};color:${d.ink}">${code}</strong><small>06:00</small></div><div class="ts-chip-label">Calendario<br>${d.code}</div></div><div><div class="ts-chip" style="background:${d.stat};color:${mode==='dark'?p.TextPrimary:'#1D2D46'};border-radius:${i%2===0?'30% 45% 35% 42%':'50%'}"><strong>${code}</strong><small>${d.stat}</small></div><div class="ts-chip-label">Statistiche</div></div><div><div class="ts-chip" style="background:${d.widget};color:${d.widgetInk}"><strong>${code}</strong><small>06:00</small></div><div class="ts-chip-label">Widget<br>${d.widget}</div></div></div>`;}).join('');}
+function renderContrast(){const rows=data.checks.filter(x=>x.mode===state.contrastTheme);$('ts-contrast-rows').innerHTML=rows.map(c=>{let threshold=c.kind==='icon'?3:4.5,status=c.kind==='surface'?'Differenza tenue':c.ratio>=threshold?'Sopra soglia':'Da rivedere';return `<tr><td>${c.label}</td><td><span style="display:inline-flex;min-width:46px;justify-content:center;padding:5px 8px;border-radius:5px;background:${c.background};color:${c.foreground}">${c.kind==='surface'?'▰':c.kind==='icon'?'★':'Aa'}</span></td><td class="text-end tabular-nums">${c.ratio.toFixed(2).replace('.',',')}:1</td><td${c.kind!=='surface'&&c.ratio<threshold?' class="text-destructive"':''}>${status}</td></tr>`;}).join('');}
+function renderPreview(){const p=lab,el=$('ts-dark-preview');el.style.cssText=paintStyle(p)+`;--ts-primary:${p.ObsidianPrimary};--ts-onbrand:${p.OnBrand};--ts-calendar:${p.CalendarSurface};--ts-weekend:${p.CalendarWeekend};--ts-today:${p.CalendarToday};--ts-dock:${p.DockBody};--ts-dock-ink:${p.DockInk}`;
+ const dates=[26,27,28,29,30,31,1,2,3,4,5,6,7,8];const ids=[0,1,1,2,2,3,5,0,1,2,5,1,0,2];const codes=['MAT','POM','NOT','SMO','FER','RIP','MAL'];const times=['06:00','14:00','22:00','—','—','—','—'];
+ const cells=dates.map((day,i)=>{let s=data.shiftColors[ids[i]],fill=blend(p.ObsidianSurface,s.hex,state.shiftWeight*.22/.28),codeFill=blend(p.ObsidianSurface,s.hex,state.shiftWeight),codeInk=ratio(s.hex,codeFill)>=4.5?s.hex:ink(codeFill);return `<div class="ts-day${i%7>4?' ts-weekend':''}${i===9?' ts-today':''}${i===11?' ts-selected':''}${i===6?' ts-festive':''}" aria-label="Giorno ${day}${i===9?', oggi':''}${i===11?', selezionato e reperibile':''}"><div class="ts-date"><b${i===11?' style="color:#F4CA70"':''}>${day}</b></div>${i===11?'<i data-lucide="bell" class="ts-bell" aria-hidden="true"></i>':''}<small class="ts-day-code" style="background:${codeFill};color:${codeInk}">${codes[ids[i]]}</small><small class="ts-day-time" style="background:${fill}">${times[ids[i]]}</small></div>`;}).join('');
+ el.innerHTML=`<div class="ts-phone-header"><span>Novembre 2026</span><span class="ts-phone-icons"><i data-lucide="briefcase" aria-hidden="true"></i><i data-lucide="settings" aria-hidden="true"></i></span></div><div class="ts-weekdays">${['L','M','M','G','V','S','D'].map(x=>'<span>'+x+'</span>').join('')}</div><div class="ts-days">${cells}</div><div class="ts-day-detail"><div class="ts-detail-title"><span>6 novembre</span><span style="color:var(--ts-muted)">POM · 14:00</span></div><div class="ts-bands"><span style="background:#3D3115;color:#FFDA77">Reperibilità</span><span style="background:#173F58;color:#C0E7FF">+30 min</span><span style="background:#163A31;color:#8FE1C0">Trasferta</span></div></div><div class="ts-mini-report"><div class="ts-ring" style="background:conic-gradient(#F2C46D 0 33%,#EE9C9C 33% 66%,#BAAEF6 66% 100%)"></div><span>Resoconto totale</span><strong>24,0</strong><span style="color:var(--ts-muted)">ore · campione cromatico</span></div><div class="ts-dock"><span><i data-lucide="chart-no-axes-column-increasing" aria-hidden="true"></i></span><span class="ts-active"><i data-lucide="calendar-days" aria-hidden="true"></i></span></div>`;
+ $('ts-lab-title').textContent=state.preset==='current'?'Scuro attuale':state.preset==='custom'?'La tua prova':state.preset;
+ $('ts-lab-colors').innerHTML=labKeys.map(([k,label])=>`<div class="ts-lab-color-row"><span class="ts-dot" style="background:${p[k]}" aria-hidden="true"></span><span>${label}</span><code>${p[k]}</code></div>`).join('');
+ $('ts-lab-contrast').textContent=`Testo/card ${ratio(p.TextPrimary,p.ObsidianSurface).toFixed(2).replace('.',',')}:1 · testo/pulsante ${ratio(p.OnBrand,p.ObsidianPrimary).toFixed(2).replace('.',',')}:1`;
+ $('ts-lab-preset').value=state.preset;
+ $('ts-fallback-editors').querySelectorAll('input[data-key]').forEach(input=>{input.value=lab[input.dataset.key];});
+ const weightInput=$('ts-fallback-editors').querySelector('input[type="range"]');if(weightInput)weightInput.value=state.shiftWeight;
+ if(globalThis.lucide)lucide.createIcons({attrs:{width:16,height:16}});
+}
+function render(){for(const view of allowed){$('ts-panel-'+view).hidden=state.view!==view;const t=$('ts-tab-'+view);t.classList.toggle('active',view===state.view);t.setAttribute('aria-selected',String(view===state.view));}$('ts-role-group').value=state.group;$('ts-shift-theme').value=state.shiftTheme;$('ts-contrast-theme').value=state.contrastTheme;renderPairs();renderShifts();renderContrast();renderPreview();}
+root.querySelectorAll('[data-view]').forEach(b=>b.addEventListener('click',()=>{state.view=b.dataset.view;render();save();}));
+for(const[id,key]of[['ts-role-group','group'],['ts-shift-theme','shiftTheme'],['ts-contrast-theme','contrastTheme']])$(id).addEventListener('change',e=>{state[key]=e.target.value;render();save();});
+$('ts-lab-preset').addEventListener('change',e=>{state.preset=e.target.value;state.shiftWeight=state.preset==='current'?.28:state.preset==='Grafite neutra'?.32:.34;Object.assign(lab,state.preset==='current'?data.themes.dark:data.proposals[state.preset]);renderPreview();save();});
+render();
+if(globalThis.Tweak){const tweak=new Tweak({container:$('ts-dark-preview'),onChange:()=>{state.preset='custom';renderPreview();save();}});for(const[k,label]of labKeys)tweak.addColorPicker(lab,k,{label,reference:'dark.'+k});tweak.addSlider(state,'shiftWeight',{label:'Presenza dei turni',min:.15,max:.55,step:.01,reference:'dark.shiftWeight'});}
+else{$('ts-fallback-editors').hidden=false;for(const[k,label]of labKeys){const l=document.createElement('label');l.className='form-label';l.textContent=label;const input=document.createElement('input');input.type='color';input.dataset.key=k;input.className='form-control form-control-color';input.value=lab[k];input.setAttribute('aria-label',label);input.addEventListener('input',()=>{lab[k]=input.value.toUpperCase();state.preset='custom';renderPreview();save();});l.append(input);$('ts-fallback-editors').append(l);}const l=document.createElement('label');l.className='form-label';l.textContent='Presenza colore turni';const range=document.createElement('input');range.type='range';range.className='form-range';range.min=.15;range.max=.55;range.step=.01;range.value=state.shiftWeight;range.addEventListener('input',()=>{state.shiftWeight=Number(range.value);state.preset='custom';renderPreview();save();});l.append(range);$('ts-fallback-editors').append(l);}
+window.addEventListener('openai:set_globals',event=>{if(event.detail?.globals?.widgetState){applySaved(event.detail.globals.widgetState);render();}});
+})();
+</script>

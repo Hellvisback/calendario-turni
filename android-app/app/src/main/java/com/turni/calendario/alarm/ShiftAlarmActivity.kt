@@ -1,5 +1,7 @@
 package com.turni.calendario.alarm
 
+import com.turni.calendario.ui.theme.BrandInk
+
 import android.content.Intent
 import android.os.Bundle
 import androidx.activity.ComponentActivity
@@ -49,11 +51,11 @@ class ShiftAlarmActivity : ComponentActivity() {
                     verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
                     Surface(shape = CircleShape, color = MaterialTheme.colorScheme.primaryContainer, modifier = Modifier.size(112.dp)) {
                         Box(contentAlignment = Alignment.Center) {
-                            Icon(Icons.Outlined.Alarm, null, Modifier.size(52.dp).rotate(angle), tint = MaterialTheme.colorScheme.primary)
+                            Icon(Icons.Outlined.Alarm, null, Modifier.size(52.dp).rotate(angle), tint = BrandInk)
                         }
                     }
                     Spacer(Modifier.height(30.dp))
-                    Text("SVEGLIA TURNISYNC", color = MaterialTheme.colorScheme.primary, fontSize = 13.sp, fontWeight = FontWeight.Bold)
+                    Text("SVEGLIA TURNISYNC", color = BrandInk, fontSize = 13.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(10.dp))
                     Text(intent.getStringExtra("shift_name") ?: "Turno", color = MaterialTheme.colorScheme.onBackground, fontSize = 30.sp, fontWeight = FontWeight.Bold)
                     Spacer(Modifier.height(14.dp))

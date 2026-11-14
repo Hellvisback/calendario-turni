@@ -33,7 +33,8 @@ data class ShiftDefinition(
     val allowance: Double = 0.0 // Indennità turno
 ) {
     val color: Color
-        get() = Color(colorHex)
+        // Display-only palette mapping; persistence and exports retain colorHex verbatim.
+        get() = com.turni.calendario.ui.theme.shiftDisplayColor(Color(colorHex), definitionId = id)
 
     val durationMinutes: Long
         get() {
@@ -103,7 +104,8 @@ data class DayExtraInfo(
     val hideExShift: Boolean = false,
     val rotationCleared: Boolean = false,
     val notes: String = "",
-    val actualEndTime: String? = null
+    val actualEndTime: String? = null,
+    val tagIds: List<String> = emptyList()
 )
 
 /**
@@ -167,7 +169,8 @@ data class AppPreferences(
     val showHolidays: Boolean = true,
     val autoBackupDaily: Boolean = true,
     val excludeVacationOnHolidays: Boolean = false,
-    val holidayExcludedShiftIds: Set<String> = emptySet()
+    val holidayExcludedShiftIds: Set<String> = emptySet(),
+    val themeMode: String? = null
 )
 
 /**

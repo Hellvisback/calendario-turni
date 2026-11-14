@@ -287,6 +287,9 @@ object ShiftAlarmScheduler {
     /**
      * Verifica autorizzazione per mostrare notifiche (Android 13+)
      */
+    fun canShowFullScreenAlarms(context: Context): Boolean = if(Build.VERSION.SDK_INT>=34)
+        context.getSystemService(android.app.NotificationManager::class.java).canUseFullScreenIntent() else true
+
     fun hasNotificationPermission(context: Context): Boolean {
         val manager = context.getSystemService(Context.NOTIFICATION_SERVICE) as? android.app.NotificationManager ?: return false
         if (!manager.areNotificationsEnabled()) return false

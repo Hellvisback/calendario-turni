@@ -74,7 +74,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     val prompt=remember(name){AiRosterImport.prompt(name)}
     fun fail(error:Exception){
         val detail=when(error){
-            is org.json.JSONException->"La risposta non è un JSON completo. Copia tutto il risultato oppure chiedi all’AI di rigenerarlo con le istruzioni."
+            is org.json.JSONException->"Il testo incollato è incompleto o non rispetta il formato richiesto. Copia tutta la risposta oppure chiedi all’AI di rigenerarla con le istruzioni."
             is java.nio.charset.CharacterCodingException->"Il file deve contenere il risultato JSON in formato UTF-8. Prova a incollare direttamente la risposta."
             else->error.message?:"Operazione non riuscita. Riprova."
         }
@@ -92,17 +92,6 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     }}
     fun parsePasted(){SecurePreferencesManager.saveUserName(context,name.trim());operation=scope.launch {busy=true
         try{val plan=withContext(Dispatchers.Default){AiRosterImport.parse(pasted,name,profile)};accept(plan)}catch(e:Exception){if(e is CancellationException)throw e;fail(e)}finally{busy=false}
-    }}
-    val jsonPicker=rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()){uri->if(uri!=null){
-        operation=scope.launch{busy=true
-            try{
-                val text=withContext(Dispatchers.IO){
-                    context.contentResolver.openInputStream(uri)?.use{Charsets.UTF_8.newDecoder().onMalformedInput(java.nio.charset.CodingErrorAction.REPORT).decode(java.nio.ByteBuffer.wrap(AiRosterDocuments.readBounded(it))).toString()}?:throw IllegalArgumentException("Impossibile leggere il file.")
-                }
-                val plan=withContext(Dispatchers.Default){AiRosterImport.parse(text,name,profile)}
-                accept(plan)
-            }catch(e:Exception){if(e is CancellationException)throw e;fail(e)}finally{busy=false}
-        }
     }}
     fun openAi(url:String){try{context.startActivity(Intent(Intent.ACTION_VIEW,Uri.parse(url)))}catch(e:Exception){fail(e)}}
     val current=draft
@@ -128,7 +117,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                             CatalogButton(if(document==null)"Scegli prospetto · facoltativo" else "Cambia prospetto",{picker.launch(arrayOf("application/pdf","image/*"))},Modifier.fillMaxWidth(),enabled=!busy,icon="upload")
                             document?.let{file->
                                 Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)){
-                                    SiteIcon("file-text",null,Modifier.size(24.dp),ObsidianPrimary)
+                                    SiteIcon("file-text",null,Modifier.size(24.dp),BrandInk)
                                     Column(Modifier.weight(1f)){Text(file.name,fontSize=13.sp,color=TextPrimary,maxLines=2,overflow=TextOverflow.Ellipsis);Text("${file.pages} ${if(file.pages==1)"pagina" else "pagine"} · documento completo",fontSize=11.sp,color=TextSecondary)}
                                 }
                             }
@@ -147,14 +136,13 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                             Text("Apri il servizio che preferisci e allega il prospetto: questi pulsanti non inviano il file automaticamente.",fontSize=11.sp,lineHeight=16.sp,color=TextSecondary)
                         }
                         CatalogGroup("3 · Riporta il risultato"){
-                            Text("Incolla la risposta completa dell’AI oppure apri il suo file JSON. La controllerai prima di salvare.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
+                            Text("Copia tutto il testo restituito dall’AI e incollalo qui. Controllerai modelli e rotazione prima di salvarli.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
                             OutlinedTextField(pasted,{pasted=it.take(2_000_001)},label={Text("Risposta dell’AI")},modifier=Modifier.fillMaxWidth().heightIn(min=120.dp,max=210.dp),maxLines=7)
                             Row(horizontalArrangement=Arrangement.spacedBy(7.dp)){
                                 CatalogButton("Incolla",{
                                     val value=(context.getSystemService(Context.CLIPBOARD_SERVICE)as ClipboardManager).primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
                                     if(value.length>2_000_000)message=ActionFeedback("Risposta troppo grande",true)else pasted=value
                                 },Modifier.weight(1f),enabled=!busy,icon="copy")
-                                CatalogButton("Apri JSON",{jsonPicker.launch(arrayOf("application/json","text/plain","application/octet-stream"))},Modifier.weight(1f),enabled=!busy&&name.isNotBlank(),icon="folder")
                             }
                             CatalogButton("Controlla risultato",{parsePasted()},Modifier.fillMaxWidth(),primary=true,enabled=!busy&&pasted.isNotBlank()&&name.isNotBlank(),icon="check")
                         }
@@ -177,7 +165,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     Box(Modifier.size(42.dp).clip(RoundedCornerShape(12.dp)).background(row.definition.color),contentAlignment=Alignment.Center){Text(row.definition.shortCode,fontWeight=FontWeight.Bold,fontSize=12.sp,color=catalogInk(row.definition.color))}
                                     Column(Modifier.weight(1f)){
                                         Text(row.definition.name,fontWeight=FontWeight.SemiBold,fontSize=14.sp,color=TextPrimary)
-                                        Text(if(row.needsReview)"Da completare: apri e verifica" else if(row.definition.isAllDay)"Giornata intera · ${row.definition.category.name.lowercase().replaceFirstChar{it.titlecase()}}" else "${row.definition.startTime} – ${row.definition.endTime}",fontSize=11.sp,color=if(row.needsReview)ObsidianPrimary else TextSecondary)
+                                        Text(if(row.needsReview)"Da completare: apri e verifica" else if(row.definition.isAllDay)"Giornata intera · ${row.definition.category.name.lowercase().replaceFirstChar{it.titlecase()}}" else "${row.definition.startTime} – ${row.definition.endTime}",fontSize=11.sp,color=if(row.needsReview)BrandInk else TextSecondary)
                                         if(row.evidence.isNotBlank())Text(row.evidence,fontSize=10.sp,color=TextMuted,maxLines=2,overflow=TextOverflow.Ellipsis)
                                     }
                                     CatalogIconAction("pencil","Modifica ${row.definition.name}",{editShift=row.definition.id},Modifier.size(38.dp))
@@ -224,7 +212,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                         }
                     }else if(step==2){
                         CatalogGroup("Salvataggio completato"){
-                            SiteIcon("check",null,Modifier.size(34.dp),ObsidianPrimary)
+                            SiteIcon("check",null,Modifier.size(34.dp),BrandInk)
                             Text("${saved?.shifts?:0} nuovi modelli · ${saved?.cycles?:0} rotazioni salvate",fontSize=17.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary)
                             Text("Li trovi in Modelli e turni. Puoi modificarli ancora da lì e applicare la rotazione dal calendario.",fontSize=13.sp,lineHeight=19.sp,color=TextSecondary)
                             CatalogButton("Apri Modelli e turni",{onNavigateToTurni?.invoke(null)?:onDismiss()},Modifier.fillMaxWidth(),primary=true,icon="clock")
@@ -241,7 +229,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
         }
         if(busy)Box(Modifier.fillMaxSize().background(ObsidianBackground.copy(alpha=.96f)),contentAlignment=Alignment.Center){
             Column(Modifier.padding(28.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(16.dp)){
-                CircularProgressIndicator(color=ObsidianPrimary)
+                CircularProgressIndicator(color=BrandInk)
                 Text("Lettura del risultato…",fontSize=18.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary)
                 Text("Controlliamo il formato sul dispositivo. Il calendario resta invariato.",fontSize=13.sp,color=TextSecondary)
                 CatalogButton("Annulla",{cancel()},icon="x")

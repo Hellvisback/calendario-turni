@@ -1,0 +1,3753 @@
+{
+  "version": 3,
+  "scope": "Studio cromatico: proposte da confrontare, non modifica dell'app",
+  "assignment": "Gli slot sono esempi visivi, non categorie obbligatorie. Ogni modello creato dall'utente riceve un colore persistente; il nome non determina il colore. La stessa famiglia cromatica si conserva cambiando tema.",
+  "principles": [
+    "Accento del prodotto e colori dei turni hanno ruoli diversi: il primo guida azioni e selezione; i secondi distinguono i dati.",
+    "Nel tema scuro i turni usano fondi cromatici profondi e inchiostri chiari; nel chiaro fondi luminosi e inchiostri profondi della medesima famiglia.",
+    "I grafici usano un tono separato, visibile sulla superficie neutra. Non riutilizzare il fondo tenue della card come tratto di un grafico.",
+    "Festa, reperibilità, straordinario e trasferta mantengono simboli o etichette: il colore non è l'unico segnale.",
+    "Non applicare opacity al componente completo: cambierebbe i contrasti misurati anche per il testo.",
+    "Tutti i valori sono colori pieni sRGB. Le superfici sono intenzionalmente vicine: eventuali controlli che richiedono un confine usano outline o primary, non il solo salto di superficie.",
+    "Nelle statistiche dark le sagome expressive possono usare chart come fondo e shapeInk per il conteggio: più brillanti delle celle calendario. Nome e ore restano sulla superficie neutra fuori dalla sagoma. Nel chiaro usare fill e ink."
+  ],
+  "sources": [
+    {
+      "title": "Android: color roles and tonal palettes",
+      "url": "https://developer.android.com/design/ui/mobile/guides/styles/color"
+    },
+    {
+      "title": "Material Design 3: color roles",
+      "url": "https://m3.material.io/styles/color/the-color-system"
+    },
+    {
+      "title": "WCAG 2.2: Contrast (Minimum)",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/contrast-minimum.html"
+    },
+    {
+      "title": "WCAG 2.2: Non-text Contrast",
+      "url": "https://www.w3.org/WAI/WCAG22/Understanding/non-text-contrast.html"
+    }
+  ],
+  "palettes": [
+    {
+      "id": "lime-botanico",
+      "name": "Lime botanico",
+      "tagline": "Grafite pulita, lime preciso, turni fra foglia e iris",
+      "rationale": "Conserva il carattere fluo apprezzato sul nero, ma limita il lime acceso alle azioni. I turni formano un percorso controllato miele–foglia–eucalipto–iris, accompagnato da due neutri. Sul bianco il lime diventa un verde oliva profondo leggibile; il colore brillante resta nel contenitore di selezione, senza scritte giallo-verdi sul bianco.",
+      "recommendedUse": "La direzione più pop: funziona se la superficie rimane quasi neutra e l'accento non viene esteso a grandi sfondi.",
+      "themes": {
+        "dark": {
+          "roles": {
+            "bg": "#111410",
+            "surface": "#1B2019",
+            "raised": "#293127",
+            "text": "#F2F5EC",
+            "muted": "#B9C2B2",
+            "primary": "#D0EF78",
+            "onPrimary": "#263500",
+            "primaryContainer": "#34451C",
+            "onPrimaryContainer": "#DDF6AA",
+            "outline": "#8A9681",
+            "holiday": "#FF9AAA",
+            "onCall": "#F1CF78",
+            "overtime": "#8DD8F2",
+            "trip": "#C5B9F6",
+            "secondary": "#A6D8C6",
+            "onSecondary": "#153B30",
+            "secondaryContainer": "#29483C",
+            "onSecondaryContainer": "#C5EEDD"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Miele",
+              "fill": "#594A26",
+              "ink": "#FFE8AF",
+              "chart": "#D7B969",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Foglia",
+              "fill": "#3D512D",
+              "ink": "#DDEEBF",
+              "chart": "#A3C778",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Eucalipto",
+              "fill": "#245346",
+              "ink": "#C1EBDD",
+              "chart": "#74C4A7",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Iris",
+              "fill": "#484469",
+              "ink": "#E6DFFF",
+              "chart": "#ABA1D7",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Denim",
+              "fill": "#2D4F64",
+              "ink": "#CBE8F8",
+              "chart": "#7DB7D3",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Ardesia",
+              "fill": "#444D50",
+              "ink": "#E0E7E8",
+              "chart": "#A1B0B3",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Salvia",
+              "fill": "#46594A",
+              "ink": "#DCEBDD",
+              "chart": "#9BC3A1",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Pietra",
+              "fill": "#554C40",
+              "ink": "#EEE4D2",
+              "chart": "#C8B594",
+              "shapeInk": "#152022"
+            }
+          ],
+          "audit": {
+            "pairsTested": 68,
+            "failed": 0,
+            "minimumTextRatio": 6.086,
+            "minimumNonTextRatio": 4.325,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#F2F5EC",
+                "background": "#111410",
+                "ratio": 16.836,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#F2F5EC",
+                "background": "#1B2019",
+                "ratio": 15.031,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#F2F5EC",
+                "background": "#293127",
+                "ratio": 12.187,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#B9C2B2",
+                "background": "#111410",
+                "ratio": 10.096,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#B9C2B2",
+                "background": "#1B2019",
+                "ratio": 9.014,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#B9C2B2",
+                "background": "#293127",
+                "ratio": 7.308,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#D0EF78",
+                "background": "#111410",
+                "ratio": 14.407,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#D0EF78",
+                "background": "#1B2019",
+                "ratio": 12.862,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#D0EF78",
+                "background": "#293127",
+                "ratio": 10.429,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#FF9AAA",
+                "background": "#111410",
+                "ratio": 9.241,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#FF9AAA",
+                "background": "#1B2019",
+                "ratio": 8.25,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#FF9AAA",
+                "background": "#293127",
+                "ratio": 6.689,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#F1CF78",
+                "background": "#111410",
+                "ratio": 12.318,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#F1CF78",
+                "background": "#1B2019",
+                "ratio": 10.997,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#F1CF78",
+                "background": "#293127",
+                "ratio": 8.917,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#8DD8F2",
+                "background": "#111410",
+                "ratio": 11.7,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#8DD8F2",
+                "background": "#1B2019",
+                "ratio": 10.446,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#8DD8F2",
+                "background": "#293127",
+                "ratio": 8.47,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#C5B9F6",
+                "background": "#111410",
+                "ratio": 10.292,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#C5B9F6",
+                "background": "#1B2019",
+                "ratio": 9.189,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#C5B9F6",
+                "background": "#293127",
+                "ratio": 7.45,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#8A9681",
+                "background": "#111410",
+                "ratio": 5.975,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#8A9681",
+                "background": "#1B2019",
+                "ratio": 5.335,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#8A9681",
+                "background": "#293127",
+                "ratio": 4.325,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#263500",
+                "background": "#D0EF78",
+                "ratio": 10.241,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#DDF6AA",
+                "background": "#34451C",
+                "ratio": 8.856,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#153B30",
+                "background": "#A6D8C6",
+                "ratio": 7.799,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#C5EEDD",
+                "background": "#29483C",
+                "ratio": 7.979,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#FFE8AF",
+                "background": "#594A26",
+                "ratio": 7.159,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#D7B969",
+                "ratio": 8.745,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#D7B969",
+                "background": "#111410",
+                "ratio": 9.752,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#D7B969",
+                "background": "#1B2019",
+                "ratio": 8.706,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#D7B969",
+                "background": "#293127",
+                "ratio": 7.059,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#DDEEBF",
+                "background": "#3D512D",
+                "ratio": 7.068,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A3C778",
+                "ratio": 8.717,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#A3C778",
+                "background": "#111410",
+                "ratio": 9.721,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#A3C778",
+                "background": "#1B2019",
+                "ratio": 8.679,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#A3C778",
+                "background": "#293127",
+                "ratio": 7.037,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#C1EBDD",
+                "background": "#245346",
+                "ratio": 6.746,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#74C4A7",
+                "ratio": 8.082,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#74C4A7",
+                "background": "#111410",
+                "ratio": 9.013,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#74C4A7",
+                "background": "#1B2019",
+                "ratio": 8.046,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#74C4A7",
+                "background": "#293127",
+                "ratio": 6.524,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#E6DFFF",
+                "background": "#484469",
+                "ratio": 7.095,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#ABA1D7",
+                "ratio": 6.984,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#ABA1D7",
+                "background": "#111410",
+                "ratio": 7.788,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#ABA1D7",
+                "background": "#1B2019",
+                "ratio": 6.953,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#ABA1D7",
+                "background": "#293127",
+                "ratio": 5.637,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#CBE8F8",
+                "background": "#2D4F64",
+                "ratio": 6.809,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#7DB7D3",
+                "ratio": 7.598,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#7DB7D3",
+                "background": "#111410",
+                "ratio": 8.473,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#7DB7D3",
+                "background": "#1B2019",
+                "ratio": 7.564,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#7DB7D3",
+                "background": "#293127",
+                "ratio": 6.133,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#E0E7E8",
+                "background": "#444D50",
+                "ratio": 6.919,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A1B0B3",
+                "ratio": 7.432,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#A1B0B3",
+                "background": "#111410",
+                "ratio": 8.288,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#A1B0B3",
+                "background": "#1B2019",
+                "ratio": 7.399,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#A1B0B3",
+                "background": "#293127",
+                "ratio": 5.999,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#DCEBDD",
+                "background": "#46594A",
+                "ratio": 6.086,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#9BC3A1",
+                "ratio": 8.493,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#9BC3A1",
+                "background": "#111410",
+                "ratio": 9.47,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#9BC3A1",
+                "background": "#1B2019",
+                "ratio": 8.455,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#9BC3A1",
+                "background": "#293127",
+                "ratio": 6.855,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#EEE4D2",
+                "background": "#554C40",
+                "ratio": 6.681,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#C8B594",
+                "ratio": 8.317,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#C8B594",
+                "background": "#111410",
+                "ratio": 9.275,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#C8B594",
+                "background": "#1B2019",
+                "ratio": 8.28,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#C8B594",
+                "background": "#293127",
+                "ratio": 6.714,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        },
+        "light": {
+          "roles": {
+            "bg": "#F4F7EF",
+            "surface": "#FFFFFF",
+            "raised": "#E9EEE2",
+            "text": "#20271B",
+            "muted": "#526048",
+            "primary": "#486716",
+            "onPrimary": "#FFFFFF",
+            "primaryContainer": "#D9EDAC",
+            "onPrimaryContainer": "#2D4105",
+            "outline": "#6F7B64",
+            "holiday": "#AC2940",
+            "onCall": "#805400",
+            "overtime": "#00657E",
+            "trip": "#654C9D",
+            "secondary": "#326553",
+            "onSecondary": "#FFFFFF",
+            "secondaryContainer": "#D4EBDF",
+            "onSecondaryContainer": "#214737"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Miele",
+              "fill": "#F3E3B7",
+              "ink": "#594319",
+              "chart": "#927020"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Foglia",
+              "fill": "#DCEAC2",
+              "ink": "#36501E",
+              "chart": "#55752B"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Eucalipto",
+              "fill": "#CDEADF",
+              "ink": "#1F5140",
+              "chart": "#357B61"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Iris",
+              "fill": "#E2DDF4",
+              "ink": "#494069",
+              "chart": "#7463A8"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Denim",
+              "fill": "#D6E8F1",
+              "ink": "#28516A",
+              "chart": "#397B9D"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Ardesia",
+              "fill": "#E2E7E6",
+              "ink": "#414E50",
+              "chart": "#63787B"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Salvia",
+              "fill": "#DFEADD",
+              "ink": "#3E5742",
+              "chart": "#63836A"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Pietra",
+              "fill": "#EAE3D7",
+              "ink": "#5D4D35",
+              "chart": "#88734F"
+            }
+          ],
+          "audit": {
+            "pairsTested": 60,
+            "failed": 0,
+            "minimumTextRatio": 5.513,
+            "minimumNonTextRatio": 3.569,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#20271B",
+                "background": "#F4F7EF",
+                "ratio": 14.185,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#20271B",
+                "background": "#FFFFFF",
+                "ratio": 15.357,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#20271B",
+                "background": "#E9EEE2",
+                "ratio": 13.012,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#526048",
+                "background": "#F4F7EF",
+                "ratio": 6.206,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#526048",
+                "background": "#FFFFFF",
+                "ratio": 6.719,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#526048",
+                "background": "#E9EEE2",
+                "ratio": 5.693,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#486716",
+                "background": "#F4F7EF",
+                "ratio": 6.011,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#486716",
+                "background": "#FFFFFF",
+                "ratio": 6.507,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#486716",
+                "background": "#E9EEE2",
+                "ratio": 5.513,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#AC2940",
+                "background": "#F4F7EF",
+                "ratio": 6.167,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#AC2940",
+                "background": "#FFFFFF",
+                "ratio": 6.677,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#AC2940",
+                "background": "#E9EEE2",
+                "ratio": 5.657,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#805400",
+                "background": "#F4F7EF",
+                "ratio": 6.088,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#805400",
+                "background": "#FFFFFF",
+                "ratio": 6.591,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#805400",
+                "background": "#E9EEE2",
+                "ratio": 5.585,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#00657E",
+                "background": "#F4F7EF",
+                "ratio": 6.133,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#00657E",
+                "background": "#FFFFFF",
+                "ratio": 6.64,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#00657E",
+                "background": "#E9EEE2",
+                "ratio": 5.626,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#654C9D",
+                "background": "#F4F7EF",
+                "ratio": 6.31,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#654C9D",
+                "background": "#FFFFFF",
+                "ratio": 6.832,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#654C9D",
+                "background": "#E9EEE2",
+                "ratio": 5.788,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#6F7B64",
+                "background": "#F4F7EF",
+                "ratio": 4.133,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#6F7B64",
+                "background": "#FFFFFF",
+                "ratio": 4.475,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#6F7B64",
+                "background": "#E9EEE2",
+                "ratio": 3.791,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#FFFFFF",
+                "background": "#486716",
+                "ratio": 6.507,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#2D4105",
+                "background": "#D9EDAC",
+                "ratio": 8.909,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#FFFFFF",
+                "background": "#326553",
+                "ratio": 6.726,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#214737",
+                "background": "#D4EBDF",
+                "ratio": 8.287,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#594319",
+                "background": "#F3E3B7",
+                "ratio": 7.353,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#927020",
+                "background": "#F4F7EF",
+                "ratio": 4.253,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#927020",
+                "background": "#FFFFFF",
+                "ratio": 4.605,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#927020",
+                "background": "#E9EEE2",
+                "ratio": 3.901,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#36501E",
+                "background": "#DCEAC2",
+                "ratio": 7.142,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#55752B",
+                "background": "#F4F7EF",
+                "ratio": 4.891,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#55752B",
+                "background": "#FFFFFF",
+                "ratio": 5.295,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#55752B",
+                "background": "#E9EEE2",
+                "ratio": 4.487,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#1F5140",
+                "background": "#CDEADF",
+                "ratio": 7.115,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#357B61",
+                "background": "#F4F7EF",
+                "ratio": 4.666,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#357B61",
+                "background": "#FFFFFF",
+                "ratio": 5.052,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#357B61",
+                "background": "#E9EEE2",
+                "ratio": 4.28,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#494069",
+                "background": "#E2DDF4",
+                "ratio": 7.152,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#7463A8",
+                "background": "#F4F7EF",
+                "ratio": 4.739,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#7463A8",
+                "background": "#FFFFFF",
+                "ratio": 5.131,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#7463A8",
+                "background": "#E9EEE2",
+                "ratio": 4.347,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#28516A",
+                "background": "#D6E8F1",
+                "ratio": 6.735,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#397B9D",
+                "background": "#F4F7EF",
+                "ratio": 4.316,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#397B9D",
+                "background": "#FFFFFF",
+                "ratio": 4.673,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#397B9D",
+                "background": "#E9EEE2",
+                "ratio": 3.959,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#414E50",
+                "background": "#E2E7E6",
+                "ratio": 6.915,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#63787B",
+                "background": "#F4F7EF",
+                "ratio": 4.308,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#63787B",
+                "background": "#FFFFFF",
+                "ratio": 4.663,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#63787B",
+                "background": "#E9EEE2",
+                "ratio": 3.951,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#3E5742",
+                "background": "#DFEADD",
+                "ratio": 6.404,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#63836A",
+                "background": "#F4F7EF",
+                "ratio": 3.891,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#63836A",
+                "background": "#FFFFFF",
+                "ratio": 4.212,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#63836A",
+                "background": "#E9EEE2",
+                "ratio": 3.569,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#5D4D35",
+                "background": "#EAE3D7",
+                "ratio": 6.387,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#88734F",
+                "background": "#F4F7EF",
+                "ratio": 4.206,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#88734F",
+                "background": "#FFFFFF",
+                "ratio": 4.553,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#88734F",
+                "background": "#E9EEE2",
+                "ratio": 3.858,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "cobalto-burro",
+      "name": "Cobalto e burro",
+      "tagline": "Energia blu, luce gialla, un calendario dal registro freddo",
+      "rationale": "Blu e giallo sono la coppia del prodotto; la maggioranza dei turni resta nel percorso blu–iris–acqua. Miele e sabbia sono gli unici contrappunti caldi. Elimina il corallo dei vecchi pomeriggi, che creava un terzo protagonista in conflitto con blu e burro. Il blu scuro non riempie tutta la pagina: i neri restano grafite con una lieve impronta fredda.",
+      "recommendedUse": "La direzione più energica e riconoscibile: usare burro per un solo richiamo o contenitore per schermata, non per tutte le selezioni.",
+      "themes": {
+        "dark": {
+          "roles": {
+            "bg": "#111319",
+            "surface": "#1B1F28",
+            "raised": "#292F3C",
+            "text": "#F2F4FC",
+            "muted": "#BBC4D8",
+            "primary": "#ACC0FF",
+            "onPrimary": "#173477",
+            "primaryContainer": "#2C438B",
+            "onPrimaryContainer": "#DFE7FF",
+            "outline": "#8B96AD",
+            "holiday": "#FF9EAC",
+            "onCall": "#F5D984",
+            "overtime": "#80D7F1",
+            "trip": "#C7B6F4",
+            "secondary": "#F8E39D",
+            "onSecondary": "#493B0B",
+            "secondaryContainer": "#4C4228",
+            "onSecondaryContainer": "#FFF0BF",
+            "brandFill": "#395AE0",
+            "onBrandFill": "#FFFFFF"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Burro",
+              "fill": "#574D2C",
+              "ink": "#F8E9B4",
+              "chart": "#DCC679",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Fiordaliso",
+              "fill": "#304F78",
+              "ink": "#D9E8FF",
+              "chart": "#8BAFE8",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Pervinca",
+              "fill": "#464D7D",
+              "ink": "#E0E2FF",
+              "chart": "#A5ADEB",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Viola blu",
+              "fill": "#4F426F",
+              "ink": "#E8DEFB",
+              "chart": "#B5A1D9",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Acqua",
+              "fill": "#295963",
+              "ink": "#CCF0F3",
+              "chart": "#7CC5D0",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Acciaio",
+              "fill": "#434E60",
+              "ink": "#E1E7F2",
+              "chart": "#A2B0CA",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Giada",
+              "fill": "#305B51",
+              "ink": "#D3F0E5",
+              "chart": "#8DCBB8",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Sabbia",
+              "fill": "#575143",
+              "ink": "#EDE7D6",
+              "chart": "#C9BFA1",
+              "shapeInk": "#152022"
+            }
+          ],
+          "audit": {
+            "pairsTested": 69,
+            "failed": 0,
+            "minimumTextRatio": 5.656,
+            "minimumNonTextRatio": 4.51,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#F2F4FC",
+                "background": "#111319",
+                "ratio": 16.906,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#F2F4FC",
+                "background": "#1B1F28",
+                "ratio": 15.018,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#F2F4FC",
+                "background": "#292F3C",
+                "ratio": 12.209,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#BBC4D8",
+                "background": "#111319",
+                "ratio": 10.61,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#BBC4D8",
+                "background": "#1B1F28",
+                "ratio": 9.425,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#BBC4D8",
+                "background": "#292F3C",
+                "ratio": 7.662,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#ACC0FF",
+                "background": "#111319",
+                "ratio": 10.378,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#ACC0FF",
+                "background": "#1B1F28",
+                "ratio": 9.219,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#ACC0FF",
+                "background": "#292F3C",
+                "ratio": 7.495,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#FF9EAC",
+                "background": "#111319",
+                "ratio": 9.494,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#FF9EAC",
+                "background": "#1B1F28",
+                "ratio": 8.434,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#FF9EAC",
+                "background": "#292F3C",
+                "ratio": 6.857,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#F5D984",
+                "background": "#111319",
+                "ratio": 13.387,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#F5D984",
+                "background": "#1B1F28",
+                "ratio": 11.892,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#F5D984",
+                "background": "#292F3C",
+                "ratio": 9.668,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#80D7F1",
+                "background": "#111319",
+                "ratio": 11.413,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#80D7F1",
+                "background": "#1B1F28",
+                "ratio": 10.138,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#80D7F1",
+                "background": "#292F3C",
+                "ratio": 8.242,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#C7B6F4",
+                "background": "#111319",
+                "ratio": 10.102,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#C7B6F4",
+                "background": "#1B1F28",
+                "ratio": 8.974,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#C7B6F4",
+                "background": "#292F3C",
+                "ratio": 7.296,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#8B96AD",
+                "background": "#111319",
+                "ratio": 6.245,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#8B96AD",
+                "background": "#1B1F28",
+                "ratio": 5.548,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#8B96AD",
+                "background": "#292F3C",
+                "ratio": 4.51,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#173477",
+                "background": "#ACC0FF",
+                "ratio": 6.543,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#DFE7FF",
+                "background": "#2C438B",
+                "ratio": 7.452,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#493B0B",
+                "background": "#F8E39D",
+                "ratio": 8.604,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#FFF0BF",
+                "background": "#4C4228",
+                "ratio": 8.723,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onBrandFill / brandFill",
+                "foreground": "#FFFFFF",
+                "background": "#395AE0",
+                "ratio": 5.656,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#F8E9B4",
+                "background": "#574D2C",
+                "ratio": 6.914,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#DCC679",
+                "ratio": 9.826,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#DCC679",
+                "background": "#111319",
+                "ratio": 10.961,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#DCC679",
+                "background": "#1B1F28",
+                "ratio": 9.736,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#DCC679",
+                "background": "#292F3C",
+                "ratio": 7.916,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#D9E8FF",
+                "background": "#304F78",
+                "ratio": 6.734,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#8BAFE8",
+                "ratio": 7.447,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#8BAFE8",
+                "background": "#111319",
+                "ratio": 8.307,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#8BAFE8",
+                "background": "#1B1F28",
+                "ratio": 7.379,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#8BAFE8",
+                "background": "#292F3C",
+                "ratio": 5.999,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#E0E2FF",
+                "background": "#464D7D",
+                "ratio": 6.299,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A5ADEB",
+                "ratio": 7.75,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#A5ADEB",
+                "background": "#111319",
+                "ratio": 8.644,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#A5ADEB",
+                "background": "#1B1F28",
+                "ratio": 7.679,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#A5ADEB",
+                "background": "#292F3C",
+                "ratio": 6.243,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#E8DEFB",
+                "background": "#4F426F",
+                "ratio": 6.95,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#B5A1D9",
+                "ratio": 7.185,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#B5A1D9",
+                "background": "#111319",
+                "ratio": 8.015,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#B5A1D9",
+                "background": "#1B1F28",
+                "ratio": 7.119,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#B5A1D9",
+                "background": "#292F3C",
+                "ratio": 5.788,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#CCF0F3",
+                "background": "#295963",
+                "ratio": 6.409,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#7CC5D0",
+                "ratio": 8.524,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#7CC5D0",
+                "background": "#111319",
+                "ratio": 9.509,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#7CC5D0",
+                "background": "#1B1F28",
+                "ratio": 8.446,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#7CC5D0",
+                "background": "#292F3C",
+                "ratio": 6.867,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#E1E7F2",
+                "background": "#434E60",
+                "ratio": 6.773,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A2B0CA",
+                "ratio": 7.609,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#A2B0CA",
+                "background": "#111319",
+                "ratio": 8.487,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#A2B0CA",
+                "background": "#1B1F28",
+                "ratio": 7.539,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#A2B0CA",
+                "background": "#292F3C",
+                "ratio": 6.129,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#D3F0E5",
+                "background": "#305B51",
+                "ratio": 6.336,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#8DCBB8",
+                "ratio": 9.01,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#8DCBB8",
+                "background": "#111319",
+                "ratio": 10.05,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#8DCBB8",
+                "background": "#1B1F28",
+                "ratio": 8.928,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#8DCBB8",
+                "background": "#292F3C",
+                "ratio": 7.258,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#EDE7D6",
+                "background": "#575143",
+                "ratio": 6.384,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#C9BFA1",
+                "ratio": 9.076,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#C9BFA1",
+                "background": "#111319",
+                "ratio": 10.124,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#C9BFA1",
+                "background": "#1B1F28",
+                "ratio": 8.993,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#C9BFA1",
+                "background": "#292F3C",
+                "ratio": 7.311,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        },
+        "light": {
+          "roles": {
+            "bg": "#F3F5FB",
+            "surface": "#FFFFFF",
+            "raised": "#E8EDF7",
+            "text": "#1B253C",
+            "muted": "#516078",
+            "primary": "#3052CB",
+            "onPrimary": "#FFFFFF",
+            "primaryContainer": "#DCE4FF",
+            "onPrimaryContainer": "#243E84",
+            "outline": "#707E96",
+            "holiday": "#B12740",
+            "onCall": "#7F5700",
+            "overtime": "#00667F",
+            "trip": "#674B9E",
+            "secondary": "#735900",
+            "onSecondary": "#FFFFFF",
+            "secondaryContainer": "#F8E9AC",
+            "onSecondaryContainer": "#58430A",
+            "brandFill": "#3052CB",
+            "onBrandFill": "#FFFFFF"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Burro",
+              "fill": "#F4E8BC",
+              "ink": "#5D4D14",
+              "chart": "#917322"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Fiordaliso",
+              "fill": "#DCE7F8",
+              "ink": "#2D4D7B",
+              "chart": "#4D78B1"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Pervinca",
+              "fill": "#E1E4FA",
+              "ink": "#434B85",
+              "chart": "#6B73B6"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Viola blu",
+              "fill": "#E9E0F4",
+              "ink": "#574174",
+              "chart": "#8965AB"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Acqua",
+              "fill": "#D2EDF0",
+              "ink": "#225962",
+              "chart": "#347F8B"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Acciaio",
+              "fill": "#E3E8F0",
+              "ink": "#465770",
+              "chart": "#6D7F9A"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Giada",
+              "fill": "#D8EBE1",
+              "ink": "#30594B",
+              "chart": "#4B846F"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Sabbia",
+              "fill": "#EBE6D8",
+              "ink": "#5C533F",
+              "chart": "#847A60"
+            }
+          ],
+          "audit": {
+            "pairsTested": 61,
+            "failed": 0,
+            "minimumTextRatio": 5.43,
+            "minimumNonTextRatio": 3.472,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#1B253C",
+                "background": "#F3F5FB",
+                "ratio": 13.996,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#1B253C",
+                "background": "#FFFFFF",
+                "ratio": 15.256,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#1B253C",
+                "background": "#E8EDF7",
+                "ratio": 12.995,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#516078",
+                "background": "#F3F5FB",
+                "ratio": 5.848,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#516078",
+                "background": "#FFFFFF",
+                "ratio": 6.375,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#516078",
+                "background": "#E8EDF7",
+                "ratio": 5.43,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#3052CB",
+                "background": "#F3F5FB",
+                "ratio": 6.03,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#3052CB",
+                "background": "#FFFFFF",
+                "ratio": 6.573,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#3052CB",
+                "background": "#E8EDF7",
+                "ratio": 5.599,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#B12740",
+                "background": "#F3F5FB",
+                "ratio": 5.958,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#B12740",
+                "background": "#FFFFFF",
+                "ratio": 6.494,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#B12740",
+                "background": "#E8EDF7",
+                "ratio": 5.532,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#7F5700",
+                "background": "#F3F5FB",
+                "ratio": 5.899,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#7F5700",
+                "background": "#FFFFFF",
+                "ratio": 6.431,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#7F5700",
+                "background": "#E8EDF7",
+                "ratio": 5.478,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#00667F",
+                "background": "#F3F5FB",
+                "ratio": 6.007,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#00667F",
+                "background": "#FFFFFF",
+                "ratio": 6.548,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#00667F",
+                "background": "#E8EDF7",
+                "ratio": 5.578,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#674B9E",
+                "background": "#F3F5FB",
+                "ratio": 6.261,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#674B9E",
+                "background": "#FFFFFF",
+                "ratio": 6.825,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#674B9E",
+                "background": "#E8EDF7",
+                "ratio": 5.814,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#707E96",
+                "background": "#F3F5FB",
+                "ratio": 3.767,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#707E96",
+                "background": "#FFFFFF",
+                "ratio": 4.107,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#707E96",
+                "background": "#E8EDF7",
+                "ratio": 3.498,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#FFFFFF",
+                "background": "#3052CB",
+                "ratio": 6.573,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#243E84",
+                "background": "#DCE4FF",
+                "ratio": 7.908,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#FFFFFF",
+                "background": "#735900",
+                "ratio": 6.65,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#58430A",
+                "background": "#F8E9AC",
+                "ratio": 7.759,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onBrandFill / brandFill",
+                "foreground": "#FFFFFF",
+                "background": "#3052CB",
+                "ratio": 6.573,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#5D4D14",
+                "background": "#F4E8BC",
+                "ratio": 6.746,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#917322",
+                "background": "#F3F5FB",
+                "ratio": 4.117,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#917322",
+                "background": "#FFFFFF",
+                "ratio": 4.488,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#917322",
+                "background": "#E8EDF7",
+                "ratio": 3.823,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#2D4D7B",
+                "background": "#DCE7F8",
+                "ratio": 6.843,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#4D78B1",
+                "background": "#F3F5FB",
+                "ratio": 4.155,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#4D78B1",
+                "background": "#FFFFFF",
+                "ratio": 4.529,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#4D78B1",
+                "background": "#E8EDF7",
+                "ratio": 3.858,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#434B85",
+                "background": "#E1E4FA",
+                "ratio": 6.455,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#6B73B6",
+                "background": "#F3F5FB",
+                "ratio": 4.053,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#6B73B6",
+                "background": "#FFFFFF",
+                "ratio": 4.418,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#6B73B6",
+                "background": "#E8EDF7",
+                "ratio": 3.764,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#574174",
+                "background": "#E9E0F4",
+                "ratio": 6.809,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#8965AB",
+                "background": "#F3F5FB",
+                "ratio": 4.269,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#8965AB",
+                "background": "#FFFFFF",
+                "ratio": 4.653,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#8965AB",
+                "background": "#E8EDF7",
+                "ratio": 3.963,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#225962",
+                "background": "#D2EDF0",
+                "ratio": 6.401,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#347F8B",
+                "background": "#F3F5FB",
+                "ratio": 4.23,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#347F8B",
+                "background": "#FFFFFF",
+                "ratio": 4.611,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#347F8B",
+                "background": "#E8EDF7",
+                "ratio": 3.927,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#465770",
+                "background": "#E3E8F0",
+                "ratio": 5.972,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#6D7F9A",
+                "background": "#F3F5FB",
+                "ratio": 3.739,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#6D7F9A",
+                "background": "#FFFFFF",
+                "ratio": 4.076,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#6D7F9A",
+                "background": "#E8EDF7",
+                "ratio": 3.472,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#30594B",
+                "background": "#D8EBE1",
+                "ratio": 6.359,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#4B846F",
+                "background": "#F3F5FB",
+                "ratio": 3.989,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#4B846F",
+                "background": "#FFFFFF",
+                "ratio": 4.349,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#4B846F",
+                "background": "#E8EDF7",
+                "ratio": 3.704,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#5C533F",
+                "background": "#EBE6D8",
+                "ratio": 6.093,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#847A60",
+                "background": "#F3F5FB",
+                "ratio": 3.905,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#847A60",
+                "background": "#FFFFFF",
+                "ratio": 4.256,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#847A60",
+                "background": "#E8EDF7",
+                "ratio": 3.626,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "acqua-iris",
+      "name": "Acqua e iris",
+      "tagline": "Petrolio neutro, acqua luminosa, iris come controcanto",
+      "rationale": "Alternativa alla direzione rossiccia: conserva la coesione ma sposta il centro su acqua e iris. È il compromesso fra energia e calma. Turni distribuiti fra agrume spento, petrolio, azzurro, iris e malva fredda, con neutrali minerali; il magenta caldo e il rosso rimangono fuori dalla palette dei turni.",
+      "recommendedUse": "La proposta più equilibrata per uso quotidiano e per alternanza dark/light. La primaria acqua ha carattere senza occupare tutta l'attenzione.",
+      "themes": {
+        "dark": {
+          "roles": {
+            "bg": "#101717",
+            "surface": "#1B2424",
+            "raised": "#2A3435",
+            "text": "#EFF7F5",
+            "muted": "#B6C6C4",
+            "primary": "#86E1D3",
+            "onPrimary": "#073F39",
+            "primaryContainer": "#20564F",
+            "onPrimaryContainer": "#C6F3E8",
+            "outline": "#8C9F9B",
+            "holiday": "#FFA0AD",
+            "onCall": "#EED27E",
+            "overtime": "#94D8F2",
+            "trip": "#CBC0F7",
+            "secondary": "#C0B8FA",
+            "onSecondary": "#393263",
+            "secondaryContainer": "#464160",
+            "onSecondaryContainer": "#E9E1FF"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Agrume",
+              "fill": "#51552E",
+              "ink": "#EAEEC0",
+              "chart": "#BCCB7C",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Petrolio",
+              "fill": "#285A58",
+              "ink": "#C8ECE5",
+              "chart": "#7CC6BA",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Azzurro",
+              "fill": "#32566E",
+              "ink": "#D3EAF8",
+              "chart": "#8CBCD7",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Iris",
+              "fill": "#4C4878",
+              "ink": "#E7E1FF",
+              "chart": "#B0A7E5",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Malva fredda",
+              "fill": "#5B4565",
+              "ink": "#F0DFF4",
+              "chart": "#CAA3D0",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Zinco",
+              "fill": "#485359",
+              "ink": "#E1E9EB",
+              "chart": "#A6B8BF",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Salice",
+              "fill": "#425B47",
+              "ink": "#DEEFDD",
+              "chart": "#A3CBA4",
+              "shapeInk": "#152022"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Lino",
+              "fill": "#595244",
+              "ink": "#F0E8D5",
+              "chart": "#D0C2A0",
+              "shapeInk": "#152022"
+            }
+          ],
+          "audit": {
+            "pairsTested": 68,
+            "failed": 0,
+            "minimumTextRatio": 6.157,
+            "minimumNonTextRatio": 4.599,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#EFF7F5",
+                "background": "#101717",
+                "ratio": 16.676,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#EFF7F5",
+                "background": "#1B2424",
+                "ratio": 14.567,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#EFF7F5",
+                "background": "#2A3435",
+                "ratio": 11.756,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#B6C6C4",
+                "background": "#101717",
+                "ratio": 10.254,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#B6C6C4",
+                "background": "#1B2424",
+                "ratio": 8.958,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#B6C6C4",
+                "background": "#2A3435",
+                "ratio": 7.229,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#86E1D3",
+                "background": "#101717",
+                "ratio": 11.862,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#86E1D3",
+                "background": "#1B2424",
+                "ratio": 10.362,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#86E1D3",
+                "background": "#2A3435",
+                "ratio": 8.363,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#FFA0AD",
+                "background": "#101717",
+                "ratio": 9.407,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#FFA0AD",
+                "background": "#1B2424",
+                "ratio": 8.218,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#FFA0AD",
+                "background": "#2A3435",
+                "ratio": 6.632,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#EED27E",
+                "background": "#101717",
+                "ratio": 12.235,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#EED27E",
+                "background": "#1B2424",
+                "ratio": 10.688,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#EED27E",
+                "background": "#2A3435",
+                "ratio": 8.626,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#94D8F2",
+                "background": "#101717",
+                "ratio": 11.551,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#94D8F2",
+                "background": "#1B2424",
+                "ratio": 10.09,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#94D8F2",
+                "background": "#2A3435",
+                "ratio": 8.143,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#CBC0F7",
+                "background": "#101717",
+                "ratio": 10.737,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#CBC0F7",
+                "background": "#1B2424",
+                "ratio": 9.379,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#CBC0F7",
+                "background": "#2A3435",
+                "ratio": 7.57,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#8C9F9B",
+                "background": "#101717",
+                "ratio": 6.524,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#8C9F9B",
+                "background": "#1B2424",
+                "ratio": 5.699,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#8C9F9B",
+                "background": "#2A3435",
+                "ratio": 4.599,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#073F39",
+                "background": "#86E1D3",
+                "ratio": 7.714,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#C6F3E8",
+                "background": "#20564F",
+                "ratio": 6.94,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#393263",
+                "background": "#C0B8FA",
+                "ratio": 6.34,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#E9E1FF",
+                "background": "#464160",
+                "ratio": 7.632,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#EAEEC0",
+                "background": "#51552E",
+                "ratio": 6.505,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#BCCB7C",
+                "ratio": 9.489,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#BCCB7C",
+                "background": "#101717",
+                "ratio": 10.348,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#BCCB7C",
+                "background": "#1B2424",
+                "ratio": 9.039,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#BCCB7C",
+                "background": "#2A3435",
+                "ratio": 7.295,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#C8ECE5",
+                "background": "#285A58",
+                "ratio": 6.157,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#7CC6BA",
+                "ratio": 8.437,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#7CC6BA",
+                "background": "#101717",
+                "ratio": 9.2,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#7CC6BA",
+                "background": "#1B2424",
+                "ratio": 8.036,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#7CC6BA",
+                "background": "#2A3435",
+                "ratio": 6.486,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#D3EAF8",
+                "background": "#32566E",
+                "ratio": 6.276,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#8CBCD7",
+                "ratio": 8.156,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#8CBCD7",
+                "background": "#101717",
+                "ratio": 8.894,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#8CBCD7",
+                "background": "#1B2424",
+                "ratio": 7.769,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#8CBCD7",
+                "background": "#2A3435",
+                "ratio": 6.27,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#E7E1FF",
+                "background": "#4C4878",
+                "ratio": 6.63,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#B0A7E5",
+                "ratio": 7.534,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#B0A7E5",
+                "background": "#101717",
+                "ratio": 8.215,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#B0A7E5",
+                "background": "#1B2424",
+                "ratio": 7.177,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#B0A7E5",
+                "background": "#2A3435",
+                "ratio": 5.792,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#F0DFF4",
+                "background": "#5B4565",
+                "ratio": 6.669,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#CAA3D0",
+                "ratio": 7.658,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#CAA3D0",
+                "background": "#101717",
+                "ratio": 8.35,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#CAA3D0",
+                "background": "#1B2424",
+                "ratio": 7.294,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#CAA3D0",
+                "background": "#2A3435",
+                "ratio": 5.887,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#E1E9EB",
+                "background": "#485359",
+                "ratio": 6.419,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A6B8BF",
+                "ratio": 8.109,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#A6B8BF",
+                "background": "#101717",
+                "ratio": 8.842,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#A6B8BF",
+                "background": "#1B2424",
+                "ratio": 7.724,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#A6B8BF",
+                "background": "#2A3435",
+                "ratio": 6.234,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#DEEFDD",
+                "background": "#425B47",
+                "ratio": 6.207,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#A3CBA4",
+                "ratio": 9.223,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#A3CBA4",
+                "background": "#101717",
+                "ratio": 10.057,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#A3CBA4",
+                "background": "#1B2424",
+                "ratio": 8.785,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#A3CBA4",
+                "background": "#2A3435",
+                "ratio": 7.09,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#F0E8D5",
+                "background": "#595244",
+                "ratio": 6.338,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: shapeInk / chart",
+                "foreground": "#152022",
+                "background": "#D0C2A0",
+                "ratio": 9.438,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#D0C2A0",
+                "background": "#101717",
+                "ratio": 10.291,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#D0C2A0",
+                "background": "#1B2424",
+                "ratio": 8.99,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#D0C2A0",
+                "background": "#2A3435",
+                "ratio": 7.255,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        },
+        "light": {
+          "roles": {
+            "bg": "#F2F7F6",
+            "surface": "#FFFFFF",
+            "raised": "#E5EFEC",
+            "text": "#1C302E",
+            "muted": "#4E6460",
+            "primary": "#09675D",
+            "onPrimary": "#FFFFFF",
+            "primaryContainer": "#C8EEE3",
+            "onPrimaryContainer": "#17483F",
+            "outline": "#6D8580",
+            "holiday": "#AC2940",
+            "onCall": "#7F5500",
+            "overtime": "#00657E",
+            "trip": "#68519B",
+            "secondary": "#625296",
+            "onSecondary": "#FFFFFF",
+            "secondaryContainer": "#E5DFF8",
+            "onSecondaryContainer": "#473A6C"
+          },
+          "shifts": [
+            {
+              "id": "slot-1",
+              "sampleLabel": "Mattina",
+              "family": "Agrume",
+              "fill": "#E5EBBF",
+              "ink": "#4C5621",
+              "chart": "#718032"
+            },
+            {
+              "id": "slot-2",
+              "sampleLabel": "Pomeriggio",
+              "family": "Petrolio",
+              "fill": "#CFEAE3",
+              "ink": "#235A4F",
+              "chart": "#377E6D"
+            },
+            {
+              "id": "slot-3",
+              "sampleLabel": "Sera",
+              "family": "Azzurro",
+              "fill": "#D6E8F2",
+              "ink": "#30556F",
+              "chart": "#487FA1"
+            },
+            {
+              "id": "slot-4",
+              "sampleLabel": "Notte",
+              "family": "Iris",
+              "fill": "#E4DFF7",
+              "ink": "#4E4380",
+              "chart": "#796AB0"
+            },
+            {
+              "id": "slot-5",
+              "sampleLabel": "Smonto",
+              "family": "Malva fredda",
+              "fill": "#ECDEF0",
+              "ink": "#65456D",
+              "chart": "#946B9F"
+            },
+            {
+              "id": "slot-6",
+              "sampleLabel": "Riposo",
+              "family": "Zinco",
+              "fill": "#E2E9EB",
+              "ink": "#475B63",
+              "chart": "#6E838B"
+            },
+            {
+              "id": "slot-7",
+              "sampleLabel": "Ferie",
+              "family": "Salice",
+              "fill": "#DFECDA",
+              "ink": "#435F3D",
+              "chart": "#66875D"
+            },
+            {
+              "id": "slot-8",
+              "sampleLabel": "Personale",
+              "family": "Lino",
+              "fill": "#EEE7D6",
+              "ink": "#625439",
+              "chart": "#8C7953"
+            }
+          ],
+          "audit": {
+            "pairsTested": 60,
+            "failed": 0,
+            "minimumTextRatio": 5.395,
+            "minimumNonTextRatio": 3.365,
+            "checks": [
+              {
+                "pair": "text / bg",
+                "foreground": "#1C302E",
+                "background": "#F2F7F6",
+                "ratio": 12.841,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / surface",
+                "foreground": "#1C302E",
+                "background": "#FFFFFF",
+                "ratio": 13.892,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "text / raised",
+                "foreground": "#1C302E",
+                "background": "#E5EFEC",
+                "ratio": 11.835,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / bg",
+                "foreground": "#4E6460",
+                "background": "#F2F7F6",
+                "ratio": 5.854,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / surface",
+                "foreground": "#4E6460",
+                "background": "#FFFFFF",
+                "ratio": 6.333,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "muted / raised",
+                "foreground": "#4E6460",
+                "background": "#E5EFEC",
+                "ratio": 5.395,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / bg",
+                "foreground": "#09675D",
+                "background": "#F2F7F6",
+                "ratio": 6.242,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / surface",
+                "foreground": "#09675D",
+                "background": "#FFFFFF",
+                "ratio": 6.753,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "primary / raised",
+                "foreground": "#09675D",
+                "background": "#E5EFEC",
+                "ratio": 5.753,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / bg",
+                "foreground": "#AC2940",
+                "background": "#F2F7F6",
+                "ratio": 6.171,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / surface",
+                "foreground": "#AC2940",
+                "background": "#FFFFFF",
+                "ratio": 6.677,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "holiday / raised",
+                "foreground": "#AC2940",
+                "background": "#E5EFEC",
+                "ratio": 5.688,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / bg",
+                "foreground": "#7F5500",
+                "background": "#F2F7F6",
+                "ratio": 6.062,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / surface",
+                "foreground": "#7F5500",
+                "background": "#FFFFFF",
+                "ratio": 6.559,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onCall / raised",
+                "foreground": "#7F5500",
+                "background": "#E5EFEC",
+                "ratio": 5.587,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / bg",
+                "foreground": "#00657E",
+                "background": "#F2F7F6",
+                "ratio": 6.137,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / surface",
+                "foreground": "#00657E",
+                "background": "#FFFFFF",
+                "ratio": 6.64,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "overtime / raised",
+                "foreground": "#00657E",
+                "background": "#E5EFEC",
+                "ratio": 5.656,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / bg",
+                "foreground": "#68519B",
+                "background": "#F2F7F6",
+                "ratio": 5.993,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / surface",
+                "foreground": "#68519B",
+                "background": "#FFFFFF",
+                "ratio": 6.484,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "trip / raised",
+                "foreground": "#68519B",
+                "background": "#E5EFEC",
+                "ratio": 5.523,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "outline / bg",
+                "foreground": "#6D8580",
+                "background": "#F2F7F6",
+                "ratio": 3.651,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / surface",
+                "foreground": "#6D8580",
+                "background": "#FFFFFF",
+                "ratio": 3.95,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "outline / raised",
+                "foreground": "#6D8580",
+                "background": "#E5EFEC",
+                "ratio": 3.365,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "onPrimary / primary",
+                "foreground": "#FFFFFF",
+                "background": "#09675D",
+                "ratio": 6.753,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onPrimaryContainer / primaryContainer",
+                "foreground": "#17483F",
+                "background": "#C8EEE3",
+                "ratio": 8.252,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondary / secondary",
+                "foreground": "#FFFFFF",
+                "background": "#625296",
+                "ratio": 6.632,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "onSecondaryContainer / secondaryContainer",
+                "foreground": "#473A6C",
+                "background": "#E5DFF8",
+                "ratio": 7.773,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: ink / fill",
+                "foreground": "#4C5621",
+                "background": "#E5EBBF",
+                "ratio": 6.378,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / bg",
+                "foreground": "#718032",
+                "background": "#F2F7F6",
+                "ratio": 4.014,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / surface",
+                "foreground": "#718032",
+                "background": "#FFFFFF",
+                "ratio": 4.343,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-1: chart / raised",
+                "foreground": "#718032",
+                "background": "#E5EFEC",
+                "ratio": 3.699,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: ink / fill",
+                "foreground": "#235A4F",
+                "background": "#CFEAE3",
+                "ratio": 6.246,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / bg",
+                "foreground": "#377E6D",
+                "background": "#F2F7F6",
+                "ratio": 4.444,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / surface",
+                "foreground": "#377E6D",
+                "background": "#FFFFFF",
+                "ratio": 4.808,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-2: chart / raised",
+                "foreground": "#377E6D",
+                "background": "#E5EFEC",
+                "ratio": 4.096,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: ink / fill",
+                "foreground": "#30556F",
+                "background": "#D6E8F2",
+                "ratio": 6.285,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / bg",
+                "foreground": "#487FA1",
+                "background": "#F2F7F6",
+                "ratio": 4.022,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / surface",
+                "foreground": "#487FA1",
+                "background": "#FFFFFF",
+                "ratio": 4.351,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-3: chart / raised",
+                "foreground": "#487FA1",
+                "background": "#E5EFEC",
+                "ratio": 3.707,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: ink / fill",
+                "foreground": "#4E4380",
+                "background": "#E4DFF7",
+                "ratio": 6.642,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / bg",
+                "foreground": "#796AB0",
+                "background": "#F2F7F6",
+                "ratio": 4.312,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / surface",
+                "foreground": "#796AB0",
+                "background": "#FFFFFF",
+                "ratio": 4.665,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-4: chart / raised",
+                "foreground": "#796AB0",
+                "background": "#E5EFEC",
+                "ratio": 3.974,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: ink / fill",
+                "foreground": "#65456D",
+                "background": "#ECDEF0",
+                "ratio": 6.198,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / bg",
+                "foreground": "#946B9F",
+                "background": "#F2F7F6",
+                "ratio": 3.992,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / surface",
+                "foreground": "#946B9F",
+                "background": "#FFFFFF",
+                "ratio": 4.318,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-5: chart / raised",
+                "foreground": "#946B9F",
+                "background": "#E5EFEC",
+                "ratio": 3.679,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: ink / fill",
+                "foreground": "#475B63",
+                "background": "#E2E9EB",
+                "ratio": 5.804,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / bg",
+                "foreground": "#6E838B",
+                "background": "#F2F7F6",
+                "ratio": 3.675,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / surface",
+                "foreground": "#6E838B",
+                "background": "#FFFFFF",
+                "ratio": 3.976,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-6: chart / raised",
+                "foreground": "#6E838B",
+                "background": "#E5EFEC",
+                "ratio": 3.387,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: ink / fill",
+                "foreground": "#435F3D",
+                "background": "#DFECDA",
+                "ratio": 5.827,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / bg",
+                "foreground": "#66875D",
+                "background": "#F2F7F6",
+                "ratio": 3.741,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / surface",
+                "foreground": "#66875D",
+                "background": "#FFFFFF",
+                "ratio": 4.047,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-7: chart / raised",
+                "foreground": "#66875D",
+                "background": "#E5EFEC",
+                "ratio": 3.448,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: ink / fill",
+                "foreground": "#625439",
+                "background": "#EEE7D6",
+                "ratio": 5.985,
+                "minimum": 4.5,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / bg",
+                "foreground": "#8C7953",
+                "background": "#F2F7F6",
+                "ratio": 3.902,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / surface",
+                "foreground": "#8C7953",
+                "background": "#FFFFFF",
+                "ratio": 4.221,
+                "minimum": 3,
+                "pass": true
+              },
+              {
+                "pair": "slot-8: chart / raised",
+                "foreground": "#8C7953",
+                "background": "#E5EFEC",
+                "ratio": 3.596,
+                "minimum": 3,
+                "pass": true
+              }
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

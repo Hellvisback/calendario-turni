@@ -7,7 +7,6 @@ import android.util.SizeF
 import android.content.res.Configuration
 import android.graphics.Bitmap
 import android.graphics.Canvas
-import android.graphics.Color
 import android.graphics.Paint
 import android.graphics.Path
 import android.graphics.RectF
@@ -15,9 +14,20 @@ import android.graphics.Typeface
 import android.text.TextUtils
 import android.view.View
 import android.widget.RemoteViews
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.toArgb
 import com.turni.calendario.R
 import com.turni.calendario.repository.LocalDatabaseStore
 import com.turni.calendario.repository.ShiftRepository
+import com.turni.calendario.ui.theme.PaletteStyle
+import com.turni.calendario.ui.theme.ShiftColorStyle
+import com.turni.calendario.ui.theme.TurniThemeState
+import com.turni.calendario.ui.theme.holidayDayColor
+import com.turni.calendario.ui.theme.readableInk
+import com.turni.calendario.ui.theme.shiftColorStyle
+import com.turni.calendario.ui.theme.shiftChartColor
+import com.turni.calendario.ui.theme.readableIndicator
+import com.turni.calendario.ui.theme.turniPalette
 import java.time.DayOfWeek
 import java.time.LocalDate
 import java.time.YearMonth
@@ -38,13 +48,14 @@ internal object TurniWidgetRenderer {
         val portrait=context.resources.configuration.orientation!=Configuration.ORIENTATION_LANDSCAPE
         val width=options.getInt(if(portrait)AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH else AppWidgetManager.OPTION_APPWIDGET_MAX_WIDTH,kind.defaultWidth).takeIf{it>0}?:kind.defaultWidth
         val height=options.getInt(if(portrait)AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,kind.defaultHeight).takeIf{it>0}?:kind.defaultHeight
-        val dark=com.turni.calendario.ui.theme.TurniThemeState.isDark(context)
+        val dark=TurniThemeState.isDark(context)
+        val style=TurniThemeState.storedStyle(context)
         val content=collectContent(kind,LocalDate.now(),WidgetUpdateManager.getWidgetOffset(context,id))
         val sizes=if(Build.VERSION.SDK_INT>=31) options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
             ?.filter{it.width.isFinite()&&it.height.isFinite()&&it.width in 80f..1000f&&it.height in 40f..1000f}?.distinct()?.take(4).orEmpty() else emptyList()
         val views=if(Build.VERSION.SDK_INT>=31&&sizes.isNotEmpty()) {
-            RemoteViews(sizes.associateWith{size->createViews(context,kind,id,size.width.toInt(),size.height.toInt(),content,dark,1_500_000f/sizes.size)})
-        }else createViews(context,kind,id,width.coerceIn(80,1000),height.coerceIn(40,1000),content,dark)
+            RemoteViews(sizes.associateWith{size->createViews(context,kind,id,size.width.toInt(),size.height.toInt(),content,dark,1_500_000f/sizes.size,style)})
+        }else createViews(context,kind,id,width.coerceIn(80,1000),height.coerceIn(40,1000),content,dark,style=style)
         manager.updateAppWidget(id,views)
     }
 
@@ -73,10 +84,15 @@ internal object TurniWidgetRenderer {
             (0 until rowCount*columns).map{WidgetUpdateManager.getDaySummary(start.plusDays(it.toLong()),today)},LocalDatabaseStore.loadError!=null)
     }
 
-    internal fun createViews(context:Context,kind:WidgetKind,id:Int,width:Int,height:Int,content:WidgetPresentation,dark:Boolean,pixelBudget:Float=1_500_000f):RemoteViews {
-        val palette=Palette(dark)
+    internal fun createViews(context:Context,kind:WidgetKind,id:Int,width:Int,height:Int,content:WidgetPresentation,dark:Boolean,
+        pixelBudget:Float=1_500_000f,style:PaletteStyle=TurniThemeState.storedStyle(context)):RemoteViews {
+        val palette=Palette(dark,style)
         val views = RemoteViews(context.packageName, kind.layout)
-        views.setInt(R.id.widget_root, "setBackgroundResource", if (dark) R.drawable.bg_widget_turnisync_dark else R.drawable.bg_widget_turnisync_light)
+        val backgroundResource = when {
+            !dark -> R.drawable.bg_widget_turnisync_light
+            else -> R.drawable.bg_widget_turnisync_dark
+        }
+        views.setInt(R.id.widget_root, "setBackgroundResource", backgroundResource)
         val header = widgetHeaderLayout(width.toFloat(), kind == WidgetKind.TODAY)
         val title = content.title
         views.setTextViewText(R.id.widget_title, title)
@@ -92,13 +108,14 @@ internal object TurniWidgetRenderer {
             views.setTextViewTextSize(R.id.widget_title,android.util.TypedValue.COMPLEX_UNIT_SP,fittedSp)
         }
         views.setTextViewText(R.id.widget_profile, if(content.invalidData) "Dati da ripristinare · Apri TurniSync" else content.workName)
-        views.setTextColor(R.id.widget_profile, palette.muted)
+        val profileInk = if (content.invalidData) readableInk(Color(palette.surface), Color(palette.danger)).toArgb() else palette.muted
+        views.setTextColor(R.id.widget_profile, profileInk)
         views.setViewVisibility(R.id.widget_profile, if (header.showWork) View.VISIBLE else View.GONE)
         views.setInt(R.id.widget_title, "setMaxWidth", (header.titleMaxWidthDp * context.resources.displayMetrics.density).toInt())
         views.setContentDescription(R.id.widget_profile, content.workName)
         views.setContentDescription(R.id.widget_title, title)
-        views.setInt(R.id.widget_previous, "setColorFilter", palette.brand)
-        views.setInt(R.id.widget_next, "setColorFilter", palette.brand)
+        views.setInt(R.id.widget_previous, "setColorFilter", palette.brandInk)
+        views.setInt(R.id.widget_next, "setColorFilter", palette.brandInk)
         views.setViewVisibility(R.id.widget_previous, if (kind == WidgetKind.TODAY) View.GONE else View.VISIBLE)
         views.setViewVisibility(R.id.widget_next, if (kind == WidgetKind.TODAY) View.GONE else View.VISIBLE)
         views.setOnClickPendingIntent(R.id.widget_previous, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_PREV, kind.provider))
@@ -144,15 +161,21 @@ internal object TurniWidgetRenderer {
         return views
     }
 
-    private data class Palette(val dark: Boolean) {
-        val surface = color(if (dark) "#1A1C22" else "#FFFFFF")
-        val text = color(if (dark) "#F4F3F7" else "#1C2B43")
-        val muted = color(if (dark) "#BEC1CD" else "#56657A")
-        val weekend = color(if (dark) "#22242E" else "#E6EDF7")
-        val today = color(if (dark) "#323040" else "#E7E2FF")
-        val brand = color(if (dark) "#BCB8FF" else "#5743A4")
-        val onCall = color(if (dark) "#F4CA70" else "#805100")
-        val holiday = com.turni.calendario.ui.theme.holidayDayColor(dark).toInt()
+    private class Palette(val dark: Boolean, val style: PaletteStyle) {
+        // Widgets must honor their resolved theme even when there is no active Compose screen.
+        private val colors = turniPalette(dark,style)
+        val surface = colors.surface.toInt()
+        val text = colors.text.toInt()
+        val muted = colors.secondaryText.toInt()
+        val fadedText = colors.mutedText.toInt()
+        val weekend = colors.calendarWeekend.toInt()
+        val today = colors.calendarToday.toInt()
+        val brand = colors.primary.toInt()
+        val brandInk = colors.primaryInk.toInt()
+        val onBrand = colors.onPrimary.toInt()
+        val onCall = colors.onCall.ink.toInt()
+        val danger = colors.danger.ink.toInt()
+        val holiday = holidayDayColor(dark,style).toInt()
     }
 
     private fun renderDay(summary: DayShiftSummary, width: Float, height: Float, density: Float,
@@ -163,9 +186,31 @@ internal object TurniWidgetRenderer {
         canvas.scale(density, density)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        val background = when {
+            wide -> palette.surface // This layout does not paint a separate day surface.
+            summary.isToday -> palette.today
+            summary.date.dayOfWeek.value >= 6 -> palette.weekend
+            else -> palette.surface
+        }
+        val backdrop = Color(background)
+        val secondaryInk = readableInk(backdrop, Color(palette.muted)).toArgb()
+        val bellInk = readableInk(backdrop, Color(palette.onCall)).toArgb()
+        fun colorsFor(shift: WidgetShift) = shiftColorStyle(Color(shift.definition.colorHex), palette.dark, backdrop, subdued = faded, style = palette.style, definitionId = shift.definition.id)
         fun rect(left: Float, top: Float, right: Float, bottom: Float, radius: Float, fill: Int) {
             paint.color = fill
             canvas.drawRoundRect(RectF(left, top, right, bottom), radius, radius, paint)
+        }
+        fun shiftChip(left: Float, top: Float, right: Float, bottom: Float, radius: Float,
+            colors: ShiftColorStyle, codeBottom: Float? = null) {
+            if (codeBottom == null) {
+                rect(left, top, right, bottom, radius, colors.codeFill.toArgb())
+            } else {
+                rect(left, top, right, bottom, radius, colors.timeFill.toArgb())
+                canvas.save()
+                canvas.clipRect(left, top, right, codeBottom)
+                rect(left, top, right, bottom, radius, colors.codeFill.toArgb())
+                canvas.restore()
+            }
         }
         fun text(value: String, x: Float, baseline: Float, size: Float, ink: Int, centered: Boolean = false, maxWidth: Float = width - 4f) {
             paint.typeface = medium
@@ -174,7 +219,8 @@ internal object TurniWidgetRenderer {
             if (paint.measureText(value) > available && value.length <= 5) {
                 paint.textSize = (paint.textSize * available / paint.measureText(value)).coerceAtLeast(8.5f)
             }
-            paint.color = if (faded) mix(ink, palette.surface, .48f) else ink
+            // Subdued days use quieter fills, but never fade an already contrast-checked label.
+            paint.color = ink
             val measured = TextUtils.ellipsize(value, android.text.TextPaint(paint), maxWidth.coerceAtLeast(1f), TextUtils.TruncateAt.END).toString()
             paint.textAlign = if (centered) Paint.Align.CENTER else Paint.Align.LEFT
             canvas.drawText(measured, x, baseline, paint)
@@ -190,14 +236,17 @@ internal object TurniWidgetRenderer {
             val frame=RectF(centerX-side/2f,centerY-side/2f,centerX+side/2f,centerY+side/2f)
             if(summary.isToday)rect(frame.left,frame.top,frame.right,frame.bottom,3f,palette.brand)
             if(summary.holidayName!=null){
-                paint.color=palette.holiday;paint.style=Paint.Style.STROKE;paint.strokeWidth=1f
+                val markerBackdrop = if (summary.isToday) Color(palette.brand) else backdrop
+                val holidayInk = if(summary.isToday) Color(turniPalette(!palette.dark).danger.ink) else Color(palette.holiday)
+                paint.color=readableIndicator(markerBackdrop, holidayInk).toArgb();paint.style=Paint.Style.STROKE;paint.strokeWidth=1f
                 canvas.drawRoundRect(frame,3f,3f,paint)
                 paint.style=Paint.Style.FILL
             }
             val ink=when {
-                summary.isOnCall -> if(summary.isToday)color(if(palette.dark)"#493000" else "#FFF0BA")else palette.onCall
-                summary.isToday -> if(palette.dark)color("#211D38")else Color.WHITE
-                else -> palette.text
+                summary.isToday -> readableInk(Color(palette.brand), Color(palette.onBrand)).toArgb()
+                summary.isOnCall -> bellInk
+                faded -> readableInk(backdrop, Color(palette.fadedText)).toArgb()
+                else -> readableInk(backdrop, Color(palette.text)).toArgb()
             }
             paint.typeface=medium
             paint.textSize=size*fontScale
@@ -214,28 +263,26 @@ internal object TurniWidgetRenderer {
             val allowedHeight=(side-1.5f).coerceAtLeast(1f)
             val fit=minOf(1f,allowedWidth/glyphBounds.width().coerceAtLeast(1f),allowedHeight/glyphBounds.height().coerceAtLeast(1f))
             if(fit<1f){paint.textSize*=fit;measureGlyph()}
-            paint.color=if(faded)mix(ink,palette.surface,.48f)else ink
+            paint.color=ink
             // Font ascent and advance width are not the visible bounds of digits (notably 1/27).
             canvas.drawText(value,centerX-glyphBounds.centerX(),centerY-glyphBounds.centerY(),paint)
         }
-        val background = when {
-            summary.isToday -> palette.today
-            summary.date.dayOfWeek.value >= 6 -> palette.weekend
-            else -> palette.surface
-        }
-        // Weekend tint is independent from the text fading of adjacent months.
+        // The weekend surface remains distinct from adjacent-month chip emphasis.
         if (!wide) rect(1f, 1f, width - 1f, height - 1f, 8f, background)
         if(compactWeek && height<34f) {
             val dateHeight=(height-18f).coerceIn(8f,13f)
             dayNumber(width/2f,10.5f,width-12f,RectF(width/2f-10f,0f,width/2f+10f,dateHeight))
-            if(summary.isOnCall)drawBell(canvas,paint,width-5f,dateHeight/2f,7f,palette.onCall)
+            if(summary.isOnCall)drawBell(canvas,paint,width-5f,dateHeight/2f,7f,bellInk)
             val shift=summary.shifts.firstOrNull()
             if(shift!=null&&!invalidData){
-                val tint=mix(shift.definition.colorHex.toInt(),background,if(palette.dark).62f else .26f)
-                rect(3f,dateHeight,width-3f,height-1f,3f,if(faded)mix(tint,background,.5f)else tint)
+                val colors=colorsFor(shift)
                 val middle=(dateHeight+height-1f)/2f
-                text(shift.definition.shortCode.take(4),width/2f,middle-1f,9f,contrastInk(tint),true,width-7f)
-                text(shift.startTime,width/2f,height-2f,9f,contrastInk(tint),true,width-7f)
+                // At these heights a scaled clock glyph can cross the chip midpoint.
+                // One fill keeps both labels on the same, verified contrast pair.
+                shiftChip(3f,dateHeight,width-3f,height-1f,3f,colors)
+                val ink=colors.codeInk.toArgb()
+                text(shift.definition.shortCode.take(4),width/2f,middle-1f,9f,ink,true,width-7f)
+                text(shift.startTime,width/2f,height-2f,9f,ink,true,width-7f)
             }
             return bitmap
         }
@@ -246,17 +293,16 @@ internal object TurniWidgetRenderer {
             dayNumber(numberX,10.5f,17f,RectF(1f,height/2f-8f,18f,height/2f+8f))
             val shift = summary.shifts.firstOrNull()
             if (shift != null && !invalidData) {
-                val tint = mix(shift.definition.colorHex.toInt(), background, if (palette.dark) .62f else .26f)
-                val fill = if (faded) mix(tint, background, .5f) else tint
-                rect(19f, height / 2f - 8f, width - 1f, height / 2f + 8f, 3f, fill)
+                val colors = colorsFor(shift)
+                shiftChip(19f, height / 2f - 8f, width - 1f, height / 2f + 8f, 3f, colors)
                 text(shift.definition.shortCode.take(4), (width + 18f) / 2f, baseline, 10f,
-                    contrastInk(tint), true, width - 21f)
+                    colors.codeInk.toArgb(), true, width - 21f)
                 if (summary.shifts.size > 1) {
-                    paint.color = summary.shifts[1].definition.colorHex.toInt()
+                    paint.color = shiftChartColor(Color(summary.shifts[1].definition.colorHex), palette.dark, summary.shifts[1].definition.id).toArgb()
                     canvas.drawCircle(width - 3f, height - 2f, 1.8f, paint)
                 }
             }
-            if (summary.isOnCall) drawBell(canvas, paint, width - 4f, 4f, 7f, palette.onCall)
+            if (summary.isOnCall) drawBell(canvas, paint, width - 4f, 4f, 7f, bellInk)
             return bitmap
         }
         if (!wide && height < 34f) {
@@ -264,18 +310,17 @@ internal object TurniWidgetRenderer {
             val numberSize = if (height < 25f) 10f else 11f
             val numberBaseline = if (height < 25f) 10f else 12f
             dayNumber(width/2f,numberSize,22f,RectF(width/2f-11f,1f,width/2f+11f,numberBaseline+3f))
-            if(showWeekday)text(summary.dayNameShort,1f,10f,8f,palette.muted,maxWidth=8f)
-            if (summary.isOnCall) drawBell(canvas, paint, width - 6f, 7f, 8f, palette.onCall)
+            if(showWeekday)text(summary.dayNameShort,1f,10f,8f,secondaryInk,maxWidth=8f)
+            if (summary.isOnCall) drawBell(canvas, paint, width - 6f, 7f, 8f, bellInk)
             val shift = summary.shifts.firstOrNull()
             if (shift != null && !invalidData) {
-                val tint = mix(shift.definition.colorHex.toInt(), background, if (palette.dark) .62f else .26f)
-                val fill = if (faded) mix(tint, background, .5f) else tint
+                val colors = colorsFor(shift)
                 val top = numberBaseline + 4f
-                rect(2f, top, width - 2f, height - 1f, 3f, fill)
+                shiftChip(2f, top, width - 2f, height - 1f, 3f, colors)
                 text(shift.definition.shortCode.take(4), width / 2f, height - 3f,
-                    if (height < 25f) 9f else 10.5f, contrastInk(tint), true, width - 6f)
+                    if (height < 25f) 9f else 10.5f, colors.codeInk.toArgb(), true, width - 6f)
                 if (summary.shifts.size > 1) {
-                    paint.color = summary.shifts[1].definition.colorHex.toInt()
+                    paint.color = shiftChartColor(Color(summary.shifts[1].definition.colorHex), palette.dark, summary.shifts[1].definition.id).toArgb()
                     canvas.drawCircle(3f, height - 3f, 1.6f, paint)
                 }
             }
@@ -285,7 +330,8 @@ internal object TurniWidgetRenderer {
         if (wide) {
             val label = if (summary.isToday) "Oggi" else "Domani"
             val numberX=minOf(if(summary.isToday)59f else 84f,width-if(summary.isOnCall)30f else 14f)
-            text(label,9f,headerHeight/2f+4f,12f,if(summary.isToday)palette.brand else palette.muted,maxWidth=numberX-21f)
+            val headerInk=if(summary.isToday)readableInk(backdrop, Color(palette.brandInk)).toArgb() else secondaryInk
+            text(label,9f,headerHeight/2f+4f,12f,headerInk,maxWidth=numberX-21f)
             dayNumber(numberX,14.5f,24f,RectF(numberX-12f,2f,numberX+12f,headerHeight-3f))
         } else {
             // The weekday and today's number never share a fixed-width highlight.
@@ -294,10 +340,10 @@ internal object TurniWidgetRenderer {
             dayNumber(numberX,numberSize,width-12f,RectF(numberX-13f,1f,numberX+13f,headerHeight-1f))
         }
         if (summary.isOnCall) drawBell(canvas, paint, width - (if (wide) 10f else 6f),
-            headerHeight/2f, if (wide) 12f else 8f, if (faded) mix(palette.onCall, background, .4f) else palette.onCall)
-        if (invalidData) { text("—", width / 2f, height / 2f + 9f, 12f, palette.muted, true); return bitmap }
+            headerHeight/2f, if (wide) 12f else 8f, bellInk)
+        if (invalidData) { text("—", width / 2f, height / 2f + 9f, 12f, secondaryInk, true); return bitmap }
         if (summary.shifts.isEmpty()) {
-            if (wide) text("Nessun turno", 9f, headerHeight + 19f, 12f, palette.muted, maxWidth = width - 18f)
+            if (wide) text("Nessun turno", 9f, headerHeight + 19f, 12f, secondaryInk, maxWidth = width - 18f)
             return bitmap
         }
         val gap = 3f
@@ -307,15 +353,14 @@ internal object TurniWidgetRenderer {
             val slotHeight = ((remaining - (count - 1) * gap) / count).coerceAtMost(50f)
             summary.shifts.take(count).forEachIndexed { index, shift ->
                 val y = headerHeight + index * (slotHeight + gap)
-                val chipColor = mix(shift.definition.colorHex.toInt(), background, if (palette.dark) .62f else .26f)
-                val ink = contrastInk(chipColor)
-                rect(5f, y, width - 5f, y + slotHeight, 9f, chipColor)
+                val colors = colorsFor(shift)
+                val ink = colors.timeInk.toArgb()
+                rect(5f, y, width - 5f, y + slotHeight, 9f, colors.timeFill.toArgb())
                 val code = shift.definition.shortCode.take(4)
                 val plan=widgetDailyShiftLayout(width,slotHeight,fontScale)
                 val codeHeight=min(32f,slotHeight-6f)
-                val badge=shift.definition.colorHex.toInt()
-                rect(9f,y+3f,9f+plan.badgeWidth,y+3f+codeHeight,7f,badge)
-                text(code,9f+plan.badgeWidth/2f,y+3f+codeHeight/2f+4f,12f,contrastInk(badge),true,plan.badgeWidth-4f)
+                rect(9f,y+3f,9f+plan.badgeWidth,y+3f+codeHeight,7f,colors.codeFill.toArgb())
+                text(code,9f+plan.badgeWidth/2f,y+3f+codeHeight/2f+4f,12f,colors.codeInk.toArgb(),true,plan.badgeWidth-4f)
                 val detailX=plan.detailX
                 val timeWidth=plan.detailWidth
                 if(!plan.showName) {
@@ -328,7 +373,7 @@ internal object TurniWidgetRenderer {
 
 
             }
-            drawOverflow(canvas, paint, summary.shifts.drop(count), width - 20f, height - 4f)
+            drawOverflow(canvas, paint, summary.shifts.drop(count), width - 20f, height - 4f, palette.dark)
             return bitmap
         }
         val availableHeight=height-headerHeight-2f
@@ -338,25 +383,24 @@ internal object TurniWidgetRenderer {
         var visible = 0
         for (shift in summary.shifts) {
             if (height - cursor < baseChip + 2f) break
-            val tint=mix(shift.definition.colorHex.toInt(),background,if(palette.dark).62f else .26f)
-            val fill=if(faded)mix(tint,background,.5f)else tint
-            val ink=contrastInk(tint)
-            rect(3f,cursor,width-3f,cursor+baseChip,5f,fill)
-            text(shift.definition.shortCode.take(4),width/2f,cursor+baseChip/2f-1f,if(baseChip<26f)10.5f else 11.5f,ink,true,width-7f)
-            if(baseChip>=20f)text(shift.startTime,width/2f,cursor+baseChip/2f+(if(baseChip<26f)9f else 10.5f),if(baseChip<26f)10f else 10.5f,ink,true,width-7f)
+            val colors=colorsFor(shift)
+            val codeBottom=if(baseChip>=26f)cursor+baseChip/2f+1f else null
+            shiftChip(3f,cursor,width-3f,cursor+baseChip,5f,colors,codeBottom)
+            text(shift.definition.shortCode.take(4),width/2f,cursor+baseChip/2f-1f,if(baseChip<26f)10.5f else 11.5f,colors.codeInk.toArgb(),true,width-7f)
+            if(baseChip>=20f)text(shift.startTime,width/2f,cursor+baseChip/2f+(if(baseChip<26f)9f else 10.5f),if(baseChip<26f)10f else 10.5f,(if(codeBottom==null)colors.codeInk else colors.timeInk).toArgb(),true,width-7f)
             cursor += baseChip + gap
             visible++
         }
-        drawOverflow(canvas, paint, summary.shifts.drop(visible), width / 2f, height - 3f)
+        drawOverflow(canvas, paint, summary.shifts.drop(visible), width / 2f, height - 3f, palette.dark)
         return bitmap
     }
 
-    private fun drawOverflow(canvas: Canvas, paint: Paint, shifts: List<WidgetShift>, x: Float, y: Float) {
+    private fun drawOverflow(canvas: Canvas, paint: Paint, shifts: List<WidgetShift>, x: Float, y: Float, dark: Boolean) {
         if (shifts.isEmpty()) return
         // All shifts remain accessible on tap; reserve dots instead of clipping a partial badge.
         val shown = min(3, shifts.size)
         for (index in 0 until shown) {
-            paint.color = shifts[index].definition.colorHex.toInt()
+            paint.color = shiftChartColor(Color(shifts[index].definition.colorHex), dark, shifts[index].definition.id).toArgb()
             canvas.drawCircle(x + (index - (shown - 1) / 2f) * 6f, y, 2f, paint)
         }
     }
@@ -378,14 +422,4 @@ internal object TurniWidgetRenderer {
         canvas.restore()
     }
 
-    private fun color(hex: String) = Color.parseColor(hex)
-    private fun mix(first: Int, second: Int, ratio: Float): Int = Color.rgb(
-        (Color.red(first) * (1f - ratio) + Color.red(second) * ratio).toInt(),
-        (Color.green(first) * (1f - ratio) + Color.green(second) * ratio).toInt(),
-        (Color.blue(first) * (1f - ratio) + Color.blue(second) * ratio).toInt())
-    private fun contrastInk(background: Int): Int {
-        fun component(value: Int): Double { val unit = value / 255.0; return if (unit <= .04045) unit / 12.92 else Math.pow((unit + .055) / 1.055, 2.4) }
-        val luminance = .2126 * component(Color.red(background)) + .7152 * component(Color.green(background)) + .0722 * component(Color.blue(background))
-        return if ((luminance + .05) / .05 > 1.05 / (luminance + .05)) Color.BLACK else Color.WHITE
-    }
 }

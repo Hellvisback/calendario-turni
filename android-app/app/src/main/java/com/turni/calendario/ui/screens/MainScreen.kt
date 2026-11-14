@@ -77,7 +77,7 @@ fun MainScreen() {
         }
         if(reportVisited) {
             RetainedDestination(visible=route=="report") {
-                ReportScreen(active=route=="report",onOpenSettings={route="altro"})
+                ReportScreen(active=route=="report",onOpenSettings={route="altro"},onOpenDate={date->com.turni.calendario.repository.ShiftRepository.selectedDateFromWidget=date;route="calendar";subScreen=false})
             }
         }
         var loadWarning by remember { mutableStateOf(com.turni.calendario.repository.LocalDatabaseStore.loadError) }
@@ -90,7 +90,12 @@ fun MainScreen() {
             modifier = Modifier.align(Alignment.BottomCenter)) {
             TurniDock(calendarSelected = route == "calendar",primarySelected=route!="altro",
                 onCalendar = { route = "calendar"; subScreen = false },
-                onStatistics = { route = "report"; subScreen = false }, onEdit = { editMode.value=true;editRequest.value++ },
+                onStatistics = { route = "report"; subScreen = false },
+                onEdit = {
+                    // A tap during the dock's exit must open the visible calendar editor.
+                    route = "calendar"; subScreen = false
+                    editMode.value = true; editRequest.value++
+                },
                 onModels = { route = "turni"; subScreen = false },
                 modifier = Modifier.navigationBarsPadding().padding(bottom = 0.dp))
         }

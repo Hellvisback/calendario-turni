@@ -25,16 +25,18 @@ param(
     [string]$ReleaseNotes,
     [switch]$SkipBuild,
     [switch]$SkipDeviceInstall,
-    [string]$DeviceId = "cb08bc57"
+    [string]$DeviceId = "cb08bc57",
+    [string]$JavaHome = $env:JAVA_HOME
 )
 
 $ErrorActionPreference = "Stop"
 
-$projectRoot = "c:\Users\marco\Antigravity Progetti\Calediario Turni"
+$projectRoot = Split-Path -Parent $PSScriptRoot
 $gradleFile = "$projectRoot\android-app\app\build.gradle.kts"
 $packageJsonFile = "$projectRoot\package.json"
 $exportScript = "$projectRoot\scripts\export_project.ps1"
-$adbPath = "C:\Users\marco\AppData\Local\Android\Sdk\platform-tools\adb.exe"
+$taskSdkRoot = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } elseif ($env:ANDROID_SDK_ROOT) { $env:ANDROID_SDK_ROOT } else { Join-Path $env:LOCALAPPDATA 'Android/Sdk' }
+$adbPath = Join-Path $taskSdkRoot 'platform-tools/adb.exe'
 
 Set-Location $projectRoot
 
@@ -154,11 +156,14 @@ $apkLatest = "$apkOutputDir\app-release-latest.apk"
 $apkVersioned = "$apkOutputDir\app-release-v$newName.apk"
 
 if (-not $SkipBuild) {
-    Write-Host "[3/7] Compilazione APK (assembleDebug)..." -ForegroundColor Yellow
-    $env:JAVA_HOME = "C:\Program Files\Android\Android Studio\jre"
+    Write-Host "[3/7] Compilazione APK (assembleBeta)..." -ForegroundColor Yellow
+    if ([string]::IsNullOrWhiteSpace($JavaHome) -or !(Test-Path "$JavaHome/bin/java.exe")) {
+        throw "Imposta JAVA_HOME su un JDK 17 o successivo, oppure usa -JavaHome."
+    }
+    $env:JAVA_HOME = $JavaHome
     Push-Location "$projectRoot\android-app"
     try {
-        & .\gradlew.bat assembleDebug
+        & .\gradlew.bat assembleBeta testDebugUnitTest
         if ($LASTEXITCODE -ne 0) {
             Write-Error "Compilazione Gradle fallita con codice $LASTEXITCODE"
             exit 1
@@ -183,7 +188,7 @@ Write-Host "Creato pacchetto release: $apkVersioned" -ForegroundColor Green
 
 # 5. Git commit e push
 Write-Host "[5/7] Sincronizzazione modifiche su Git (main)..." -ForegroundColor Yellow
-git add -A
+git add -- android-app scripts docs design .github .gitignore .gitattributes AGENTS.md README.md HANDOVER_NOTES.md HANDOVER_CODIUM.md package.json
 $gitStatus = git status --porcelain
 if ($gitStatus) {
     git commit -m "chore(release): release v$newName (versionCode $newCode)"
@@ -225,7 +230,7 @@ if ([string]::IsNullOrWhiteSpace($ReleaseNotes)) {
   - Supporto trasferta personalizzata per singolo turno.
   - Rotazioni con anteprima dinamica, navigazione bidirezionale e gomma selettiva.
 - **Suite di Test Unitari & Qualita'**:
-  - 264 test automatizzati eseguiti con successo per le varianti debug e release.
+  - Risultati dei test e delle verifiche documentati nei verbali della versione nel repository.
 "@
 }
 
