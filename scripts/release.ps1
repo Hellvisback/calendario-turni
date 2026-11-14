@@ -2,6 +2,10 @@
 .SYNOPSIS
     Automated Release and GitHub Publisher for Calendario Turni.
 .DESCRIPTION
+    Existing-artifact publishing: use -PublishExistingArtifact with pinned APK,
+    signer hash, version metadata and full source snapshot commit. -VerifyOnly
+    validates locally without publishing. This mode preserves the original binary.
+
     Automates the entire release cycle:
     1. Bumps versionCode and versionName in build.gradle.kts and package.json.
     2. Compiles assembleDebug using the correct JDK.
@@ -26,12 +30,90 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipDeviceInstall,
     [string]$DeviceId = "cb08bc57",
-    [string]$JavaHome = $env:JAVA_HOME
+    [string]$JavaHome = $env:JAVA_HOME,
+    [switch]$PublishExistingArtifact,
+    [string]$ExistingApk,
+    [string]$ExpectedSha256,
+    [string]$ExpectedSignerSha256,
+    [string]$SourceCommit,
+    [string]$Repository = 'Hellvisback/calendario-turni',
+    [switch]$VerifyOnly
 )
 
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+
+# Republishing an already distributed APK preserves its version and signature.
+# This branch does not build, bump versions, commit, push, or install anything.
+if ($PublishExistingArtifact) {
+    if (-not $ExistingApk -or $ExpectedSha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+        $ExpectedSignerSha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+        $SourceCommit -notmatch '^[a-fA-F0-9]{40}$' -or
+        $VersionName -notmatch '^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$' -or $VersionCode -le 0 -or
+        $Repository -notmatch '^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$') {
+        throw 'Existing-artifact mode requires APK, SHA-256, signer SHA-256, full source commit, version name/code and repository.'
+    }
+    $artifact = (Resolve-Path -LiteralPath $ExistingApk).Path
+    if ((Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash -ne $ExpectedSha256) {
+        throw 'APK checksum mismatch; nothing published.'
+    }
+    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
+    if (-not $sdk) { throw 'ANDROID_HOME or ANDROID_SDK_ROOT is required for APK verification.' }
+    $toolSuffix = if ($IsWindows -or $env:OS -eq 'Windows_NT') { '.exe' } else { '' }
+    $signerSuffix = if ($toolSuffix) { '.bat' } else { '' }
+    $aapt = Join-Path $sdk ("build-tools/35.0.0/aapt" + $toolSuffix)
+    $signer = Join-Path $sdk ("build-tools/35.0.0/apksigner" + $signerSuffix)
+    $badging = (& $aapt dump badging $artifact 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $badging -notmatch "package: name='com.turni.calendario' versionCode='(\d+)' versionName='([^']+)'") {
+        throw 'Unable to verify application package and APK metadata.'
+    }
+    if ([int]$matches[1] -ne $VersionCode -or $matches[2] -ne $VersionName) {
+        throw 'APK metadata does not match the requested version; nothing published.'
+    }
+    $certificates = (& $signer verify --print-certs $artifact 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $certificates -notmatch 'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]{64})') {
+        throw 'APK signature verification failed.'
+    }
+    if ($matches[1] -ne $ExpectedSignerSha256) { throw 'APK signing certificate mismatch.' }
+    $sourceGradle = (& git -C $projectRoot show "${SourceCommit}:android-app/app/build.gradle.kts" 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $sourceGradle -notmatch "versionCode\s*=\s*$VersionCode\b" -or
+        $sourceGradle -notmatch ('versionName\s*=\s*"' + [regex]::Escape($VersionName) + '"')) {
+        throw 'The source snapshot does not describe this APK version.'
+    }
+    $tag = "v$VersionName"
+    $summary = [pscustomobject]@{ package = 'com.turni.calendario'; versionName = $VersionName; versionCode = $VersionCode; bytes = (Get-Item -LiteralPath $artifact).Length; sha256 = $ExpectedSha256.ToLowerInvariant(); signerSha256 = $ExpectedSignerSha256.ToLowerInvariant(); sourceSnapshot = $SourceCommit }
+    $summary | ConvertTo-Json
+    if ($VerifyOnly) { return }
+
+    $remoteCommit = (& gh api "repos/$Repository/commits/$SourceCommit" --jq '.sha' | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $remoteCommit -ne $SourceCommit) { throw 'Source snapshot is not available in the target GitHub repository.' }
+    $releases = (& gh release list --repo $Repository --limit 100 --json tagName | Out-String)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect existing releases.' }
+    if (($releases | ConvertFrom-Json).tagName -contains $tag) { throw "Release $tag already exists; nothing overwritten." }
+    $remoteTag = (& git -C $projectRoot ls-remote "https://github.com/$Repository.git" "refs/tags/$tag" | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $remoteTag) { throw 'Cannot safely create a new release tag.' }
+    $outputDir = Join-Path $projectRoot 'artifacts'
+    New-Item -ItemType Directory -Path $outputDir -Force | Out-Null
+    $versionedApk = Join-Path $outputDir "app-release-v$VersionName.apk"
+    Copy-Item -LiteralPath $artifact -Destination $versionedApk -Force
+    if ((Get-FileHash -LiteralPath $versionedApk -Algorithm SHA256).Hash -ne $ExpectedSha256) { throw 'Packaged APK checksum mismatch.' }
+    if (-not $ReleaseTitle) { $ReleaseTitle = "TurniSync $VersionName" }
+    if (-not $ReleaseNotes) { $ReleaseNotes = "Pubblicazione dell'APK originale gia distribuito: $VersionName ($VersionCode). SHA-256: $ExpectedSha256. Nessuna nuova compilazione o modifica della firma." }
+    $notesFile = [IO.Path]::GetTempFileName()
+    try {
+        [IO.File]::WriteAllText($notesFile, $ReleaseNotes, [Text.Encoding]::UTF8)
+        $releaseArgs = @('release', 'create', $tag, $versionedApk, '--repo', $Repository, '--target', $SourceCommit, '--title', $ReleaseTitle, '--notes-file', $notesFile)
+        if ($VersionName -match 'beta|alpha|rc') { $releaseArgs += '--prerelease' }
+        & gh @releaseArgs
+        if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }
+    } finally {
+        Remove-Item -LiteralPath $notesFile -Force -ErrorAction SilentlyContinue
+    }
+    return
+}
+if ($VerifyOnly -or $ExistingApk) { throw 'VerifyOnly and ExistingApk require PublishExistingArtifact.' }
+
 $gradleFile = "$projectRoot\android-app\app\build.gradle.kts"
 $packageJsonFile = "$projectRoot\package.json"
 $exportScript = "$projectRoot\scripts\export_project.ps1"

@@ -1,0 +1,55 @@
+name: Publish original TurniSync beta.17
+
+on:
+  push:
+    branches: [codex/publish-beta17]
+    paths:
+      - .github/workflows/publish-existing-beta17.yml
+      - scripts/release.ps1
+      - docs/RELEASE_v1.8.0-beta.17.md
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-original-beta17
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure APK verification tools
+        run: bash scripts/cloud-setup.sh --skip-warmup
+      - name: Retrieve the original APK without adding it to the source tree
+        shell: bash
+        run: |
+          mkdir -p artifacts
+          gh api repos/Hellvisback/calendario-turni/git/blobs/7b20113ca69f9f1665fcffb5e526248d2188285d --jq .content | base64 --decode > artifacts/original-beta17.apk
+          echo '167d190a533937810359bd69d47a4ced3bcc7547178042f2c5635180dc174dfc  artifacts/original-beta17.apk' | sha256sum -c -
+      - name: Verify and publish the original APK through the release script
+        shell: pwsh
+        run: |
+          $parameters = @{
+            PublishExistingArtifact = $true
+            ExistingApk = 'artifacts/original-beta17.apk'
+            ExpectedSha256 = '167d190a533937810359bd69d47a4ced3bcc7547178042f2c5635180dc174dfc'
+            ExpectedSignerSha256 = 'cf09967400ac4931dbfa169b9bc23c6a8314ef0256285c3399f4912bee735772'
+            SourceCommit = '5771268b691a1976cfce00b24db30ad9432295dd'
+            VersionName = '1.8.0-beta.17'
+            VersionCode = 62
+            ReleaseTitle = 'TurniSync v1.8.0-beta.17 — APK originale verificato'
+            ReleaseNotes = Get-Content -LiteralPath 'docs/RELEASE_v1.8.0-beta.17.md' -Raw
+          }
+          ./scripts/release.ps1 @parameters
