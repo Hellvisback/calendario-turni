@@ -63,3 +63,9 @@ turnisync-database*.json
 !design/**/*.html
 !design/**/*.png
 !design/**/*.jpg
+
+# Android runtime images are source assets, not local screenshots.
+!android-app/app/src/main/res/**/*.png
+!android-app/app/src/main/res/**/*.jpg
+!android-app/app/src/main/assets/**/*.png
+!android-app/app/src/main/assets/**/*.jpg

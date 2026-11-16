@@ -1,6 +1,6 @@
 # Riprendere TurniSync da remoto
 
-Aggiornato il 14 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+Aggiornato il 16 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
 ## Stato effettivo
 
