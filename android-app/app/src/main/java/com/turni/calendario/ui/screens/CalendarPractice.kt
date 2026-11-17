@@ -1,10 +1,9 @@
-@file:OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
+@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class)
 package com.turni.calendario.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
-import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.*
@@ -12,106 +11,203 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalAccessibilityManager
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.*
 import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
+import java.time.LocalDate
+import java.time.YearMonth
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import kotlinx.coroutines.delay
 
-private data class PracticeState(val days:List<List<String>> = List(7){emptyList()},val bells:Set<Int> = emptySet(),val colors:Map<Int,String> = emptyMap())
+private data class PracticeLesson(val title: String, val instruction: String, val mode: CalendarEditMode = CalendarEditMode.REPLACE, val tool: String? = null)
+private val practiceLessons = listOf(
+    PracticeLesson("Un tocco, un turno", "Scegli un modello nella barra, poi tocca una data: Cambia sostituisce il turno di quel giorno."),
+    PracticeLesson("Più giorni insieme", "Tieni premuto sul primo giorno, poi tocca l’ultimo. Puoi scegliere l’intervallo anche a ritroso."),
+    PracticeLesson("Due turni, stesso giorno", "Con Più turni aggiungi senza sostituire. I riquadri restano uguali; i pallini indicano quelli che non entrano.", CalendarEditMode.ADD),
+    PracticeLesson("Una sequenza che si ripete", "Scegli il primo e l’ultimo giorno: la rotazione riempie l’intervallo ripetendo i tuoi modelli.", CalendarEditMode.ROTATION),
+    PracticeLesson("Campanella e gomma", "La campanella attiva la reperibilità. La gomma elimina un turno; tienila premuta su una data per cancellare un intervallo.", tool = "bell"),
+    PracticeLesson("Chiudi e guarda i dettagli", "Annulla recupera l’ultima azione. La X chiude la modifica: tocca una data per provare note, straordinario e trasferta.")
+)
 
-/** Same toolbar and shift artwork as the editor; data lives only in this composition. */
+/** The production calendar canvas and toolbar, supplied only with local rehearsal data. */
 @Composable
-internal fun GesturePractice() {
-    val work=ShiftRepository.activeWorkProfileId
-    val models=ShiftRepository.shiftDefinitions.filter{it.workProfileId==work}.ifEmpty{starterShiftDefinitions(work)}
-    val defs=models.associateBy{it.id}
-    val cycle=remember(models.map{it.id}){ShiftRotation("practice","Rotazione di esempio",4,List(4){models[it%models.size].id})}
-    var state by remember{mutableStateOf(PracticeState())}
-    var history by remember{mutableStateOf(listOf<PracticeState>())}
-    var editing by remember{mutableStateOf(true)}
-    val editPhase by animateFloatAsState(if(editing)1f else 0f,spring(1f,180f))
-    val cellHeight by animateDpAsState(if(editing)116.dp else 132.dp,spring(1f,180f))
-    var mode by remember{mutableStateOf(CalendarEditMode.REPLACE)}
-    var brush by remember{mutableStateOf(models.first().id)}
-    var tool by remember{mutableStateOf<String?>(null)}
-    var anchor by remember{mutableStateOf<Int?>(null)}
-    var eraseChoice by remember{mutableStateOf<Int?>(null)}
-    var message by remember{mutableStateOf("Scegli un turno qui sotto e tocca un giorno. Questa prova non salva nulla nel calendario.")}
-    fun change(next:PracticeState){history=(history+state).takeLast(20);state=next}
-    fun apply(index:Int){
-        if(!editing){message="Nel calendario reale qui si apre il dettaglio del giorno. Tocca la matita sotto per riprendere la prova.";return}
-        if(tool=="bell"){change(state.copy(bells=if(index in state.bells)state.bells-index else state.bells+index));message="Campanella ${if(index in state.bells)"attivata" else "rimossa"} sul giorno ${index+1}.";return}
-        if(mode==CalendarEditMode.ROTATION&&tool!="eraser"&&anchor==null){anchor=index;message="Inizio della rotazione scelto. Tocca il giorno finale: il ciclo si ripeterà fino a lì.";return}
-        val first=anchor?:index
-        if(mode==CalendarEditMode.ROTATION&&tool!="eraser"&&index<first){anchor=index;message="Nuovo inizio della rotazione scelto. Tocca il giorno finale: il ciclo si ripeterà fino a lì.";return}
-        val targets=(minOf(first,index)..maxOf(first,index)).toList()
-        if(tool=="eraser"&&anchor==null&&state.days[index].size>1){eraseChoice=index;message="Questo giorno ha più turni: scegli quale eliminare qui sotto.";return}
-        val days=state.days.mapIndexed{day,values->if(day !in targets)values else when {
-            tool=="eraser"->emptyList()
-            mode==CalendarEditMode.ADD->values+brush
-            mode==CalendarEditMode.ROTATION->listOf(cycle.daySequence[(day-first)%cycle.daySequence.size])
-            else->listOf(brush)
-        }}
-        val colors=if(tool=="eraser")state.colors-targets.toSet()else state.colors+targets.associateWith{day->days[day].last()}
-        change(state.copy(days=days,bells=if(tool=="eraser")state.bells-targets.toSet()else state.bells,colors=colors))
-        anchor=null;eraseChoice=null
-        message=if(tool=="eraser")"Cancellati ${targets.size} ${if(targets.size==1)"giorno" else "giorni"} nella prova." else if(targets.size>1)"Turni applicati dal giorno ${targets.first()+1} al ${targets.last()+1}." else "Turno applicato al giorno ${index+1}. Prova Annulla oppure cambia modalità."
+internal fun GesturePractice(showGuide: Boolean = true) {
+    val work = ShiftRepository.activeWorkProfileId
+    val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == work }.ifEmpty { starterShiftDefinitions(work) }
+    val defs = models.associateBy { it.id }
+    val modelIds = models.map { it.id }
+    val cycle = remember(modelIds) { ShiftRotation("practice", "Sequenza di prova", 4, List(4) { modelIds[it % modelIds.size] }) }
+    val initial = remember(modelIds) { initialCalendarPractice(modelIds) }
+    var state by remember(modelIds) { mutableStateOf(initial) }
+    var history by remember(modelIds) { mutableStateOf(listOf<CalendarPracticeState>()) }
+    var editing by remember { mutableStateOf(true) }
+    val editProgress = animateFloatAsState(if (editing) 1f else 0f, spring(.92f, 240f))
+    var editSession by remember { mutableStateOf(0L) }
+    var mode by remember { mutableStateOf(CalendarEditMode.REPLACE) }
+    var brush by remember(modelIds) { mutableStateOf(modelIds.first()) }
+    var tool by remember { mutableStateOf<String?>(null) }
+    var anchor by remember { mutableStateOf<Int?>(null) }
+    var eraseChoice by remember { mutableStateOf<Int?>(null) }
+    var selectedDay by remember { mutableStateOf<Int?>(null) }
+    var lesson by remember { mutableStateOf(0) }
+    var message by remember { mutableStateOf("") }
+    var lastFeedback by remember { mutableStateOf("") }
+    val accessibility = LocalAccessibilityManager.current
+    val feedbackTimeout = accessibility?.calculateRecommendedTimeoutMillis(4200L, containsText = true) ?: 4200L
+    LaunchedEffect(message, feedbackTimeout) {
+        if (message.isNotEmpty()) {
+            lastFeedback = message
+            delay(feedbackTimeout)
+            message = ""
+        }
     }
-    CloudCard("Prova la modifica", "Usa i tuoi modelli oppure gli esempi, se non ne hai ancora. La barra e le sue animazioni sono le stesse del calendario; questa settimana è solo una simulazione.") {
-        Row(Modifier.fillMaxWidth()) { listOf("L","M","M","G","V","S","D").forEachIndexed { i,day -> Text(day,Modifier.weight(1f).background(if(i>=5)CalendarWeekend else CalendarSurface).padding(vertical=5.dp),textAlign=TextAlign.Center,fontSize=10.sp,color=TextSecondary) } }
-        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(CalendarSurface),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
-            repeat(7){index->
-                val preview=editing&&mode==CalendarEditMode.ROTATION&&tool!="eraser"&&anchor!=null&&index>=anchor!!
-                val values=if(preview)listOf(cycle.daySequence[(index-anchor!!)%cycle.daySequence.size])else state.days[index]
-                val source=state.colors[index]?.let{defs[it]}
-                val fill by animateColorAsState(if(editing&&source!=null)shiftDisplayColor(source.color)else if(index>=5)CalendarWeekend else CalendarSurface,spring(1f,220f))
-                Column(Modifier.weight(1f).height(cellHeight).clip(RoundedCornerShape(10.dp)).background(fill)
-                    .border(if(anchor==index)2.dp else 0.dp,if(anchor==index)BrandInk else Color.Transparent,RoundedCornerShape(10.dp))
-                    .semantics{contentDescription="Giorno di prova ${index+1}"}
-                    .combinedClickable(interactionSource=remember{MutableInteractionSource()},indication=null,onClick={apply(index)},onLongClick={
-                        if(editing&&tool!="bell"&&(tool=="eraser"||mode!=CalendarEditMode.ROTATION)){anchor=index;message="Inizio scelto: tocca un altro giorno, prima o dopo, per ${if(tool=="eraser")"cancellare" else if(mode==CalendarEditMode.ADD)"aggiungere un turno" else "applicare il turno"} all’intervallo."}
-                    }).padding(horizontal=2.dp,vertical=5.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                    Box(Modifier.fillMaxWidth().height(22.dp),contentAlignment=Alignment.Center) {
-                        Text("${index+1}",color=readableInk(fill,TextPrimary),fontSize=12.sp,fontWeight=FontWeight.Bold)
-                        if(anchor==index){SiteIcon("arrow-left",null,Modifier.align(Alignment.CenterStart).size(10.dp),BrandInk);SiteIcon("arrow-right",null,Modifier.align(Alignment.CenterEnd).size(10.dp),BrandInk)}
-                        if(index in state.bells)SiteIcon("bell",null,Modifier.align(Alignment.TopEnd).size(9.dp),readableIndicator(fill,ColorReperibilita))
-                    }
-                    values.take(2).forEach{id->val def=defs[id]?:return@forEach;val tone=shiftColorStyle(def.color,TurniThemeState.dark,CalendarSurface,subdued=preview)
-                        val merged=source?.id==def.id&&!preview
-                        Column(Modifier.fillMaxWidth().height(30.dp).clip(RoundedCornerShape(5.dp)).background(if(merged)tone.codeFill.copy(alpha=1f-editPhase) else tone.codeFill),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.Center) {
-                            Text(def.shortCode,fontSize=9.sp,fontWeight=FontWeight.Bold,color=if(merged)readableInk(fill,tone.codeInk)else tone.codeInk,maxLines=1)
-                            Text(if(def.isAllDay)"– –" else calendarStartLabel(def.startTime,ShiftRepository.appPreferences.timeFormat24h),fontSize=8.sp,color=if(merged)readableInk(fill,tone.timeInk)else tone.timeInk,maxLines=1)
-                        }
-                    }
-                    if(values.size>2)Text("+${values.size-2}",fontSize=9.sp,color=readableInk(fill,TextSecondary))
-                }
+    var paintRequest by remember { mutableStateOf<CalendarPaintRequest?>(null) }
+    var paintSequence by remember { mutableStateOf(0L) }
+    val monday = ShiftRepository.appPreferences.weekStartMonday
+    val dates = remember(monday) { calendarPracticeDates(LocalDate.now(), monday) }
+    val firstDate = dates.first()
+    val assignments = state.days.flatMapIndexed { day, values -> values.mapIndexed { position, id ->
+        AssignedShift("practice-$day-$position", dates[day], id,
+            overtimeHours = if (position == 0 && day in state.overtime) 1f else 0f,
+            isTrasferta = position == 0 && day in state.travel)
+    } }
+    val preview = CalendarGridPreview(
+        days = dates.map { CalendarDayInfo(it, true) }, definitions = models, assignments = assignments,
+        onCallDates = state.bells.map { dates[it] }.toSet(),
+        extras = state.notes.associate { dates[it] to DayExtraInfo(dates[it], notes = "Nota di prova") },
+        rotations = listOf(cycle), timeFormat24h = ShiftRepository.appPreferences.timeFormat24h
+    )
+    fun change(next: CalendarPracticeState) { history = (history + state).takeLast(20); state = next }
+    fun changeLesson(next: Int) {
+        lesson = next; val target = practiceLessons[next]
+        mode = target.mode; tool = target.tool; anchor = null; eraseChoice = null; selectedDay = null; message = ""
+        if (!editing) { editing = true; editSession++ }
+    }
+    fun apply(index: Int) {
+        if (!editing) { selectedDay = index; message = ""; return }
+        if (tool == "bell") {
+            val enabled = index !in state.bells
+            change(state.copy(bells = if (enabled) state.bells + index else state.bells - index))
+            message = if (enabled) "Reperibilità attivata. Tocca ancora per rimuoverla." else "Reperibilità rimossa."
+            return
+        }
+        if (mode == CalendarEditMode.ROTATION && tool != "eraser" && (anchor == null || index < anchor!!)) {
+            anchor = index; message = "Inizio scelto. Tocca il giorno finale della rotazione."; return
+        }
+        if (tool == "eraser" && anchor == null && state.days[index].size > 1) {
+            eraseChoice = index; message = "Scegli il solo turno da eliminare."; return
+        }
+        val first = anchor ?: index
+        val erased = tool == "eraser"
+        change(applyCalendarPractice(state, first, index, brush, mode, erased, cycle.daySequence))
+        paintSequence++
+        paintRequest = if (!erased && mode == CalendarEditMode.ROTATION) {
+            // Match the production editor: acknowledge the endpoint with its actual cycle model.
+            val definitionId = cycle.daySequence[(index - first) % cycle.daySequence.size]
+            CalendarPaintRequest(dates[index], definitionId, paintSequence)
+        } else CalendarPaintRequest(dates[first], if (erased) "" else brush, paintSequence, dates[index])
+        anchor = null; eraseChoice = null
+        val count = kotlin.math.abs(index - first) + 1
+        message = if (erased) "${if (count == 1) "Giorno liberato" else "$count giorni liberati"}. Annulla recupera la modifica." else if (count > 1) "$count giorni aggiornati con un’unica azione." else "Turno ${if (mode == CalendarEditMode.ADD) "aggiunto" else "cambiato"}. Prova un’altra data."
+    }
+    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        if (showGuide) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Text(practiceLessons[lesson].title, color = TextPrimary, fontSize = 16.sp, fontWeight = FontWeight.SemiBold, modifier = Modifier.weight(1f))
+                Text("${lesson + 1} / ${practiceLessons.size}", color = TextSecondary, fontSize = 11.sp)
             }
         }
-        Text(message,color=TextSecondary,fontSize=12.sp,lineHeight=18.sp,modifier=Modifier.fillMaxWidth().heightIn(min=40.dp))
-        eraseChoice?.let{day->
-            Text("Elimina un turno dal giorno ${day+1}",fontSize=13.sp,color=TextPrimary,fontWeight=FontWeight.SemiBold)
-            state.days[day].forEachIndexed{index,id->CloudButton("Elimina ${defs[id]?.name?:id}","trash",{
-                val updated=state.days[day].filterIndexed{position,_->position!=index}
-                change(state.copy(days=state.days.mapIndexed{i,list->if(i==day)updated else list},bells=state.bells-day,colors=state.colors-day));eraseChoice=null
-                message="Eliminato solo il turno scelto. Gli altri rimangono."
-            },secondary=true)}
+        Box(Modifier.fillMaxWidth()) {
+            Column(Modifier.fillMaxWidth().clip(RoundedCornerShape(20.dp)).background(CalendarSurface).padding(4.dp)) {
+                Text("${firstDate.format(DateTimeFormatter.ofPattern("d MMM", Locale.ITALIAN))} — ${dates.last().format(DateTimeFormatter.ofPattern("d MMM", Locale.ITALIAN))}", color = TextSecondary, fontSize = 11.sp, modifier = Modifier.padding(start = 8.dp, top = 5.dp, bottom = 4.dp))
+                Row(Modifier.fillMaxWidth()) {
+                    dates.take(7).forEach { date -> Text(date.format(DateTimeFormatter.ofPattern("EEEEE", Locale.ITALIAN)).uppercase(Locale.ITALIAN), color = if (date.dayOfWeek.value >= 6) BrandInk else TextSecondary, fontSize = 10.sp, textAlign = TextAlign.Center, modifier = Modifier.weight(1f).background(if(date.dayOfWeek.value >= 6) CalendarWeekend else CalendarSurface).padding(vertical = 4.dp)) }
+                }
+                val gridHeight by animateDpAsState(
+                    if (showGuide) { if (editing) 204.dp else 224.dp }
+                    else { if (editing) 168.dp else 184.dp }, spring(.92f, 240f))
+                NativeMonthGrid(
+                    month = YearMonth.from(firstDate), selection = selectedDay?.let { dates[it] }, editing = editing,
+                    mode = if (anchor != null && mode != CalendarEditMode.ROTATION) CalendarEditMode.RANGE else mode,
+                    brush = if (tool == "eraser") "eraser" else brush, rotationId = cycle.id,
+                    anchor = anchor?.let { dates[it] }, rangeEnd = null,
+                    modifier = Modifier.fillMaxWidth().height(gridHeight), paintRequest = paintRequest,
+                    editSession = editSession, editProgress = editProgress,
+                    onPaintConsumed = { paintRequest = null }, onClick = { apply(dates.indexOf(it)) }, onPreview = {},
+                    longPressEnabled = editing && tool != "bell" && (tool == "eraser" || mode != CalendarEditMode.ROTATION),
+                    onLongClick = { date -> anchor = dates.indexOf(date); eraseChoice = null; lesson = if (tool == "eraser") 4 else 1; message = "Inizio scelto: tocca l’ultimo giorno, anche a ritroso." },
+                    previewData = preview, editingBottomInset = 0.dp
+                )
+            }
+            androidx.compose.animation.AnimatedVisibility(
+                visible = message.isNotEmpty(),
+                modifier = Modifier.align(Alignment.BottomCenter).padding(8.dp),
+                enter = slideInVertically(spring(.95f, 380f)) { it / 3 } + fadeIn(),
+                exit = slideOutVertically(spring(1f, 420f)) { it / 3 } + fadeOut()
+            ) {
+                // No click/pointer handler: the calendar remains interactive beneath the feedback.
+                Text(message.ifEmpty { lastFeedback }, color = TextPrimary, fontSize = 12.sp, lineHeight = 18.sp,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp))
+                        .background(ObsidianSurfaceHigh).padding(horizontal = 12.dp, vertical = 10.dp)
+                        .semantics { liveRegion = LiveRegionMode.Polite })
+            }
         }
-        AnimatedVisibility(editing,enter=expandVertically(tween(320))+fadeIn(),exit=shrinkVertically(tween(260))+fadeOut()) {
-            NativeEditToolbar(mode,brush,cycle.id,tool,onTool={tool=if(tool==it)null else it;anchor=null;eraseChoice=null},
-                onMode={mode=it;tool=null;anchor=null;eraseChoice=null;message=when(it){CalendarEditMode.ADD->"Scegli il turno e tocca un giorno: si aggiungerà a quello esistente. Tieni premuto per più giorni.";CalendarEditMode.ROTATION->"La sequenza di esempio ripete ${cycle.daySequence.joinToString(" → "){id->defs[id]?.shortCode.orEmpty()}}. Scegli il primo e l’ultimo giorno.";else->"Scegli il turno e tocca un giorno per sostituirlo. Tieni premuto sul primo giorno per un intervallo."}},
-                onBrush={brush=it;tool=null;anchor=null;message="${defs[it]?.name} selezionato. Ora tocca un giorno."},onRotation={message="Rotazione selezionata: tocca il primo giorno."},
-                onUndo={if(history.isNotEmpty()){state=history.last();history=history.dropLast(1);anchor=null;eraseChoice=null;message="Ultima modifica annullata."}},
-                onClose={editing=false;anchor=null;eraseChoice=null;message="Modifica chiusa: i riquadri tornano nella vista normale. Tocca la matita per riaprirla."},
-                catalogOverride=models,rotationsOverride=listOf(cycle),title="Modifica di prova")
+        AnimatedVisibility(editing, enter = expandVertically(spring(.92f, 300f)) + fadeIn(), exit = shrinkVertically(spring(.95f, 300f)) + fadeOut()) {
+            NativeEditToolbar(mode, brush, cycle.id, tool,
+                onTool = { tool = if (tool == it) null else it; anchor = null; eraseChoice = null; lesson = 4; message = when (it) { "bell" -> "Tocca una data per cambiare la reperibilità."; else -> "Tocca un turno da cancellare, oppure tieni premuto per un intervallo." } },
+                onMode = { mode = it; tool = null; anchor = null; eraseChoice = null; lesson = when (it) { CalendarEditMode.ADD -> 2; CalendarEditMode.ROTATION -> 3; else -> 0 }; message = "" },
+                onBrush = { brush = it; tool = null; anchor = null; message = "${defs[it]?.name.orEmpty()} selezionato: scegli una data." },
+                onRotation = { anchor = null; message = "Scegli il primo e l’ultimo giorno della sequenza." },
+                onUndo = { if (history.isNotEmpty()) { state = history.last(); history = history.dropLast(1); anchor = null; eraseChoice = null; paintRequest = null; editSession++; message = "Ultima azione annullata." } else message = "Non hai ancora modificato questo esempio." },
+                onClose = { editing = false; anchor = null; eraseChoice = null; lesson = 5; message = "Tocca una data per i dettagli, oppure riapri la matita." },
+                catalogOverride = models, rotationsOverride = listOf(cycle))
         }
-        if(!editing)CloudButton("Riapri modifica di prova","edit",{editing=true})
-        TextButton(onClick={state=PracticeState();history=emptyList();anchor=null;eraseChoice=null;message="Prova azzerata. Scegli un turno e ricomincia."}){Text("Azzera la prova",color=BrandInk)}
-        Text("Nel calendario vero la gomma apre una scelta dal basso se ci sono più turni. Qui la scelta rimane nella prova. La X chiude la modifica; Annulla recupera l’ultima azione.",color=TextSecondary,fontSize=11.sp,lineHeight=17.sp)
+        if (!editing) CloudButton("Riapri la matita", "edit", { editing = true; selectedDay = null; editSession++; message = "" }, secondary = true)
+        if (showGuide) AnimatedContent(lesson, transitionSpec = { fadeIn(spring(stiffness = 420f)) + slideInHorizontally(spring(.95f, 420f)) { it / 14 } togetherWith fadeOut(tween(110)) }) { index ->
+            Text(practiceLessons[index].instruction, color = TextSecondary, fontSize = 13.sp, lineHeight = 19.sp)
+        }
+        eraseChoice?.let { day ->
+            CloudCard("Quale turno del ${dates[day].dayOfMonth}?") {
+                state.days[day].forEachIndexed { position, id -> CloudButton(defs[id]?.name ?: "Turno", "eraser", {
+                    val remaining = state.days[day].filterIndexed { index, _ -> index != position }
+                    change(state.copy(days = state.days.mapIndexed { index, shifts -> if (index == day) remaining else shifts }, bells = state.bells - day))
+                    eraseChoice = null; message = "Eliminato solo il turno scelto."
+                }, secondary = true) }
+            }
+        }
+        selectedDay?.takeIf { !editing }?.let { day ->
+            CloudCard("${dates[day].dayOfMonth} · dettagli di prova") {
+                Text(state.days[day].joinToString(" · ") { defs[it]?.name.orEmpty() }.ifEmpty { "Nessun turno" }, color = TextPrimary, fontSize = 13.sp)
+                if (state.days[day].isNotEmpty()) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        FilterChip(selected = day in state.overtime, onClick = { change(state.copy(overtime = if (day in state.overtime) state.overtime - day else state.overtime + day)) }, label = { Text("+1h", fontSize = 12.sp) })
+                        FilterChip(selected = day in state.travel, onClick = { change(state.copy(travel = if (day in state.travel) state.travel - day else state.travel + day)) }, label = { Text("Trasferta", fontSize = 12.sp) })
+                    }
+                }
+                TextButton(onClick = { change(state.copy(notes = if (day in state.notes) state.notes - day else state.notes + day)) }) { SiteIcon("message", null, Modifier.size(16.dp), BrandInk); Spacer(Modifier.width(6.dp)); Text(if (day in state.notes) "Rimuovi nota di prova" else "Aggiungi nota di prova", color = BrandInk, fontSize = 12.sp) }
+                Text("Nel calendario, la rotella apre i dettagli del turno. Note ed etichette raccoglie le attività della giornata.", color = TextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+            }
+        }
+        if (showGuide) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (lesson > 0) TextButton(onClick = { changeLesson(lesson - 1) }) { Text("Precedente", color = TextSecondary) }
+                Spacer(Modifier.weight(1f))
+                TextButton(onClick = { if (lesson < practiceLessons.lastIndex) changeLesson(lesson + 1) else changeLesson(0) }) { Text(if (lesson < practiceLessons.lastIndex) "Prossimo gesto" else "Rivedi i gesti", color = BrandInk, fontWeight = FontWeight.SemiBold) }
+            }
+        }
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Text("Esempio locale · nessun dato salvato", color = TextSecondary, fontSize = 10.sp, modifier = Modifier.weight(1f))
+            TextButton(onClick = { state = initial; history = emptyList(); anchor = null; eraseChoice = null; selectedDay = null; paintRequest = null; editSession++; message = "Esempio ripristinato." }) { Text("Ricomincia", color = BrandInk, fontSize = 11.sp) }
+        }
     }
 }

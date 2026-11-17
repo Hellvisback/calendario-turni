@@ -47,7 +47,9 @@ private val sitePaths = mapOf(
     "chevron-left" to listOf("m15 18-6-6 6-6"),
     "chevron-right" to listOf("m9 18 6-6-6-6"),
     "chevron-down" to listOf("m6 9 6 6 6-6"),
+    "chevron-up" to listOf("m6 15 6-6 6 6"),
     "arrow-left" to listOf("m12 19-7-7 7-7M5 12h14"),
+    "arrow-right" to listOf("m12 5 7 7-7 7M5 12h14"),
     "undo" to listOf("M3 10h10a7 7 0 0 1 0 14M3 10l5-5M3 10l5 5"),
     "trash" to listOf("M3 6h18M9 6V4h6v2M5 6l1 15h12l1-15M10 10v7M14 10v7"),
     "notebook" to listOf("M5 3h14a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5V3ZM5 7H3M5 12H3M5 17H3M9 7h8M9 11h5M9 15h4"),
@@ -127,6 +129,10 @@ private fun buildSiteVector(name:String,progress:Float):ImageVector {
                 "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
                 "chevron-left"->tx=-2.5f*wave
                 "chevron-right"->tx=2.5f*wave
+                "chevron-up"->ty=-2.5f*wave
+                "chevron-down"->ty=2.5f*wave
+                "arrow-left"->tx=-2f*wave
+                "arrow-right"->tx=2f*wave
             }
             addGroup("part$i",rotation,12f,py,sx,sy,tx,ty)
             addPath(nodes,stroke=SolidColor(Color.Black),strokeAlpha=alpha,strokeLineWidth=if(name=="report")4.5f else 1.7f,strokeLineCap=StrokeCap.Round,strokeLineJoin=StrokeJoin.Round)
@@ -173,6 +179,10 @@ fun SiteIconMotion(name:String,description:String?=null,modifier:Modifier=Modifi
                 "star"->{rotation=sin(p*2*PI).toFloat()*10f;sx=1f+.2f*wave;sy=sx}
                     "chevron-left"->tx=-2.5f*wave
                     "chevron-right"->tx=2.5f*wave
+                    "chevron-up"->ty=-2.5f*wave
+                    "chevron-down"->ty=2.5f*wave
+                    "arrow-left"->tx=-2f*wave
+                    "arrow-right"->tx=2f*wave
                 }
                 translate(tx,ty){rotate(rotation,Offset(12f,py)){scale(sx,sy,Offset(12f,py)){
                     drawPath(path,tint.copy(alpha=tint.alpha*alpha),style=stroke)

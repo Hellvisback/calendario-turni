@@ -23,6 +23,7 @@ import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.Dp
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.theme.*
@@ -55,6 +56,20 @@ private data class PaintedDay(val info:CalendarDayInfo,val shifts:List<Pair<Assi
 private data class CalendarExtraState(val overtime:Float,val travel:Boolean)
 private data class CalendarCellPaint(val definitionId:String,val assignmentIds:Set<String>,val origin:Offset)
 internal data class CalendarPaintRequest(val date:LocalDate,val definitionId:String,val sequence:Long,val endDate:LocalDate=date)
+
+/** Read-only input for the tutorial; rendering never swaps or writes the real database. */
+internal data class CalendarGridPreview(
+    val days: List<CalendarDayInfo>,
+    val definitions: List<ShiftDefinition>,
+    val assignments: List<AssignedShift>,
+    val onCallDates: Set<LocalDate> = emptySet(),
+    val extras: Map<LocalDate, DayExtraInfo> = emptyMap(),
+    val rotations: List<ShiftRotation> = emptyList(),
+    val timeFormat24h: Boolean = true,
+    val showExShifts: Boolean = true,
+    val holidays: Map<LocalDate, String> = emptyMap(),
+    val restDates: Set<LocalDate> = emptySet()
+)
 
 /** Rendering consumes a paint event once; tool and metadata changes cannot replay it. */
 internal fun calendarPaintPending(sequence:Long?,consumed:Long?,editing:Boolean):Boolean =
@@ -118,23 +133,31 @@ internal fun calendarShiftLayout(availableHeight: Float, shiftCount: Int, fontSc
 @Composable
 internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolean,mode:CalendarEditMode,
     brush:String,rotationId:String,anchor:LocalDate?,rangeEnd:LocalDate?,modifier:Modifier,
-    paintRequest:CalendarPaintRequest?=null,editSession:Long=0L,editProgress:State<Float>,animate:Boolean=true,onPaintConsumed:(Long)->Unit={},onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,longPressEnabled:Boolean=true,onLongClick:((LocalDate)->Unit)?=null) {
-    val days=remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
-    val defs by remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}
-    val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
-    val profile=ShiftRepository.activeWorkProfileId
-    val restDates=ShiftRepository.minimumRestAlerts.filter { warning->
+    paintRequest:CalendarPaintRequest?=null,editSession:Long=0L,editProgress:State<Float>,animate:Boolean=true,onPaintConsumed:(Long)->Unit={},onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,longPressEnabled:Boolean=true,onLongClick:((LocalDate)->Unit)?=null,
+    previewData:CalendarGridPreview?=null,editingBottomInset:Dp=128.dp) {
+    val days=previewData?.days ?: remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
+    val defs by if(previewData!=null)rememberUpdatedState(previewData.definitions.associateBy{it.id})
+        else remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}
+    val rotation=(previewData?.rotations ?: ShiftRepository.rotations).firstOrNull{it.id==rotationId}
+    val profile=if(previewData==null)ShiftRepository.activeWorkProfileId else null
+    val timeFormat24h=previewData?.timeFormat24h ?: ShiftRepository.appPreferences.timeFormat24h
+    val showExShifts=previewData?.showExShifts ?: ShiftRepository.appPreferences.showExShifts
+    val restDates=previewData?.restDates ?: ShiftRepository.minimumRestAlerts.filter { warning->
         ShiftRepository.getShiftsForDate(warning.date).any{it.id==warning.nextId&&defs[it.shiftDefId]?.workProfileId==profile}
     }.map{it.date}.toSet()
-    val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs){derivedStateOf{days.map{day->
-        val actual=ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
+    val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs,previewData,showExShifts){derivedStateOf{days.map{day->
+        val actual=if(previewData!=null)previewData.assignments.filter{it.date==day.date}
+            else ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
         val period=editing&&mode==CalendarEditMode.RANGE&&calendarPeriodContains(anchor,rangeEnd,day.date)
         val previewId=when{rotating->rotation!!.daySequence[(ChronoUnit.DAYS.between(anchor,day.date)%rotation.daySequence.size).toInt()];period&&brush!="eraser"->brush;else->null}
         val shifts=if(previewId!=null)listOfNotNull(defs[previewId]?.let{AssignedShift("preview",day.date,previewId) to it})else actual.mapNotNull{s->defs[s.shiftDefId]?.let{s to it}}
-        val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&ShiftRepository.appPreferences.showExShifts&&previewId==null}
+        val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&showExShifts&&previewId==null}
             ?.originalShiftDefId?.let{defs[it]?.shortCode}
-        PaintedDay(day,shifts,previewId!=null,ShiftRepository.isOnCall(day.date),original,ShiftRepository.isHoliday(day.date)?.name,calendarHasNotes(ShiftRepository.getDayExtraInfo(day.date).notes,actual),ShiftRepository.getDayExtraInfo(day.date).tagIds.isNotEmpty())
+        val extra=if(previewData!=null)previewData.extras[day.date] ?: DayExtraInfo(day.date) else ShiftRepository.getDayExtraInfo(day.date)
+        val onCall=if(previewData!=null)day.date in previewData.onCallDates else ShiftRepository.isOnCall(day.date)
+        val holidayName=if(previewData!=null)previewData.holidays[day.date] else ShiftRepository.isHoliday(day.date)?.name
+        PaintedDay(day,shifts,previewId!=null,onCall,original,holidayName,calendarHasNotes(extra.notes,actual),extra.tagIds.isNotEmpty())
     }}}
     val settledEditProgress=rememberUpdatedState(if(editing)1f else 0f)
     // Offscreen pages keep settled geometry; only the visible page redraws on each motion frame.
@@ -220,7 +243,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     Box(modifier.clipToBounds().onSizeChanged{viewportHeight=it.height.toFloat()}) {
         Canvas(Modifier.fillMaxSize()) {
             val cellWidth=size.width/7
-            val gridHeight=(size.height-128.dp.toPx()*editReveal).coerceAtLeast(1f)
+            val gridHeight=(size.height-editingBottomInset.toPx()*editReveal).coerceAtLeast(1f)
             val cellHeight=gridHeight/(days.size/7)
             val radius=20.dp.toPx()
             viewport.reset()
@@ -475,7 +498,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(style.codeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,dp(baseChip/2)));drawContext.canvas.restore()
                         if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
                         label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
-                        clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,ShiftRepository.appPreferences.timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
+                        clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
                         var bandY=cursor+dp(baseChip)
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath)
                         fun band(labelText:String,weight:Float,fillColor:Color,ink:Color){
@@ -529,7 +552,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             if(editReveal<1f)for(row in 1 until days.size/7)drawLine(line.copy(alpha=.45f*(1-editReveal)),Offset(0f,row*cellHeight),Offset(size.width,row*cellHeight),dp(.5f))
             drawContext.canvas.restore()
         }
-        if(animate) Column(Modifier.fillMaxSize().graphicsLayer{scaleY=((viewportHeight-128.dp.toPx()*editReveal)/viewportHeight).coerceAtLeast(.1f);transformOrigin=TransformOrigin(0f,0f)}){
+        if(animate) Column(Modifier.fillMaxSize().graphicsLayer{scaleY=((viewportHeight-editingBottomInset.toPx()*editReveal)/viewportHeight).coerceAtLeast(.1f);transformOrigin=TransformOrigin(0f,0f)}){
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date

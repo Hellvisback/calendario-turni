@@ -19,12 +19,14 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.*
@@ -58,7 +60,7 @@ fun FirstRunScreen() {
             finally{finishing=false}
         }
     }
-    AnimatedContent(page,transitionSpec={fadeIn(tween(220)) with fadeOut(tween(160)) using null}) { destination ->
+    AnimatedContent(page,transitionSpec={fadeIn(spring(stiffness=420f)) + slideInHorizontally(spring(.95f,420f)){it/16} togetherWith fadeOut(tween(120)) using null}) { destination ->
         when(destination) {
             "restore" -> CloudBackupScreen(onDismiss=close,restoreOnly=true,onRestored=finish)
             "models" -> TurniModelsScreen(onDismiss=close,initialTab=if(requestedRotation!=null)2 else 0,initialEditingRotation=requestedRotation,onClearInitialRotation={requestedRotation=null})
@@ -74,34 +76,32 @@ fun FirstRunScreen() {
             "pdf" -> PdfExportScreen(onDismiss=close)
             else -> Box(Modifier.fillMaxSize().background(ObsidianBackground).statusBarsPadding().navigationBarsPadding().imePadding()) {
                 Column(Modifier.fillMaxSize().padding(horizontal=20.dp,vertical=10.dp)) {
-                    Row(Modifier.fillMaxWidth().height(44.dp),verticalAlignment=Alignment.CenterVertically) {
+                    Row(Modifier.fillMaxWidth().heightIn(min=44.dp),verticalAlignment=Alignment.CenterVertically) {
                         if(step>0)Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurface).bouncyClickable {FirstRunStore.goTo(context,step-1)},contentAlignment=Alignment.Center) {SiteIcon("arrow-left","Indietro",Modifier.size(22.dp))}
                         else SiteIcon("calendar",null,Modifier.size(28.dp),BrandInk)
                         Spacer(Modifier.width(12.dp))
-                        Text("TurniSync",fontSize=18.sp,fontWeight=FontWeight.Bold,color=TextPrimary)
-                        Spacer(Modifier.weight(1f))
-                        if(step>0)Text("$step di 5",fontSize=12.sp,color=TextSecondary)
+                        Text("TurniSync",fontSize=18.sp,fontWeight=FontWeight.Bold,color=TextPrimary,modifier=Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
+                        Spacer(Modifier.width(8.dp))
+                        if(step>0)Text("$step / 5",fontSize=12.sp,color=TextSecondary,maxLines=1,softWrap=false)
                     }
                     if(step>0)Row(Modifier.fillMaxWidth().padding(top=14.dp,bottom=16.dp),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                        repeat(5) { index -> val color by animateColorAsState(if(index<step)ObsidianPrimary else ObsidianSurfaceContainer,tween(250))
+                        repeat(5) { index -> val color by animateColorAsState(if(index<step)ObsidianPrimary else ObsidianSurfaceContainer,spring(stiffness=350f))
                             Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(3.dp)).background(color))
                         }
                     }
                     val scroll=rememberScrollState()
                     LaunchedEffect(step){scroll.scrollTo(0)}
                     Column(Modifier.weight(1f).verticalScroll(scroll),verticalArrangement=Arrangement.spacedBy(14.dp)) {
-                        AnimatedContent(step,transitionSpec={fadeIn(tween(250))+slideInHorizontally(tween(300)){it/12} with fadeOut(tween(120)) using null}) { current ->
+                        AnimatedContent(step,transitionSpec={val direction=if(targetState>initialState)1 else -1;fadeIn(spring(stiffness=380f))+slideInHorizontally(spring(.95f,380f)){direction*it/14} togetherWith fadeOut(tween(110)) using null}) { current ->
                             Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
                                 when(current) {
                                     0 -> {
-                                        SetupTitle("Il tuo tempo,\na modo tuo.","Un calendario costruito sui tuoi turni. Parti da zero oppure recupera quello che avevi già preparato.")
+                                        SetupTitle("I tuoi turni,\na colpo d’occhio.","Due settimane da provare, senza salvare nulla.")
                                         SetupPreview()
-                                        CloudButton("Inizio da zero","plus",{FirstRunStore.goTo(context,1)})
-                                        CloudButton("Ho già usato TurniSync","download",{page="restore"},secondary=true)
                                         Text("Il calendario funziona anche senza account. Google serve quando scegli backup o sincronizzazione.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                                     }
                                     1 -> {
-                                        SetupTitle("Partiamo dall’aspetto","Scegli come vuoi leggere il calendario. Le modifiche si vedono subito e restano modificabili nelle Impostazioni.")
+                                        SetupTitle("Fallo tuo","Scegli il tema e guarda subito il risultato. Potrai cambiarlo quando vuoi.")
                                         CloudCard("Il tuo tema") { PreferenceThemeSelector() }
                                         SetupPreview()
                                         CloudCard("Come leggi la settimana") {
@@ -110,7 +110,7 @@ fun FirstRunScreen() {
                                         }
                                     }
                                     2 -> {
-                                        SetupTitle("Come chiami il tuo lavoro?","Puoi avere più lavori, ciascuno con colori, modelli e regole proprie. Iniziamo dal primo.")
+                                        SetupTitle("Da quale lavoro partiamo?","Scegli un nome riconoscibile. Più avanti potrai aggiungere altri lavori, con turni e regole indipendenti.")
                                         CloudCard("Nome del lavoro") {
                                             BasicTextField(name,{name=it.take(60)},singleLine=true,keyboardOptions=KeyboardOptions(imeAction=ImeAction.Done),keyboardActions=KeyboardActions(onDone={focus.clearFocus();keyboard?.hide()}),textStyle=TextStyle(fontSize=18.sp,color=TextPrimary),cursorBrush=SolidColor(BrandInk),
                                                 modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).padding(14.dp),decorationBox={field->if(name.isBlank())Text("Es. Il mio lavoro",color=TextSecondary);field()})
@@ -119,8 +119,8 @@ fun FirstRunScreen() {
                                         SetupLink("work","work","Orari e riposo minimo","Imposta le ore settimanali, il riposo tra due turni e l’icona del lavoro."){if(name.isNotBlank()){ShiftRepository.updateWorkProfile(ShiftRepository.activeWorkProfile.copy(name=name.trim()));ShiftRepository.notifyDataChanged()};page=it}
                                     }
                                     3 -> {
-                                        SetupTitle("Prepariamo i tuoi turni","Ogni modello contiene nome, sigla, colore e orario. Una rotazione ripete una sequenza di modelli: scegli tu quali usare.")
-                                        CloudCard("${ShiftRepository.shiftDefinitions.size} modelli · ${ShiftRepository.rotations.size} rotazioni") {
+                                        SetupTitle("I turni, una volta sola","Crea i modelli che usi ogni giorno: nome, colore e orario. Le rotazioni li ripetono nella sequenza che scegli.")
+                                        CloudCard("${ShiftRepository.shiftDefinitions.count{it.workProfileId==ShiftRepository.activeWorkProfileId}} modelli pronti") {
                                             Text("La tua scelta non inserisce turni sul calendario: li applicherai tu ai giorni.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                                             if(ShiftRepository.shiftDefinitions.isEmpty())CloudButton("Parti da 5 esempi modificabili","plus",{
                                                 if(ShiftRepository.shiftDefinitions.isEmpty())ShiftRepository.shiftDefinitions.addAll(starterShiftDefinitions(ShiftRepository.activeWorkProfileId));ShiftRepository.notifyDataChanged();feedback=ActionFeedback("Modelli di esempio aggiunti")
@@ -130,23 +130,27 @@ fun FirstRunScreen() {
                                         SetupLink("ai","scan-text","Hai già un prospetto?","Copia un prompt nella tua AI, allega il prospetto e incolla qui la risposta. Controlla e correggi ogni modello prima di salvarlo."){page=it}
                                     }
                                     4 -> {
-                                        SetupTitle("Prova, senza modificare i dati","Bastano pochi gesti. Questa è una piccola area di prova: puoi toccare e tenere premuto in sicurezza.")
+                                        SetupTitle("Prova i gesti","Sei gesti, due settimane. Esplora senza salvare: puoi continuare quando vuoi.")
                                         GesturePractice()
-                                        CloudCard("Quando apri un giorno") {Text("Nel dettaglio trovi i turni. La rotella apre straordinario, trasferta e nota del singolo turno. In Note ed etichette segni attività della giornata da ritrovare anche nelle statistiche.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
                                     }
                                     else -> {
-                                        SetupTitle("L’ultimo tocco è tuo","Queste opzioni sono facoltative. Apri solo quelle che ti servono: le ritroverai tutte nelle Impostazioni.")
+                                        SetupTitle("L’essenziale è pronto","Vuoi aggiungere qualcosa? Apri solo ciò che ti serve: tutte queste opzioni restano nelle Impostazioni.")
                                         SetupOptions {page=it}
-                                        CloudCard("Pronto a iniziare") {Text("Il calendario parte vuoto. Tocca la matita per inserire i turni; nell’orologio gestisci modelli, lavori e rotazioni. Le statistiche si aggiornano dai tuoi dati.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
+                                        CloudCard("Da qui cominci tu") {Text("L’esempio non viene copiato: il tuo calendario parte vuoto. La matita inserisce i turni, l’orologio gestisce modelli e rotazioni. Le statistiche si aggiornano da sole.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
                                     }
                                 }
                             }
                         }
                         Spacer(Modifier.height(8.dp))
                     }
+                    if(step==0) {
+                        Spacer(Modifier.height(10.dp))
+                        CloudButton("Prepara il mio calendario","arrow-right",{FirstRunStore.goTo(context,1)})
+                        TextButton(onClick={page="restore"},modifier=Modifier.align(Alignment.CenterHorizontally)) {Text("Ho già un backup · Ripristina",color=BrandInk,fontSize=12.sp)}
+                    }
                     if(step>0) {
                         Spacer(Modifier.height(10.dp))
-                        CloudButton(if(finishing)"Salvataggio…" else if(step==5)"Apri il mio calendario" else "Continua","check",{
+                        CloudButton(if(finishing)"Salvataggio…" else if(step==5)"Apri il mio calendario" else "Continua",if(step==5)"check" else "arrow-right",{
                             if(!finishing) {
                                 finishing=true
                                 focus.clearFocus();keyboard?.hide()
@@ -189,22 +193,12 @@ fun FirstRunScreen() {
     }
 }
 @Composable private fun SetupPreview() {
-    val examples=listOf("MAT" to 0xFFF2C46DL,"POM" to 0xFFEE9C9CL,"NOT" to 0xFFBAAEF6L,"RIP" to 0xFFAAB9CEL)
-    CloudCard("Un’occhiata al tuo calendario") {
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {examples.forEachIndexed { index,pair ->
-            val colors=shiftColorStyle(Color(pair.second),TurniThemeState.dark,ObsidianSurface)
-            Column(Modifier.weight(1f).clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).padding(vertical=10.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                Text("${16+index}",fontSize=16.sp,color=TextPrimary,fontWeight=FontWeight.SemiBold)
-                Text(pair.first,color=colors.codeInk,fontSize=13.sp,fontWeight=FontWeight.Bold,modifier=Modifier.clip(RoundedCornerShape(8.dp)).background(colors.codeFill).padding(horizontal=9.dp,vertical=9.dp))
-            }
-        }}
-        Text("Esempio illustrativo",fontSize=10.sp,color=TextSecondary)
-    }
+    GesturePractice(showGuide=false)
 }
 
 private val setupGroups=listOf(
     "Regole del tuo calendario" to listOf(
-        listOf("holidays","calendar-heart","Festività","Scegli le ricorrenze valide per il tuo lavoro. Il bordo rosso le rende riconoscibili."),
+        listOf("holidays","calendar-heart","Festività","Scegli le ricorrenze del tuo lavoro. Un piccolo contorno sulla data le distingue senza coprire i turni."),
         listOf("oncall","bell-ring","Reperibilità","Segna le date a mano oppure scegli regole basate su turni o periodi dell’anno."),
         listOf("rules","chart-no-axes-combined","Conteggio statistiche","Decidi come contare un turno sostitutivo rispetto a quello originale e le ferie nei festivi.")),
     "Attività e promemoria" to listOf(
@@ -216,14 +210,15 @@ private val setupGroups=listOf(
         listOf("pdf","file-text","Esporta e stampa PDF","Controlla l’anteprima e condividi un prospetto nel periodo e nel formato che preferisci."))
 )
 @Composable private fun SetupOptions(onOpen:(String)->Unit) {
-    setupGroups.forEachIndexed { index,group ->
-        var expanded by rememberSaveable {mutableStateOf(false)}
+    setupGroups.forEach { group ->
+        var expanded by rememberSaveable(group.first) {mutableStateOf(false)}
+        val chevronAngle by animateFloatAsState(if(expanded)180f else 0f,spring(.8f,380f))
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ObsidianSurfaceContainer).bouncyClickable {expanded=!expanded}.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
+            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(16.dp)).background(ObsidianSurfaceContainer).semantics {stateDescription=if(expanded)"Aperto" else "Chiuso"}.bouncyClickable {expanded=!expanded}.padding(14.dp),verticalAlignment=Alignment.CenterVertically) {
                 Text(group.first,color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.SemiBold,modifier=Modifier.weight(1f))
-                SiteIcon(if(expanded)"chevron-up" else "chevron-down",null,Modifier.size(18.dp),BrandInk)
+                SiteIcon("chevron-down",null,Modifier.size(18.dp).rotate(chevronAngle),BrandInk)
             }
-            AnimatedVisibility(expanded,enter=expandVertically(spring(.9f,400f))+fadeIn(),exit=shrinkVertically()+fadeOut()) {
+            AnimatedVisibility(expanded,enter=expandVertically(spring(.9f,400f))+fadeIn(),exit=shrinkVertically(spring(.95f,400f))+fadeOut()) {
                 Column(verticalArrangement=Arrangement.spacedBy(8.dp)){group.second.forEach {row->SetupLink(row[0],row[1],row[2],row[3],onOpen)}}
             }
         }
@@ -231,11 +226,14 @@ private val setupGroups=listOf(
 }
 
 @Composable internal fun QuickGuideScreen(onDismiss:()->Unit) {
-    CloudFeatureScaffold("Guida rapida · beta",onDismiss,null,{}) {
-        CloudCard("Impara senza modificare i tuoi dati") {Text("Scorri orizzontalmente per cambiare mese. Oggi ti riporta al mese attuale. Tocca un giorno per aprirlo; la X chiude il dettaglio e deseleziona la data.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
+    CloudFeatureScaffold("Guida rapida",onDismiss,null,{}) {
+        Text("Il calendario vero, in una prova senza salvataggi. Scegli un gesto o esplora con la barra qui sotto.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
         GesturePractice()
-        CloudCard("Modelli e rotazioni") {Text("Nell’orologio crei i modelli e le sequenze. La stella sceglie una rotazione predefinita. Nella matita scegli Rotazione: il primo giorno avvia l’anteprima, l’ultimo conferma l’intervallo. Annulla torna alla situazione precedente.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
-        CloudCard("Dettagli e attività") {Text("La rotella di un turno raccoglie straordinario, trasferta e nota. Lo straordinario si calcola dall’orario di uscita. Note ed etichette riguarda la giornata: le etichette contano i giorni nelle statistiche e permettono di ritrovarli.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
-        CloudCard("Statistiche e impostazioni") {Text("Mese, Anno e Personalizzato cambiano il periodo del resoconto. Nelle Impostazioni scegli festività, regole di conteggio, reperibilità, sveglie e backup. Il PDF si controlla in anteprima prima di esportarlo. L’importazione AI richiede sempre la tua revisione.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
+        CloudCard("Ritrova tutto al suo posto") {
+            Text("Scorri per cambiare mese; Oggi ti riporta alla data attuale. La X chiude il dettaglio. Nell’orologio prepari modelli, lavori e rotazioni: la stella sceglie la sequenza predefinita.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+        }
+        CloudCard("Dai turni al riepilogo") {
+            Text("Le statistiche leggono i tuoi dati per Mese, Anno o un periodo Personalizzato. Le etichette raggruppano le attività e ne mostrano le date. Nelle Impostazioni trovi sveglie, backup e sincronizzazione; controlli sempre l’anteprima prima di esportare un PDF.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+        }
     }
 }

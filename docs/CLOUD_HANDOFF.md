@@ -1,6 +1,12 @@
 # Riprendere TurniSync da remoto
 
-Aggiornato il 16 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+
+## Intervento onboarding — 17 novembre 2026
+
+Il lavoro successivo su `main` migliora il primo avvio: due settimane interattive con griglia e toolbar native, sei lezioni facoltative, testi più brevi, frecce coerenti e spaziatura degli editor. La simulazione resta locale e non inserisce turni nel calendario. La suite comprende ora **485 test**. Il verbale aggiornato, le prove native e i limiti sono in [VERIFICA_ONBOARDING_2026-11-17.md](VERIFICA_ONBOARDING_2026-11-17.md); l'helper ripetibile è descritto in [scripts/device_qa/README.md](../scripts/device_qa/README.md).
+
+La versione distribuita resta beta.17 (62): questo intervento sui sorgenti non crea una release e non cambia firma. Le verifiche storiche sotto descrivono la beta installata sul telefono originale.
 
 ## Stato effettivo
 

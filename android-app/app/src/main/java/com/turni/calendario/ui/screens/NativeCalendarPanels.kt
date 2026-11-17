@@ -158,7 +158,8 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
         .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
         Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
             Text(title, color = TextPrimary, fontSize = 14.sp, lineHeight = 18.sp,
-                fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
+                fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f))
             PanelIcon("undo", "Annulla modifica", onUndo, width = 36.dp, height = 36.dp,
                 glyphSize = 18.dp, background = ObsidianSurfaceContainer)
             Spacer(Modifier.width(4.dp))

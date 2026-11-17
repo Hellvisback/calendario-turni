@@ -167,6 +167,7 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit,heightFract
                         }
                         if(!fullPage&&heightFraction<.9f)CatalogIconAction("x","Chiudi",{finish(onDismiss)},Modifier.size(38.dp))
                     }
+                    Spacer(Modifier.height(12.dp))
                     content(finish)
                 }
             }
