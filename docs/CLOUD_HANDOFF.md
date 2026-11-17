@@ -13,7 +13,7 @@ La versione distribuita resta beta.17 (62): questo intervento sui sorgenti non c
 - Repository: `https://github.com/Hellvisback/calendario-turni`, ramo `main`.
 - Applicazione: Kotlin + Jetpack Compose, modulo `android-app/app`, package `com.turni.calendario`.
 - Ultimo APK verificato e installato: **1.8.0-beta.17**, `versionCode 62`, non debuggabile, ottimizzato con R8.
-- Ultima suite locale: **480 test superati**, lint vitale passato. Le prove grafiche sono state effettuate sul Realme 8 Pro con dati sintetici in un package separato.
+- Verifica della beta distribuita: **480 test superati**, lint vitale passato. Le prove grafiche sono state effettuate sul Realme 8 Pro con dati sintetici in un package separato.
 - L'ultima sincronizzazione GitHub porta i sorgenti dalla beta.2 alla beta.17. Non implica una nuova release APK: non incrementare la versione solo per leggere o configurare il checkout.
 - Verifica dettagliata: [VERIFICA_v1.8.0-beta.17.md](VERIFICA_v1.8.0-beta.17.md). I percorsi `work/...` citati nei vecchi verbali sono evidenze sul PC originale, non dipendenze del progetto.
 
@@ -115,4 +115,4 @@ I documenti personali estranei all'app, cache SDK/JDK, dipendenze locali, passwo
 
 ## Prompt iniziale per la nuova chat
 
-> Lavora sul repository Hellvisback/calendario-turni, ramo main. Leggi AGENTS.md, docs/CLOUD_HANDOFF.md e docs/VERIFICA_v1.8.0-beta.17.md. Lo stato di partenza è beta.17 (62), con 480 test passati sul PC originale. Configura Java/SDK con gli script del repository, verifica branch e commit e preserva tutte le funzioni e la palette attuale. Non usare dati personali, non cambiare firma e non pubblicare APK senza richiesta. Dimmi quali verifiche puoi eseguire nel tuo ambiente e poi continua la modifica che ti indicherò.
+> Lavora sul repository Hellvisback/calendario-turni, ramo main. Leggi AGENTS.md, docs/CLOUD_HANDOFF.md e docs/VERIFICA_v1.8.0-beta.17.md. La beta distribuita è beta.17 (62); i sorgenti includono il successivo intervento onboarding con 485 test passati nel cloud. Leggi anche docs/VERIFICA_ONBOARDING_2026-11-17.md. Configura Java/SDK con gli script del repository, verifica branch e commit e preserva tutte le funzioni e la palette attuale. Non usare dati personali, non cambiare firma e non pubblicare APK senza richiesta. Dimmi quali verifiche puoi eseguire nel tuo ambiente e poi continua la modifica che ti indicherò.

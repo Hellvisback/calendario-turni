@@ -98,6 +98,8 @@ class Probe:
         self.guard_input()
         remote = "/sdcard/turnisync-onboarding-qa.xml"
         assert_qa_package(self.package)
+        # UIAutomator can report an idle timeout with exit code 0. Never reuse its previous dump.
+        self.adb("shell", "rm", "-f", remote)
         self.adb("shell", "uiautomator", "dump", remote)
         raw = self.adb("shell", "cat", remote).stdout
         root = ET.fromstring(raw)

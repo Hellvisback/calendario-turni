@@ -7,6 +7,7 @@ Acquisizioni senza ritocchi su emulatore Android API 26, package sintetico separ
 - `options-dark.png`: ultimo passaggio e gruppi facoltativi chiusi, ripresa dopo aggiornamento del package QA.
 - `practice-dark.png`: due settimane e barra nativa dopo scorrimento della guida.
 - `feedback-dark.png`: messaggio temporaneo in overlay, senza spostamento della barra.
+- `quick-guide-light.png`: sei lezioni raggiunte in sequenza dalle Impostazioni, ultimo passo e comando di ripristino.
 - `work-keyboard-dark.png`: margine sotto l’intestazione e Salva lavoro sopra la tastiera aperta.
 
 Il verbale completo è in [VERIFICA_ONBOARDING_2026-11-17.md](../../docs/VERIFICA_ONBOARDING_2026-11-17.md). Il rendering software dell'emulatore non misura la fluidità su un telefono fisico.

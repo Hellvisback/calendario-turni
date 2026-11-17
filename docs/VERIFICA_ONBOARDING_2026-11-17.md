@@ -21,6 +21,7 @@ Il flusso di ripristino e il salvataggio locale prima di avanzare restano quelli
 - `bash scripts/check-android.sh`: **BUILD SUCCESSFUL in 8m 25s**, `assembleBeta`, R8 e `lintVitalBeta` riusciti; **485 test, zero fallimenti, errori o test saltati**. Log locale `qa-artifacts/onboarding-2026-11-17/production-final-build.log`.
 - `bash scripts/check-android.sh assembleDebug testDebugUnitTest -PsetupProbe`: **BUILD SUCCESSFUL in 2m 47s**, stessa suite da 485 test. Log locale `qa-final-build.log`.
 - `git diff --check`, compilazione Python dell'helper e revisione indipendente dei default del renderer: riusciti. Nessuna modifica a repository dati, serializzazione, versione o firma.
+- Helper: verificati anche timeout UIAutomator con uscita 0 e vecchio XML presente, rifiutato senza salvare artefatti; nuovo dump valido accettato. Il riavvio dell'ambiente ha reso necessaria questa protezione contro gerarchie obsolete.
 
 I cinque nuovi test coprono settimane complete lunedì/domenica oltre il cambio anno, esempio iniziale senza alterare il catalogo, intervalli a ritroso, conservazione di note e giorni esterni, aggiunta/cancellazione, ripetizione della rotazione e snapshot immutabili.
 
@@ -50,6 +51,8 @@ Le schermate definitive sono conservate anche in [design/qa-onboarding-2026-11-1
 - `final-welcome-light.png`: a 360 dp, due settimane intere e toolbar con tutti i modelli visibili sopra l'azione principale.
 - `final-welcome-320dp-font200.png`: testo al 200% e larghezza 320 dp; azioni inferiori leggibili senza sovrapposizioni, contenuto lungo scorrevole. Densità e font ripristinati al termine.
 - `final-real-calendar.png`, `final-reopened-calendar.png`, `final-calendar-state.json`: completamento dei cinque passaggi, arresto e riapertura sul calendario; stato `complete`, cinque modelli scelti esplicitamente, zero assegnazioni/dati giornalieri. Hash calendario identico al primo avvio: `445d1b6ff26370fc7a96e33bea40b0eba5ff49eea86420b56e8d2ff82b9a417c`.
+- `settings-guide-link.png`, `quick-guide-start.png`, `quick-guide-controls.png`: accesso alla Guida rapida dalle Impostazioni, stessa griglia e toolbar nel tema chiaro.
+- Dopo il riavvio dell’ambiente, cinque pressioni Prossimo gesto hanno portato da 1/6 a 6/6 con dump nuovi verificati a ogni passaggio (`residual-guide-lesson1.xml` fino a `residual-guide-lesson6.xml`). Il giorno 16 è stato cambiato da Mattina a Pomeriggio; Ricomincia ha ripristinato Mattina (`residual-guide-modified.xml`, `residual-guide-reset.xml` e PNG). Anche `residual-guide-calendar-state.json` conferma hash invariato, zero assegnazioni/dati giornalieri e primo avvio già completo.
 
 Il controllo di timeout accessibile e assenza di gestori di input sull'overlay è anche statico; non costituisce una prova di ogni configurazione TalkBack. Le prove di esempio sono state svolte esclusivamente nel package separato con dati sintetici.
 

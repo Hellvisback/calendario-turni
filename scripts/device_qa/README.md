@@ -43,6 +43,8 @@ Il confronto fallisce se cambiano assegnazioni o dati giornalieri. Gli artefatti
 
 L'output predefinito è `qa-artifacts/onboarding/`; `--output` o `TURNISYNC_ONBOARDING_QA_DIR` possono indicare una cartella diversa. `shot` salva il PNG, `dump` l'XML e `capture` entrambi. Non usare `calendar_probe.py seed` prima della prova del primo avvio: quel comando marca intenzionalmente l'introduzione come già completata.
 
+Prima di ogni dump l'helper rimuove solo il proprio XML temporaneo sul dispositivo. UIAutomator può segnalare un timeout di inattività con codice di uscita 0: se non produce un nuovo file, il controllo fallisce senza riutilizzare la gerarchia precedente. Attendere che la schermata si assesti e riprovare; dopo navigazioni o riavvii controllare una nuova acquisizione prima di usare coordinate.
+
 Percorso da verificare: nuovo avvio e ripristino separato; Aspetto nei due temi; nome lavoro/editor con tastiera e riapertura; modelli aggiunti solo su scelta esplicita; sei gesti della prova; opzioni espandibili e ritorno dagli editor; conclusione con calendario vuoto; successivo avvio senza ripetere la configurazione. Ripetere i punti di geometria su larghezza ridotta e caratteri grandi, poi ripristinare le impostazioni del dispositivo di prova.
 
 Il verbale [VERIFICA_ONBOARDING_2026-11-17.md](../../docs/VERIFICA_ONBOARDING_2026-11-17.md) distingue gli esiti già registrati dai controlli ancora da eseguire.
