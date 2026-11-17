@@ -33,7 +33,7 @@
 
 - Mai commettere keystore, token, password, file `.env`, `local.properties`, backup, database personali o documenti estranei al progetto.
 - Le variabili `TURNISYNC_KEYSTORE_*` sono segreti esterni. Non mostrarne i valori nei log o nelle descrizioni di commit.
-- Un push dei sorgenti non è una release APK. Non creare tag o release senza richiesta.
+- Un push dei sorgenti non è una release APK. Dal 17 novembre 2026 l'utente richiede un APK scaricabile su GitHub dopo ogni modifica dell'app: pubblicare una nuova pre-release versionata per ogni aggiornamento, indicando chiaramente se è un'installazione QA separata o un aggiornamento compatibile con l'app personale.
 - Ogni nuova release APK deve incrementare `versionCode` rispetto alle versioni già distribuite e aggiornare `versionName`.
 - Le release GitHub vanno effettuate esclusivamente con `scripts/release.ps1`, caricando il solo APK versionato. Mai usare `--clobber`, `app-release-latest.apk`, archivi ZIP di progetto o OneDrive per la distribuzione.
 - Conservare dati, modifiche locali non pertinenti e configurazioni private. Non cambiare la visibilità del repository o dei servizi collegati senza istruzione esplicita.

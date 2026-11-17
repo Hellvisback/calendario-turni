@@ -1,12 +1,14 @@
 # Riprendere TurniSync da remoto
 
+L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaricabile su GitHub, attraverso una nuova pre-release versionata. La pagina stabile da condividere è https://github.com/Hellvisback/calendario-turni/releases; le beta sono pre-release e non compaiono necessariamente come `latest`. Specificare se l'APK è il package separato `com.turni.calendario.setupqa`: può essere installato accanto all'app personale, ma richiede la stessa chiave QA per aggiornare una precedente installazione QA. L'aggiornamento dell'app personale richiede la sua chiave originale, esterna al repository. Usare `scripts/release.ps1` e non sovrascrivere release esistenti.
+
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
 ## Intervento onboarding — 17 novembre 2026
 
 Il lavoro successivo su `main` migliora il primo avvio: due settimane interattive con griglia e toolbar native, sei lezioni facoltative, testi più brevi, frecce coerenti e spaziatura degli editor. La simulazione resta locale e non inserisce turni nel calendario. La suite comprende ora **485 test**. Il verbale aggiornato, le prove native e i limiti sono in [VERIFICA_ONBOARDING_2026-11-17.md](VERIFICA_ONBOARDING_2026-11-17.md); l'helper ripetibile è descritto in [scripts/device_qa/README.md](../scripts/device_qa/README.md).
 
-La versione distribuita resta beta.17 (62): questo intervento sui sorgenti non crea una release e non cambia firma. Le verifiche storiche sotto descrivono la beta installata sul telefono originale.
+La beta personale verificata sul telefono resta beta.17 (62). La pre-release beta.18 (63) è destinata alla prova separata (`com.turni.calendario.setupqa`), include questo intervento ed è firmata con la chiave QA del cloud. Le verifiche storiche sotto descrivono la beta personale originale.
 
 ## Stato effettivo
 
@@ -115,4 +117,4 @@ I documenti personali estranei all'app, cache SDK/JDK, dipendenze locali, passwo
 
 ## Prompt iniziale per la nuova chat
 
-> Lavora sul repository Hellvisback/calendario-turni, ramo main. Leggi AGENTS.md, docs/CLOUD_HANDOFF.md e docs/VERIFICA_v1.8.0-beta.17.md. La beta distribuita è beta.17 (62); i sorgenti includono il successivo intervento onboarding con 485 test passati nel cloud. Leggi anche docs/VERIFICA_ONBOARDING_2026-11-17.md. Configura Java/SDK con gli script del repository, verifica branch e commit e preserva tutte le funzioni e la palette attuale. Non usare dati personali, non cambiare firma e non pubblicare APK senza richiesta. Dimmi quali verifiche puoi eseguire nel tuo ambiente e poi continua la modifica che ti indicherò.
+> Lavora sul repository Hellvisback/calendario-turni, ramo main. Leggi AGENTS.md, docs/CLOUD_HANDOFF.md e docs/VERIFICA_v1.8.0-beta.17.md. La beta distribuita è beta.17 (62); i sorgenti includono il successivo intervento onboarding con 485 test passati nel cloud. Leggi anche docs/VERIFICA_ONBOARDING_2026-11-17.md. Configura Java/SDK con gli script del repository, verifica branch e commit e preserva tutte le funzioni e la palette attuale. Non usare dati personali né cambiare la firma dell’app personale; dopo ogni modifica pubblica un APK QA versionato come richiesto, indicando il package separato. Dimmi quali verifiche puoi eseguire nel tuo ambiente e poi continua la modifica che ti indicherò.
