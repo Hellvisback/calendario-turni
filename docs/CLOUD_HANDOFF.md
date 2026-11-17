@@ -4,6 +4,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Statistiche e migrazione beta.20
+
+La beta.20 QA (65) migliora contrasto e profondità del riepilogo, spiega visibilità della provenienza e regole statistiche e rende secondaria la CTA Accedi. I backup JSON nativi sono indipendenti dal package/firma: [MIGRAZIONE_APP.md](MIGRAZIONE_APP.md) descrive export dalla vecchia app e import nella QA senza disinstallare la personale. La chiave originale rimane necessaria per aggiornare direttamente quest'ultima. Suite corrente: 488 test; verifica dettagliata in [VERIFICA_v1.8.0-beta.20.md](VERIFICA_v1.8.0-beta.20.md). Le sezioni seguenti sono verifiche precedenti.
+
 ## Revisione onboarding beta.19
 
 Pubblicata la [beta.19 QA (64)](https://github.com/Hellvisback/calendario-turni/releases/tag/v1.8.0-beta.19), firma QA invariata. La revisione richiesta dopo la prova della beta.18 rende statiche le anteprime iniziali, mette Inizia e Accedi alla stessa priorità, chiarisce i dettagli facoltativi del lavoro e concentra la guida sugli intervalli di modifica/aggiunta/cancellazione. Il marker di configurazione completata sopravvive agli aggiornamenti della stessa installazione. Non si trasferiscono automaticamente dati dall'app personale al package QA separato. Verifica corrente: [VERIFICA_v1.8.0-beta.19.md](VERIFICA_v1.8.0-beta.19.md). La suite comprende 486 test. La sezione seguente descrive la prima iterazione, ora superata nei punti modificati dalla revisione.

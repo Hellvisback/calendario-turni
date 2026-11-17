@@ -21,6 +21,9 @@ on:
       version_code:
         description: Version code
         required: true
+      release_notes:
+        description: User-facing release notes (optional)
+        required: false
 
 permissions:
   contents: write
@@ -41,6 +44,7 @@ jobs:
       QA_SOURCE_COMMIT: ${{ inputs.source_commit }}
       QA_VERSION_NAME: ${{ inputs.version_name }}
       QA_VERSION_CODE: ${{ inputs.version_code }}
+      QA_RELEASE_NOTES: ${{ inputs.release_notes }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
         with:
@@ -74,6 +78,6 @@ jobs:
             VersionName = $env:QA_VERSION_NAME
             VersionCode = [int]$env:QA_VERSION_CODE
             ReleaseTitle = "TurniSync $($env:QA_VERSION_NAME) - prova separata"
-            ReleaseNotes = 'APK di prova separato: si installa accanto alla tua app personale. Include le nuove schermate iniziali, due settimane di esempio e la guida interattiva. Android 8.0 o successivo. Questa versione non aggiorna la app personale.'
+            ReleaseNotes = if ($env:QA_RELEASE_NOTES) { $env:QA_RELEASE_NOTES } else { 'APK di prova separato: si installa accanto alla tua app personale. Android 8.0 o successivo. Questa versione non aggiorna la app personale.' }
           }
           ./scripts/release.ps1 @parameters
