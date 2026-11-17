@@ -1,0 +1,79 @@
+name: Publish verified QA APK
+
+on:
+  workflow_dispatch:
+    inputs:
+      blob_sha:
+        description: Git blob SHA containing the verified APK
+        required: true
+      apk_sha256:
+        description: APK SHA-256
+        required: true
+      signer_sha256:
+        description: QA signing certificate SHA-256
+        required: true
+      source_commit:
+        description: Full source commit SHA
+        required: true
+      version_name:
+        description: Version name
+        required: true
+      version_code:
+        description: Version code
+        required: true
+
+permissions:
+  contents: write
+
+concurrency:
+  group: publish-qa-apk
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      QA_BLOB_SHA: ${{ inputs.blob_sha }}
+      QA_APK_SHA256: ${{ inputs.apk_sha256 }}
+      QA_SIGNER_SHA256: ${{ inputs.signer_sha256 }}
+      QA_SOURCE_COMMIT: ${{ inputs.source_commit }}
+      QA_VERSION_NAME: ${{ inputs.version_name }}
+      QA_VERSION_CODE: ${{ inputs.version_code }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-java@d1374f8ac74474200d16ef8ecee22c7ae7a51880
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Configure APK verification tools
+        run: bash scripts/cloud-setup.sh --skip-warmup
+      - name: Retrieve and verify APK
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "$QA_BLOB_SHA" =~ ^[0-9a-f]{40}$ ]]
+          [[ "$QA_APK_SHA256" =~ ^[0-9a-f]{64}$ ]]
+          mkdir -p artifacts
+          gh api "repos/$GITHUB_REPOSITORY/git/blobs/$QA_BLOB_SHA" --jq .content | base64 --decode > artifacts/qa.apk
+          printf '%s  %s\n' "$QA_APK_SHA256" artifacts/qa.apk | sha256sum -c -
+      - name: Verify and publish the QA APK
+        shell: pwsh
+        run: |
+          $parameters = @{
+            PublishExistingArtifact = $true
+            ExistingApk = 'artifacts/qa.apk'
+            ExpectedSha256 = $env:QA_APK_SHA256
+            ExpectedSignerSha256 = $env:QA_SIGNER_SHA256
+            ExpectedPackage = 'com.turni.calendario.setupqa'
+            SourceCommit = $env:QA_SOURCE_COMMIT
+            VersionName = $env:QA_VERSION_NAME
+            VersionCode = [int]$env:QA_VERSION_CODE
+            ReleaseTitle = "TurniSync $($env:QA_VERSION_NAME) - prova separata"
+            ReleaseNotes = 'APK di prova separato: si installa accanto alla tua app personale. Include le nuove schermate iniziali, due settimane di esempio e la guida interattiva. Android 8.0 o successivo. Questa versione non aggiorna la app personale.'
+          }
+          ./scripts/release.ps1 @parameters

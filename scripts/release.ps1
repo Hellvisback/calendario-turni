@@ -26,12 +26,97 @@ param(
     [switch]$SkipBuild,
     [switch]$SkipDeviceInstall,
     [string]$DeviceId = "cb08bc57",
-    [string]$JavaHome = $env:JAVA_HOME
+    [string]$JavaHome = $env:JAVA_HOME,
+    [switch]$PublishExistingArtifact,
+    [string]$ExistingApk,
+    [string]$ExpectedSha256,
+    [string]$ExpectedSignerSha256,
+    [string]$SourceCommit,
+    [ValidateSet('com.turni.calendario.setupqa')]
+    [string]$ExpectedPackage = 'com.turni.calendario.setupqa',
+    [string]$Repository = 'Hellvisback/calendario-turni',
+    [switch]$VerifyOnly
 )
 
 $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
+
+# Publish a prebuilt QA APK without a second version bump or rebuild.
+# The source bump, build and commit must already have been completed.
+if ($PublishExistingArtifact) {
+    if (-not $ExistingApk -or $ExpectedSha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+        $ExpectedSignerSha256 -notmatch '^[a-fA-F0-9]{64}$' -or
+        $SourceCommit -notmatch '^[a-fA-F0-9]{40}$' -or
+        $VersionName -notmatch '^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$' -or
+        $VersionCode -le 0 -or
+        $Repository -notmatch '^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$') {
+        throw 'Validated QA publishing requires APK/hash/certificate/source/version and version metadata.'
+    }
+    $artifact = (Resolve-Path -LiteralPath $ExistingApk).Path
+    if ((Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash -ne $ExpectedSha256) {
+        throw 'APK checksum mismatch.'
+    }
+    $sdk = if ($env:ANDROID_HOME) { $env:ANDROID_HOME } else { $env:ANDROID_SDK_ROOT }
+    if (-not $sdk) { throw 'ANDROID_HOME or ANDROID_SDK_ROOT is required.' }
+    $exe = if ($IsWindows -or $env:OS -eq 'Windows_NT') { '.exe' } else { '' }
+    $bat = if ($exe) { '.bat' } else { '' }
+    $aapt = Join-Path $sdk ("build-tools/35.0.0/aapt" + $exe)
+    $signer = Join-Path $sdk ("build-tools/35.0.0/apksigner" + $bat)
+    $badging = (& $aapt dump badging $artifact 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $badging -notmatch "package: name='([^']+)' versionCode='(\d+)' versionName='([^']+)'") {
+        throw 'Cannot verify APK metadata.'
+    }
+    $apkPackage = $matches[1]; $apkCode = [int]$matches[2]; $apkName = $matches[3]
+    if ($apkPackage -ne $ExpectedPackage -or $apkCode -ne $VersionCode -or $apkName -ne $VersionName) {
+        throw 'APK package/version mismatch; personal-app APKs are not accepted by this mode.'
+    }
+    $certificates = (& $signer verify --print-certs $artifact 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $certificates -notmatch 'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]{64})') {
+        throw 'APK signature verification failed.'
+    }
+    if ($matches[1] -ne $ExpectedSignerSha256) { throw 'Unexpected QA signing certificate.' }
+    $branch = (& git -C $projectRoot rev-parse --abbrev-ref HEAD | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or ($branch -ne 'main' -and -not ($branch -eq 'HEAD' -and $env:GITHUB_ACTIONS -eq 'true'))) {
+        throw 'Publish from main, or a detached GitHub Actions checkout only.'
+    }
+    & git -C $projectRoot merge-base --is-ancestor $SourceCommit HEAD
+    if ($LASTEXITCODE -ne 0) { throw 'SourceCommit is not an ancestor of the checked-out source.' }
+    $sourceGradle = (& git -C $projectRoot show "${SourceCommit}:android-app/app/build.gradle.kts" 2>&1 | Out-String)
+    if ($LASTEXITCODE -ne 0 -or $sourceGradle -notmatch "versionCode\s*=\s*$VersionCode\b" -or
+        $sourceGradle -notmatch ('versionName\s*=\s*"' + [regex]::Escape($VersionName) + '"')) {
+        throw 'The source snapshot does not describe this APK version.'
+    }
+    [pscustomobject]@{ package=$apkPackage; versionName=$apkName; versionCode=$apkCode; sha256=$ExpectedSha256; signer=$ExpectedSignerSha256; source=$SourceCommit } | ConvertTo-Json
+    if ($VerifyOnly) { return }
+    $remoteCommit = (& gh api "repos/$Repository/commits/$SourceCommit" --jq '.sha' | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $remoteCommit -ne $SourceCommit) { throw 'Source snapshot not found in the target repository.' }
+    $tag = "v$VersionName"
+    $releases = (& gh release list --repo $Repository --limit 100 --json tagName | Out-String)
+    if ($LASTEXITCODE -ne 0) { throw 'Cannot inspect releases.' }
+    if (($releases | ConvertFrom-Json).tagName -contains $tag) { throw 'Release already exists; inspect it manually, nothing overwritten.' }
+    $remoteTag = (& git -C $projectRoot ls-remote "https://github.com/$Repository.git" "refs/tags/$tag" | Out-String).Trim()
+    if ($LASTEXITCODE -ne 0 -or $remoteTag) { throw 'Tag already exists or cannot be checked; nothing published.' }
+    $output = Join-Path $projectRoot 'artifacts'
+    New-Item -ItemType Directory -Path $output -Force | Out-Null
+    $versioned = Join-Path $output "app-release-v$VersionName.apk"
+    if ([IO.Path]::GetFullPath($artifact) -ne [IO.Path]::GetFullPath($versioned)) {
+        Copy-Item -LiteralPath $artifact -Destination $versioned -Force
+    }
+    if ((Get-FileHash -LiteralPath $versioned -Algorithm SHA256).Hash -ne $ExpectedSha256) { throw 'Packaged APK checksum mismatch.' }
+    if (-not $ReleaseTitle) { $ReleaseTitle = "TurniSync $VersionName — QA separata" }
+    if (-not $ReleaseNotes) { throw 'Provide explicit QA release notes, including the separate package and signing limitations.' }
+    $notesFile = [IO.Path]::GetTempFileName()
+    try {
+        [IO.File]::WriteAllText($notesFile, $ReleaseNotes, [Text.Encoding]::UTF8)
+        & gh release create $tag $versioned --repo $Repository --target $SourceCommit --title $ReleaseTitle --notes-file $notesFile --prerelease
+        if ($LASTEXITCODE -ne 0) { throw 'GitHub release creation failed.' }
+    } finally {
+        Remove-Item -LiteralPath $notesFile -Force -ErrorAction SilentlyContinue
+    }
+    return
+}
+if ($VerifyOnly -or $ExistingApk) { throw 'ExistingApk and VerifyOnly require PublishExistingArtifact.' }
 $gradleFile = "$projectRoot\android-app\app\build.gradle.kts"
 $packageJsonFile = "$projectRoot\package.json"
 $exportScript = "$projectRoot\scripts\export_project.ps1"
