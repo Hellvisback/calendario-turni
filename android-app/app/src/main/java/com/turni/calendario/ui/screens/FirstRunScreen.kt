@@ -62,7 +62,7 @@ fun FirstRunScreen() {
     }
     AnimatedContent(page,transitionSpec={fadeIn(spring(stiffness=420f)) + slideInHorizontally(spring(.95f,420f)){it/16} togetherWith fadeOut(tween(120)) using null}) { destination ->
         when(destination) {
-            "restore" -> CloudBackupScreen(onDismiss=close,restoreOnly=true,onRestored=finish)
+            "restore" -> CloudBackupScreen(onDismiss=close,restoreOnly=true,onRestored=finish,accountEntry=true)
             "models" -> TurniModelsScreen(onDismiss=close,initialTab=if(requestedRotation!=null)2 else 0,initialEditingRotation=requestedRotation,onClearInitialRotation={requestedRotation=null})
             "ai" -> GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={requestedRotation=it;page="models"})
             "work" -> WorkProfileEditorScreen(ShiftRepository.activeWorkProfile,false,close,{profile->ShiftRepository.updateWorkProfile(profile);ShiftRepository.notifyDataChanged();name=profile.name;close()})
@@ -96,9 +96,9 @@ fun FirstRunScreen() {
                             Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
                                 when(current) {
                                     0 -> {
-                                        SetupTitle("I tuoi turni,\na colpo d’occhio.","Due settimane da provare, senza salvare nulla.")
+                                        SetupTitle("I tuoi turni,\na colpo d’occhio.","Organizza turni, riposi e ferie in un solo calendario.")
                                         SetupPreview()
-                                        Text("Il calendario funziona anche senza account. Google serve quando scegli backup o sincronizzazione.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                                        Text("Puoi iniziare anche senza un account.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                                     }
                                     1 -> {
                                         SetupTitle("Fallo tuo","Scegli il tema e guarda subito il risultato. Potrai cambiarlo quando vuoi.")
@@ -116,7 +116,7 @@ fun FirstRunScreen() {
                                                 modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).padding(14.dp),decorationBox={field->if(name.isBlank())Text("Es. Il mio lavoro",color=TextSecondary);field()})
                                             Text("Scegli un nome riconoscibile anche nel selettore in alto sul calendario.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                                         }
-                                        SetupLink("work","work","Orari e riposo minimo","Imposta le ore settimanali, il riposo tra due turni e l’icona del lavoro."){if(name.isNotBlank()){ShiftRepository.updateWorkProfile(ShiftRepository.activeWorkProfile.copy(name=name.trim()));ShiftRepository.notifyDataChanged()};page=it}
+                                        SetupLink("work","work","Aggiungi dettagli al lavoro","Facoltativo · personalizza “${name.trim().ifBlank { "questo lavoro" }}”: orari, riposo, icona e contratto."){if(name.isNotBlank()){ShiftRepository.updateWorkProfile(ShiftRepository.activeWorkProfile.copy(name=name.trim()));ShiftRepository.notifyDataChanged()};page=it}
                                     }
                                     3 -> {
                                         SetupTitle("I turni, una volta sola","Crea i modelli che usi ogni giorno: nome, colore e orario. Le rotazioni li ripetono nella sequenza che scegli.")
@@ -130,7 +130,7 @@ fun FirstRunScreen() {
                                         SetupLink("ai","scan-text","Hai già un prospetto?","Copia un prompt nella tua AI, allega il prospetto e incolla qui la risposta. Controlla e correggi ogni modello prima di salvarlo."){page=it}
                                     }
                                     4 -> {
-                                        SetupTitle("Prova i gesti","Sei gesti, due settimane. Esplora senza salvare: puoi continuare quando vuoi.")
+                                        SetupTitle("Prova le funzioni di modifica","Tieni premuto per scegliere un intervallo.")
                                         GesturePractice()
                                     }
                                     else -> {
@@ -145,8 +145,9 @@ fun FirstRunScreen() {
                     }
                     if(step==0) {
                         Spacer(Modifier.height(10.dp))
-                        CloudButton("Prepara il mio calendario","arrow-right",{FirstRunStore.goTo(context,1)})
-                        TextButton(onClick={page="restore"},modifier=Modifier.align(Alignment.CenterHorizontally)) {Text("Ho già un backup · Ripristina",color=BrandInk,fontSize=12.sp)}
+                        CloudButton("Inizia","arrow-right",{FirstRunStore.goTo(context,1)})
+                        Spacer(Modifier.height(8.dp))
+                        CloudButton("Hai già un account? Accedi","users",{page="restore"})
                     }
                     if(step>0) {
                         Spacer(Modifier.height(10.dp))

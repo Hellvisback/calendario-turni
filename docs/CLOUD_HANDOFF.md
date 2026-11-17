@@ -4,6 +4,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Revisione onboarding beta.19
+
+La revisione richiesta dopo la prova della beta.18 rende statiche le anteprime iniziali, mette Inizia e Accedi alla stessa priorità, chiarisce i dettagli facoltativi del lavoro e concentra la guida sugli intervalli di modifica/aggiunta/cancellazione. Il marker di configurazione completata sopravvive agli aggiornamenti della stessa installazione. Non si trasferiscono automaticamente dati dall'app personale al package QA separato. Verifica corrente: [VERIFICA_v1.8.0-beta.19.md](VERIFICA_v1.8.0-beta.19.md). La suite comprende 486 test. La sezione seguente descrive la prima iterazione, ora superata nei punti modificati dalla revisione.
+
 ## Intervento onboarding — 17 novembre 2026
 
 Il lavoro successivo su `main` migliora il primo avvio: due settimane interattive con griglia e toolbar native, sei lezioni facoltative, testi più brevi, frecce coerenti e spaziatura degli editor. La simulazione resta locale e non inserisce turni nel calendario. La suite comprende ora **485 test**. Il verbale aggiornato, le prove native e i limiti sono in [VERIFICA_ONBOARDING_2026-11-17.md](VERIFICA_ONBOARDING_2026-11-17.md); l'helper ripetibile è descritto in [scripts/device_qa/README.md](../scripts/device_qa/README.md).

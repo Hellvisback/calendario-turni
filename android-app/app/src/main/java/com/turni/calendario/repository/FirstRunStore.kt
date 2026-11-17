@@ -11,10 +11,16 @@ enum class FirstRunDecision { START, RESUME, READY }
 
 /** Decide before autosave creates a database, including an interrupted first launch. */
 fun firstRunDecision(recorded: String?, hasLocalDatabase: Boolean): FirstRunDecision = when(recorded) {
-    "complete" -> if(hasLocalDatabase) FirstRunDecision.READY else FirstRunDecision.START
+    // Completion belongs to the installation, not to the current database-file visibility.
+    // Missing/unreadable data is handled by storage and restore, never by restarting setup.
+    "complete" -> FirstRunDecision.READY
     "pending" -> FirstRunDecision.RESUME
     else -> if(hasLocalDatabase) FirstRunDecision.READY else FirstRunDecision.START
 }
+
+/** Restored completion alone must not authorize uploading a newly created local snapshot. */
+internal fun firstRunRecoveryPreferences(recorded: String?, hasLocalDatabase: Boolean, preferences: AppPreferences): AppPreferences =
+    if (recorded == "complete" && !hasLocalDatabase) preferences.copy(autoBackupDaily = false) else preferences
 
 object FirstRunStore {
     var required by mutableStateOf(false); private set
@@ -25,7 +31,9 @@ object FirstRunStore {
         val file=File(context.filesDir,"turnisync-database-v3.json")
         val existing=file.exists()||File(file.path+".bak").exists()||
             File(context.filesDir,"cloud_backups/turni_cloud_backup_latest.json").exists()
-        val decision=firstRunDecision(prefs.getString("state",null),existing)
+        val recorded=prefs.getString("state",null)
+        val decision=firstRunDecision(recorded,existing)
+        ShiftRepository.appPreferences=firstRunRecoveryPreferences(recorded,existing,ShiftRepository.appPreferences)
         required=decision!=FirstRunDecision.READY
         step=prefs.getInt("step",0).coerceIn(0,5)
         if(decision==FirstRunDecision.START || (decision==FirstRunDecision.RESUME&&!existing)) {

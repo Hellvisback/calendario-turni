@@ -69,6 +69,7 @@ private val sitePaths = mapOf(
     "alarm-clock" to listOf("M19 13a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z", "M12 9v4l2.5 1.5", "M2.5 5 6 2.5M18 2.5 21.5 5M7 19l-2 2M17 19l2 2"),
     "file-text" to listOf("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6M8 13h8M8 17h6"),
     "shield-alert" to listOf("M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6ZM12 8v5M12 16h.01"),
+    "cloud" to listOf("M20 16a4 4 0 0 0-1-7.87A7 7 0 0 0 5.3 8.4 4 4 0 0 0 6 16Z"),
     "database-backup" to listOf("M21 5c0 2.2-4 4-9 4S3 7.2 3 5s4-4 9-4 9 1.8 9 4ZM3 5v12c0 2.2 4 4 9 4M3 11c0 2.2 4 4 9 4M21 5v5M16 14a4 4 0 1 1-2 6M14 16v4h4"),
     "palette" to listOf("M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-3.7 1.5 1.5 0 0 1 1-2.8h2A4 4 0 0 0 21 10a9 9 0 0 0-9-7ZM8 8h.01M12 6h.01M16 8h.01M6 12h.01"),
     "scan-text" to listOf("M4 7V4h3M17 4h3v3M20 17v3h-3M7 20H4v-3M7 8h10M7 12h10M7 16h6"),

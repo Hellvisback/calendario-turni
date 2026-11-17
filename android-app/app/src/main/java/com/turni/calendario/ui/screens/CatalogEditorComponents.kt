@@ -157,8 +157,8 @@ internal fun CatalogEditorSheet(title: String, onDismiss: () -> Unit,heightFract
             enter = slideInVertically(spring(dampingRatio = .88f, stiffness = Spring.StiffnessLow)) { it } + fadeIn(),
             exit = slideOutVertically { it } + fadeOut()) {
             Surface(Modifier.fillMaxWidth().fillMaxHeight(heightFraction), shape = RoundedCornerShape(topStart = if(fullPage)0.dp else 24.dp, topEnd = if(fullPage)0.dp else 24.dp), color = MaterialTheme.colorScheme.background) {
-                Column(Modifier.then(if(heightFraction>.9f)Modifier.statusBarsPadding()else Modifier).navigationBarsPadding().imePadding()) {
-                    Row(Modifier.fillMaxWidth().background(if(heightFraction>.9f)MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background).padding(horizontal=14.dp,vertical=14.dp), verticalAlignment = Alignment.CenterVertically) {
+                Column(Modifier.navigationBarsPadding().imePadding()) {
+                    Row(Modifier.fillMaxWidth().background(if(heightFraction>.9f)MaterialTheme.colorScheme.surface else MaterialTheme.colorScheme.background).then(if(heightFraction>.9f)Modifier.statusBarsPadding()else Modifier).padding(horizontal=14.dp,vertical=14.dp), verticalAlignment = Alignment.CenterVertically) {
                         if(fullPage || heightFraction>.9f)CatalogIconAction("arrow-left","Indietro",{finish(onDismiss)},Modifier.size(40.dp))
                         else SiteIcon("pencil",null,Modifier.size(28.dp),MaterialTheme.colorScheme.onSurfaceVariant,headerProgress.value)
                         Column(Modifier.weight(1f).padding(start=8.dp)) {
@@ -572,7 +572,7 @@ fun WorkProfileEditorScreen(profile: WorkProfile, isNew: Boolean, onDismiss: () 
         }.onFailure { documentError = "Impossibile aprire il documento. Riprova." }
     }
     val iconKeys = listOf("work", "business", "people", "computer", "factory", "hospital", "shipping", "transit")
-    CatalogEditorSheet(if (isNew) "Nuovo lavoro" else "Modifica lavoro", onDismiss,heightFraction=.96f,subtitle="Calendario e impostazioni del profilo") { finish ->
+    CatalogEditorSheet(if (isNew) "Nuovo lavoro" else "Modifica lavoro", onDismiss,heightFraction=1f,fullPage=true,subtitle="Calendario e impostazioni del profilo") { finish ->
         Column(Modifier.weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 13.dp), verticalArrangement = Arrangement.spacedBy(15.dp)) {
             Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(MaterialTheme.colorScheme.surface).border(1.dp,MaterialTheme.colorScheme.outline.copy(alpha=.25f),RoundedCornerShape(18.dp)).padding(13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(11.dp)) {
                 Box(Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(Color(color).copy(alpha=.17f)),contentAlignment=Alignment.Center) {

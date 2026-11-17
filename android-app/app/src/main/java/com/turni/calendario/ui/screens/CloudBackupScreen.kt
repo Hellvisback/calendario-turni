@@ -37,7 +37,7 @@ private data class BackupRestorePreview(val data:DatabaseSnapshot,val source:Str
 private data class BackupReviewRequest(val token:String,val owner:String,val latest:DriveBackupFile,val save:Boolean,val automaticHours:Int?)
 
 @Composable
-fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()->Unit={}){
+fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()->Unit={},accountEntry:Boolean=false){
     val context=LocalContext.current;val scope=rememberCoroutineScope()
     var feedback by remember{mutableStateOf<ActionFeedback?>(null)}
     var busy by remember{mutableStateOf(false)}
@@ -54,7 +54,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
     val importRecovery=remember { File(context.filesDir,"import_recovery").listFiles()?.filter { it.name.startsWith("before-supershift-")&&it.extension=="json" }?.maxByOrNull { it.lastModified() } }
     val email=ShiftRepository.googleAccountProfile?.email
     val automatic by DriveAutomaticBackup.statusFlow.collectAsState()
-    var otherCopies by remember{mutableStateOf(restoreOnly)}
+    var otherCopies by remember{mutableStateOf(restoreOnly&&!accountEntry)}
     fun refreshAutomatic(){DriveAutomaticBackup.refresh(context)}
     LaunchedEffect(email){
         remoteInfo=null
@@ -133,10 +133,10 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             checkRemote(token,hours=hours)
         }
     }
-    CloudFeatureScaffold("Backup e ripristino",onDismiss,feedback,{feedback=null}){
+    CloudFeatureScaffold(if(accountEntry)"Accedi a TurniSync" else "Backup e ripristino",onDismiss,feedback,{feedback=null}){
         GoogleAccountCard(access,{feedback=it},enabled=!busy&&!automatic.running,feature=GoogleFeature.DRIVE,
-            explanation="L’accesso controlla le copie esistenti: non avvia salvataggi e non sostituisce i tuoi dati.",
-            onConnected={token->if(!restoreOnly)checkRemote(token)else feedback=ActionFeedback("Account collegato: scegli Ripristina")})
+            explanation=if(accountEntry)"Accedi con l’account Google che usavi con TurniSync per recuperare il tuo calendario." else "L’accesso controlla le copie esistenti: non avvia salvataggi e non sostituisce i tuoi dati.",
+            onConnected={token->if(!restoreOnly)checkRemote(token)else feedback=ActionFeedback(if(accountEntry)"Account collegato: recupera il tuo calendario" else "Account collegato: scegli Ripristina")})
         CloudCard(if(restoreOnly)"Recupera il tuo calendario" else "Backup su Google Drive"){
             if(restoreOnly)Text("Scegli una copia e controllane il contenuto. Il collegamento non crea backup e non modifica quelli esistenti.",color=TextSecondary,fontSize=13.sp,lineHeight=19.sp)
             if(!restoreOnly) {
@@ -172,7 +172,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             if(!restoreOnly&&automatic.needsConsent)TextButton(onClick={enableAutomatic(automatic.intervalHours)},enabled=enabled, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Ricollega Google per riprendere i backup",color=BrandInk,fontSize=12.sp)}
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                 if(!restoreOnly)CloudButton(if(busy)"Operazione…" else "Salva ora","upload",{access.authorize(GoogleFeature.DRIVE){checkRemote(it,save=true)}},enabled,modifier=Modifier.weight(1f))
-                CloudButton("Ripristina","download",{
+                CloudButton(if(accountEntry)"Recupera il calendario" else "Ripristina","download",{
                     access.authorize(GoogleFeature.DRIVE){token->
                         val owner=ShiftRepository.googleAccountProfile?.email?:return@authorize
                         busy=true
@@ -186,7 +186,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                     }
                 },enabled,modifier=Modifier.weight(1f),secondary=true)
             }
-            Text("Ogni salvataggio crea una nuova copia: le precedenti restano ripristinabili. Dopo una reinstallazione scegli prima se recuperare i dati da Drive. Il backup automatico si attiva solo con il tuo consenso.",color=TextMuted,fontSize=11.sp,lineHeight=17.sp)
+            Text(if(restoreOnly)"Il calendario viene recuperato da una copia salvata. Potrai controllarla prima di applicarla." else "Ogni salvataggio crea una nuova copia: le precedenti restano ripristinabili. Dopo una reinstallazione scegli prima se recuperare i dati da Drive. Il backup automatico si attiva solo con il tuo consenso.",color=TextMuted,fontSize=11.sp,lineHeight=17.sp)
         }
         CloudCard("Altre copie"){
             Row(Modifier.fillMaxWidth().bouncyClickable{otherCopies=!otherCopies}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
