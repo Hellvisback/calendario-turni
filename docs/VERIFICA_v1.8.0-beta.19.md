@@ -16,4 +16,8 @@ Controlli nativi già conclusi su API 26: welcome con due CTA equivalenti e ante
 
 Prove native sulla disposizione finale: selezione Più turni, pressione prolungata sul 18 e tocco sul 16 aggiungono il modello scelto ai tre giorni conservando il turno del 18. Gomma con la stessa selezione a ritroso cancella solo 16/17/18. La X chiude gli strumenti, senza messaggi che invitino a toccare date né dettagli dimostrativi; resta Riapri la matita. Calendario, toolbar completa, istruzione e Prossima funzione sono visibili insieme dopo scorrimento su 720×1600. Immagini pubbliche: [design/qa-beta19](../design/qa-beta19/README.md).
 
-Pubblicazione GitHub in preparazione. OAuth reale e fluidità su telefono fisico non sono attestati dalle prove su emulatore software.
+Ripristina riporta i giorni 16/17 a Mattina e il 18 a Pomeriggio; confronto con lo stato precedente alle prove: calendario invariato, zero assegnazioni ed extra persistenti.
+
+Pubblicata la [pre-release beta.19](https://github.com/Hellvisback/calendario-turni/releases/tag/v1.8.0-beta.19) attraverso `scripts/release.ps1` nel workflow `44123543332`. Solo APK versionato; riscaricato e verificato SHA-256 `7c0b25f0ae556aef0dcec05d4aae063163fb37291d05ee48b385f47cdf254cb6`, firma QA invariata. Sorgenti della release: `c90ec9129e457e24425062a96459bb0d435c787e`. OAuth reale e fluidità su telefono fisico non sono attestati dalle prove su emulatore software.
+
+Prova aggiuntiva font al 200%: istruzioni complete raggiungibili con scorrimento, impostazione poi ripristinata a 1.0. Limite ereditato della toolbar nativa a tale ingrandimento: le chip fisse possono troncare le sigle e il titolo usa ellissi; non è attestata una resa completa delle sigle a font200.
