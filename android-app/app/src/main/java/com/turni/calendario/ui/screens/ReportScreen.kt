@@ -183,29 +183,30 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
         }
         item("hero:$periodKey") { ReportHero(stats.totalHours,stats.workedDays,assignments.size,stats.totalOvertimeHours,metrics,progress) }
         item("hero-gap") { Spacer(Modifier.height(12.dp)) }
-        val metricRows = metrics.chunked(2)
+        val metricsPerRow = if (density.fontScale > 1.3f) 1 else 2
+        val metricRows = metrics.chunked(metricsPerRow)
         items(metricRows.size, key = { "metrics:$periodKey:$it" }) { rowIndex ->
             val row = metricRows[rowIndex]
             Row(Modifier.fillMaxWidth().padding(bottom=6.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 row.forEachIndexed { column,metric ->
                     key(metric.definition.id) {
                     ReportMetric(metric.definition.name,metric.definition.color,metric.count,metric.hours,
-                        metric.definition.isAllDay && metric.hours==0f,shapePlan[rowIndex*2+column],
-                        rowIndex*2+column,progress,Modifier.weight(1f))
+                        metric.definition.isAllDay && metric.hours==0f,shapePlan[rowIndex*metricsPerRow+column],
+                        rowIndex*metricsPerRow+column,progress,Modifier.weight(1f))
                     }
                 }
-                if(row.size==1) {
+                if(row.size==1 && metricsPerRow==2) {
                     if(stats.countReperibilita>0) ReportMetric("Reperibilità",ColorReperibilita,stats.countReperibilita,0f,false,
                         shapePlan.last(),metrics.size,progress,Modifier.weight(1f),true)
                     else Spacer(Modifier.weight(1f))
                 }
             }
         }
-        if(stats.countReperibilita>0 && metrics.size%2==0) item("oncall:$periodKey") {
+        if(stats.countReperibilita>0 && (metricsPerRow==1 || metrics.size%2==0)) item("oncall:$periodKey") {
             Row(Modifier.fillMaxWidth().padding(bottom=6.dp),horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 ReportMetric("Reperibilità",ColorReperibilita,stats.countReperibilita,0f,false,
                     shapePlan.last(),metrics.size,progress,Modifier.weight(1f),true)
-                Spacer(Modifier.weight(1f))
+                if(metricsPerRow==2)Spacer(Modifier.weight(1f))
             }
         }
         if(metrics.isEmpty() && stats.countReperibilita==0) item("empty") {
@@ -326,15 +327,24 @@ private fun ReportWorkExtra(label:String,value:String) { Row(Modifier.fillMaxWid
 @Composable
 private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
     val palette=currentTurniPalette
+    val largeText=LocalDensity.current.fontScale>1.3f
     val fill=Color(palette.surface)
     val titleInk=Color(palette.text)
-    val detailInk=readableInk(fill,TextSecondary)
-    val emphasis=Color(palette.text)
-    val weakestInk=listOf(titleInk,detailInk,emphasis).minByOrNull { contrastRatio(fill,it) } ?: titleInk
-    val ringAmount=if(TurniThemeState.dark).46f else .34f
-    val ringTrack=readableChartTint(fill,detailInk,weakestInk,.10f)
-    val pigments=remember(metrics,fill,weakestInk,ringAmount) {
-        metrics.map { readableChartTint(fill,it.definition.color,weakestInk,ringAmount) }
+    // Fully legible labels leave more contrast available for the actual chart colors.
+    val detailInk=titleInk
+    val emphasis=titleInk
+    val ringTrack=readableChartTint(fill,titleInk,titleInk,.16f)
+    val pigments=remember(metrics,fill,titleInk) {
+        metrics.map { readableChartTint(fill,readablePigment(fill,it.definition.color),titleInk,.88f) }
+    }
+    val ringDepth=remember(pigments,fill,titleInk) {
+        pigments.map { readableChartTint(fill,lerp(it,Color.Black,.18f),titleInk,1f) }
+    }
+    val ringFaces=remember(pigments,fill,titleInk) {
+        pigments.map { pigment -> Brush.linearGradient(
+            listOf(readableChartTint(fill,lerp(pigment,Color.White,.10f),titleInk,1f),
+                pigment,readableChartTint(fill,lerp(pigment,Color.Black,.08f),titleInk,1f)),
+            start=Offset(0f,-20f),end=Offset(190f,150f)) }
     }
     Surface(shape=RoundedCornerShape(23.dp),color=fill,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
         Box(Modifier.clip(RoundedCornerShape(23.dp))) {
@@ -356,12 +366,13 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
             // Reuse native paths throughout the reveal instead of allocating per frame/segment.
             val segmentBuffer=remember { Path() }
             val ringStroke=remember { Stroke(26f) }
+            val depthStroke=remember { Stroke(28f) }
             Canvas(Modifier.matchParentSize()) {
                 val head=fullLength*animation.value.coerceIn(0f,1f)
                 val densityScale=1.dp.toPx()
                 translate(left=size.width-190*densityScale) { scale(densityScale,densityScale,pivot=Offset.Zero) {
                     drawPath(ring,ringTrack,style=ringStroke)
-                    pigments.forEachIndexed { index,pigment ->
+                    pigments.indices.forEach { index ->
                         val boundary=boundaries[index]
                         val endDistance=minOf(head,boundary.endDistance)
                         if(endDistance>boundary.startDistance) {
@@ -372,7 +383,9 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                                 if(localEnd>localStart) {
                                     segmentBuffer.reset()
                                     piece.getSegment(localStart,localEnd,segmentBuffer,true)
-                                    drawPath(segmentBuffer,pigment,style=ringStroke)
+                                    // Crisp offset edge and restrained shading give depth without blur or glow.
+                                    translate(top=1.5f) { drawPath(segmentBuffer,ringDepth[index],style=depthStroke) }
+                                    drawPath(segmentBuffer,ringFaces[index],style=ringStroke)
                                 }
                                 offset+=piece.length
                             }
@@ -385,7 +398,10 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                     Text("Resoconto totale",Modifier.weight(1f),fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
                     SiteIcon("layers-2",null,Modifier.size(12.dp),tint=detailInk);Text("Tutti i lavori",Modifier.padding(start=4.dp),fontSize=10.sp,color=detailInk)
                 }
-                Row(Modifier.padding(top=12.dp,bottom=11.dp),verticalAlignment=Alignment.Bottom) {
+                if(largeText) Column(Modifier.padding(top=12.dp,bottom=11.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
+                    ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=emphasis)
+                    Text("ore lavorate",fontSize=11.sp,color=detailInk)
+                } else Row(Modifier.padding(top=12.dp,bottom=11.dp),verticalAlignment=Alignment.Bottom) {
                     ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=emphasis)
                     Text("ore lavorate",Modifier.padding(start=7.dp,bottom=4.dp),fontSize=11.sp,color=detailInk)
                 }
@@ -395,14 +411,14 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                     Row(Modifier.weight(1f).padding(start=13.dp),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(assignments.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold,color=titleInk);Text("Turni totali",Modifier.padding(start=6.dp),fontSize=10.sp,color=detailInk) }
                 }
                 Divider(color=ObsidianBorderSubtle)
-                distribution.chunked(2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
+                distribution.chunked(if(largeText)1 else 2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     row.forEach { metric -> Row(Modifier.weight(1f).heightIn(min=27.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
                         val source = metric.definition.color
                         val legendColor = remember(fill, source) { readablePigment(fill, source) }
                         Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(legendColor))
                         Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=detailInk,maxLines=2)
                         Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
-                    } };if(row.size==1)Spacer(Modifier.weight(1f))
+                    } };if(row.size==1&&!largeText)Spacer(Modifier.weight(1f))
                 } }
                 if(overtime>0)Text("Inclusi ${hourLabel(overtime)} di straordinario",Modifier.padding(top=6.dp),fontSize=10.sp,color=detailInk)
             }
@@ -428,9 +444,19 @@ private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Bo
     val style=TurniThemeState.style
     val tone=remember(color,dark,onCall,style){metricColorStyle(color,dark,onCall,style)}
     val background=tone.fill
+    val face=remember(background,tone.ink) { Brush.linearGradient(
+        listOf(readableChartTint(background,Color.White,tone.ink,.07f),background,
+            readableChartTint(background,Color.Black,tone.ink,.06f)),
+        start=Offset(15f,5f),end=Offset(145f,155f)) }
+    val edge=remember(background,tone.ink) { readableChartTint(background,tone.ink,tone.ink,.16f) }
     val path=remember(shape){reportShapePath(shape)}
-    Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.82f+.18f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-2f else 2f)*(1-entrance)},contentAlignment=Alignment.Center) {
-        Canvas(Modifier.matchParentSize()){scale(size.width/160f,size.height/160f,pivot=Offset.Zero){if(shape=="cushion")rotate(-12f,Offset(80f,80f)){drawPath(path,background)}else drawPath(path,background)}}
+    Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.94f+.06f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-.8f else .8f)*(1-entrance)},contentAlignment=Alignment.Center) {
+        Canvas(Modifier.matchParentSize()) {
+            scale(size.width/160f,size.height/160f,pivot=Offset.Zero) {
+                fun drawFace() { drawPath(path,face);drawPath(path,edge,style=Stroke(.85f)) }
+                if(shape=="cushion")rotate(-12f,Offset(80f,80f)){drawFace()} else drawFace()
+            }
+        }
         Column(Modifier.fillMaxWidth(.76f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
             Text(name,color=tone.ink,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
             ReportAnimatedValue(count.toFloat(),animation,fontSize=30.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1.3).sp,color=tone.ink)

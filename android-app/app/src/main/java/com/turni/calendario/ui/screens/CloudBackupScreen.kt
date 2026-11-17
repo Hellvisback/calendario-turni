@@ -220,9 +220,11 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                             }catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
                         },enabled&&localInfo!=null,modifier=Modifier.weight(1f),secondary=true)
                     }
+                    Text("Hai i turni nell’altra app?",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium)
+                    Text("Nella vecchia app apri Backup e ripristino ed esporta un file JSON. Importalo qui e controlla l’anteprima prima di confermare. Le copie locali restano separate tra le due app; per trasferire il file non serve accedere a Google.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                     Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
                         if(!restoreOnly)CloudButton("Esporta file","upload",{exportSnapshot=DatabaseSnapshot.capture();export.launch("TurniSync-backup-${java.time.LocalDate.now()}.json")},enabled,modifier=Modifier.weight(1f),secondary=true)
-                        CloudButton("Importa file","download",{import.launch(arrayOf("application/json","text/json","text/plain"))},enabled,modifier=Modifier.weight(1f),secondary=true)
+                        CloudButton("Importa file","download",{import.launch(arrayOf("application/json","text/json","text/plain","application/octet-stream"))},enabled,modifier=Modifier.weight(1f),secondary=true)
                     }
                 }
             }

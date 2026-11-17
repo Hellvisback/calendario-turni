@@ -147,7 +147,7 @@ fun FirstRunScreen() {
                         Spacer(Modifier.height(10.dp))
                         CloudButton("Inizia","arrow-right",{FirstRunStore.goTo(context,1)})
                         Spacer(Modifier.height(8.dp))
-                        CloudButton("Hai già un account? Accedi","users",{page="restore"})
+                        CloudButton("Hai già un account? Accedi","users",{page="restore"},secondary=true)
                     }
                     if(step>0) {
                         Spacer(Modifier.height(10.dp))
@@ -201,7 +201,7 @@ private val setupGroups=listOf(
     "Regole del tuo calendario" to listOf(
         listOf("holidays","calendar-heart","Festività","Scegli le ricorrenze del tuo lavoro. Un piccolo contorno sulla data le distingue senza coprire i turni."),
         listOf("oncall","bell-ring","Reperibilità","Segna le date a mano oppure scegli regole basate su turni o periodi dell’anno."),
-        listOf("rules","chart-no-axes-combined","Conteggio statistiche","Decidi come contare un turno sostitutivo rispetto a quello originale e le ferie nei festivi.")),
+        listOf("rules","chart-no-axes-combined","Conteggio statistiche","La visibilità dell’ex turno non cambia i totali. Scegli se contare il turno visibile o l’originale, e le esclusioni nei festivi.")),
     "Attività e promemoria" to listOf(
         listOf("labels","tag","Etichette dei giorni","Crea attività come Formazione: nelle statistiche ritrovi il numero di giorni e le date."),
         listOf("alarms","alarm-clock","Sveglie dei turni","Scegli regole e orari. Android ti chiederà le autorizzazioni quando le attivi.")),
@@ -227,14 +227,46 @@ private val setupGroups=listOf(
 }
 
 @Composable internal fun QuickGuideScreen(onDismiss:()->Unit) {
-    CloudFeatureScaffold("Guida rapida",onDismiss,null,{}) {
-        Text("Il calendario vero, in una prova senza salvataggi. Scegli un gesto o esplora con la barra qui sotto.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
-        GesturePractice()
-        CloudCard("Ritrova tutto al suo posto") {
-            Text("Scorri per cambiare mese; Oggi ti riporta alla data attuale. La X chiude il dettaglio. Nell’orologio prepari modelli, lavori e rotazioni: la stella sceglie la sequenza predefinita.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+    var rulesOpen by rememberSaveable { mutableStateOf(false) }
+    BackHandler(rulesOpen) { rulesOpen=false }
+    AnimatedContent(rulesOpen,transitionSpec={fadeIn(spring(stiffness=420f))+slideInHorizontally(spring(.95f,420f)){it/16} togetherWith fadeOut(tween(120))}) { showRules ->
+        if(showRules) StatisticsRulesScreen(onDismiss={rulesOpen=false})
+        else CloudFeatureScaffold("Guida rapida",onDismiss,null,{}) {
+            Text("Prova gli strumenti senza cambiare i tuoi turni. Scegli una funzione o esplora con la barra qui sotto.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+            GesturePractice()
+            CloudCard("Ritrova tutto al suo posto") {
+                Text("Scorri per cambiare mese; Oggi ti riporta alla data attuale. La X chiude il dettaglio. Nell’orologio prepari modelli, lavori e rotazioni: la stella sceglie la sequenza predefinita.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+            }
+            ShiftOriginExplanation { rulesOpen=true }
+            CloudCard("Dai turni al riepilogo") {
+                Text("Le statistiche leggono i tuoi dati per Mese, Anno o un periodo Personalizzato. Le etichette raggruppano le attività e ne mostrano le date. Nelle Impostazioni trovi sveglie, backup e sincronizzazione; controlli sempre l’anteprima prima di esportare un PDF.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+            }
         }
-        CloudCard("Dai turni al riepilogo") {
-            Text("Le statistiche leggono i tuoi dati per Mese, Anno o un periodo Personalizzato. Le etichette raggruppano le attività e ne mostrano le date. Nelle Impostazioni trovi sveglie, backup e sincronizzazione; controlli sempre l’anteprima prima di esportare un PDF.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+    }
+}
+
+@Composable private fun ShiftOriginExplanation(onOpenRules:()->Unit) {
+    var expanded by rememberSaveable { mutableStateOf(false) }
+    val angle by animateFloatAsState(if(expanded)180f else 0f,spring(.9f,380f))
+    CloudCard("Quando sostituisci un turno") {
+        Text("Un turno inserito da una rotazione può conservare la sua provenienza quando lo cambi.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+        TextButton(onClick={expanded=!expanded},modifier=Modifier.semantics { stateDescription=if(expanded)"Aperto" else "Chiuso" }) {
+            Text(if(expanded)"Chiudi la spiegazione" else "Ex turno e statistiche",color=BrandInk,fontSize=13.sp)
+            Spacer(Modifier.width(6.dp))
+            SiteIcon("chevron-down",null,Modifier.size(16.dp).rotate(angle),BrandInk)
+        }
+        AnimatedVisibility(expanded,enter=expandVertically(spring(.9f,400f))+fadeIn(),exit=shrinkVertically(spring(.95f,400f))+fadeOut()) {
+            Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
+                Text("Per esempio, cambi Mattina in Ferie: il calendario mostra Ferie e può ricordare «ex MAT». La gomma rimuove anche questa provenienza.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+                SetupToggle("Mostra turno di provenienza",ShiftRepository.appPreferences.showExShifts) {
+                    ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(showExShifts=it)
+                    ShiftRepository.notifyDataChanged()
+                }
+                Text("La scelta viene salvata per il tuo calendario. Cambia solo la griglia: nascondere l’ex turno non lo cancella e non cambia le statistiche.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                Text("Di norma quel giorno conta come Ferie. Se attivi una regola che, per Ferie, ammette Mattina come turno originale, conterà Mattina al suo posto. La regola funziona solo quando quella provenienza è registrata.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)
+                Text("Le eventuali esclusioni delle ferie nei festivi si applicano dopo questa scelta, al modello che viene contato.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                CloudButton("Regole di conteggio","report",onOpenRules,secondary=true)
+            }
         }
     }
 }

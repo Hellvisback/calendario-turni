@@ -7,6 +7,7 @@ import com.turni.calendario.sync.DatabaseRestore
 import com.turni.calendario.sync.GoogleDriveBackupHelper
 import org.junit.Assert.*
 import org.junit.Test
+import org.json.JSONObject
 import java.time.LocalDate
 
 class CompleteBackupRoundTripTest {
@@ -93,5 +94,45 @@ class CompleteBackupRoundTripTest {
             base.copy(extras=emptyMap()))
         assertEquals(expected,restored)
         assertTrue(restored.shifts.isEmpty())
+    }
+
+    @Test fun nativeVersionFourBackupRestoresIntoAnIndependentEmptyInstallation() {
+        val expected=complete()
+        val document=JSONObject(GoogleDriveBackupHelper.exportDatabaseToJson(expected)).put("version",4)
+        document.remove("dayTags")
+        val emptyDestination=expected.copy(definitions=emptyList(),rotations=emptyList(),
+            shifts=emptyMap(),extras=emptyMap(),profiles=listOf(WorkProfile("qa-empty","Nuovo lavoro")),
+            activeWorkProfileId="qa-empty",activeRotationId="",defaultRotationId="",
+            preferences=AppPreferences(autoBackupDaily=false),statisticsRules=emptyList(),dayTags=emptyList())
+        val restored=DatabaseRestore.parse(document.toString(),emptyDestination)
+        assertEquals(expected,restored)
+        assertEquals(expected,DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(restored),emptyDestination))
+    }
+
+    @Test fun versionOneMigratesDayExtrasAndStatisticsWithoutLosingRotationOrigins() {
+        val base=complete()
+        val work=base.profiles.first()
+        val rest=base.definitions.first().copy(id="riposo",workProfileId=work.id,isAllDay=true,category=ShiftCategory.RIPOSO)
+        val leave=rest.copy(id="ferie",name="Ferie",category=ShiftCategory.ASSENZA)
+        val night=base.definitions.first().copy(id="notte",workProfileId=work.id)
+        val source=base.copy(definitions=listOf(rest,leave,night),profiles=listOf(work),
+            activeWorkProfileId=work.id,statisticsRules=emptyList(),
+            rotations=listOf(ShiftRotation("legacy-cycle","Ciclo",3,listOf(night.id,rest.id,""))),
+            activeRotationId="legacy-cycle",defaultRotationId="legacy-cycle",
+            shifts=mapOf(day to listOf(AssignedShift("legacy-assignment",day,leave.id,rest.id,true,true))),
+            extras=mapOf(day to DayExtraInfo(day,overtimeHours=1.5f,isTrasferta=true,notes="Nota storica")),
+            preferences=AppPreferences(autoBackupDaily=false))
+        val document=JSONObject(GoogleDriveBackupHelper.exportDatabaseToJson(source)).put("version",1)
+        document.remove("statisticsRules");document.remove("dayTags")
+        val restored=DatabaseRestore.parse(document.toString(),source.copy(shifts=emptyMap(),extras=emptyMap()))
+        val assignment=restored.shifts.getValue(day).single()
+        assertEquals("riposo",assignment.originalShiftDefId)
+        assertTrue(assignment.isFromRotation && assignment.isModifiedFromRotation)
+        assertEquals(1.5f,assignment.overtimeHours,.001f)
+        assertTrue(assignment.isOvertime && assignment.isTrasferta)
+        assertEquals("Nota storica",restored.extras.getValue(day).notes)
+        assertEquals(listOf(StatisticsRule("legacy-ferie-rest","ferie",setOf("riposo"))),restored.statisticsRules)
+        assertEquals(source.rotations,restored.rotations)
+        assertEquals(restored,DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(restored),source))
     }
 }

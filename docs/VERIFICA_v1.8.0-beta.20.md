@@ -1,0 +1,15 @@
+# Beta.20 — statistiche e trasferimento dei dati
+
+Versione 1.8.0-beta.20 (65), package QA separato `com.turni.calendario.setupqa`.
+
+Il riepilogo delle statistiche conserva forme e distribuzione dei dati, con pigmenti più presenti, testo nitido, bordi netti e profondità sobria; animazioni d'ingresso finite. Le card e la legenda passano a una colonna con caratteri grandi. I modelli sono quelli dell'utente, senza categorie Mattina/Pomeriggio prefissate.
+
+La Guida rapida distingue la visibilità dell'ex turno dal conteggio: mostrare/nascondere la provenienza non cancella i dati e non cambia le statistiche. Senza una regola abilitata viene contato il turno visibile; con una regola applicabile può essere contato quello originale della rotazione, poi sono valutate le eventuali esclusioni nei festivi. L'interruttore e il collegamento alle regole sono quelli effettivi dell'app. Il pulsante iniziale Accedi mantiene dimensioni e posizione con stile secondario.
+
+L'audit non ha individuato un vincolo di package/firma nei backup JSON nativi: parser v1–v5, export storico v4 compatibile con l'attuale v5. Due regressioni verificano importazione v4 in snapshot indipendente e migrazione v1 con straordinari/trasferte, provenienza e regole statistiche. Nessun aggiramento delle validazioni del parser. Il selettore accetta anche file indicati dal provider Android come application/octet-stream, mantenendo i controlli sul contenuto e l'anteprima.
+
+La pagina Backup spiega il trasferimento tramite Esporta file nella vecchia app e Importa file nella QA. [Procedura completa](MIGRAZIONE_APP.md). Le installazioni restano distinte: aggiornare direttamente la personale richiede la sua chiave originale, assente da questo ambiente. Il backup effettivo dell'utente e un eventuale errore specifico non sono stati forniti; non viene attestato il ripristino del suo file reale. Google OAuth non verificato in questa attività.
+
+Build iniziale riuscita in 10m; build finale `assembleDebug assembleBeta testDebugUnitTest -PsetupProbe` riuscita in 6m 19s, 488 test con zero fallimenti/errori/saltati, lint vitale e R8 superati. Log locali: `beta20-build.log` e `beta20-final-build.log` sotto `/workspace/turnisync-setup/`.
+
+Upgrade QA64→65: configurazione completata e fixture conservate, hash calendario invariato. Con sei modelli personalizzati, il riepilogo prima/dopo mantiene 38,5 ore, 6 giorni, 8 turni; la regola della provenienza conta Guardia 3 e Ferie 1. Immagini: [design/qa-beta20](../design/qa-beta20/README.md). Verifiche native residue e pubblicazione in corso.
