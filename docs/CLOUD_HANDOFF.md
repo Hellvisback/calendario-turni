@@ -1,5 +1,7 @@
 # Riprendere TurniSync da remoto
 
+Per il ritorno alla precedente chat sul PC locale leggere prima [LOCAL_HANDOFF_2026-11-17.md](LOCAL_HANDOFF_2026-11-17.md): contiene le novità del cloud, la sincronizzazione sicura, firme/package e i controlli ancora da fare sul telefono.
+
 L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaricabile su GitHub, attraverso una nuova pre-release versionata. La pagina stabile da condividere è https://github.com/Hellvisback/calendario-turni/releases; le beta sono pre-release e non compaiono necessariamente come `latest`. Specificare se l'APK è il package separato `com.turni.calendario.setupqa`: può essere installato accanto all'app personale, ma richiede la stessa chiave QA per aggiornare una precedente installazione QA. L'aggiornamento dell'app personale richiede la sua chiave originale, esterna al repository. Usare `scripts/release.ps1` e non sovrascrivere release esistenti. La procedura cloud verificata, incluso il fallback GitHub Actions per il servizio upload, è in [RELEASE_QA.md](RELEASE_QA.md).
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
@@ -18,13 +20,13 @@ Il lavoro successivo su `main` migliora il primo avvio: due settimane interattiv
 
 La beta personale verificata sul telefono resta beta.17 (62). La pre-release beta.18 (63) è destinata alla prova separata (`com.turni.calendario.setupqa`), include questo intervento ed è firmata con la chiave QA del cloud. Le verifiche storiche sotto descrivono la beta personale originale.
 
-## Stato effettivo
+## Baseline personale precedente al lavoro cloud
 
 - Repository: `https://github.com/Hellvisback/calendario-turni`, ramo `main`.
 - Applicazione: Kotlin + Jetpack Compose, modulo `android-app/app`, package `com.turni.calendario`.
-- Ultimo APK verificato e installato: **1.8.0-beta.17**, `versionCode 62`, non debuggabile, ottimizzato con R8.
+- APK verificato sul telefono originale prima delle revisioni cloud: **1.8.0-beta.17**, `versionCode 62`, non debuggabile, ottimizzato con R8.
 - Verifica della beta distribuita: **480 test superati**, lint vitale passato. Le prove grafiche sono state effettuate sul Realme 8 Pro con dati sintetici in un package separato.
-- L'ultima sincronizzazione GitHub porta i sorgenti dalla beta.2 alla beta.17. Non implica una nuova release APK: non incrementare la versione solo per leggere o configurare il checkout.
+- La sincronizzazione iniziale ha portato i sorgenti dalla beta.2 alla beta.17; le revisioni cloud successive arrivano alla beta.20. Non implica una nuova release APK: non incrementare la versione solo per leggere o configurare il checkout.
 - Verifica dettagliata: [VERIFICA_v1.8.0-beta.17.md](VERIFICA_v1.8.0-beta.17.md). I percorsi `work/...` citati nei vecchi verbali sono evidenze sul PC originale, non dipendenze del progetto.
 
 ## Configurazione Linux / chat cloud
@@ -68,7 +70,7 @@ Il comando predefinito esegue `assembleBeta testDebugUnitTest`, usa il compilato
 
 Su Windows usare `scripts/check-android.ps1 -JavaHome <cartella-jdk17>`. Android SDK deve essere configurato tramite `ANDROID_HOME`, `ANDROID_SDK_ROOT` o il proprio `local.properties`. Il wrapper batch è incluso; non copiare il `local.properties` del PC originale.
 
-GitHub Actions esegue gli stessi controlli su Linux e conserva i rapporti di test/lint. Non pubblica release e non distribuisce un APK firmato con la chiave del proprietario.
+Il workflow Android di verifica esegue gli stessi controlli su Linux e conserva i rapporti di test/lint. Il workflow manuale `publish-qa.yml` pubblica invece gli APK QA già verificati tramite lo script di release; non dispone della chiave originale del proprietario.
 
 ## Firma: aggiornare l'app già installata
 
