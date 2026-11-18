@@ -120,11 +120,24 @@ class WidgetRenderingInstrumentation:Instrumentation() {
                 val n=index%4
                 com.turni.calendario.export.PdfDayRow(date,listOf(com.turni.calendario.export.PdfShiftRow(codes[n],names[n],(if(index==6)0xFF001122 else listOf(0xFFF2C46D,0xFFEE9C9C,0xFFBAAEF6,0xFFAAB9CE)[n]).toInt(),null,listOf(times[n])+if(index==12&&mode!=com.turni.calendario.model.PdfExportMode.ANNO)listOf("Straordinario: 1 h", "Trasferta", "Formazione sicurezza")else emptyList())),if(date==LocalDate.of(2026,11,1))listOf("Ognissanti")else emptyList(),date==LocalDate.of(2026,11,1))
             }
-            val snapshot=com.turni.calendario.export.PdfExportSnapshot("Lavoro di esempio",options,days)
+            val sample = if (mode == com.turni.calendario.model.PdfExportMode.ANNO) days.map { day ->
+                if (day.date != LocalDate.of(2026, 11, 19)) day else day.copy(
+                    shifts = day.shifts + listOf("Mattina", "Pomeriggio", "Notte", "Formazione").map { name ->
+                        com.turni.calendario.export.PdfShiftRow(
+                            name.take(3).uppercase(), name, 0xFFBAAEF6.toInt(), null, listOf("14:00 - 21:36")
+                        )
+                    },
+                    details = listOf("Nota del giorno", "Reperibilità")
+                )
+            } else days
+            val snapshot=com.turni.calendario.export.PdfExportSnapshot("Lavoro di esempio",options,sample)
             val file=com.turni.calendario.export.PdfGenerator.writePdf(targetContext,snapshot)
             val copy=File(folder,"${mode.name.lowercase()}.pdf");file.copyTo(copy,true);file.delete()
+            // Exercise the real PDF geometry for the same options used by the preview.
             android.os.ParcelFileDescriptor.open(copy,android.os.ParcelFileDescriptor.MODE_READ_ONLY).use { descriptor->
                 android.graphics.pdf.PdfRenderer(descriptor).use { renderer->check(renderer.pageCount==1);renderer.openPage(0).use{page->
+                    if (mode == com.turni.calendario.model.PdfExportMode.ANNO) check(page.width > page.height)
+                    else check(page.height > page.width)
                     val bitmap=Bitmap.createBitmap(1800,(1800f*page.height/page.width).toInt(),Bitmap.Config.ARGB_8888)
                     bitmap.eraseColor(android.graphics.Color.WHITE);page.render(bitmap,null,null,android.graphics.pdf.PdfRenderer.Page.RENDER_MODE_FOR_DISPLAY)
                     File(folder,"${mode.name.lowercase()}.png").outputStream().use{bitmap.compress(Bitmap.CompressFormat.PNG,100,it)};bitmap.recycle()

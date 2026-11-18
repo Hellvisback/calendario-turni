@@ -4,6 +4,9 @@ package com.turni.calendario.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.tween
@@ -46,6 +49,7 @@ import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -68,11 +72,11 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
     var previewLoading by remember { mutableStateOf(true) }
     var previewError by remember { mutableStateOf<String?>(null) }
     var zoom by remember { mutableStateOf(false) }
-    val calendar=ShiftRepository.calendarShifts.mapValues{it.value.toList()}
-    val extras=ShiftRepository.dayExtraInfo.toMap()
-    val definitions=ShiftRepository.shiftDefinitions.toList()
+    val calendar by remember { derivedStateOf { ShiftRepository.calendarShifts.mapValues { it.value.toList() } } }
+    val extras by remember { derivedStateOf { ShiftRepository.dayExtraInfo.toMap() } }
+    val definitions by remember { derivedStateOf { ShiftRepository.shiftDefinitions.toList() } }
     LaunchedEffect(options,ShiftRepository.activeWorkProfileId,calendar,extras,definitions) {
-        previewLoading=true;previewError=null;preview=null
+        previewLoading=true;previewError=null
         try {
             delay(280)
             val snapshot=PdfGenerator.capture(options)
@@ -108,7 +112,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             Row(Modifier.fillMaxWidth().padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = onDismiss, modifier = Modifier.size(40.dp)) { SiteIcon("arrow-left", "Indietro") }
                 Column(Modifier.padding(start = 10.dp).weight(1f)) {
-                    Text("Esporta & Stampa PDF", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
+                    Text("Esporta e stampa PDF", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold)
                     Text(ShiftRepository.activeWorkProfile.name, color = TextSecondary, fontSize = 12.sp)
                 }
             }
@@ -126,23 +130,31 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     Text(when(PdfExportPlan.presentation(options)) {
                         com.turni.calendario.export.PdfPresentation.LIST -> "Elenco compatto su una pagina, con i dettagli selezionati."
                         com.turni.calendario.export.PdfPresentation.MONTHS -> "Calendario mensile su una pagina."
-                        else -> "Panoramica dei mesi su una pagina. Il foglio si adatta ai dettagli."
+                        else -> "Mesi affiancati e giorni allineati su un foglio orizzontale."
                     }, color = TextSecondary, fontSize = 12.sp, modifier = Modifier.padding(top = 12.dp))
                 }
-                PdfSection("Periodo e turni") {
-                    PdfAction("calendar", "${range.first.format(formatter)} - ${range.second.format(formatter)}", "Cambia periodo") { dateDialog = true }
-                    Divider(color = ObsidianBorderSubtle, modifier = Modifier.padding(vertical = 9.dp))
-                    PdfAction("layers", options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it)?.name } ?: "Tutti i turni", "Filtra modelli") { filterDialog = true }
-                }
-                PdfSection("Anteprima",preview?.paperLabel?:"Lo stesso foglio che verrà condiviso") {
+                PdfSection("Anteprima",preview?.paperLabel?.takeUnless { previewLoading || previewError != null }?:"Lo stesso foglio che verrà condiviso") {
                     when {
-                        previewLoading -> Box(Modifier.fillMaxWidth().height(220.dp),contentAlignment=Alignment.Center){CircularProgressIndicator(Modifier.size(26.dp),color=BrandInk,strokeWidth=2.dp)}
+                        previewLoading -> Box(Modifier.fillMaxWidth().height(310.dp),contentAlignment=Alignment.Center){
+                            preview?.let {
+                                Image(it.bitmap.asImageBitmap(),null,Modifier.fillMaxSize().padding(10.dp),contentScale=ContentScale.Fit,alpha=.25f)
+                            }
+                            CircularProgressIndicator(Modifier.size(26.dp),color=BrandInk,strokeWidth=2.dp)
+                        }
+                        previewError!=null -> Text(previewError.orEmpty(),color=TextSecondary,fontSize=12.sp)
                         preview!=null -> Surface(onClick={zoom=true},shape=RoundedCornerShape(12.dp),color=ObsidianSurfaceContainer) {
                             Image(preview!!.bitmap.asImageBitmap(),"Anteprima PDF, tocca per ingrandire",Modifier.fillMaxWidth().height(310.dp).padding(10.dp),contentScale=ContentScale.Fit)
                         }
                         else -> Text(previewError?:"Nessuna anteprima disponibile",color=TextSecondary,fontSize=12.sp)
                     }
-                    if(preview!=null&&!previewLoading)Text("Tocca per ingrandire",fontSize=11.sp,color=TextMuted,modifier=Modifier.padding(top=9.dp))
+                    AnimatedVisibility(preview!=null&&!previewLoading&&previewError==null, enter=fadeIn(tween(170)), exit=fadeOut(tween(100))) {
+                        Text("Tocca per ingrandire",fontSize=11.sp,color=TextMuted,modifier=Modifier.padding(top=9.dp))
+                    }
+                }
+                PdfSection("Periodo e turni") {
+                    PdfAction("calendar", "${range.first.format(formatter)} - ${range.second.format(formatter)}", "Cambia periodo") { dateDialog = true }
+                    Divider(color = ObsidianBorderSubtle, modifier = Modifier.padding(vertical = 9.dp))
+                    PdfAction("layers", options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it)?.name } ?: "Tutti i turni", "Filtra modelli") { filterDialog = true }
                 }
                 PdfSection("Contenuti", "Anteprima aggiornata automaticamente") {
                     PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
@@ -170,7 +182,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                         catch(error:Exception){message="Impossibile condividere il PDF. Riprova."}
                         finally{busy=false}
                     }
-                }, enabled = !busy && !previewLoading && preview!=null, shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand), modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).heightIn(min = 50.dp)) {
+                }, enabled = !busy && !previewLoading && previewError==null && preview!=null, shape = RoundedCornerShape(18.dp), colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand), modifier = Modifier.fillMaxWidth().navigationBarsPadding().padding(16.dp).heightIn(min = 50.dp)) {
                     if (busy) CircularProgressIndicator(Modifier.size(19.dp), color = OnBrand, strokeWidth = 2.dp) else SiteIcon("download", null, tint = OnBrand)
                     Spacer(Modifier.width(10.dp)); Text(if (previewLoading) "Preparazione anteprima…" else "Condividi PDF · 1 pagina", fontWeight = FontWeight.Bold)
                 }
@@ -218,7 +230,7 @@ private fun PdfAction(icon: String, title: String, subtitle: String, onClick: ()
     val scope = rememberCoroutineScope()
     Surface(onClick = { scope.launch { progress.snapTo(0f); progress.animateTo(1f, tween(560)); progress.snapTo(0f) }; onClick() }, color = ObsidianSurface, shape = RoundedCornerShape(12.dp)) {
         Row(Modifier.fillMaxWidth().heightIn(min = 52.dp), verticalAlignment = Alignment.CenterVertically) {
-            SiteIcon(icon, null, tint = BrandInk, progress = progress.value)
+            SiteIconMotion(icon, null, tint = BrandInk) { progress.value }
             Column(Modifier.weight(1f).padding(horizontal = 12.dp)) { Text(title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium); Text(subtitle, color = TextMuted, fontSize = 11.sp) }
             SiteIcon("chevron-right", null, Modifier.size(18.dp), TextMuted)
         }
@@ -302,7 +314,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
 }
 
 private data class PdfPreview(val file:File,val bitmap:Bitmap,val width:Int,val height:Int) {
-    val paperLabel:String get() = "${when(width){595->"A4";842->"A3";1191->"A2";else->"Foglio"}} · ${if(height>=width)"verticale" else "orizzontale"} · 1 pagina"
+    val paperLabel:String get() = "${when(minOf(width,height)){595->"A4";842->"A3";1191->"A2";1684->"A1";else->"Foglio"}} · ${if(height>=width)"verticale" else "orizzontale"} · 1 pagina"
 }
 
 @Composable

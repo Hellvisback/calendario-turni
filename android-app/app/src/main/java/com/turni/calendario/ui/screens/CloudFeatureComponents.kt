@@ -4,6 +4,8 @@ package com.turni.calendario.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
+import androidx.compose.animation.core.Animatable
+import kotlinx.coroutines.launch
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -55,11 +57,19 @@ internal fun CloudCard(title:String,subtitle:String?=null,content:@Composable Co
 }
 @Composable
 internal fun CloudButton(label:String,icon:String,onClick:()->Unit,enabled:Boolean=true,destructive:Boolean=false,modifier:Modifier=Modifier,secondary:Boolean=false){
+    val iconMotion = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
     val fill=if(destructive)if(TurniThemeState.dark)androidx.compose.ui.graphics.Color(0xFF442330)else androidx.compose.ui.graphics.Color(0xFFFFE9ED)else if(secondary)ObsidianSurfaceHigh else ObsidianPrimary
     val ink=if(destructive)if(TurniThemeState.dark)androidx.compose.ui.graphics.Color(0xFFFFADB6)else androidx.compose.ui.graphics.Color(0xFF9C2940)else if(secondary)TextPrimary else catalogInk(fill)
-    Surface(shape=RoundedCornerShape(14.dp),color=fill,modifier=modifier.fillMaxWidth().heightIn(min=46.dp).bouncyClickable(enabled,onClick)){
+    Surface(shape=RoundedCornerShape(14.dp),color=fill,modifier=modifier.fillMaxWidth().heightIn(min=46.dp).bouncyClickable(enabled) {
+            scope.launch {
+                iconMotion.snapTo(0f)
+                iconMotion.animateTo(1f,tween(340))
+            }
+            onClick()
+        }){
         Row(Modifier.padding(horizontal=12.dp,vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.Center){
-            SiteIcon(icon,null,Modifier.size(18.dp),ink.copy(alpha=if(enabled)1f else .45f));Spacer(Modifier.width(8.dp))
+            SiteIconMotion(icon,null,Modifier.size(18.dp),ink.copy(alpha=if(enabled)1f else .45f)){iconMotion.value};Spacer(Modifier.width(8.dp))
             Text(label,color=ink.copy(alpha=if(enabled)1f else .45f),fontSize=13.sp,fontWeight=FontWeight.SemiBold,maxLines=2,overflow=TextOverflow.Ellipsis)
         }
     }

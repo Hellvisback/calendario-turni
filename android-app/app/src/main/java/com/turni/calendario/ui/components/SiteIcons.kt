@@ -184,6 +184,10 @@ fun SiteIconMotion(name:String,description:String?=null,modifier:Modifier=Modifi
                     "chevron-down"->ty=2.5f*wave
                     "arrow-left"->tx=-2f*wave
                     "arrow-right"->tx=2f*wave
+                    "download"->ty=1.6f*wave
+                    "upload"->ty=-1.6f*wave
+                    "file-text","scan-text","database-backup","cloud"->{ty=-1.5f*wave;sx=1f+.08f*wave;sy=sx}
+                    "palette","trash","shield-alert"->{rotation=6f*wave;sx=1f+.06f*wave;sy=sx}
                 }
                 translate(tx,ty){rotate(rotation,Offset(12f,py)){scale(sx,sy,Offset(12f,py)){
                     drawPath(path,tint.copy(alpha=tint.alpha*alpha),style=stroke)

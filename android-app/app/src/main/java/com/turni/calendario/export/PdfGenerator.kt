@@ -73,10 +73,13 @@ object PdfGenerator {
 
     fun writePdf(context: Context, snapshot: PdfExportSnapshot): File {
         val output = File.createTempFile("turnisync-", ".pdf", context.cacheDir)
-        val calendar=PdfExportPlan.presentation(snapshot.options)!=PdfPresentation.LIST
+        val presentation = PdfExportPlan.presentation(snapshot.options)
         val months=snapshot.days.map{YearMonth.from(it.date)}.distinct().size
-        val first=if(calendar&&months>2)842 to 1191 else 595 to 842
-        val papers=if(calendar&&months>1)listOf(first,1191 to 1684)else listOf(first)
+        val papers = when (presentation) {
+            PdfPresentation.OVERVIEW -> listOf(1191 to 842, 1684 to 1191, 2384 to 1684)
+            PdfPresentation.MONTHS -> if (months > 1) listOf(595 to 842, 1191 to 1684) else listOf(595 to 842)
+            PdfPresentation.LIST -> listOf(595 to 842, 842 to 1191)
+        }
         var lastError:IllegalArgumentException?=null
         for((width,height) in papers.distinct()) {
             val doc=PdfDocument()
@@ -149,7 +152,8 @@ object PdfGenerator {
         }
         fun render() {
             val months=data.days.map{YearMonth.from(it.date)}.distinct()
-            val calendar=PdfExportPlan.presentation(data.options)!=PdfPresentation.LIST
+            val presentation = PdfExportPlan.presentation(data.options)
+            val calendar = presentation != PdfPresentation.LIST
             val page=doc.startPage(PdfDocument.PageInfo.Builder(width.toInt(),height.toInt(),1).create())
             try {
             canvas=page.canvas;canvas.drawColor(Color.WHITE)
@@ -174,53 +178,177 @@ object PdfGenerator {
                 top+=8f
             }
             require(top<height-100f){crowded}
-            if(calendar)calendars(months,top) else list(top)
+            when (presentation) {
+                PdfPresentation.LIST -> list(top)
+                PdfPresentation.MONTHS -> calendars(months,top)
+                PdfPresentation.OVERVIEW -> overview(months,top)
+            }
             box(margin,height-30f,width-2*margin,1f,Color.rgb(220,224,232),0f)
             text("TurniSync · Generato il ${LocalDate.now().format(format)}",margin,height-18f,7f,muted)
             text("1 / 1",width-margin-22f,height-18f,7f,muted)
             } finally {doc.finishPage(page)}
         }
 
-        private data class ListBlock(val date:String,val title:String,val detail:String,val color:Int?)
-        private fun list(top:Float) {
-            val blocks=data.days.flatMap { day ->
-                val date=day.date.format(DateTimeFormatter.ofPattern("EEE dd/MM",Locale.ITALIAN))
-                if(day.shifts.isEmpty()) {
-                    if(data.options.includeEmptyRows||day.details.isNotEmpty())listOf(ListBlock(date,"Nessun turno",day.details.joinToString(" · "),null)) else emptyList()
-                } else day.shifts.mapIndexed { index,shift ->
-                    ListBlock(date,if(shift.name.isBlank())shift.code else shift.name,
-                        (shift.details+if(index==0)day.details else emptyList()).joinToString(" · "),
-                        if(data.options.includeIcon)shift.color else null)
-                }
+        private val rule = Color.rgb(215, 221, 231)
+        private val weekend = Color.rgb(235, 239, 247)
+        private val holiday = Color.rgb(252, 233, 236)
+        private val weekdayFormat = DateTimeFormatter.ofPattern("EEE", Locale.ITALIAN)
+        private val listDateFormat = DateTimeFormatter.ofPattern("dd/MM", Locale.ITALIAN)
+        private val monthFormat = DateTimeFormatter.ofPattern("MMM", Locale.ITALIAN)
+
+        private fun marker(x: Float, y: Float, color: Int) {
+            paint.style = Paint.Style.FILL
+            paint.color = color
+            canvas.drawCircle(x, y, 2.1f, paint)
+            paint.style = Paint.Style.STROKE
+            paint.strokeWidth = .45f
+            paint.color = muted
+            canvas.drawCircle(x, y, 2.1f, paint)
+        }
+
+        private data class ListEntry(val time: String, val labels: List<String>, val color: Int?)
+
+        private fun list(top: Float) {
+            val days = data.days.filter { data.options.includeEmptyRows || it.shifts.isNotEmpty() || it.details.isNotEmpty() }
+            if (days.isEmpty()) {
+                text("Nessun turno nel periodo e nel filtro scelti.", margin, top + 15f)
+                return
             }
-            if(blocks.isEmpty()){text("Nessun turno nel periodo e nel filtro scelti.",margin,top+15f);return}
-            val available=height-top-38f
-            for(font in listOf(9f,8.5f,8f,7.5f,7f,6.5f,6f)) {
-                for(columns in 1..3) {
-                    val gap=12f
-                    val columnWidth=(width-2*margin-gap*(columns-1))/columns
-                    val detailWidth=columnWidth-24f
-                    val wrapped=blocks.map { block ->
-                        lines("${block.date}  ${block.title}",detailWidth,font,true) +
-                            if(block.detail.isBlank())emptyList() else lines(block.detail,detailWidth,font-.5f)
-                    }
-                    val heights=wrapped.map{it.size*(font+2f)+12f}
-                    val packed=packPdfColumns(heights,columns,available)?:continue
-                    packed.forEachIndexed { column,indexes ->
-                        var y=top
-                        val x=margin+column*(columnWidth+gap)
-                        indexes.forEach { index ->
-                            val block=blocks[index]
-                            box(x,y,columnWidth,heights[index]-3f,paper,7f)
-                            block.color?.let{box(x+4f,y+5f,3f,heights[index]-14f,it,1.5f)}
-                            wrapped[index].forEachIndexed { line,value ->
-                                text(value,x+12f,y+font+4f+line*(font+2f),if(line==0)font else font-.5f,if(line==0)ink else muted,line==0)
+            val available = height - top - 41f - 18f
+            for (font in listOf(10f, 9.5f, 9f, 8.5f, 8f, 7.5f, 7f)) {
+                for (columns in 1..3) {
+                    val gap = 14f
+                    val columnWidth = (width - 2 * margin - gap * (columns - 1)) / columns
+                    val timeWidth = if (data.options.includeTime) font * 7.6f else 0f
+                    val titleOffset = 65f + timeWidth
+                    val labelWidth = columnWidth - titleOffset - 5f
+                    if (labelWidth < 65f) continue
+                    val leading = font + 2f
+                    val entries = days.map { day ->
+                        buildList {
+                            day.shifts.forEach { shift ->
+                                val time = if (data.options.includeTime) shift.details.firstOrNull().orEmpty() else ""
+                                val detail = if (data.options.includeTime) shift.details.drop(1) else shift.details
+                                val labels = lines(shift.name, labelWidth, font, true) +
+                                    detail.flatMap { lines(it, labelWidth, font) }
+                                add(ListEntry(time, labels.ifEmpty { listOf("") }, shift.color.takeIf { data.options.includeIcon }))
                             }
-                            y+=heights[index]
+                            if (day.shifts.isEmpty() && day.details.isEmpty()) add(ListEntry("", listOf("—"), null))
+                            day.details.forEach { add(ListEntry("", lines(it, labelWidth, font), null)) }
+                        }
+                    }
+                    val heights = entries.map { group -> group.sumOf { it.labels.size } * leading + 5f }
+                    val packed = packPdfColumns(heights, columns, available) ?: continue
+                    packed.forEachIndexed { column, indexes ->
+                        val x = margin + column * (columnWidth + gap)
+                        box(x, top, columnWidth, 17f, paper, 3f)
+                        text("Giorno", x + 5f, top + 11f, 8f, accent, true)
+                        if (timeWidth > 0f) text("Orario", x + 64f, top + 11f, 8f, accent, true)
+                        text("Turno e dettagli", x + titleOffset, top + 11f, 8f, accent, true)
+                        var y = top + 18f
+                        indexes.forEach { index ->
+                            val day = days[index]
+                            val rowHeight = heights[index]
+                            if (day.holiday || day.date.dayOfWeek.value >= 6) {
+                                box(x, y, 51f, rowHeight, if (day.holiday) holiday else weekend, 0f)
+                            }
+                            text(day.date.format(listDateFormat), x + 4f, y + font + 1f, font, ink, true)
+                            text(day.date.format(weekdayFormat), x + 33f, y + font + 1f, font - 1f, muted)
+                            var baseline = y + font + 1f
+                            entries[index].forEach { entry ->
+                                entry.color?.let { marker(x + 58f, baseline - 2.6f, it) }
+                                text(entry.time, x + 64f, baseline, font - 1f, muted)
+                                entry.labels.forEachIndexed { line, label ->
+                                    text(label, x + titleOffset, baseline, font, if (line == 0) ink else muted, line == 0)
+                                    baseline += leading
+                                }
+                            }
+                            y += rowHeight
+                            box(x, y, columnWidth, if (day.date.dayOfWeek.value == 7) .85f else .4f, rule, 0f)
                         }
                     }
                     return
                 }
+            }
+            throw IllegalArgumentException(crowded)
+        }
+
+        private data class OverviewLine(val label: String, val color: Int? = null, val bold: Boolean = false)
+
+        private fun overview(months: List<YearMonth>, top: Float) {
+            require(months.size <= 12) { "Per una panoramica su una pagina, seleziona al massimo 12 mesi." }
+            val gap = 4f
+            val columnWidth = (width - 2 * margin - gap * (months.size - 1)) / months.size
+            val gridTop = top + 21f
+            val availableHeight = height - 42f - gridTop
+            val labelWidth = columnWidth - 26f
+            val byDate = data.days.associateBy { it.date }
+            for (font in listOf(8f, 7.5f, 7f, 6.5f)) {
+                val leading = font + .8f
+                val contents = data.days.associate { day ->
+                    day.date to buildList<OverviewLine> {
+                        day.shifts.forEach { shift ->
+                            if (shift.name.isNotBlank()) {
+                                lines(shift.name, labelWidth, font, true).forEachIndexed { index, label ->
+                                    val color = shift.color.takeIf { index == 0 && data.options.includeIcon }
+                                    add(OverviewLine(label, color, bold = true))
+                                }
+                            }
+                            val markDetails = shift.name.isBlank() && data.options.includeIcon
+                            val firstDetail = size
+                            shift.details.forEach { detail ->
+                                val compact = compactCalendarDetail(detail).replace("Tutto il giorno", "Intera giornata")
+                                lines(compact, labelWidth, font).forEach { label ->
+                                    add(OverviewLine(label, shift.color.takeIf { markDetails && size == firstDetail }))
+                                }
+                            }
+                            if (shift.name.isBlank() && size == firstDetail && data.options.includeIcon) {
+                                add(OverviewLine("", shift.color))
+                            }
+                        }
+                        day.details.forEach { detail ->
+                            lines(detail, labelWidth, font).forEach { add(OverviewLine(it)) }
+                        }
+                    }
+                }
+                val minimumHeights = FloatArray(31) { 16f }
+                contents.forEach { (date, content) ->
+                    val index = date.dayOfMonth - 1
+                    minimumHeights[index] = maxOf(minimumHeights[index], content.size * leading + 2f)
+                }
+                val spare = availableHeight - minimumHeights.sum()
+                if (spare < 0f) continue
+                val rowHeights = minimumHeights.map { it + spare / minimumHeights.size }
+                val rowTops = rowHeights.runningFold(gridTop, Float::plus)
+                months.forEachIndexed { index, month ->
+                    val x = margin + index * (columnWidth + gap)
+                    box(x, top, columnWidth, 17f, Color.rgb(227, 234, 255), 3f)
+                    val monthLabel = month.atDay(1).format(monthFormat).replaceFirstChar { it.uppercase() }
+                    text(if (data.options.mode == PdfExportMode.ANNO) monthLabel else "$monthLabel ${month.year}",
+                        x + 5f, top + 11.5f, 9f, accent, true)
+                    for (dayNumber in 1..month.lengthOfMonth()) {
+                        val date = month.atDay(dayNumber)
+                        val row = byDate[date] ?: continue
+                        val y = rowTops[dayNumber - 1]
+                        val fill = when {
+                            row.holiday -> holiday
+                            date.dayOfWeek.value >= 6 -> weekend
+                            dayNumber % 2 == 0 -> paper
+                            else -> Color.WHITE
+                        }
+                        box(x, y, columnWidth, rowHeights[dayNumber - 1] - .4f, fill, 0f)
+                        box(x, y, columnWidth, if (date.dayOfWeek.value == 1) .75f else .35f, rule, 0f)
+                        text(dayNumber.toString(), x + 3f, y + 8f, 7.5f, ink, true)
+                        text(date.format(weekdayFormat), x + 3f, y + 14f, 5.5f, muted)
+                        val labelX = x + 24f
+                        contents.getValue(date).forEachIndexed { index, line ->
+                            val baseline = y + font + .5f + index * leading
+                            line.color?.let { marker(labelX - 5f, baseline - 2.2f, it) }
+                            text(line.label, labelX, baseline, font, ink, line.bold)
+                        }
+                    }
+                }
+                return
             }
             throw IllegalArgumentException(crowded)
         }

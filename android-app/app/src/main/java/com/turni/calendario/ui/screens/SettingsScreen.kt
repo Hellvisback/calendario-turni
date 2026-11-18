@@ -65,6 +65,7 @@ import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
 
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 
 import com.turni.calendario.ui.components.bouncyClickable
 
@@ -74,7 +75,7 @@ import kotlinx.coroutines.launch
 
 
 
-private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS, STATISTICS_RULES, DAY_TAGS, GUIDE }
+private enum class SettingsSubScreen { NONE, APPEARANCE, CLOUD_BACKUP, GOOGLE_CALENDAR_SYNC, IMPORT_SHIFTS, PDF_EXPORT, REPERIBILITA, SMART_ALARMS, HOLIDAYS, STATISTICS_RULES, DAY_TAGS }
 
 
 
@@ -87,6 +88,7 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
     val scope=rememberCoroutineScope()
 
     val bellMotion=remember{Animatable(0f)}
+    val settingsScroll = rememberScrollState()
 
     var screen by remember{mutableStateOf(SettingsSubScreen.NONE)}
 
@@ -112,7 +114,6 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                     SettingsSubScreen.STATISTICS_RULES->StatisticsRulesScreen(onDismiss=close)
 
-                    SettingsSubScreen.GUIDE->QuickGuideScreen(onDismiss=close)
 
                     SettingsSubScreen.DAY_TAGS->DayTagsSettingsScreen(onDismiss=close)
 
@@ -164,7 +165,7 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                     }
 
-                    SettingsSubScreen.NONE->Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(rememberScrollState()).padding(horizontal=16.dp)) {
+                    SettingsSubScreen.NONE->Column(Modifier.fillMaxSize().statusBarsPadding().verticalScroll(settingsScroll).padding(horizontal=16.dp)) {
 
                         PreferenceHeading("Impostazioni",ShiftRepository.activeWorkProfile.name,onDismiss)
 
@@ -216,35 +217,21 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                         }
 
-                        PreferenceGroup("Strumenti") {
-
-                            PreferenceRow("book-open","Guida rapida · beta","Beta · prova la modifica senza cambiare i tuoi dati"){screen=SettingsSubScreen.GUIDE}
-
+                        PreferenceGroup("Statistiche e PDF") {
+                            PreferenceRow("chart-no-axes-combined","Conteggio statistiche","Regole per turni sostituiti e ferie nei festivi"){screen=SettingsSubScreen.STATISTICS_RULES}
                             PreferenceDivider()
+                            PreferenceRow("file-text","Esporta e stampa PDF","Scegli formato, periodo e contenuti del documento"){screen=SettingsSubScreen.PDF_EXPORT}
+                        }
 
-                            PreferenceRow("chart-no-axes-combined","Conteggio statistiche","Come contare i turni sostituiti e le ferie nei festivi"){screen=SettingsSubScreen.STATISTICS_RULES}
-
+                        PreferenceGroup("Backup e collegamenti") {
+                            PreferenceRow("database-backup","Backup e ripristino","Salva o recupera tutti i dati dell’app"){screen=SettingsSubScreen.CLOUD_BACKUP}
                             PreferenceDivider()
-
-                            PreferenceRow("calendar-sync","Google Calendar","Copia i turni nel tuo account Google e gestisci gli eventi creati"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
-
+                            PreferenceRow("calendar-sync","Google Calendar","Sincronizza gli eventi dei turni con Google Calendar"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
                             PreferenceDivider()
-
-                            PreferenceRow("scan-text","Importazione con AI","Usa la tua AI, incolla la risposta e controlla i turni prima di salvarli"){screen=SettingsSubScreen.IMPORT_SHIFTS}
-
-                            PreferenceDivider()
-
-                            PreferenceRow("file-text","Esporta e stampa PDF","Scegli il periodo e il formato, controlla l’anteprima e crea il PDF"){screen=SettingsSubScreen.PDF_EXPORT}
-
+                            PreferenceRow("scan-text","Importazione con AI","Trasforma un prospetto in modelli turno e rotazioni"){screen=SettingsSubScreen.IMPORT_SHIFTS}
                         }
 
                         PreferenceGroup("Gestione dati") {
-
-                            PreferenceRow("database-backup","Backup e ripristino","Salva o recupera turni, lavori, rotazioni, note, etichette e impostazioni"){screen=SettingsSubScreen.CLOUD_BACKUP}
-
-                            PreferenceDivider()
-
-                            Row(Modifier.padding(top=15.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) { SiteIcon("shield-alert",null,Modifier.size(14.dp),tint=TextMuted);Text("Zona pericolosa",fontSize=10.sp,fontWeight=FontWeight.SemiBold,color=TextMuted) }
 
                             PreferenceRow("trash-2","Elimina tutti i turni","Da tutti i calendari · richiede conferma",true){deleteStep=1}
 
@@ -318,7 +305,7 @@ private fun PreferenceRow(icon:String,title:String,subtitle:String,danger:Boolea
 
     Row(Modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable { scope.launch{motion.snapTo(0f);motion.animateTo(1f,tween(520));motion.snapTo(0f)};onClick() }.padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
 
-        Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tileFill),contentAlignment=Alignment.Center){SiteIcon(icon,null,Modifier.size(19.dp),tint=tint,progress=motion.value)}
+        Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tileFill),contentAlignment=Alignment.Center){SiteIconMotion(icon,null,Modifier.size(19.dp),tint=tint){motion.value}}
 
         Column(Modifier.weight(1f)){Text(title,color=if(danger)tint else TextPrimary,fontSize=14.sp,lineHeight=19.sp,fontWeight=FontWeight.SemiBold);Text(subtitle,Modifier.padding(top=3.dp),color=TextMuted,fontSize=11.sp,lineHeight=16.sp)}
 

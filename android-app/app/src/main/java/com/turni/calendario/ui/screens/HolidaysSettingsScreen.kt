@@ -1,6 +1,8 @@
 package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.*
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -213,6 +215,13 @@ private fun HolidaySectionView(
             Column {
                 holidays.forEachIndexed { index, item ->
                     val isChecked = enabledIds.contains(item.id)
+                    val badgeFill by animateColorAsState(
+                        if (isChecked) ColorNegative.copy(alpha = .22f) else ObsidianSurfaceContainer, tween(220)
+                    )
+                    val badgeBorder by animateColorAsState(
+                        if (isChecked) ColorNegative.copy(alpha = .6f) else ObsidianBorderSubtle, tween(220)
+                    )
+                    val badgeInk by animateColorAsState(if (isChecked) ColorNegative else TextSecondary, tween(220))
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -228,10 +237,10 @@ private fun HolidaySectionView(
                             // Badge data compatta
                             Surface(
                                 shape = RoundedCornerShape(8.dp),
-                                color = if (isChecked) ColorNegative.copy(alpha = 0.22f) else ObsidianSurfaceContainer,
+                                color = badgeFill,
                                 border = androidx.compose.foundation.BorderStroke(
                                     0.8.dp,
-                                    if (isChecked) ColorNegative.copy(alpha = 0.6f) else ObsidianBorderSubtle
+                                    badgeBorder
                                 ),
                                 modifier = Modifier.size(width = 44.dp, height = 34.dp)
                             ) {
@@ -240,7 +249,7 @@ private fun HolidaySectionView(
                                         text = "${item.day}/${item.month}",
                                         fontSize = 11.sp,
                                         fontWeight = FontWeight.Black,
-                                        color = if (isChecked) ColorNegative else TextSecondary
+                                        color = badgeInk
                                     )
                                 }
                             }

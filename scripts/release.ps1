@@ -32,7 +32,7 @@ param(
     [string]$ExpectedSha256,
     [string]$ExpectedSignerSha256,
     [string]$SourceCommit,
-    [ValidateSet('com.turni.calendario.setupqa')]
+    [ValidateSet('com.turni.calendario.setupqa', 'com.turni.calendario')]
     [string]$ExpectedPackage = 'com.turni.calendario.setupqa',
     [string]$Repository = 'Hellvisback/calendario-turni',
     [switch]$VerifyOnly
@@ -42,7 +42,7 @@ $ErrorActionPreference = "Stop"
 
 $projectRoot = Split-Path -Parent $PSScriptRoot
 
-# Publish a prebuilt QA APK without a second version bump or rebuild.
+# Publish a prebuilt APK without a second version bump or rebuild.
 # The source bump, build and commit must already have been completed.
 if ($PublishExistingArtifact) {
     if (-not $ExistingApk -or $ExpectedSha256 -notmatch '^[a-fA-F0-9]{64}$' -or
@@ -51,7 +51,11 @@ if ($PublishExistingArtifact) {
         $VersionName -notmatch '^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.-]+)?$' -or
         $VersionCode -le 0 -or
         $Repository -notmatch '^[a-zA-Z0-9_.-]+/[a-zA-Z0-9_.-]+$') {
-        throw 'Validated QA publishing requires APK/hash/certificate/source/version and version metadata.'
+        throw 'Validated publishing requires APK/hash/certificate/source/version and version metadata.'
+    }
+    if ($ExpectedPackage -eq 'com.turni.calendario' -and
+        $ExpectedSignerSha256 -ne 'cf09967400ac4931dbfa169b9bc23c6a8314ef0256285c3399f4912bee735772') {
+        throw 'The personal package requires the original TurniSync signing certificate.'
     }
     $artifact = (Resolve-Path -LiteralPath $ExistingApk).Path
     if ((Get-FileHash -LiteralPath $artifact -Algorithm SHA256).Hash -ne $ExpectedSha256) {
@@ -69,13 +73,13 @@ if ($PublishExistingArtifact) {
     }
     $apkPackage = $matches[1]; $apkCode = [int]$matches[2]; $apkName = $matches[3]
     if ($apkPackage -ne $ExpectedPackage -or $apkCode -ne $VersionCode -or $apkName -ne $VersionName) {
-        throw 'APK package/version mismatch; personal-app APKs are not accepted by this mode.'
+        throw 'APK package/version mismatch.'
     }
     $certificates = (& $signer verify --print-certs $artifact 2>&1 | Out-String)
     if ($LASTEXITCODE -ne 0 -or $certificates -notmatch 'Signer #1 certificate SHA-256 digest: ([a-fA-F0-9]{64})') {
         throw 'APK signature verification failed.'
     }
-    if ($matches[1] -ne $ExpectedSignerSha256) { throw 'Unexpected QA signing certificate.' }
+    if ($matches[1] -ne $ExpectedSignerSha256) { throw 'Unexpected signing certificate.' }
     $branch = (& git -C $projectRoot rev-parse --abbrev-ref HEAD | Out-String).Trim()
     if ($LASTEXITCODE -ne 0 -or ($branch -ne 'main' -and -not ($branch -eq 'HEAD' -and $env:GITHUB_ACTIONS -eq 'true'))) {
         throw 'Publish from main, or a detached GitHub Actions checkout only.'
@@ -104,8 +108,8 @@ if ($PublishExistingArtifact) {
         Copy-Item -LiteralPath $artifact -Destination $versioned -Force
     }
     if ((Get-FileHash -LiteralPath $versioned -Algorithm SHA256).Hash -ne $ExpectedSha256) { throw 'Packaged APK checksum mismatch.' }
-    if (-not $ReleaseTitle) { $ReleaseTitle = "TurniSync $VersionName — QA separata" }
-    if (-not $ReleaseNotes) { throw 'Provide explicit QA release notes, including the separate package and signing limitations.' }
+    if (-not $ReleaseTitle) { $ReleaseTitle = "TurniSync $VersionName ($apkPackage)" }
+    if (-not $ReleaseNotes) { throw 'Provide explicit release notes describing the package and update compatibility.' }
     $notesFile = [IO.Path]::GetTempFileName()
     try {
         [IO.File]::WriteAllText($notesFile, $ReleaseNotes, [Text.Encoding]::UTF8)
