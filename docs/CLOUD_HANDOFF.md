@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Impostazioni e reperibilità beta.24
+
+La beta.24 personale (69) riordina le impostazioni e aggiorna la configurazione della reperibilità. [Verifica Android e schermate](VERIFICA_v1.8.0-beta.24.md).
+
 ## Calendario e statistiche beta.23
 
 La beta.23 personale (68) aggiorna le fasce di trasferta e straordinario e il quadrante delle statistiche. [Prove sul Realme e schermate nei due temi](VERIFICA_v1.8.0-beta.23.md).

@@ -41,6 +41,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.LocalContext
 
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 
 import androidx.compose.ui.text.font.FontWeight
 
@@ -159,8 +161,6 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                         }
 
-                        Text("TurniSync · ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",Modifier.padding(vertical=16.dp),fontSize=10.sp,color=TextMuted)
-
                         Spacer(Modifier.height(116.dp))
 
                     }
@@ -169,73 +169,94 @@ fun SettingsScreen(onSubScreenActiveChanged:(Boolean)->Unit={},onNavigateToTurni
 
                         PreferenceHeading("Impostazioni",ShiftRepository.activeWorkProfile.name,onDismiss)
 
-                        PreferenceGroup("Notifiche","bell",bottom=16,iconProgress=bellMotion.value) {
-
-                            val alarms=ShiftRepository.smartAlarmsConfig
-
-                            PreferenceToggle("Sveglie dei turni","Attiva o sospende tutte le regole senza cancellare gli orari scelti",alarms.isGlobalEnabled){enabled->
-
-                                if(enabled&&(!ShiftAlarmScheduler.canScheduleExactAlarms(context)||!ShiftAlarmScheduler.hasNotificationPermission(context))){
-
-                                    screen=SettingsSubScreen.SMART_ALARMS
-
-                                }else{
-
-                                ShiftRepository.smartAlarmsConfig=alarms.copy(isGlobalEnabled=enabled)
-
-                                if(enabled){ShiftAlarmScheduler.scheduleNextAlarm(context);scope.launch{bellMotion.snapTo(0f);bellMotion.animateTo(1f,tween(580));bellMotion.snapTo(0f)}}else ShiftAlarmScheduler.cancelScheduledAlarm(context)
-
-                                ShiftRepository.notifyDataChanged()
-
-                                }
-
+                        PreferenceGroup("Calendario e statistiche") {
+                            PreferenceRow("palette", "Aspetto e calendario", "Tema, inizio settimana, orari ed ex turni") {
+                                screen = SettingsSubScreen.APPEARANCE
                             }
-
                             PreferenceDivider()
-
-                            PreferenceRow("alarm-clock","Regole e prossime sveglie","Scegli quando suonano e controlla le prossime attivazioni"){screen=SettingsSubScreen.SMART_ALARMS}
-
+                            PreferenceRow("calendar-heart", "Festività", "Ricorrenze valide per il tuo lavoro") {
+                                screen = SettingsSubScreen.HOLIDAYS
+                            }
+                            PreferenceDivider()
+                            PreferenceRow("tag", "Etichette dei giorni", "Attività da segnare e ritrovare nelle statistiche") {
+                                screen = SettingsSubScreen.DAY_TAGS
+                            }
+                            PreferenceDivider()
+                            PreferenceRow("chart-no-axes-combined", "Conteggio statistiche", "Turni sostituiti e ferie nei festivi") {
+                                screen = SettingsSubScreen.STATISTICS_RULES
+                            }
                         }
 
-                        PreferenceGroup("Il tuo calendario") {
-
-                            PreferenceRow("palette","Aspetto e calendario","Tema chiaro, scuro o automatico e formato degli orari"){screen=SettingsSubScreen.APPEARANCE}
-
+                        PreferenceGroup("Reperibilità e sveglie", "bell", iconProgress = bellMotion.value) {
+                            PreferenceRow("bell-ring", "Reperibilità", "Mostra la campanella sui giorni in cui sei reperibile") {
+                                screen = SettingsSubScreen.REPERIBILITA
+                            }
                             PreferenceDivider()
-
-                            PreferenceRow("bell-ring","Reperibilità","Scegli i giorni oppure usa una regola legata ai turni o ai periodi dell’anno"){screen=SettingsSubScreen.REPERIBILITA}
-
-                            PreferenceDivider()
-
-                            PreferenceRow("calendar-heart","Festività","Scegli quali ricorrenze valgono per il tuo lavoro"){screen=SettingsSubScreen.HOLIDAYS}
-
-                            PreferenceDivider()
-
-                            PreferenceRow("tag","Etichette dei giorni","Crea attività da segnare sul calendario e ritrovare nelle statistiche"){screen=SettingsSubScreen.DAY_TAGS}
-
-
-
+                            val alarms = ShiftRepository.smartAlarmsConfig
+                            Row(
+                                Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp)
+                            ) {
+                                PreferenceRow(
+                                    "alarm-clock",
+                                    "Regole e prossime sveglie",
+                                    "Configura gli avvisi sonori legati ai turni",
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    screen = SettingsSubScreen.SMART_ALARMS
+                                }
+                                PreferenceSwitch(
+                                    checked = alarms.isGlobalEnabled,
+                                    modifier = Modifier.size(48.dp).semantics {
+                                        contentDescription = "Sveglie automatiche"
+                                    }
+                                ) { enabled ->
+                                    if (enabled && (!ShiftAlarmScheduler.canScheduleExactAlarms(context) || !ShiftAlarmScheduler.hasNotificationPermission(context))) {
+                                        screen = SettingsSubScreen.SMART_ALARMS
+                                    } else {
+                                        ShiftRepository.smartAlarmsConfig = alarms.copy(isGlobalEnabled = enabled)
+                                        if (enabled) {
+                                            ShiftAlarmScheduler.scheduleNextAlarm(context)
+                                            scope.launch {
+                                                bellMotion.snapTo(0f)
+                                                bellMotion.animateTo(1f, tween(580))
+                                                bellMotion.snapTo(0f)
+                                            }
+                                        } else {
+                                            ShiftAlarmScheduler.cancelScheduledAlarm(context)
+                                        }
+                                        ShiftRepository.notifyDataChanged()
+                                    }
+                                }
+                            }
                         }
 
-                        PreferenceGroup("Statistiche e PDF") {
-                            PreferenceRow("chart-no-axes-combined","Conteggio statistiche","Regole per turni sostituiti e ferie nei festivi"){screen=SettingsSubScreen.STATISTICS_RULES}
+                        PreferenceGroup("Importazione e condivisione") {
+                            PreferenceRow("scan-text", "Importa turni con AI", "Crea modelli e rotazioni da un prospetto") {
+                                screen = SettingsSubScreen.IMPORT_SHIFTS
+                            }
                             PreferenceDivider()
-                            PreferenceRow("file-text","Esporta e stampa PDF","Scegli formato, periodo e contenuti del documento"){screen=SettingsSubScreen.PDF_EXPORT}
+                            PreferenceRow("file-text", "Esporta e stampa PDF", "Calendario o elenco dei turni") {
+                                screen = SettingsSubScreen.PDF_EXPORT
+                            }
+                            PreferenceDivider()
+                            PreferenceRow("calendar-sync", "Google Calendar", "Sincronizza i turni come eventi") {
+                                screen = SettingsSubScreen.GOOGLE_CALENDAR_SYNC
+                            }
                         }
 
-                        PreferenceGroup("Backup e collegamenti") {
-                            PreferenceRow("database-backup","Backup e ripristino","Salva o recupera tutti i dati dell’app"){screen=SettingsSubScreen.CLOUD_BACKUP}
+                        PreferenceGroup("Dati dell’app") {
+                            PreferenceRow("database-backup", "Backup e ripristino", "Salva o recupera tutti i dati dell’app") {
+                                screen = SettingsSubScreen.CLOUD_BACKUP
+                            }
                             PreferenceDivider()
-                            PreferenceRow("calendar-sync","Google Calendar","Sincronizza gli eventi dei turni con Google Calendar"){screen=SettingsSubScreen.GOOGLE_CALENDAR_SYNC}
-                            PreferenceDivider()
-                            PreferenceRow("scan-text","Importazione con AI","Trasforma un prospetto in modelli turno e rotazioni"){screen=SettingsSubScreen.IMPORT_SHIFTS}
+                            PreferenceRow("trash-2", "Elimina tutti i turni", "Da tutti i calendari · richiede conferma", danger = true) {
+                                deleteStep = 1
+                            }
                         }
 
-                        PreferenceGroup("Gestione dati") {
-
-                            PreferenceRow("trash-2","Elimina tutti i turni","Da tutti i calendari · richiede conferma",true){deleteStep=1}
-
-                        }
+                        Text("TurniSync · ${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})",Modifier.padding(vertical=16.dp),fontSize=10.sp,color=TextMuted)
 
                         Spacer(Modifier.height(116.dp))
 
@@ -291,7 +312,14 @@ private fun PreferenceDivider(){Divider(color=ObsidianBorderSubtle)}
 
 @Composable
 
-private fun PreferenceRow(icon:String,title:String,subtitle:String,danger:Boolean=false,onClick:()->Unit){
+private fun PreferenceRow(
+    icon: String,
+    title: String,
+    subtitle: String,
+    danger: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit
+) {
 
     val palette=currentTurniPalette
 
@@ -303,7 +331,7 @@ private fun PreferenceRow(icon:String,title:String,subtitle:String,danger:Boolea
 
     val motion=remember{Animatable(0f)}
 
-    Row(Modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable { scope.launch{motion.snapTo(0f);motion.animateTo(1f,tween(520));motion.snapTo(0f)};onClick() }.padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
+    Row(modifier.fillMaxWidth().heightIn(min=64.dp).bouncyClickable { scope.launch{motion.snapTo(0f);motion.animateTo(1f,tween(520));motion.snapTo(0f)};onClick() }.padding(vertical=13.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
 
         Box(Modifier.size(width=34.dp,height=36.dp).clip(RoundedCornerShape(12.dp)).background(tileFill),contentAlignment=Alignment.Center){SiteIconMotion(icon,null,Modifier.size(19.dp),tint=tint){motion.value}}
 
@@ -323,14 +351,29 @@ private fun PreferenceToggle(title:String,subtitle:String,checked:Boolean,onChan
 
         Column(Modifier.weight(1f)){Text(title,fontSize=12.sp,lineHeight=18.sp,fontWeight=FontWeight.SemiBold,color=TextPrimary);Text(subtitle,Modifier.padding(top=5.dp),fontSize=11.sp,lineHeight=16.sp,color=TextMuted)}
 
-        val thumb by animateDpAsState(if(checked)19.dp else 3.dp,spring(dampingRatio=.82f,stiffness=280f))
-
-        val fill by animateColorAsState(if(checked)ObsidianPrimary else ObsidianSurfaceHigh,tween(240))
-
-        Box(Modifier.size(44.dp,28.dp).clip(CircleShape).background(fill).toggleable(checked,role=Role.Switch,onValueChange=onChange),contentAlignment=Alignment.CenterStart){Box(Modifier.offset(x=thumb).size(18.dp).clip(CircleShape).background(if(checked)OnBrand else TextMuted))}
-
+        PreferenceSwitch(checked, Modifier.size(48.dp).semantics { contentDescription = title }, onChange)
     }
+}
 
+@Composable
+private fun PreferenceSwitch(checked: Boolean, modifier: Modifier, onChange: (Boolean) -> Unit) {
+    val thumb by animateDpAsState(if (checked) 19.dp else 3.dp, spring(dampingRatio = .82f, stiffness = 280f))
+    val fill by animateColorAsState(if (checked) ObsidianPrimary else ObsidianSurfaceHigh, tween(240))
+
+    Box(
+        modifier.toggleable(checked, role = Role.Switch, onValueChange = onChange),
+        contentAlignment = Alignment.Center
+    ) {
+        Box(
+            Modifier.size(44.dp, 28.dp).clip(CircleShape).background(fill),
+            contentAlignment = Alignment.CenterStart
+        ) {
+            Box(
+                Modifier.offset(x = thumb).size(18.dp).clip(CircleShape)
+                    .background(if (checked) OnBrand else TextMuted)
+            )
+        }
+    }
 }
 
 @Composable

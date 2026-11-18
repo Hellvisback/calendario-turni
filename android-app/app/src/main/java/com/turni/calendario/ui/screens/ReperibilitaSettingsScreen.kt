@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.*
 import com.turni.calendario.model.*
@@ -34,71 +36,122 @@ fun ReperibilitaSettingsScreen(onDismiss:()->Unit) {
     fun update(change:(ReperibilitaConfig)->ReperibilitaConfig){
         ShiftRepository.reperibilitaConfig=change(ShiftRepository.reperibilitaConfig)
     }
-    val titles=listOf("Scelgo i giorni","Segue i miei turni","Cambia durante l’anno")
-    val descriptions=listOf("La aggiungi tu con la campanella.","Si attiva sui modelli che scegli.","Turni in un periodo, settimane nel resto dell’anno.")
-    val icons=listOf("bell","clock","calendar")
-    CloudFeatureScaffold("Reperibilità",onDismiss,null,{}) {
-        CloudCard("La campanella sul calendario","Segna i giorni in cui devi essere disponibile. Questa impostazione non crea una sveglia: gli avvisi si gestiscono in Sveglie dei turni.") {
-            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(Color(currentTurniPalette.onCall.fill)).padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                SiteIcon("bell",null,Modifier.size(24.dp),ColorReperibilita)
-                Text(titles[config.mode.ordinal],color=readableInk(Color(currentTurniPalette.onCall.fill),TextPrimary),fontSize=15.sp,fontWeight=FontWeight.SemiBold)
-            }
-        }
-        CloudCard("Come vuoi aggiungerla?") {
-            ReperibilitaMode.values().forEachIndexed { index,mode ->
-                val selected=config.mode==mode
-                val fill by animateColorAsState(if(selected)ObsidianPrimarySubtle else ObsidianSurfaceContainer,tween(220))
-                Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(fill)
-                    .border(if(selected)1.5.dp else 0.dp,if(selected)BrandInk else Color.Transparent,RoundedCornerShape(14.dp))
-                    .bouncyClickable{update{it.copy(mode=mode)}}.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-                    SiteIcon(icons[index],null,Modifier.size(22.dp),if(selected)BrandInk else TextSecondary)
-                    Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                        Text(titles[index],fontSize=14.sp,color=TextPrimary,fontWeight=FontWeight.SemiBold)
-                        Text(descriptions[index],fontSize=12.sp,lineHeight=17.sp,color=TextSecondary)
-                    }
-                    if(selected)SiteIcon("check","Modalità selezionata",Modifier.size(18.dp),BrandInk)
-                }
-            }
+    CloudFeatureScaffold("Reperibilità", onDismiss, null, {}) {
+        OnCallPreview()
+        CloudCard("Come si attiva", "La modalità scelta vale per tutti i lavori.") {
+            OnCallModeSelector(config.mode) { mode -> update { it.copy(mode = mode) } }
         }
         AnimatedContent(config.mode,transitionSpec={
             (fadeIn(tween(220,delayMillis=60)) togetherWith fadeOut(tween(120))) using SizeTransform{_,_->tween(320)}
         }) { mode ->
             Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 when(mode) {
-                    ReperibilitaMode.MANUALE -> CloudCard("Scegli dal calendario","Apri un giorno e tocca la campanella. Puoi farlo anche dalla barra di modifica: lo stesso strumento funziona con Cambia, Più turni e Rotazioni.") {
+                    ReperibilitaMode.MANUALE -> CloudCard("Scegli dal calendario","Tocca la campanella nel dettaglio del giorno o nella barra di modifica di Cambia, Più turni e Rotazioni.") {
                         val count=manualOnCallDates(config.manualDates,ShiftRepository.dayExtraInfo.mapValues{it.value.isOnCallManual}).size
                         Text("$count ${if(count==1)"giorno attivato" else "giorni attivati"} manualmente",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=BrandInk)
-                        Text("Non vengono aggiunti altri giorni automaticamente.",fontSize=12.sp,color=TextSecondary)
                     }
-                    ReperibilitaMode.TURNO_SPECIFICO -> CloudCard("Quali turni la attivano?","La campanella si accende nei giorni che contengono almeno uno dei modelli selezionati. Se cambi il turno, la regola si aggiorna.") {
+                    ReperibilitaMode.TURNO_SPECIFICO -> CloudCard("Modelli di turno","La campanella si accende nei giorni che contengono almeno uno dei modelli selezionati.") {
                         OnCallModelChoices(config.shiftSpecificIds){ids->update{it.copy(shiftSpecificIds=ids)}}
                     }
                     ReperibilitaMode.ALTERNATA_STAGIONALE -> {
-                        CloudCard("1 · Un periodo segue i turni","Il periodo si ripete ogni anno. Le date iniziale e finale sono comprese; puoi anche attraversare Capodanno, per esempio da ottobre a maggio.") {
+                        CloudCard("Periodo con turni selezionati","Il periodo si ripete ogni anno, comprende entrambe le date e può proseguire oltre Capodanno.") {
                             AnnualOnCallDate("Dal",config.seasonal.winterStartMonth,config.seasonal.winterStartDay){month,day->update{it.copy(seasonal=it.seasonal.copy(winterStartMonth=month,winterStartDay=day))}}
                             AnnualOnCallDate("Al",config.seasonal.winterEndMonth,config.seasonal.winterEndDay){month,day->update{it.copy(seasonal=it.seasonal.copy(winterEndMonth=month,winterEndDay=day))}}
-                            Text("In questo periodo la campanella segue questi modelli:",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
+                            Text("Modelli attivi nel periodo",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
                             OnCallModelChoices(config.seasonal.winterShiftIds){ids->update{it.copy(seasonal=it.seasonal.copy(winterShiftIds=ids))}}
                         }
-                        CloudCard("2 · Nel resto dell’anno alterna settimane","Fuori dalle date qui sopra, conta i giorni a blocchi di 7 dalla data scelta, anche se non è lunedì. Le settimane reperibili valgono per tutti i giorni, anche senza turno.") {
+                        CloudCard("Ciclo nel resto dell’anno","Fuori dalle date qui sopra, conta i giorni a blocchi di 7 dalla data scelta, anche se non è lunedì. Le settimane reperibili valgono per tutti i giorni, anche senza turno.") {
                             OnCallReferenceDate(config.seasonal.summerCycleReferenceDate){date->update{it.copy(seasonal=it.seasonal.copy(summerCycleReferenceDate=date))}}
                             OnCallWeekCount("Settimane con reperibilità",config.seasonal.summerCycleOnCallWeeks){value->update{it.copy(seasonal=it.seasonal.copy(summerCycleOnCallWeeks=value))}}
-                            OnCallWeekCount("Poi settimane senza",config.seasonal.summerCycleWorkWeeks){value->update{it.copy(seasonal=it.seasonal.copy(summerCycleWorkWeeks=value))}}
+                            OnCallWeekCount("Settimane senza reperibilità",config.seasonal.summerCycleWorkWeeks){value->update{it.copy(seasonal=it.seasonal.copy(summerCycleWorkWeeks=value))}}
                             Text("Il ciclo si ripete: ${config.seasonal.summerCycleOnCallWeeks} con reperibilità, poi ${config.seasonal.summerCycleWorkWeeks} senza. La data scelta avvia il primo blocco reperibile.",fontSize=12.sp,lineHeight=18.sp,color=TextSecondary)
                         }
                     }
                 }
             }
         }
-        CloudCard("Puoi sempre cambiare un singolo giorno","La scelta manuale sul giorno ha la precedenza sulla regola: campanella accesa significa reperibile, spenta significa non reperibile. Le impostazioni si salvano automaticamente.") {
-            Text("Prossimi 7 giorni",color=TextPrimary,fontWeight=FontWeight.SemiBold,fontSize=13.sp)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                repeat(7){offset->val date=LocalDate.now().plusDays(offset.toLong());val on=ShiftRepository.isOnCall(date)
-                    val fill=if(on)Color(currentTurniPalette.onCall.fill)else ObsidianSurfaceContainer
-                    Column(Modifier.weight(1f).clip(RoundedCornerShape(10.dp)).background(fill).padding(vertical=8.dp),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
-                        Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW,Locale.ITALIAN),fontSize=10.sp,color=TextSecondary)
-                        Text("${date.dayOfMonth}",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=readableInk(fill,TextPrimary))
-                        SiteIcon(if(on)"bell" else "minus",null,Modifier.size(13.dp),if(on)ColorReperibilita else TextMuted)
+        CloudCard("Modifiche sul calendario") {
+            Text("La campanella impostata su un singolo giorno ha la precedenza in tutte le modalità.", color = TextPrimary, fontSize = 13.sp, lineHeight = 19.sp)
+            Text("Le modifiche si salvano automaticamente. Per ricevere un avviso, usa Sveglie automatiche.", color = TextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+        }
+    }
+}
+
+@Composable
+private fun OnCallModeSelector(active: ReperibilitaMode, onChange: (ReperibilitaMode) -> Unit) {
+    val fontScale = androidx.compose.ui.platform.LocalDensity.current.fontScale
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val group = Modifier.fillMaxWidth().selectableGroup()
+            .background(ObsidianSurfaceContainer, RoundedCornerShape(15.dp)).padding(3.dp)
+        if (maxWidth < 270.dp || fontScale > 1.2f) {
+            Column(group, verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                ReperibilitaMode.values().forEach { mode ->
+                    OnCallModeButton(mode, active == mode, Modifier.fillMaxWidth()) { onChange(mode) }
+                }
+            }
+        } else {
+            Row(group, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                ReperibilitaMode.values().forEach { mode ->
+                    OnCallModeButton(mode, active == mode, Modifier.weight(1f)) { onChange(mode) }
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnCallModeButton(mode: ReperibilitaMode, active: Boolean, modifier: Modifier, onClick: () -> Unit) {
+    val label = when (mode) {
+        ReperibilitaMode.MANUALE -> "Manuale"
+        ReperibilitaMode.TURNO_SPECIFICO -> "Per turno"
+        ReperibilitaMode.ALTERNATA_STAGIONALE -> "Stagionale"
+    }
+    val fill by animateColorAsState(if (active) ObsidianPrimary else ObsidianSurfaceContainer, tween(220))
+    val ink by animateColorAsState(if (active) OnBrand else TextPrimary, tween(220))
+    Box(modifier.heightIn(min = 48.dp).clip(RoundedCornerShape(12.dp)).background(fill)
+        .semantics(mergeDescendants = true) { selected = active; role = Role.RadioButton }
+        .bouncyClickable(onClick = onClick).padding(horizontal = 4.dp, vertical = 6.dp),
+        contentAlignment = Alignment.Center) {
+        Text(label, fontSize = 13.sp, lineHeight = 17.sp, fontWeight = FontWeight.SemiBold, color = ink)
+    }
+}
+
+@Composable
+private fun OnCallPreview() {
+    val today = LocalDate.now()
+    val days = (0L..6L).map { today.plusDays(it) }
+    val count = days.count { ShiftRepository.isOnCall(it) }
+    val tone = currentTurniPalette.onCall
+    val amberInk = Color(tone.ink)
+    val amberFill = Color(tone.fill)
+    val fullDate = remember { DateTimeFormatter.ofPattern("EEEE d MMMM", Locale.ITALIAN) }
+    val detail = when (count) {
+        0 -> "Nessun giorno di reperibilità"
+        1 -> "1 giorno di reperibilità"
+        else -> "$count giorni di reperibilità"
+    }
+    Surface(modifier = Modifier.fillMaxWidth(), shape = RoundedCornerShape(20.dp), color = ObsidianSurface) {
+        Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                Box(Modifier.size(40.dp).background(amberFill, RoundedCornerShape(14.dp)), contentAlignment = Alignment.Center) {
+                    SiteIcon("bell", null, Modifier.size(21.dp), amberInk)
+                }
+                Column(Modifier.weight(1f)) {
+                    Text("Prossimi 7 giorni", color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
+                    Text(detail, color = TextSecondary, fontSize = 13.sp)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                days.forEach { date ->
+                    val active = ShiftRepository.isOnCall(date)
+                    val fill by animateColorAsState(if (active) amberFill else ObsidianSurfaceContainer, tween(220))
+                    val state = if (active) "reperibile" else "senza reperibilità"
+                    Column(Modifier.weight(1f).background(fill, RoundedCornerShape(10.dp))
+                        .clearAndSetSemantics { contentDescription = "${date.format(fullDate)}, $state" }.padding(vertical = 7.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                        Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.ITALIAN), color = if (active) amberInk else TextSecondary, fontSize = 11.sp)
+                        Text(date.dayOfMonth.toString(), color = if (active) amberInk else TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                        SiteIcon(if (active) "bell" else "minus", null, Modifier.size(13.dp), if (active) amberInk else TextMuted)
                     }
                 }
             }
@@ -114,14 +167,16 @@ private fun OnCallModelChoices(selected:List<String>,onChange:(List<String>)->Un
         if(ShiftRepository.workProfiles.size>1)Text(ShiftRepository.workProfiles.firstOrNull{it.id==work}?.name?:"Altro lavoro",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=TextSecondary)
         models.chunked(2).forEach{row->Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
             row.forEach{model->val chosen=model.id in selected;val tone=shiftColorStyle(model.color,TurniThemeState.dark,ObsidianSurface)
-                val fill by animateColorAsState(if(chosen)tone.codeFill else ObsidianSurfaceContainer,tween(220))
+                val fill by animateColorAsState(if(chosen)ObsidianPrimarySubtle else ObsidianSurfaceContainer,tween(220))
                 Row(Modifier.weight(1f).heightIn(min=50.dp).clip(RoundedCornerShape(12.dp)).background(fill)
-                    .bouncyClickable{onChange(if(chosen)selected-model.id else selected+model.id)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                    .border(1.dp, if(chosen) BrandInk else Color.Transparent, RoundedCornerShape(12.dp))
+                    .semantics(mergeDescendants = true) { role = Role.Checkbox; toggleableState = androidx.compose.ui.state.ToggleableState(chosen) }.bouncyClickable{onChange(if(chosen)selected-model.id else selected+model.id)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                    Box(Modifier.size(10.dp).background(tone.accent, RoundedCornerShape(50)))
                     Column(Modifier.weight(1f)) {
-                        Text(model.shortCode,color=if(chosen)tone.codeInk else TextPrimary,fontWeight=FontWeight.Bold,fontSize=13.sp)
-                        Text(model.name,color=if(chosen)tone.codeInk else TextSecondary,fontSize=11.sp,lineHeight=15.sp)
+                        Text(model.shortCode,color=TextPrimary,fontWeight=FontWeight.Bold,fontSize=13.sp)
+                        Text(model.name,color=TextSecondary,fontSize=11.sp,lineHeight=15.sp)
                     }
-                    if(chosen)SiteIcon("check","Selezionato",Modifier.size(16.dp),tone.codeInk)
+                    if(chosen)SiteIcon("check",null,Modifier.size(16.dp),BrandInk)
                 }
             }
             if(row.size==1)Spacer(Modifier.weight(1f))
@@ -147,7 +202,7 @@ private fun AnnualOnCallDate(label:String,month:Int,day:Int,onDate:(Int,Int)->Un
                     PanelIcon("chevron-right","Mese successivo",{shown=if(shown==12)1 else shown+1},width=36.dp)
                 }
                 (1..Month.of(shown).maxLength()).toList().chunked(7).forEach{week->Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(3.dp)){
-                    week.forEach{number->Box(Modifier.weight(1f).height(32.dp).clip(RoundedCornerShape(8.dp)).background(if(shown==month&&number==day)ObsidianPrimary else ObsidianSurfaceContainer).bouncyClickable{onDate(shown,number);open=false},contentAlignment=Alignment.Center){Text("$number",color=if(shown==month&&number==day)OnBrand else TextPrimary,fontSize=12.sp)}}
+                    week.forEach{number->Box(Modifier.weight(1f).heightIn(min=44.dp).clip(RoundedCornerShape(8.dp)).background(if(shown==month&&number==day)ObsidianPrimary else ObsidianSurfaceContainer).bouncyClickable{onDate(shown,number);open=false},contentAlignment=Alignment.Center){Text("$number",color=if(shown==month&&number==day)OnBrand else TextPrimary,fontSize=12.sp)}}
                     repeat(7-week.size){Spacer(Modifier.weight(1f))}
                 };Spacer(Modifier.height(3.dp))}
             }
@@ -173,9 +228,9 @@ private fun OnCallReferenceDate(value:LocalDate,onDate:(LocalDate)->Unit) {
 private fun OnCallWeekCount(label:String,value:Int,onChange:(Int)->Unit) {
     Row(Modifier.fillMaxWidth().padding(vertical=4.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)) {
         Text(label,Modifier.weight(1f),fontSize=13.sp,lineHeight=18.sp,color=TextPrimary)
-        PanelIcon("minus","Riduci $label",{if(value>1)onChange(value-1)},width=34.dp,height=34.dp,background=ObsidianSurfaceContainer)
+        PanelIcon("minus","Riduci $label",{if(value>1)onChange(value-1)},width=48.dp,height=48.dp,background=ObsidianSurfaceContainer)
         Text("$value",Modifier.widthIn(min=24.dp),fontSize=16.sp,color=BrandInk,fontWeight=FontWeight.Bold,textAlign=androidx.compose.ui.text.style.TextAlign.Center)
-        PanelIcon("plus","Aumenta $label",{if(value<Int.MAX_VALUE)onChange(value+1)},width=34.dp,height=34.dp,background=ObsidianSurfaceContainer)
+        PanelIcon("plus","Aumenta $label",{if(value<Int.MAX_VALUE)onChange(value+1)},width=48.dp,height=48.dp,background=ObsidianSurfaceContainer)
     }
 }
 
