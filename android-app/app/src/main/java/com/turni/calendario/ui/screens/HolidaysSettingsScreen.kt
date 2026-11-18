@@ -3,288 +3,154 @@ package com.turni.calendario.ui.screens
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.tween
-import androidx.compose.animation.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.*
+import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.clearAndSetSemantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.heading
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.HolidayItem
 import com.turni.calendario.model.HolidaysCatalog
 import com.turni.calendario.repository.ShiftRepository
-import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
+import java.time.LocalDate
+import java.time.format.DateTimeFormatter
+import java.time.format.TextStyle
+import java.util.Locale
 
-@OptIn(ExperimentalMaterial3Api::class)
+private val fullDate = DateTimeFormatter.ofPattern("EEEE d MMMM uuuu", Locale.ITALIAN)
+
 @Composable
-fun HolidaysSettingsScreen(
-    onDismiss: () -> Unit
-) {
+fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
     BackHandler(onBack = onDismiss)
-
+    val year = LocalDate.now().year
     val enabledIds = ShiftRepository.enabledHolidayIds
+    val sections = remember(year) {
+        val catalog = HolidaysCatalog.allHolidays.sortedBy { it.getDateForYear(year) }
+        listOf(
+            "Festività nazionali e civili" to catalog.filter { !it.isCcnlExHoliday && !it.isPatronSaint },
+            "Santi patroni" to catalog.filter { !it.isCcnlExHoliday && it.isPatronSaint },
+            "Ex festività CCNL e giorni speciali" to catalog.filter { it.isCcnlExHoliday }
+        )
+    }
+    var sectionIndex by rememberSaveable { mutableIntStateOf(0) }
+    val activeCount = HolidaysCatalog.allHolidays.count { it.id in enabledIds }
+    val defaultIds = remember { HolidaysCatalog.allHolidays.filter { it.isDefaultEnabled }.map { it.id }.toSet() }
+    val scheme = MaterialTheme.colorScheme
 
-    val nationalHolidays = remember {
-        HolidaysCatalog.allHolidays.filter { !it.isPatronSaint && !it.isCcnlExHoliday }
-    }
-    val patronHolidays = remember {
-        HolidaysCatalog.allHolidays.filter { it.isPatronSaint && !it.isCcnlExHoliday }
-    }
-    val ccnlHolidays = remember {
-        HolidaysCatalog.allHolidays.filter { it.isCcnlExHoliday }
-    }
-
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(ObsidianBackground)
-            .statusBarsPadding()
-            .padding(horizontal = 16.dp, vertical = 12.dp)
-    ) {
-        // Top App Bar Ergonomica Breccia (Unico tasto indietro in alto)
+    Column(Modifier.fillMaxSize().background(ObsidianBackground).statusBarsPadding().padding(horizontal = 16.dp)) {
         Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(vertical = 8.dp),
+            Modifier.fillMaxWidth().padding(vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.SpaceBetween
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
-                Surface(
-                    onClick = onDismiss,
-                    shape = CircleShape,
-                    color = ObsidianSurfaceContainer,
-                    border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorderSubtle),
-                    modifier = Modifier.size(44.dp)
-                ) {
-                    Box(contentAlignment = Alignment.Center) {
-                        Icon(
-                            Icons.Outlined.ArrowBack,
-                            contentDescription = "Indietro",
-                            tint = TextPrimary,
-                            modifier = Modifier.size(20.dp)
-                        )
-                    }
-                }
-                Spacer(modifier = Modifier.width(14.dp))
-                Column {
-                    Text(
-                        text = "Festività & CCNL",
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.ExtraBold,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Configura giorni festivi e patroni",
-                        fontSize = 12.sp,
-                        color = TextSecondary
-                    )
+            Surface(onClick = onDismiss, shape = CircleShape, color = ObsidianSurfaceContainer, modifier = Modifier.size(48.dp)) {
+                Box(contentAlignment = Alignment.Center) {
+                    Icon(Icons.Outlined.ArrowBack, "Indietro", tint = TextPrimary)
                 }
             }
-
-            // Pillola contatore festività attive
-            Surface(
-                shape = RoundedCornerShape(10.dp),
-                color = ColorNegative.copy(alpha = 0.18f),
-                border = androidx.compose.foundation.BorderStroke(1.dp, ColorNegative.copy(alpha = 0.4f))
-            ) {
-                Text(
-                    text = "${enabledIds.size} Attive",
-                    fontSize = 11.5.sp,
-                    fontWeight = FontWeight.ExtraBold,
-                    color = ColorNegative,
-                    modifier = Modifier.padding(horizontal = 8.dp, vertical = 4.dp)
-                )
-            }
+            Text("Festività", style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = TextPrimary)
         }
-
-        Spacer(modifier = Modifier.height(10.dp))
-
-        // Scheda Azioni Rapide (Reset ai default nazionali)
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(16.dp),
-            color = ObsidianSurface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-        ) {
-            Row(
-                modifier = Modifier.padding(14.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween
-            ) {
-                Column(modifier = Modifier.weight(1f)) {
-                    Text(
-                        text = "Festività Nazionali Standard",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.5.sp,
-                        color = TextPrimary
-                    )
-                    Text(
-                        text = "Ripristina le festività della legge italiana",
-                        fontSize = 11.sp,
-                        color = TextSecondary
-                    )
-                }
-
-                Button(
-                    onClick = { ShiftRepository.resetHolidaysToDefault() },
-                    shape = RoundedCornerShape(10.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianSurfaceContainer),
-                    border = androidx.compose.foundation.BorderStroke(0.8.dp, ObsidianBorderSubtle),
-                    contentPadding = PaddingValues(horizontal = 12.dp, vertical = 6.dp)
-                ) {
-                    Icon(Icons.Outlined.Refresh, contentDescription = null, tint = BrandInk, modifier = Modifier.size(15.dp))
-                    Spacer(modifier = Modifier.width(6.dp))
-                    Text("Ripristina", fontSize = 12.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.height(14.dp))
-
-        // Lista Raggruppata Scrollabile
         Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
+            Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
-            HolidaySectionView(
-                title = "FESTIVITÀ NAZIONALI & CIVILI",
-                holidays = nationalHolidays,
-                enabledIds = enabledIds,
-                onToggle = { ShiftRepository.toggleHoliday(it) }
-            )
-
-            HolidaySectionView(
-                title = "SANTI PATRONI",
-                holidays = patronHolidays,
-                enabledIds = enabledIds,
-                onToggle = { ShiftRepository.toggleHoliday(it) }
-            )
-
-            HolidaySectionView(
-                title = "EX-FESTIVITÀ CCNL E GIORNI SPECIALI",
-                holidays = ccnlHolidays,
-                enabledIds = enabledIds,
-                onToggle = { ShiftRepository.toggleHoliday(it) }
-            )
-
-            Spacer(modifier = Modifier.height(30.dp))
+            Surface(shape = RoundedCornerShape(20.dp), color = scheme.primaryContainer, modifier = Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text("Calendario $year", style = MaterialTheme.typography.labelLarge, color = scheme.onPrimaryContainer)
+                    Text(
+                        if (activeCount == 1) "1 festività selezionata" else "$activeCount festività selezionate", style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold, color = scheme.onPrimaryContainer
+                    )
+                    Text("Scegli le ricorrenze da evidenziare sul calendario.", style = MaterialTheme.typography.bodyMedium, color = scheme.onPrimaryContainer)
+                    TextButton(
+                        onClick = ShiftRepository::resetHolidaysToDefault,
+                        enabled = enabledIds != defaultIds,
+                        colors = ButtonDefaults.textButtonColors(contentColor = scheme.onPrimaryContainer),
+                        contentPadding = PaddingValues(horizontal = 0.dp, vertical = 4.dp)
+                    ) {
+                        Icon(Icons.Outlined.Refresh, null, Modifier.size(18.dp))
+                        Spacer(Modifier.width(6.dp))
+                        Text("Ripristina predefinite")
+                    }
+                }
+            }
+            SingleChoiceSegmentedButtonRow(Modifier.fillMaxWidth()) {
+                listOf("Nazionali", "Patroni", "CCNL").forEachIndexed { index, label ->
+                    SegmentedButton(
+                        selected = sectionIndex == index, onClick = { sectionIndex = index },
+                        shape = SegmentedButtonDefaults.itemShape(index, sections.size),
+                        colors = SegmentedButtonDefaults.colors(activeContainerColor = scheme.primary, activeContentColor = scheme.onPrimary),
+                        icon = {}
+                    ) { Text(label) }
+                }
+            }
+            val (title, holidays) = sections[sectionIndex]
+            HolidaySection(title, holidays, enabledIds, year)
+            Spacer(Modifier.height(12.dp).navigationBarsPadding())
         }
     }
 }
 
 @Composable
-private fun HolidaySectionView(
-    title: String,
-    holidays: List<HolidayItem>,
-    enabledIds: Set<String>,
-    onToggle: (String) -> Unit
-) {
-    Column {
+private fun HolidaySection(title: String, holidays: List<HolidayItem>, enabledIds: Set<String>, year: Int) {
+    Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
-            text = title,
-            color = TextMuted,
-            fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            letterSpacing = 1.2.sp,
-            modifier = Modifier.padding(start = 4.dp, bottom = 8.dp)
+            title, Modifier.padding(start = 4.dp).semantics { heading() },
+            style = MaterialTheme.typography.titleSmall, fontWeight = FontWeight.Bold, color = TextPrimary
         )
-
-        Surface(
-            modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(18.dp),
-            color = ObsidianSurface,
-            border = androidx.compose.foundation.BorderStroke(1.dp, ObsidianBorder)
-        ) {
+        Surface(shape = RoundedCornerShape(18.dp), color = ObsidianSurface, border = BorderStroke(1.dp, ObsidianBorder)) {
             Column {
-                holidays.forEachIndexed { index, item ->
-                    val isChecked = enabledIds.contains(item.id)
-                    val badgeFill by animateColorAsState(
-                        if (isChecked) ColorNegative.copy(alpha = .22f) else ObsidianSurfaceContainer, tween(220)
+                holidays.forEachIndexed { index, holiday ->
+                    val selected = holiday.id in enabledIds
+                    val date = remember(holiday, year) { holiday.getDateForYear(year) }
+                    val scheme = MaterialTheme.colorScheme
+                    val fill by animateColorAsState(
+                        if (selected) scheme.primaryContainer else ObsidianSurfaceContainer, tween(180), label = "dateFill"
                     )
-                    val badgeBorder by animateColorAsState(
-                        if (isChecked) ColorNegative.copy(alpha = .6f) else ObsidianBorderSubtle, tween(220)
+                    val ink by animateColorAsState(
+                        if (selected) scheme.onPrimaryContainer else TextSecondary, tween(180), label = "dateInk"
                     )
-                    val badgeInk by animateColorAsState(if (isChecked) ColorNegative else TextSecondary, tween(220))
                     Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .bouncyClickable { onToggle(item.id) }
-                            .padding(horizontal = 14.dp, vertical = 11.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.SpaceBetween
+                        Modifier.fillMaxWidth().toggleable(value = selected, role = Role.Switch) { ShiftRepository.toggleHoliday(holiday.id) }
+                            .padding(horizontal = 14.dp, vertical = 10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        verticalAlignment = Alignment.CenterVertically
                     ) {
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier.weight(1f)
+                        Surface(
+                            shape = RoundedCornerShape(12.dp), color = fill,
+                            modifier = Modifier.widthIn(min = 48.dp).clearAndSetSemantics { contentDescription = date.format(fullDate) }
                         ) {
-                            // Badge data compatta
-                            Surface(
-                                shape = RoundedCornerShape(8.dp),
-                                color = badgeFill,
-                                border = androidx.compose.foundation.BorderStroke(
-                                    0.8.dp,
-                                    badgeBorder
-                                ),
-                                modifier = Modifier.size(width = 44.dp, height = 34.dp)
-                            ) {
-                                Box(contentAlignment = Alignment.Center) {
-                                    Text(
-                                        text = "${item.day}/${item.month}",
-                                        fontSize = 11.sp,
-                                        fontWeight = FontWeight.Black,
-                                        color = badgeInk
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.width(12.dp))
-
-                            Column {
-                                Text(
-                                    text = item.name,
-                                    fontWeight = FontWeight.Bold,
-                                    fontSize = 13.5.sp,
-                                    color = if (isChecked) TextPrimary else TextSecondary
-                                )
-                                Text(
-                                    text = item.dateExample,
-                                    fontSize = 11.sp,
-                                    color = TextMuted
-                                )
+                            Column(Modifier.padding(horizontal = 6.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+                                Text(date.dayOfMonth.toString(), style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold, color = ink)
+                                Text(date.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN), style = MaterialTheme.typography.labelSmall, color = ink)
                             }
                         }
-
-                        Switch(
-                            checked = isChecked,
-                            onCheckedChange = { onToggle(item.id) },
-                            colors = SwitchDefaults.colors(
-                                checkedThumbColor = MaterialTheme.colorScheme.onPrimary,
-                                checkedTrackColor = ColorNegative,
-                                uncheckedTrackColor = ObsidianSurfaceContainer,
-                                uncheckedThumbColor = TextMuted
-                            )
+                        Text(
+                            holiday.name, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.SemiBold, color = TextPrimary
                         )
+                        Switch(checked = selected, onCheckedChange = null)
                     }
-
-                    if (index < holidays.size - 1) {
-                        Divider(color = ObsidianBorderSubtle, thickness = 0.6.dp, modifier = Modifier.padding(horizontal = 12.dp))
+                    if (index < holidays.lastIndex) {
+                        HorizontalDivider(Modifier.padding(horizontal = 14.dp), color = ObsidianBorderSubtle)
                     }
                 }
             }

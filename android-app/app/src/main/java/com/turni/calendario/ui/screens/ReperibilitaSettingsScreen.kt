@@ -14,6 +14,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.Placeable
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.font.FontWeight
@@ -37,7 +39,7 @@ fun ReperibilitaSettingsScreen(onDismiss:()->Unit) {
         ShiftRepository.reperibilitaConfig=change(ShiftRepository.reperibilitaConfig)
     }
     CloudFeatureScaffold("Reperibilità", onDismiss, null, {}) {
-        OnCallPreview()
+        OnCallPreview(config.mode == ReperibilitaMode.MANUALE)
         CloudCard("Come si attiva", "La modalità scelta vale per tutti i lavori.") {
             OnCallModeSelector(config.mode) { mode -> update { it.copy(mode = mode) } }
         }
@@ -46,7 +48,7 @@ fun ReperibilitaSettingsScreen(onDismiss:()->Unit) {
         }) { mode ->
             Column(verticalArrangement=Arrangement.spacedBy(12.dp)) {
                 when(mode) {
-                    ReperibilitaMode.MANUALE -> CloudCard("Scegli dal calendario","Tocca la campanella nel dettaglio del giorno o nella barra di modifica di Cambia, Più turni e Rotazioni.") {
+                    ReperibilitaMode.MANUALE -> CloudCard("Altre date","Per modificare una data fuori dall’anteprima, tocca la campanella nel dettaglio del giorno sul calendario.") {
                         val count=manualOnCallDates(config.manualDates,ShiftRepository.dayExtraInfo.mapValues{it.value.isOnCallManual}).size
                         Text("$count ${if(count==1)"giorno attivato" else "giorni attivati"} manualmente",fontSize=14.sp,fontWeight=FontWeight.SemiBold,color=BrandInk)
                     }
@@ -117,9 +119,13 @@ private fun OnCallModeButton(mode: ReperibilitaMode, active: Boolean, modifier: 
 }
 
 @Composable
-private fun OnCallPreview() {
+private fun OnCallPreview(manual: Boolean) {
     val today = LocalDate.now()
-    val days = (0L..6L).map { today.plusDays(it) }
+    val days = remember(today) { (0L..6L).map { today.plusDays(it) } }
+    val modelsByDate = days.associateWith { date ->
+        ShiftRepository.getShiftsForDate(date).mapNotNull { ShiftRepository.getShiftDefinition(it.shiftDefId) }
+    }
+    val visibleModels = modelsByDate.values.flatten().distinctBy { it.id }
     val count = days.count { ShiftRepository.isOnCall(it) }
     val tone = currentTurniPalette.onCall
     val amberInk = Color(tone.ink)
@@ -141,19 +147,50 @@ private fun OnCallPreview() {
                     Text(detail, color = TextSecondary, fontSize = 13.sp)
                 }
             }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                days.forEach { date ->
-                    val active = ShiftRepository.isOnCall(date)
-                    val fill by animateColorAsState(if (active) amberFill else ObsidianSurfaceContainer, tween(220))
-                    val state = if (active) "reperibile" else "senza reperibilità"
-                    Column(Modifier.weight(1f).background(fill, RoundedCornerShape(10.dp))
-                        .clearAndSetSemantics { contentDescription = "${date.format(fullDate)}, $state" }.padding(vertical = 7.dp),
-                        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                        Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.NARROW, Locale.ITALIAN), color = if (active) amberInk else TextSecondary, fontSize = 11.sp)
-                        Text(date.dayOfMonth.toString(), color = if (active) amberInk else TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
-                        SiteIcon(if (active) "bell" else "minus", null, Modifier.size(13.dp), if (active) amberInk else TextMuted)
+            if (manual) Text("Tocca un giorno per attivare o disattivare la reperibilità.", color = TextSecondary, fontSize = 13.sp)
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val minWidth = 38.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
+                val width = maxOf(minWidth, (maxWidth - 24.dp) / 7)
+                Row(Modifier.horizontalScroll(rememberScrollState()).height(IntrinsicSize.Max), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    days.forEach { date ->
+                        val models = modelsByDate.getValue(date)
+                        val active = ShiftRepository.isOnCall(date)
+                        val fill by animateColorAsState(if (active) amberFill else ObsidianSurfaceContainer, tween(220))
+                        val state = if (active) "Reperibile" else "Senza reperibilità"
+                        val labels = models.joinToString(", ") { model ->
+                            val job = ShiftRepository.workProfiles.firstOrNull { it.id == model.workProfileId }
+                            if (ShiftRepository.workProfiles.size > 1 && job != null) "${model.name}, ${job.name}" else model.name
+                        }.ifEmpty { "Nessun turno" }
+                        val action = if (manual) Modifier.toggleable(value = active, role = Role.Checkbox) {
+                            ShiftRepository.setDayOnCallManual(date, it)
+                        } else Modifier
+                        Column(Modifier.width(width).fillMaxHeight().clip(RoundedCornerShape(10.dp)).background(fill).then(action)
+                            .clearAndSetSemantics {
+                                contentDescription = "${date.format(fullDate)}, $labels"
+                                stateDescription = state
+                            }.padding(horizontal = 2.dp, vertical = 7.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                            Text(date.dayOfWeek.getDisplayName(java.time.format.TextStyle.SHORT, Locale.ITALIAN), color = if (active) amberInk else TextSecondary, fontSize = 11.sp)
+                            Text(date.dayOfMonth.toString(), color = if (active) amberInk else TextPrimary, fontSize = 15.sp, fontWeight = FontWeight.Bold)
+                            SiteIcon(if (active) "bell" else "minus", null, Modifier.size(13.dp), if (active) amberInk else TextMuted)
+                            if (models.isEmpty()) Text("–", color = if (active) amberInk else TextSecondary,
+                                fontSize = 10.sp, lineHeight = 12.sp, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+                            models.forEach { model ->
+                                val tone = shiftColorStyle(model.color, TurniThemeState.dark, fill)
+                                Text(model.shortCode.ifBlank { model.name }, Modifier.background(tone.codeFill, RoundedCornerShape(5.dp)).padding(horizontal = 4.dp, vertical = 1.dp),
+                                    color = tone.codeInk, fontSize = 11.sp, lineHeight = 13.sp, fontWeight = FontWeight.Bold)
+                            }
+                        }
                     }
                 }
+            }
+            if (visibleModels.isNotEmpty()) {
+                val legend = visibleModels.joinToString("   ·   ") { model ->
+                    val job = ShiftRepository.workProfiles.firstOrNull { it.id == model.workProfileId }
+                    val label = if (model.shortCode.equals(model.name, ignoreCase = true)) model.name else "${model.shortCode}  ${model.name}"
+                    if (ShiftRepository.workProfiles.size > 1 && job != null) "$label (${job.name})" else label
+                }
+                Text(legend, style = MaterialTheme.typography.bodySmall, color = TextSecondary)
             }
         }
     }
@@ -165,22 +202,35 @@ private fun OnCallModelChoices(selected:List<String>,onChange:(List<String>)->Un
     if(all.isEmpty())Text("Non hai ancora modelli. Creali in Turni e lavori, poi torna qui per sceglierli.",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
     all.groupBy{it.workProfileId}.forEach{(work,models)->
         if(ShiftRepository.workProfiles.size>1)Text(ShiftRepository.workProfiles.firstOrNull{it.id==work}?.name?:"Altro lavoro",fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=TextSecondary)
-        models.chunked(2).forEach{row->Row(horizontalArrangement=Arrangement.spacedBy(7.dp)) {
-            row.forEach{model->val chosen=model.id in selected;val tone=shiftColorStyle(model.color,TurniThemeState.dark,ObsidianSurface)
-                val fill by animateColorAsState(if(chosen)ObsidianPrimarySubtle else ObsidianSurfaceContainer,tween(220))
-                Row(Modifier.weight(1f).heightIn(min=50.dp).clip(RoundedCornerShape(12.dp)).background(fill)
-                    .border(1.dp, if(chosen) BrandInk else Color.Transparent, RoundedCornerShape(12.dp))
-                    .semantics(mergeDescendants = true) { role = Role.Checkbox; toggleableState = androidx.compose.ui.state.ToggleableState(chosen) }.bouncyClickable{onChange(if(chosen)selected-model.id else selected+model.id)}.padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-                    Box(Modifier.size(10.dp).background(tone.accent, RoundedCornerShape(50)))
-                    Column(Modifier.weight(1f)) {
-                        Text(model.shortCode,color=TextPrimary,fontWeight=FontWeight.Bold,fontSize=13.sp)
-                        Text(model.name,color=TextSecondary,fontSize=11.sp,lineHeight=15.sp)
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val minWidth = 88.dp * LocalDensity.current.fontScale.coerceAtLeast(1f)
+            val columns = ((maxWidth + 6.dp) / (minWidth + 6.dp)).toInt().coerceIn(1, 3)
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                models.chunked(columns).forEach { row ->
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        row.forEach { model ->
+                            val chosen = model.id in selected
+                            val tone = shiftColorStyle(model.color, TurniThemeState.dark, ObsidianSurface)
+                            val fill by animateColorAsState(if (chosen) ObsidianPrimarySubtle else ObsidianSurfaceContainer, tween(220))
+                            val shape = RoundedCornerShape(12.dp)
+                            Column(Modifier.weight(1f).heightIn(min = 48.dp).clip(shape).background(fill)
+                                .border(1.dp, if (chosen) BrandInk else Color.Transparent, shape)
+                                .toggleable(value = chosen, role = Role.Checkbox) { enabled ->
+                                    onChange(if (enabled) selected + model.id else selected - model.id)
+                                }.padding(horizontal = 7.dp, vertical = 6.dp)) {
+                                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    Box(Modifier.size(8.dp).background(tone.accent, RoundedCornerShape(50)))
+                                    Text(model.shortCode, Modifier.weight(1f), color = TextPrimary, fontWeight = FontWeight.Bold, fontSize = 13.sp)
+                                    if (chosen) SiteIcon("check", null, Modifier.size(13.dp), BrandInk)
+                                }
+                                Text(model.name, color = TextSecondary, fontSize = 11.sp, lineHeight = 14.sp)
+                            }
+                        }
+                        repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                     }
-                    if(chosen)SiteIcon("check",null,Modifier.size(16.dp),BrandInk)
                 }
             }
-            if(row.size==1)Spacer(Modifier.weight(1f))
-        }}
+        }
     }
 }
 

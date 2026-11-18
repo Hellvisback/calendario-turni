@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Reperibilità e festività beta.25
+
+La beta.25 personale (70) mostra i turni nei prossimi sette giorni, abilita la scelta manuale dalla data e raggruppa le festività per categoria. [Verifica Android e schermate](VERIFICA_v1.8.0-beta.25.md).
+
 ## Impostazioni e reperibilità beta.24
 
 La beta.24 personale (69) riordina le impostazioni e aggiorna la configurazione della reperibilità. [Verifica Android e schermate](VERIFICA_v1.8.0-beta.24.md).
