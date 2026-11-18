@@ -1,8 +1,8 @@
 package com.turni.calendario
 
 import com.turni.calendario.ui.screens.calendarOvertimeLabel
-import com.turni.calendario.ui.screens.calendarExtraBandHeight
 import com.turni.calendario.ui.screens.calendarShiftLayout
+import com.turni.calendario.ui.screens.calendarShiftAccessibility
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.DataInputStream
@@ -14,14 +14,17 @@ class CalendarExtrasPresentationTest {
         assertEquals("+1h",calendarOvertimeLabel(1f));assertEquals("+1h30",calendarOvertimeLabel(1.5f))
         assertEquals("+10h15",calendarOvertimeLabel(10.25f))
     }
-    @Test fun metadataNeverConsumesTheBaseShiftOrExceedsTheCell(){
-        for(available in listOf(39f,40f,43f,62f,100f))for(rows in listOf(0f,.2f,1f,2f)){
-            val h=calendarExtraBandHeight(available,40f,rows)
-            assertTrue(h in 0f..13f)
-            if(available>=40f)assertTrue(40f+h*rows<=available+.001f)
-            else assertEquals(0f,h,.001f)
-        }
+    @Test fun bothCompactMarkersAreDescribedWithTheExactOvertime() {
+        assertEquals(
+            "Mattina, 06:00–14:00, straordinario +1h30, trasferta",
+            calendarShiftAccessibility("Mattina", "06:00–14:00", 1.5f, true)
+        )
     }
+
+    @Test fun anUnmodifiedShiftHasNoExtraStatusInItsDescription() {
+        assertEquals("Notte, 22:00–06:00", calendarShiftAccessibility("Notte", "22:00–06:00", 0f, false))
+    }
+
     @Test fun addingAssignmentsNeverCompressesExistingBadges() {
         for(height in listOf(0f,23f,50f,76f,90f,120f))for(scale in listOf(1f,1.3f,1.5f,2f)) {
             val single=calendarShiftLayout(height,1,scale)
@@ -35,12 +38,6 @@ class CalendarExtrasPresentationTest {
         assertEquals(1,calendarShiftLayout(50f,2,1f).visibleCount)
         assertEquals(2,calendarShiftLayout(76f,3,1f).visibleCount)
         assertEquals(3,calendarShiftLayout(100f,4,1f).visibleCount)
-    }
-    @Test fun overtimeAndTravelRemainAttachedWithoutShrinkingWhenMoreShiftsAreAdded() {
-        val extras=listOf(26f,0f,13f,0f)
-        assertEquals(56f,calendarShiftLayout(100f,1,1f,extras).chipHeight+extras[0],.001f)
-        assertEquals(2,calendarShiftLayout(100f,4,1f,extras).visibleCount)
-        assertEquals(1,calendarShiftLayout(70f,4,1f,extras).visibleCount)
     }
     @Test fun bakedDockIsFiniteSymmetricAndDetachesAtRest(){
         DataInputStream(File("src/main/res/raw/dock_contours.bin").inputStream()).use{input->

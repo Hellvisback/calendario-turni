@@ -276,7 +276,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
         }
         AnimatedVisibility(selectedDate!=null&&!editing,enter=slideInVertically(spring(.9f,340f)){(56*density).roundToInt()}+fadeIn(),
             exit=slideOutVertically(spring(1f,440f)){(56*density).roundToInt()}+fadeOut(),
-            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(start=17.dp,end=17.dp,bottom=keyboardAwarePanelClearance(86.dp))) {
+            modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().imePadding().padding(horizontal=17.dp).keyboardAwarePanelClearance(86.dp)) {
             NativeDayCard(lastDate,onClose={selectedDate=null},onSelectShift={addSecondary=it;selectShift=lastDate},
                 onFeedback={feedback=it},onDateChange={lastDate=it;selectedDate=it;if(YearMonth.from(it)!=month)monthKey=YearMonth.from(it).toString()})
         }

@@ -93,13 +93,21 @@ internal fun panelKeyboardClearance(rest:Float,ime:Float,navigation:Float):Float
     (rest-(ime-navigation).coerceAtLeast(0f)).coerceAtLeast(minOf(rest,8f))
 
 @Composable
-internal fun keyboardAwarePanelClearance(rest:Dp):Dp {
-    val density=LocalDensity.current
-    val ime=WindowInsets.ime.getBottom(density)
-    val navigation=WindowInsets.navigationBars.getBottom(density)
-    return with(density){panelKeyboardClearance(rest.value,ime.toDp().value,navigation.toDp().value).dp}
+internal fun Modifier.keyboardAwarePanelClearance(rest: Dp): Modifier {
+    val ime = WindowInsets.ime
+    val navigation = WindowInsets.navigationBars
+    val density = LocalDensity.current
+    return this.padding(remember(rest, ime, navigation, density) {
+        object : PaddingValues {
+            override fun calculateLeftPadding(layoutDirection: androidx.compose.ui.unit.LayoutDirection) = 0.dp
+            override fun calculateRightPadding(layoutDirection: androidx.compose.ui.unit.LayoutDirection) = 0.dp
+            override fun calculateTopPadding() = 0.dp
+            override fun calculateBottomPadding() = with(density) {
+                panelKeyboardClearance(rest.value, ime.getBottom(this).toDp().value, navigation.getBottom(this).toDp().value).dp
+            }
+        }
+    })
 }
-
 @Composable
 internal fun PanelIcon(name: String, label: String, onClick: () -> Unit,
     modifier: Modifier = Modifier, width: Dp = 30.dp, height: Dp = 34.dp,
@@ -264,18 +272,20 @@ internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: 
     val oncall = ShiftRepository.isOnCall(date)
     val note = ShiftRepository.getDayExtraInfo(date).notes
     val dayTags = ShiftRepository.dayTags.filter { it.id in ShiftRepository.getDayExtraInfo(date).tagIds }
-    val panelDensity=LocalDensity.current
-    val keyboardHeight=WindowInsets.ime.getBottom(panelDensity)/panelDensity.density
-    val maxPanelHeight=(LocalConfiguration.current.screenHeightDp-146-keyboardHeight).coerceAtLeast(160f).dp
+    val maxPanelHeight=(LocalConfiguration.current.screenHeightDp-146).coerceAtLeast(160).dp
     val subPanel = detailShift != null
     LaunchedEffect(subPanel) { onDetailsActive(subPanel) }
     DisposableEffect(Unit) { onDispose { onDetailsActive(false) } }
     AnimatedVisibility(!subPanel, enter = fadeIn(tween(260)) + slideInVertically(tween(360, easing = panelEasing)) { it / 14 }, exit = fadeOut(tween(160))) {
-        Surface(shape = RoundedCornerShape(23.dp), color = ObsidianSurface, border = BorderStroke(1.dp, ObsidianBorder), shadowElevation = 12.dp) {
-            AnimatedContent(dayNotes,contentAlignment=Alignment.BottomCenter,transitionSpec={
-                (fadeIn(tween(180,delayMillis=70)) togetherWith fadeOut(tween(100))) using
-                    SizeTransform(clip=true){_,_->tween(360,easing=panelEasing)}
-            }) { notesPage ->
+        // Keep both page edges anchored while the keyboard is moving. The transition changes
+        // layer opacity and offset only, without animating the container's measured height.
+        AnimatedContent(dayNotes, contentAlignment = Alignment.BottomCenter, transitionSpec = {
+            (fadeIn(tween(190, delayMillis = 35)) +
+                slideInVertically(tween(220, easing = panelEasing)) { it / 30 } togetherWith
+                fadeOut(tween(150))) using null
+        }, label = "daySheetPage") { notesPage ->
+            Surface(shape = RoundedCornerShape(23.dp), color = ObsidianSurface,
+                border = BorderStroke(1.dp, ObsidianBorder), shadowElevation = 12.dp) {
             Column(Modifier.fillMaxWidth().heightIn(max=maxPanelHeight).padding(10.dp)) {
                 if(notesPage) {
                     DayAnnotationsContent(date,maxPanelHeight-20.dp,onBack={dayNotes=false},onClose=onClose,onFeedback=onFeedback)
@@ -470,13 +480,13 @@ internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp, di
             view.post(applyChrome)
             onDispose { view.removeCallbacks(applyChrome) }
         }
-        val clearance=keyboardAwarePanelClearance(bottomInset)
+
         Box(Modifier.fillMaxSize().imePadding(), contentAlignment = Alignment.BottomCenter) {
             Box(Modifier.fillMaxSize().clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = close))
             AnimatedVisibility(visible,
                 enter = slideInVertically(tween(520, easing = CubicBezierEasing(.2f, .85f, .2f, 1f))) { it / 3 } + fadeIn(tween(380)),
                 exit = slideOutVertically(tween(240, easing = panelEasing)) { it / 3 } + fadeOut(tween(220)),
-                modifier = Modifier.navigationBarsPadding().padding(start = 14.dp, end = 14.dp, bottom = clearance)) {
+                modifier = Modifier.navigationBarsPadding().padding(horizontal = 14.dp).keyboardAwarePanelClearance(bottomInset)) {
                 Surface(Modifier.fillMaxWidth().heightIn(max = minOf(620, (LocalConfiguration.current.screenHeightDp - 100).coerceAtLeast(240)).dp),
                     shape = RoundedCornerShape(28.dp), color = ObsidianSurface, border = BorderStroke(1.dp, ObsidianBorder), shadowElevation = 12.dp) {
                     Column(Modifier.padding(14.dp).then(if(scrollContent)Modifier.verticalScroll(rememberScrollState())else Modifier)) { content(close) }

@@ -103,8 +103,14 @@ internal fun calendarOvertimeLabel(hours:Float):String {
     val minutes=(hours*60).roundToInt().coerceAtLeast(0)
     return when { minutes<60 -> "+${minutes}m"; minutes%60==0 -> "+${minutes/60}h";else -> "+${minutes/60}h${minutes%60}" }
 }
-internal fun calendarExtraBandHeight(available:Float,base:Float,rows:Float):Float =
-    if(rows<=0f)0f else ((available-base).coerceAtLeast(0f)/rows).coerceAtMost(13f)
+internal fun calendarShiftAccessibility(name: String, timeRange: String, overtime: Float, travel: Boolean): String =
+    buildString {
+        append(name)
+        append(", ")
+        append(timeRange)
+        if (overtime > 0f) append(", straordinario ${calendarOvertimeLabel(overtime)}")
+        if (travel) append(", trasferta")
+    }
 
 internal data class CalendarShiftLayout(val visibleCount: Int, val chipHeight: Float, val gap: Float = 2f, val overflowHeight: Float = 0f)
 
@@ -112,15 +118,14 @@ internal data class CalendarShiftLayout(val visibleCount: Int, val chipHeight: F
  * Keep the marker lane reserved even before overflow, so adding a shift cannot
  * displace the last visible badge. Metadata belongs to its own assignment.
  */
-internal fun calendarShiftLayout(availableHeight: Float, shiftCount: Int, fontScale: Float,
-    extraHeights: List<Float> = emptyList()): CalendarShiftLayout {
+internal fun calendarShiftLayout(availableHeight: Float, shiftCount: Int, fontScale: Float): CalendarShiftLayout {
     val height = 30f * fontScale.coerceAtLeast(1f)
     val markerHeight = 6f
     val budget = (availableHeight - markerHeight).coerceAtLeast(0f)
     var used = 0f
     var count = 0
     for (index in 0 until shiftCount.coerceIn(0, 3)) {
-        val next = height + (extraHeights.getOrNull(index) ?: 0f).coerceAtLeast(0f) + if(index > 0) 2f else 0f
+        val next = height + if(index > 0) 2f else 0f
         if (used + next > budget + .001f) break
         used += next
         count++
@@ -317,11 +322,9 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val x=index%7*cellWidth;val y=index/7*cellHeight
                 val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in restDates)12f else 0f)
                 var cursor=y+dp(27f-2f*editReveal)
-                val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale,item.shifts.map{(shift,_)->extraWeights(shift).let{13f*(it.first+it.second)}})
+                val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale)
                 item.shifts.take(layout.visibleCount).forEach{(shift,_)->
-                    val weights=extraWeights(shift)
-                    val band=13f
-                    val height=dp(layout.chipHeight+band*(weights.first+weights.second))
+                    val height=dp(layout.chipHeight)
                     if(shift.id in mark.assignmentIds)return Rect(x+dp(4f),cursor,x+cellWidth-dp(4f),cursor+height)
                     cursor+=height+dp(layout.gap)
                 }
@@ -475,18 +478,12 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val subdued=item.preview||!item.info.isCurrentMonth
                 var cursor=y+dp(27f-2f*editReveal);var shown=0
                 val assignmentBottom=contentBottom-dp(if(restAlert)12f else 0f)
-                val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale,item.shifts.map{(shift,_)->extraWeights(shift).let{13f*(it.first+it.second)}})
+                val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale)
                 item.shifts.take(layout.visibleCount).forEachIndexed{shiftIndex,(shift,def)->
-                    val old=fromExtras[shift.id]?:CalendarExtraState(0f,false)
-                    val target=toExtras[shift.id]?:CalendarExtraState(shift.overtimeHours,shift.isTrasferta)
-                    val t=extrasReveal.value
-                    val overtimeWeight=((if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t)*(1-editReveal)
-                    val travelWeight=((if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t)*(1-editReveal)
+                    val (overtimeWeight,travelWeight) = extraWeights(shift)
                     val baseChip=layout.chipHeight
                     val available=(assignmentBottom-cursor)/px-layout.overflowHeight
-                    val bandHeight=13f
-                    val chipHeight=dp(baseChip+bandHeight*(overtimeWeight+travelWeight))
-                    // Extras never make an otherwise visible assignment disappear.
+                    val chipHeight=dp(baseChip)
                     if(available+.01f>=baseChip){
                         val paints=shiftPaints.getValue(def.id)
                         val style=if(subdued)paints.second else paints.first
@@ -497,29 +494,28 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         val topPath=chipClip.apply{reset();addRoundRect(RoundRect(Rect(left,cursor,left+width,cursor+chipHeight),CornerRadius(dp(5f))))}
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(style.codeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,dp(baseChip/2)));drawContext.canvas.restore()
                         if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
-                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
+                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-(if(maxOf(overtimeWeight,travelWeight)>.001f) 24f else 10f))
                         clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
-                        var bandY=cursor+dp(baseChip)
-                        drawContext.canvas.save();drawContext.canvas.clipPath(topPath)
-                        fun band(labelText:String,weight:Float,fillColor:Color,ink:Color){
-                            if(weight<=.001f)return
-                            val height=dp(bandHeight*weight)
-                            if(bandHeight>=9.5f){
-                                drawContext.canvas.save();drawContext.canvas.clipRect(Rect(left,bandY,left+width,bandY+height))
-                                val visibleFill=fillColor.copy(alpha=weight).compositeOver(style.timeFill)
-                                drawRect(visibleFill,Offset(left,bandY),Size(width,height))
-                                drawLine(surface,Offset(left,bandY),Offset(left+width,bandY),dp(.7f))
-                                label(labelText,center,bandY+height/2,if(labelText.length>5)9f else 10f,readableInk(visibleFill,ink),true)
-                                drawContext.canvas.restore()
-                            }else{
-                                // Tight six-week cells keep the shift readable and expose metadata as tiny colored markers.
-                                drawCircle(readableIndicator(style.timeFill,ink).copy(alpha=weight),dp(1.5f),Offset(left+width-dp(if(labelText=="TR")4f else 9f),cursor+dp(baseChip-4f)))
+                        fun statusMarker(weight: Float, markerX: Float, tone: Long, fill: Long, travel: Boolean) {
+                            if (weight <= .001f) return
+                            val marker = Offset(markerX, cursor + dp(baseChip * .27f))
+                            val ink = readableInk(Color(fill), Color(tone)).copy(alpha = weight)
+                            drawCircle(Color(fill).copy(alpha = weight), dp(4.2f), marker)
+                            fun stroke(x1: Float, y1: Float, x2: Float, y2: Float) {
+                                drawLine(ink, marker + Offset(dp(x1), dp(y1)), marker + Offset(dp(x2), dp(y2)),
+                                    dp(.95f), StrokeCap.Round)
                             }
-                            bandY+=height
+                            if (travel) {
+                                stroke(-2f, 2f, 2f, -2f)
+                                stroke(-2.3f, -.8f, .9f, -.8f)
+                                stroke(.9f, -.8f, .9f, 2.3f)
+                            } else {
+                                stroke(-2f, 0f, 2f, 0f)
+                                stroke(0f, -2f, 0f, 2f)
+                            }
                         }
-                        band(calendarOvertimeLabel(if(target.overtime>0)target.overtime else old.overtime),overtimeWeight,Color(palette.overtime.fill),Color(palette.overtime.ink))
-                        band("TR",travelWeight,Color(palette.travel.fill),Color(palette.travel.ink))
-                        drawContext.canvas.restore()
+                        statusMarker(overtimeWeight, left + dp(6.5f), palette.overtime.ink, palette.overtime.fill, false)
+                        statusMarker(travelWeight, left + width - dp(6.5f), palette.travel.ink, palette.travel.fill, true)
                         cursor+=chipHeight+dp(layout.gap);shown++
                     }
                 }
@@ -556,7 +552,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date
-                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(_,def)->append(", ${def.name}, ${def.timeRangeFormatted}")};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
+                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(shift,def)->append(", ");append(calendarShiftAccessibility(def.name,def.timeRangeFormatted,shift.overtimeHours,shift.isTrasferta))};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
                 }.pointerInput(day.info.date){
                     awaitEachGesture{
                         val down=awaitFirstDown(requireUnconsumed=false)

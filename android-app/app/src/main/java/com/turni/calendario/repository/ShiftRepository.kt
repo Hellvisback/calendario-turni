@@ -144,8 +144,11 @@ object ShiftRepository {
     fun saveDayAnnotations(date: LocalDate, notes: String, tagIds: List<String>) {
         val known = dayTags.map { it.id }.toSet()
         require(tagIds.all { it in known }) { "Un’etichetta non è più disponibile" }
+        val previous = getDayExtraInfo(date)
+        val updated = previous.copy(notes = notes.take(500), tagIds = tagIds.distinct())
+        if (updated == previous) return
         saveSnapshot()
-        dayExtraInfo[date] = getDayExtraInfo(date).copy(notes = notes.take(500), tagIds = tagIds.distinct())
+        dayExtraInfo[date] = updated
         notifyDataChanged()
     }
 
@@ -503,7 +506,7 @@ object ShiftRepository {
     private val undoHistory = mutableListOf<CalendarSnapshot>()
 
     fun saveSnapshot() {
-        val snapshot = calendarShifts.mapValues { (_, list) -> list.map { it.copy() } }
+        val snapshot = calendarShifts.mapValues { (_, list) -> list.toList() }
         undoHistory.add(CalendarSnapshot(snapshot, dayExtraInfo.toMap()))
         if (undoHistory.size > 40) undoHistory.removeAt(0)
     }

@@ -337,15 +337,6 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
     val pigments=remember(metrics,fill,titleInk) {
         metrics.map { readableChartTint(fill,readablePigment(fill,it.definition.color),titleInk,.88f) }
     }
-    val ringDepth=remember(pigments,fill,titleInk) {
-        pigments.map { readableChartTint(fill,lerp(it,Color.Black,.18f),titleInk,1f) }
-    }
-    val ringFaces=remember(pigments,fill,titleInk) {
-        pigments.map { pigment -> Brush.linearGradient(
-            listOf(readableChartTint(fill,lerp(pigment,Color.White,.10f),titleInk,1f),
-                pigment,readableChartTint(fill,lerp(pigment,Color.Black,.08f),titleInk,1f)),
-            start=Offset(0f,-20f),end=Offset(190f,150f)) }
-    }
     Surface(shape=RoundedCornerShape(23.dp),color=fill,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
         Box(Modifier.clip(RoundedCornerShape(23.dp))) {
             // Every assigned user model participates, including rest, leave and all-day models.
@@ -363,35 +354,46 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
             val boundaries=remember(distribution,leadingMeasure,ringMeasure,trailingMeasure) {
                 reportRingBoundaries(distribution.map { it.count },leadingMeasure.length,ringMeasure.length,trailingMeasure.length)
             }
-            // Reuse native paths throughout the reveal instead of allocating per frame/segment.
-            val segmentBuffer=remember { Path() }
-            val ringStroke=remember { Stroke(26f) }
-            val depthStroke=remember { Stroke(28f) }
+            // A narrow seam separates similar colors. Scale it down for rare shifts.
+            fun trace(start: Float, end: Float, target: Path) {
+                var offset = 0f
+                for (piece in measures) {
+                    val from = maxOf(0f, start - offset)
+                    val to = minOf(piece.length, end - offset)
+                    if (to > from) piece.getSegment(from, to, target, true)
+                    offset += piece.length
+                }
+            }
+            val sectors = remember(boundaries, measures) {
+                boundaries.mapIndexed { index, boundary ->
+                    val seam = minOf(1.7f, (boundary.endDistance - boundary.startDistance) * .12f)
+                    val start = boundary.startDistance + if (index == 0) 0f else seam / 2
+                    val end = boundary.endDistance - if (index == boundaries.lastIndex) 0f else seam / 2
+                    Triple(start, end, Path().also { trace(start, end, it) })
+                }
+            }
+            val segmentBuffer = remember { Path() }
+            val ringStroke = remember { Stroke(21f) }
             Canvas(Modifier.matchParentSize()) {
-                val head=fullLength*animation.value.coerceIn(0f,1f)
-                val densityScale=1.dp.toPx()
-                translate(left=size.width-190*densityScale) { scale(densityScale,densityScale,pivot=Offset.Zero) {
-                    drawPath(ring,ringTrack,style=ringStroke)
-                    pigments.indices.forEach { index ->
-                        val boundary=boundaries[index]
-                        val endDistance=minOf(head,boundary.endDistance)
-                        if(endDistance>boundary.startDistance) {
-                            var offset=0f
-                            measures.forEach { piece ->
-                                val localStart=(boundary.startDistance-offset).coerceAtLeast(0f)
-                                val localEnd=(endDistance-offset).coerceAtMost(piece.length)
-                                if(localEnd>localStart) {
-                                    segmentBuffer.reset()
-                                    piece.getSegment(localStart,localEnd,segmentBuffer,true)
-                                    // Crisp offset edge and restrained shading give depth without blur or glow.
-                                    translate(top=1.5f) { drawPath(segmentBuffer,ringDepth[index],style=depthStroke) }
-                                    drawPath(segmentBuffer,ringFaces[index],style=ringStroke)
-                                }
-                                offset+=piece.length
+                val head = fullLength * animation.value.coerceIn(0f, 1f)
+                val densityScale = 1.dp.toPx()
+                translate(left = size.width - 190 * densityScale) {
+                    scale(densityScale, densityScale, pivot = Offset.Zero) {
+                        drawPath(leading, ringTrack, style = ringStroke)
+                        drawPath(ring, ringTrack, style = ringStroke)
+                        drawPath(trailing, ringTrack, style = ringStroke)
+                        for (index in sectors.indices) {
+                            val (start, end, complete) = sectors[index]
+                            if (head <= start) break
+                            val visible = if (head >= end) complete else {
+                                segmentBuffer.reset()
+                                trace(start, head, segmentBuffer)
+                                segmentBuffer
                             }
+                            drawPath(visible, pigments[index], style = ringStroke)
                         }
                     }
-                } }
+                }
             }
             Column(Modifier.padding(start=16.dp,end=16.dp,top=16.dp,bottom=12.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
