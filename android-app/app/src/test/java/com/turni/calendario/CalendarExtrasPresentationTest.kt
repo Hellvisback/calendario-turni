@@ -13,6 +13,7 @@ class CalendarExtrasPresentationTest {
         assertEquals("+15m",calendarOvertimeLabel(.25f));assertEquals("+30m",calendarOvertimeLabel(.5f))
         assertEquals("+1h",calendarOvertimeLabel(1f));assertEquals("+1h30",calendarOvertimeLabel(1.5f))
         assertEquals("+10h15",calendarOvertimeLabel(10.25f))
+        assertEquals("+1h05",calendarOvertimeLabel(65f/60))
     }
     @Test fun bothCompactMarkersAreDescribedWithTheExactOvertime() {
         assertEquals(

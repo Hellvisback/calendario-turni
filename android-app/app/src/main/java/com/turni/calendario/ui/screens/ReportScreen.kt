@@ -18,13 +18,12 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.graphics.*
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.drawscope.scale
 import androidx.compose.ui.graphics.drawscope.rotate
-import androidx.compose.ui.graphics.drawscope.translate
-import androidx.compose.ui.graphics.vector.PathParser
-import androidx.compose.ui.graphics.PathMeasure
+import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
@@ -324,99 +323,107 @@ private fun ReportWorkSection(summary:WorkReportSummary,index:Int,lastIndex:Int,
 @Composable
 private fun ReportWorkExtra(label:String,value:String) { Row(Modifier.fillMaxWidth().padding(bottom=6.dp)) { Text(label,Modifier.weight(1f),fontSize=11.sp,color=reportMuted);Text(value,fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=reportInk) } }
 
+private data class DialSector(val start: Float, val end: Float, val outline: Path)
+
+@Composable
+private fun ReportDistributionDial(metrics:List<ShiftMetric>,colors:List<Color>,total:Int,animation:ReportProgress) {
+    val sweep = 270f
+    val sectors = remember(metrics) { reportRingBoundaries(metrics.map { it.count }, 0f, sweep, 0f) }
+    val track = ObsidianBorderSubtle
+    Column(horizontalAlignment=Alignment.CenterHorizontally) {
+        Box(Modifier.size(106.dp,92.dp),contentAlignment=Alignment.Center) {
+            Spacer(Modifier.matchParentSize().drawWithCache {
+                val outer = size.width / 2f
+                val inner = outer - 11.dp.toPx()
+                val center = Offset(outer, outer)
+                val outerBounds = Rect(center,outer)
+                val innerBounds = Rect(center,inner)
+                val maxCorner = 3.dp.toPx()
+                fun point(radius:Float,angle:Float):Offset {
+                    val radians = Math.toRadians(angle.toDouble())
+                    return center + Offset(radius*cos(radians).toFloat(),radius*sin(radians).toFloat())
+                }
+                fun outline(start:Float,span:Float,path:Path): Path {
+                    // Bound each corner by the sector's own arc length, including during reveal.
+                    val corner = minOf(maxCorner,inner*Math.toRadians(span.toDouble()).toFloat()*.42f)
+                    val outerInset = Math.toDegrees((corner/outer).toDouble()).toFloat()
+                    val innerInset = Math.toDegrees((corner/inner).toDouble()).toFloat()
+                    val end = start + span
+                    return path.apply {
+                        reset()
+                        fun line(p:Offset) = lineTo(p.x,p.y)
+                        fun bend(control:Offset,target:Offset) = quadraticBezierTo(control.x,control.y,target.x,target.y)
+                        arcTo(outerBounds,start+outerInset,span-2*outerInset,true)
+                        bend(point(outer,end),point(outer-corner,end))
+                        line(point(inner+corner,end))
+                        bend(point(inner,end),point(inner,end-innerInset))
+                        arcTo(innerBounds,end-innerInset,-span+2*innerInset,false)
+                        bend(point(inner,start),point(inner+corner,start))
+                        line(point(outer-corner,start))
+                        bend(point(outer,start),point(outer,start+outerInset))
+                        close()
+                    }
+                }
+                val startAngle = 135f
+                val trackPath = outline(startAngle,sweep,Path())
+                val partial = Path()
+                val slices = sectors.mapIndexed { index, boundary ->
+                    val span = boundary.endDistance - boundary.startDistance
+                    val halfGap = minOf(1.25f,span * .08f)
+                    val start = boundary.startDistance + if(index==0) 0f else halfGap
+                    val end = boundary.endDistance - if(index==sectors.lastIndex) 0f else halfGap
+                    DialSector(start,end,outline(startAngle+start,end-start,Path()))
+                }
+                onDrawBehind {
+                    drawPath(trackPath,track)
+                    val head = sweep * animation.value.coerceIn(0f,1f)
+                    for ((index,slice) in slices.withIndex()) {
+                        if (head <= slice.start) break
+                        val visible = if (head >= slice.end) slice.outline else
+                            outline(startAngle+slice.start,head-slice.start,partial)
+                        drawPath(visible,colors[index])
+                    }
+                }
+            })
+            ReportAnimatedValue(total.toFloat(),animation,modifier=Modifier.offset(y=7.dp),fontSize=if(total>=1000)19.sp else 24.sp,fontWeight=FontWeight.Bold)
+        }
+        Text("Turni totali",fontSize=11.sp,color=reportMuted)
+    }
+}
+
 @Composable
 private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
     val palette=currentTurniPalette
     val largeText=LocalDensity.current.fontScale>1.3f
     val fill=Color(palette.surface)
     val titleInk=Color(palette.text)
-    // Fully legible labels leave more contrast available for the actual chart colors.
-    val detailInk=titleInk
-    val emphasis=titleInk
-    val ringTrack=readableChartTint(fill,titleInk,titleInk,.16f)
-    val pigments=remember(metrics,fill,titleInk) {
-        metrics.map { readableChartTint(fill,readablePigment(fill,it.definition.color),titleInk,.88f) }
-    }
+    val detailInk=Color(palette.text)
+    val distribution=metrics
+    val pigments=remember(metrics,fill) { metrics.map { readablePigment(fill,it.definition.color) } }
     Surface(shape=RoundedCornerShape(23.dp),color=fill,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
-        Box(Modifier.clip(RoundedCornerShape(23.dp))) {
-            // Every assigned user model participates, including rest, leave and all-day models.
-            val distribution=metrics
-            // Preserve the three original paths exactly; only their reveal is shared.
-            // A single head crosses each path in order, including both clipped continuations.
-            val ring=remember { PathParser().parsePathString("M38.7048 0 A100 100 0 0 0 190 117.4616").toPath() }
-            val leading=remember { PathParser().parsePathString("M56.7053 -29.8082 A100 100 0 0 0 38.7048 0").toPath() }
-            val trailing=remember { PathParser().parsePathString("M190 117.4616 A100 100 0 0 0 214.4167 92.6347").toPath() }
-            val ringMeasure=remember(ring){PathMeasure().apply{setPath(ring,false)}}
-            val leadingMeasure=remember(leading){PathMeasure().apply{setPath(leading,false)}}
-            val trailingMeasure=remember(trailing){PathMeasure().apply{setPath(trailing,false)}}
-            val measures=remember(leadingMeasure,ringMeasure,trailingMeasure){listOf(leadingMeasure,ringMeasure,trailingMeasure)}
-            val fullLength=leadingMeasure.length+ringMeasure.length+trailingMeasure.length
-            val boundaries=remember(distribution,leadingMeasure,ringMeasure,trailingMeasure) {
-                reportRingBoundaries(distribution.map { it.count },leadingMeasure.length,ringMeasure.length,trailingMeasure.length)
-            }
-            // A narrow seam separates similar colors. Scale it down for rare shifts.
-            fun trace(start: Float, end: Float, target: Path) {
-                var offset = 0f
-                for (piece in measures) {
-                    val from = maxOf(0f, start - offset)
-                    val to = minOf(piece.length, end - offset)
-                    if (to > from) piece.getSegment(from, to, target, true)
-                    offset += piece.length
-                }
-            }
-            val sectors = remember(boundaries, measures) {
-                boundaries.mapIndexed { index, boundary ->
-                    val seam = minOf(1.7f, (boundary.endDistance - boundary.startDistance) * .12f)
-                    val start = boundary.startDistance + if (index == 0) 0f else seam / 2
-                    val end = boundary.endDistance - if (index == boundaries.lastIndex) 0f else seam / 2
-                    Triple(start, end, Path().also { trace(start, end, it) })
-                }
-            }
-            val segmentBuffer = remember { Path() }
-            val ringStroke = remember { Stroke(21f) }
-            Canvas(Modifier.matchParentSize()) {
-                val head = fullLength * animation.value.coerceIn(0f, 1f)
-                val densityScale = 1.dp.toPx()
-                translate(left = size.width - 190 * densityScale) {
-                    scale(densityScale, densityScale, pivot = Offset.Zero) {
-                        drawPath(leading, ringTrack, style = ringStroke)
-                        drawPath(ring, ringTrack, style = ringStroke)
-                        drawPath(trailing, ringTrack, style = ringStroke)
-                        for (index in sectors.indices) {
-                            val (start, end, complete) = sectors[index]
-                            if (head <= start) break
-                            val visible = if (head >= end) complete else {
-                                segmentBuffer.reset()
-                                trace(start, head, segmentBuffer)
-                                segmentBuffer
-                            }
-                            drawPath(visible, pigments[index], style = ringStroke)
-                        }
-                    }
-                }
-            }
+        Box {
             Column(Modifier.padding(start=16.dp,end=16.dp,top=16.dp,bottom=12.dp)) {
                 Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                     Text("Resoconto totale",Modifier.weight(1f),fontSize=12.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
-                    SiteIcon("layers-2",null,Modifier.size(12.dp),tint=detailInk);Text("Tutti i lavori",Modifier.padding(start=4.dp),fontSize=10.sp,color=detailInk)
+                    SiteIcon("layers-2",null,Modifier.size(12.dp),tint=detailInk)
+                    Text("Tutti i lavori",Modifier.padding(start=4.dp),fontSize=10.sp,color=detailInk)
                 }
-                if(largeText) Column(Modifier.padding(top=12.dp,bottom=11.dp),verticalArrangement=Arrangement.spacedBy(3.dp)) {
-                    ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=emphasis)
-                    Text("ore lavorate",fontSize=11.sp,color=detailInk)
-                } else Row(Modifier.padding(top=12.dp,bottom=11.dp),verticalAlignment=Alignment.Bottom) {
-                    ReportAnimatedValue(hours,animation,true,fontSize=38.sp,lineHeight=40.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=emphasis)
-                    Text("ore lavorate",Modifier.padding(start=7.dp,bottom=4.dp),fontSize=11.sp,color=detailInk)
-                }
-                Row(Modifier.fillMaxWidth().padding(vertical=8.dp),verticalAlignment=Alignment.CenterVertically) {
-                    Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(days.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold,color=titleInk);Text("Giorni lavorati",Modifier.padding(start=6.dp),fontSize=10.sp,color=detailInk) }
-                    Box(Modifier.width(1.dp).height(20.dp).background(ObsidianBorderSubtle))
-                    Row(Modifier.weight(1f).padding(start=13.dp),verticalAlignment=Alignment.CenterVertically) { ReportAnimatedValue(assignments.toFloat(),animation,fontSize=20.sp,fontWeight=FontWeight.Bold,color=titleInk);Text("Turni totali",Modifier.padding(start=6.dp),fontSize=10.sp,color=detailInk) }
+                Row(Modifier.fillMaxWidth().padding(vertical=12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    Column(Modifier.weight(1f)) {
+                        ReportAnimatedValue(hours,animation,true,fontSize=if(largeText)28.sp else 38.sp,lineHeight=if(largeText)32.sp else 42.sp,letterSpacing=(-1).sp,fontWeight=FontWeight.Bold,color=titleInk)
+                        Text("ore lavorate",fontSize=12.sp,color=detailInk)
+                        Spacer(Modifier.height(10.dp))
+                        Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                            ReportAnimatedValue(days.toFloat(),animation,fontSize=16.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
+                            Text("Giorni lavorati",fontSize=11.sp,color=detailInk)
+                        }
+                    }
+                    ReportDistributionDial(distribution,pigments,assignments,animation)
                 }
                 Divider(color=ObsidianBorderSubtle)
                 distribution.chunked(if(largeText)1 else 2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     row.forEach { metric -> Row(Modifier.weight(1f).heightIn(min=27.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                        val source = metric.definition.color
-                        val legendColor = remember(fill, source) { readablePigment(fill, source) }
+                        val legendColor = remember(fill, metric.definition.color) { readablePigment(fill, metric.definition.color) }
                         Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(legendColor))
                         Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=detailInk,maxLines=2)
                         Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=titleInk)

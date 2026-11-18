@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Calendario e statistiche beta.23
+
+La beta.23 personale (68) aggiorna le fasce di trasferta e straordinario e il quadrante delle statistiche. [Prove sul Realme e schermate nei due temi](VERIFICA_v1.8.0-beta.23.md).
+
 ## Statistiche e migrazione beta.20
 
 Pubblicata la [beta.20 QA (65)](https://github.com/Hellvisback/calendario-turni/releases/tag/v1.8.0-beta.20), firma QA invariata. La revisione migliora contrasto e profondità del riepilogo, spiega visibilità della provenienza e regole statistiche e rende secondaria la CTA Accedi. I backup JSON nativi sono indipendenti dal package/firma: [MIGRAZIONE_APP.md](MIGRAZIONE_APP.md) descrive export dalla vecchia app e import nella QA senza disinstallare la personale. La chiave originale rimane necessaria per aggiornare direttamente quest'ultima. Suite corrente: 488 test; verifica dettagliata in [VERIFICA_v1.8.0-beta.20.md](VERIFICA_v1.8.0-beta.20.md). Le sezioni seguenti sono verifiche precedenti.

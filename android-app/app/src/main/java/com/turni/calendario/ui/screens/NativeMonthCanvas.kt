@@ -101,7 +101,7 @@ internal fun calendarPeriodContains(anchor:LocalDate?,end:LocalDate?,date:LocalD
 
 internal fun calendarOvertimeLabel(hours:Float):String {
     val minutes=(hours*60).roundToInt().coerceAtLeast(0)
-    return when { minutes<60 -> "+${minutes}m"; minutes%60==0 -> "+${minutes/60}h";else -> "+${minutes/60}h${minutes%60}" }
+    return when { minutes<60 -> "+${minutes}m"; minutes%60==0 -> "+${minutes/60}h";else -> "+${minutes/60}h${(minutes%60).toString().padStart(2,'0')}" }
 }
 internal fun calendarShiftAccessibility(name: String, timeRange: String, overtime: Float, travel: Boolean): String =
     buildString {
@@ -173,6 +173,11 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val line=ObsidianBorder;val onBrand=OnBrand;val brandInk=BrandInk
     val amber=ColorReperibilita
     val palette=turniPalette(dark)
+    // Tonal surfaces belong to the metadata, independently of the user's shift color.
+    val overtimeBand = lerp(Color(palette.overtime.fill), Color(palette.overtime.ink), if (dark) .17f else .06f)
+    val travelBand = lerp(surface, Color(palette.travel.edge), if (dark) .27f else .17f)
+    val overtimeText = readableInk(overtimeBand, Color(palette.overtime.ink))
+    val travelText = readableInk(travelBand, Color(palette.travel.edge))
     val shiftPaints=remember(defs,dark,palette) {
         defs.mapValues { (_, def) ->
             shiftColorStyle(def.color,dark,Color(palette.surface)) to
@@ -318,15 +323,30 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 return ((if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t)*(1-editReveal) to
                     ((if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t)*(1-editReveal)
             }
+            // Only use space left after reserving every visible badge and its overflow dots.
+            fun footerHeight(item: PaintedDay, layout: CalendarShiftLayout, available: Float): Float {
+                var occupied = 0
+                for (index in 0 until layout.visibleCount) {
+                    val (overtime, travel) = extraWeights(item.shifts[index].first)
+                    if (maxOf(overtime, travel) > .001f) occupied++
+                }
+                if (occupied == 0) return 0f
+                val spare = available - layout.overflowHeight - layout.visibleCount * layout.chipHeight -
+                    (layout.visibleCount - 1) * layout.gap - if (item.original != null) 13f else 0f
+                val needed = 12f * fontScale.coerceAtLeast(1f)
+                return if (spare >= occupied * needed) needed else 0f
+            }
             fun paintDestination(item:PaintedDay,index:Int,mark:CalendarCellPaint):Rect {
                 val x=index%7*cellWidth;val y=index/7*cellHeight
                 val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in restDates)12f else 0f)
                 var cursor=y+dp(27f-2f*editReveal)
                 val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale)
+                val footer = footerHeight(item, layout, (bottom-cursor)/px)
                 item.shifts.take(layout.visibleCount).forEach{(shift,_)->
                     val height=dp(layout.chipHeight)
                     if(shift.id in mark.assignmentIds)return Rect(x+dp(4f),cursor,x+cellWidth-dp(4f),cursor+height)
-                    cursor+=height+dp(layout.gap)
+                    val (overtime, travel) = extraWeights(shift)
+                    cursor+=height+dp(layout.gap + footer * maxOf(overtime,travel))
                 }
                 // If the assignment is overflowed, contract into its compact marker instead.
                 return Rect(x+cellWidth/2-dp(1.7f),bottom-dp(4.7f),x+cellWidth/2+dp(1.7f),bottom-dp(1.3f))
@@ -479,7 +499,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 var cursor=y+dp(27f-2f*editReveal);var shown=0
                 val assignmentBottom=contentBottom-dp(if(restAlert)12f else 0f)
                 val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale)
-                item.shifts.take(layout.visibleCount).forEachIndexed{shiftIndex,(shift,def)->
+                val footer = footerHeight(item, layout, (assignmentBottom-cursor)/px)
+                item.shifts.take(layout.visibleCount).forEach{(shift,def)->
                     val (overtimeWeight,travelWeight) = extraWeights(shift)
                     val baseChip=layout.chipHeight
                     val available=(assignmentBottom-cursor)/px-layout.overflowHeight
@@ -494,29 +515,35 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         val topPath=chipClip.apply{reset();addRoundRect(RoundRect(Rect(left,cursor,left+width,cursor+chipHeight),CornerRadius(dp(5f))))}
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(style.codeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,dp(baseChip/2)));drawContext.canvas.restore()
                         if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
-                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-(if(maxOf(overtimeWeight,travelWeight)>.001f) 24f else 10f))
+                        label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
                         clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
-                        fun statusMarker(weight: Float, markerX: Float, tone: Long, fill: Long, travel: Boolean) {
-                            if (weight <= .001f) return
-                            val marker = Offset(markerX, cursor + dp(baseChip * .27f))
-                            val ink = readableInk(Color(fill), Color(tone)).copy(alpha = weight)
-                            drawCircle(Color(fill).copy(alpha = weight), dp(4.2f), marker)
-                            fun stroke(x1: Float, y1: Float, x2: Float, y2: Float) {
-                                drawLine(ink, marker + Offset(dp(x1), dp(y1)), marker + Offset(dp(x2), dp(y2)),
-                                    dp(.95f), StrokeCap.Round)
+                        val visibility = maxOf(overtimeWeight, travelWeight)
+                        val footerSpace = dp(footer) * visibility
+                        if (visibility > .001f) {
+                            val compact = footer == 0f
+                            val inset = dp(if (compact) 4f else .5f)
+                            val bandTop = cursor + chipHeight + if (compact) -dp(2.5f) else dp(1f) * visibility
+                            val height = if (compact) dp(2f) else footerSpace - dp(1f) * visibility
+                            val start = left + inset
+                            val end = left + width - inset
+                            // Give the duration more room and keep TR anchored on the right.
+                            val split = if (compact) .61f else overtimeWeight / (overtimeWeight + .59f * travelWeight)
+                            val join = start + (end - start) * split
+                            val gap = dp(1f) * minOf(overtimeWeight, travelWeight)
+                            fun band(x1: Float, x2: Float, weight: Float, fill: Color, ink: Color, caption: String) {
+                                if (weight <= .001f || x2 <= x1) return
+                                val color = if (compact) readablePigment(style.timeFill, ink) else fill
+                                drawRoundRect(color.copy(alpha=weight), Offset(x1,bandTop), Size(x2-x1,height),
+                                    CornerRadius(minOf(dp(3f), height/2, (x2-x1)/2)))
+                                if (!compact) label(caption,(x1+x2)/2,bandTop+height/2,8.5f,ink,true,weight,
+                                    maxWidth=((x2-x1)/px-2.5f).coerceAtLeast(0f),maxHeight=height/px)
                             }
-                            if (travel) {
-                                stroke(-2f, 2f, 2f, -2f)
-                                stroke(-2.3f, -.8f, .9f, -.8f)
-                                stroke(.9f, -.8f, .9f, 2.3f)
-                            } else {
-                                stroke(-2f, 0f, 2f, 0f)
-                                stroke(0f, -2f, 0f, 2f)
-                            }
+                            val hours = toExtras[shift.id]?.overtime?.takeIf { it > 0f }
+                                ?: fromExtras[shift.id]?.overtime ?: shift.overtimeHours
+                            band(start,join-gap,overtimeWeight,overtimeBand,overtimeText,calendarOvertimeLabel(hours))
+                            band(join+gap,end,travelWeight,travelBand,travelText,"TR")
                         }
-                        statusMarker(overtimeWeight, left + dp(6.5f), palette.overtime.ink, palette.overtime.fill, false)
-                        statusMarker(travelWeight, left + width - dp(6.5f), palette.travel.ink, palette.travel.fill, true)
-                        cursor+=chipHeight+dp(layout.gap);shown++
+                        cursor+=chipHeight+dp(layout.gap)+footerSpace;shown++
                     }
                 }
                 if(item.original!=null&&cursor+dp(12f)<assignmentBottom-dp(7f)){label("ex ${item.original}",center,cursor+dp(6f),9f,readableInk(cellFill,muted));cursor+=dp(13f)}
