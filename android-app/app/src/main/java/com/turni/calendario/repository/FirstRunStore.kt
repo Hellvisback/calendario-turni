@@ -22,7 +22,11 @@ fun firstRunDecision(recorded: String?, hasLocalDatabase: Boolean): FirstRunDeci
 internal fun firstRunRecoveryPreferences(recorded: String?, hasLocalDatabase: Boolean, preferences: AppPreferences): AppPreferences =
     if (recorded == "complete" && !hasLocalDatabase) preferences.copy(autoBackupDaily = false) else preferences
 
+/** Clamp persisted or requested onboarding steps within the current 0..LAST_STEP range. */
+internal fun normalizeFirstRunStep(step: Int): Int = step.coerceIn(0, FirstRunStore.LAST_STEP)
+
 object FirstRunStore {
+    const val LAST_STEP = 4
     var required by mutableStateOf(false); private set
     var step by mutableStateOf(0); private set
     private const val PREFS="turnisync_first_run_v1"
@@ -35,7 +39,7 @@ object FirstRunStore {
         val decision=firstRunDecision(recorded,existing)
         ShiftRepository.appPreferences=firstRunRecoveryPreferences(recorded,existing,ShiftRepository.appPreferences)
         required=decision!=FirstRunDecision.READY
-        step=prefs.getInt("step",0).coerceIn(0,5)
+        step=normalizeFirstRunStep(prefs.getInt("step",0))
         if(decision==FirstRunDecision.START || (decision==FirstRunDecision.RESUME&&!existing)) {
             step=0
             // No personal examples, automatic on-call days or enabled alarms on a new installation.
@@ -51,7 +55,7 @@ object FirstRunStore {
         prefs.edit().putString("state",if(required)"pending" else "complete").putInt("step",step).commit()
     }
     fun goTo(context:Context,value:Int) {
-        step=value.coerceIn(0,5)
+        step=normalizeFirstRunStep(value)
         context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().putInt("step",step).apply()
     }
     fun complete(context:Context) {
@@ -68,3 +72,13 @@ fun starterShiftDefinitions(workId:String)=listOf(
     ShiftDefinition("starter-rest","Riposo","RIP",isAllDay=true,colorHex=0xFFAAB9CE,category=ShiftCategory.RIPOSO,workProfileId=workId),
     ShiftDefinition("starter-leave","Ferie","FER",isAllDay=true,colorHex=0xFFB4D995,category=ShiftCategory.ASSENZA,workProfileId=workId)
 )
+
+/** Return missing starter templates only when the target work profile has no models yet. */
+internal fun missingStarterShiftDefinitions(
+    workId: String,
+    existing: List<ShiftDefinition>
+): List<ShiftDefinition> {
+    if (existing.any { it.workProfileId == workId }) return emptyList()
+    val existingIds = existing.mapTo(HashSet()) { it.id }
+    return starterShiftDefinitions(workId).filterNot { it.id in existingIds }
+}

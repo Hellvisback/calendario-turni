@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Primo avvio beta.26
+
+La beta.26 personale (71) riorganizza il primo avvio in quattro passi (`0` Benvenuto + `1/4..4/4`), rende visibili subito tema e formato settimana/orario, unifica lavoro e modelli con chip colorate, aggiunge progressi cliccabili alla prova locale e mostra stati live e legenda icone nel riepilogo finale. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.26.md).
+
 ## Reperibilità e festività beta.25
 
 La beta.25 personale (70) mostra i turni nei prossimi sette giorni, abilita la scelta manuale dalla data e raggruppa le festività per categoria. [Verifica Android e schermate](VERIFICA_v1.8.0-beta.25.md).

@@ -1,5 +1,9 @@
 package com.turni.calendario
 
+import com.turni.calendario.model.ReperibilitaConfig
+import com.turni.calendario.model.ReperibilitaMode
+import com.turni.calendario.model.ShiftAlarmRule
+import com.turni.calendario.model.SmartAlarmsConfig
 import com.turni.calendario.ui.screens.*
 import org.junit.Assert.*
 import org.junit.Test
@@ -58,5 +62,29 @@ class OnboardingPracticeTest {
         assertEquals(listOf("morning", "night", "rest", "morning", "night", "rest", "morning", "night"), rotated.days.slice(4..11).map { it.single() })
         assertEquals(before.days[3], rotated.days[3])
         assertEquals(before.days[12], rotated.days[12])
+    }
+
+    @Test fun actionMappingCoversAllInteractiveLessons() {
+        assertEquals(0, completedLessonForAction(CalendarEditMode.REPLACE, null, 1))
+        assertEquals(1, completedLessonForAction(CalendarEditMode.REPLACE, null, 3))
+        assertEquals(2, completedLessonForAction(CalendarEditMode.ADD, null, 1))
+        assertEquals(2, completedLessonForAction(CalendarEditMode.ADD, null, 4))
+        assertEquals(3, completedLessonForAction(CalendarEditMode.REPLACE, "eraser", 1))
+        assertEquals(3, completedLessonForAction(CalendarEditMode.REPLACE, "bell", 1))
+        assertEquals(4, completedLessonForAction(CalendarEditMode.ROTATION, null, 5))
+    }
+
+    @Test fun setupSummariesReflectLiveOnCallAndAlarmConfigs() {
+        assertEquals("Manuale · nessuna data attiva", reperibilitaSetupSummary(ReperibilitaConfig(mode = ReperibilitaMode.MANUALE)))
+        assertEquals("Manuale · 1 data", reperibilitaSetupSummary(ReperibilitaConfig(mode = ReperibilitaMode.MANUALE, manualDates = setOf(LocalDate.of(2026, 11, 20)))))
+        assertEquals("Per turno · 2 turni", reperibilitaSetupSummary(ReperibilitaConfig(mode = ReperibilitaMode.TURNO_SPECIFICO, shiftSpecificIds = listOf("m", "p"))))
+        assertEquals("Stagionale · regole invernali ed estive", reperibilitaSetupSummary(ReperibilitaConfig(mode = ReperibilitaMode.ALTERNATA_STAGIONALE)))
+
+        assertEquals("Spente · attivabili quando vuoi", alarmsSetupSummary(SmartAlarmsConfig(isGlobalEnabled = false)))
+        assertEquals("Attive · nessuna regola", alarmsSetupSummary(SmartAlarmsConfig(isGlobalEnabled = true, rules = emptyList())))
+        assertEquals(
+            "Attive · 1 regola",
+            alarmsSetupSummary(SmartAlarmsConfig(isGlobalEnabled = true, rules = listOf(ShiftAlarmRule("m", true), ShiftAlarmRule("p", false))))
+        )
     }
 }

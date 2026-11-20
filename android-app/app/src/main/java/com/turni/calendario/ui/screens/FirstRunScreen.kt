@@ -6,10 +6,12 @@ import androidx.compose.animation.*
 import androidx.compose.animation.core.*
 import androidx.compose.foundation.*
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.text.input.ImeAction
@@ -26,15 +28,21 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.*
+import com.turni.calendario.sync.DriveAutomaticBackup
+import com.turni.calendario.sync.GoogleDriveBackupHelper
 import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
-import kotlinx.coroutines.launch
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.TimeoutCancellationException
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /** Optional full editors share the same controls and persistence as Settings. */
 @Composable
@@ -43,6 +51,7 @@ fun FirstRunScreen() {
     val focus=LocalFocusManager.current
     val keyboard=LocalSoftwareKeyboardController.current
     val step=FirstRunStore.step
+    val lastStep=FirstRunStore.LAST_STEP
     val scope=rememberCoroutineScope()
     var finishing by remember { mutableStateOf(false) }
     var page by rememberSaveable { mutableStateOf("") }
@@ -50,20 +59,32 @@ fun FirstRunScreen() {
     var name by rememberSaveable { mutableStateOf(ShiftRepository.activeWorkProfile.name) }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val close:()->Unit={page=""}
-    BackHandler(step>0||page.isNotBlank()) { if(page.isNotBlank())close() else FirstRunStore.goTo(context,step-1) }
+    val persistWorkName:()->Unit={
+        val trimmed=name.trim()
+        if(trimmed.isNotEmpty()) {
+            name=trimmed
+            val current=ShiftRepository.activeWorkProfile
+            if(trimmed!=current.name) {
+                ShiftRepository.updateWorkProfile(current.copy(name=trimmed))
+                ShiftRepository.notifyDataChanged()
+            }
+        }
+    }
+    BackHandler(!finishing&&(step>0||page.isNotBlank())) { if(page.isNotBlank())close() else FirstRunStore.goTo(context,step-1) }
     val finish:()->Unit={
         if(!finishing)scope.launch {
             finishing=true
             try {LocalDatabaseStore.awaitCurrentSave();FirstRunStore.complete(context)}
+            catch(e:TimeoutCancellationException){name=ShiftRepository.activeWorkProfile.name;page="";feedback=ActionFeedback("Salvataggio locale non completato: riprova tra poco",true)}
             catch(e:CancellationException){throw e}
-            catch(e:Exception){page="";feedback=ActionFeedback("Salvataggio locale non completato: riprova tra poco",true)}
+            catch(e:Exception){name=ShiftRepository.activeWorkProfile.name;page="";feedback=ActionFeedback("Salvataggio locale non completato: riprova tra poco",true)}
             finally{finishing=false}
         }
     }
     AnimatedContent(page,transitionSpec={fadeIn(spring(stiffness=420f)) + slideInHorizontally(spring(.95f,420f)){it/16} togetherWith fadeOut(tween(120)) using null}) { destination ->
         when(destination) {
             "restore" -> CloudBackupScreen(onDismiss=close,restoreOnly=true,onRestored=finish,accountEntry=true)
-            "models" -> TurniModelsScreen(onDismiss=close,initialTab=if(requestedRotation!=null)2 else 0,initialEditingRotation=requestedRotation,onClearInitialRotation={requestedRotation=null})
+            "models" -> TurniModelsScreen(onDismiss={name=ShiftRepository.activeWorkProfile.name;close()},initialTab=if(requestedRotation!=null)2 else 0,initialEditingRotation=requestedRotation,onClearInitialRotation={requestedRotation=null})
             "ai" -> GeminiShiftImportScreen(onDismiss=close,onNavigateToTurni={requestedRotation=it;page="models"})
             "work" -> WorkProfileEditorScreen(ShiftRepository.activeWorkProfile,false,close,{profile->ShiftRepository.updateWorkProfile(profile);ShiftRepository.notifyDataChanged();name=profile.name;close()})
             "holidays" -> HolidaysSettingsScreen(onDismiss=close)
@@ -71,102 +92,141 @@ fun FirstRunScreen() {
             "rules" -> StatisticsRulesScreen(onDismiss=close)
             "alarms" -> SmartAlarmsSettingsScreen(onDismiss=close)
             "labels" -> DayTagsSettingsScreen(onDismiss=close)
-            "backup" -> CloudBackupScreen(onDismiss=close)
+            "backup" -> CloudBackupScreen(onDismiss={name=ShiftRepository.activeWorkProfile.name;close()})
             "google" -> GoogleCalendarSyncScreen(onDismiss=close)
-            "pdf" -> PdfExportScreen(onDismiss=close)
             else -> Box(Modifier.fillMaxSize().background(ObsidianBackground).statusBarsPadding().navigationBarsPadding().imePadding()) {
-                Column(Modifier.fillMaxSize().padding(horizontal=20.dp,vertical=10.dp)) {
-                    Row(Modifier.fillMaxWidth().heightIn(min=44.dp),verticalAlignment=Alignment.CenterVertically) {
-                        if(step>0)Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurface).bouncyClickable {FirstRunStore.goTo(context,step-1)},contentAlignment=Alignment.Center) {SiteIcon("arrow-left","Indietro",Modifier.size(22.dp))}
+                val automaticBackup by DriveAutomaticBackup.statusFlow.collectAsState()
+                val localBackupInfo by produceState<String?>(null, page, step) {
+                    value = if (step == lastStep && page.isEmpty()) {
+                        withContext(Dispatchers.IO) {
+                            DriveAutomaticBackup.refresh(context)
+                            GoogleDriveBackupHelper.getLocalBackupInfo(context)
+                        }
+                    } else null
+                }
+                Column(Modifier.fillMaxSize().padding(horizontal=20.dp,vertical=8.dp)) {
+                    Row(Modifier.fillMaxWidth().heightIn(min=42.dp),verticalAlignment=Alignment.CenterVertically) {
+                        if(step>0)Box(Modifier.size(40.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurface).bouncyClickable(!finishing) {FirstRunStore.goTo(context,step-1)},contentAlignment=Alignment.Center) {SiteIcon("arrow-left","Indietro",Modifier.size(22.dp))}
                         else SiteIcon("calendar",null,Modifier.size(28.dp),BrandInk)
                         Spacer(Modifier.width(12.dp))
                         Text("TurniSync",fontSize=18.sp,fontWeight=FontWeight.Bold,color=TextPrimary,modifier=Modifier.weight(1f),maxLines=1,overflow=TextOverflow.Ellipsis)
                         Spacer(Modifier.width(8.dp))
-                        if(step>0)Text("$step / 5",fontSize=12.sp,color=TextSecondary,maxLines=1,softWrap=false)
+                        if(step>0)Text("$step / $lastStep",fontSize=12.sp,color=TextSecondary,maxLines=1,softWrap=false)
                     }
-                    if(step>0)Row(Modifier.fillMaxWidth().padding(top=14.dp,bottom=16.dp),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                        repeat(5) { index -> val color by animateColorAsState(if(index<step)ObsidianPrimary else ObsidianSurfaceContainer,spring(stiffness=350f))
+                    if(step>0)Row(Modifier.fillMaxWidth().padding(top=10.dp,bottom=10.dp),horizontalArrangement=Arrangement.spacedBy(5.dp)) {
+                        repeat(lastStep) { index -> val color by animateColorAsState(if(index<step)ObsidianPrimary else ObsidianSurfaceContainer,spring(stiffness=350f))
                             Box(Modifier.weight(1f).height(4.dp).clip(RoundedCornerShape(3.dp)).background(color))
                         }
                     }
                     val scroll=rememberScrollState()
                     LaunchedEffect(step){scroll.scrollTo(0)}
-                    Column(Modifier.weight(1f).verticalScroll(scroll),verticalArrangement=Arrangement.spacedBy(14.dp)) {
+                    Column(Modifier.weight(1f).verticalScroll(scroll),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                         AnimatedContent(step,transitionSpec={val direction=if(targetState>initialState)1 else -1;fadeIn(spring(stiffness=380f))+slideInHorizontally(spring(.95f,380f)){direction*it/14} togetherWith fadeOut(tween(110)) using null}) { current ->
-                            Column(verticalArrangement=Arrangement.spacedBy(14.dp)) {
+                            Column(verticalArrangement=Arrangement.spacedBy(if(current==1||current==3)8.dp else 10.dp)) {
                                 when(current) {
                                     0 -> {
-                                        SetupTitle("I tuoi turni,\na colpo d’occhio.","Organizza turni, riposi e ferie in un solo calendario.")
+                                        SetupTitle("I tuoi turni,\na colpo d’occhio.","Organizza turni, riposi e ferie in un solo calendario.",large=true)
                                         SetupPreview()
-                                        Text("Puoi iniziare anche senza un account.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                                        Text("Inizi in meno di un minuto. I dati restano sul telefono: l’account è facoltativo.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
                                     }
                                     1 -> {
-                                        SetupTitle("Fallo tuo","Scegli il tema e guarda subito il risultato. Potrai cambiarlo quando vuoi.")
-                                        CloudCard("Il tuo tema") { PreferenceThemeSelector() }
-                                        SetupPreview()
-                                        CloudCard("Come leggi la settimana") {
-                                            SetupToggle("Lunedì come primo giorno",ShiftRepository.appPreferences.weekStartMonday){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(weekStartMonday=it);ShiftRepository.notifyDataChanged()}
-                                            SetupToggle("Orari in formato 24 ore",ShiftRepository.appPreferences.timeFormat24h){ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(timeFormat24h=it);ShiftRepository.notifyDataChanged()}
-                                        }
+                                        SetupTitle("Scegli il tuo stile","Personalizza tema e formato.")
+                                        CloudCard("Tema") { PreferenceThemeSelector() }
+                                        SetupPreview(compact=true)
+                                        SetupCalendarFormatCard()
                                     }
                                     2 -> {
-                                        SetupTitle("Da quale lavoro partiamo?","Scegli un nome riconoscibile. Più avanti potrai aggiungere altri lavori, con turni e regole indipendenti.")
-                                        CloudCard("Nome del lavoro") {
-                                            BasicTextField(name,{name=it.take(60)},singleLine=true,keyboardOptions=KeyboardOptions(imeAction=ImeAction.Done),keyboardActions=KeyboardActions(onDone={focus.clearFocus();keyboard?.hide()}),textStyle=TextStyle(fontSize=18.sp,color=TextPrimary),cursorBrush=SolidColor(BrandInk),
-                                                modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).padding(14.dp),decorationBox={field->if(name.isBlank())Text("Es. Il mio lavoro",color=TextSecondary);field()})
-                                            Text("Scegli un nome riconoscibile anche nel selettore in alto sul calendario.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+                                        val activeWorkId=ShiftRepository.activeWorkProfileId
+                                        val activeWork=ShiftRepository.activeWorkProfile
+                                        val profileModels=ShiftRepository.shiftDefinitions.filter{it.workProfileId==activeWorkId}
+                                        SetupTitle("Il tuo lavoro e i turni","Dai un nome al calendario e prepara i primi modelli. Non inseriamo ancora giorni.")
+                                        CloudCard("Il tuo lavoro") {
+                                            BasicTextField(name,{name=it.take(60)},singleLine=true,keyboardOptions=KeyboardOptions(imeAction=ImeAction.Done),keyboardActions=KeyboardActions(onDone={focus.clearFocus();keyboard?.hide()}),textStyle=TextStyle(fontSize=17.sp,color=TextPrimary),cursorBrush=SolidColor(BrandInk),
+                                                modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).semantics {contentDescription="Nome del lavoro"}.padding(13.dp),decorationBox={field->if(name.isBlank())Text("Es. Reparto, Ufficio, Impianto",color=TextSecondary);field()})
+                                            if(name.isBlank()) {
+                                                Text("Inserisci un nome per continuare.",color=Color(currentTurniPalette.warning.ink),fontSize=11.sp,lineHeight=16.sp)
+                                            }
+                                            Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer).bouncyClickable {persistWorkName();page="work"}.padding(12.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                                                SiteIcon(activeWork.iconKey,null,Modifier.size(20.dp),BrandInk)
+                                                Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                                                    Text("Dettagli del lavoro (facoltativo)",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
+                                                    Text("${activeWork.weeklyHours} h/sett · riposo ${activeWork.minRestHoursBetweenShifts} h · ${activeWork.ccnlName}",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                                }
+                                                SiteIcon("chevron-right",null,Modifier.size(16.dp),TextSecondary)
+                                            }
                                         }
-                                        SetupLink("work","work","Aggiungi dettagli al lavoro","Facoltativo · personalizza “${name.trim().ifBlank { "questo lavoro" }}”: orari, riposo, icona e contratto."){if(name.isNotBlank()){ShiftRepository.updateWorkProfile(ShiftRepository.activeWorkProfile.copy(name=name.trim()));ShiftRepository.notifyDataChanged()};page=it}
+                                        if(profileModels.isEmpty()) {
+                                            val availableStarters=missingStarterShiftDefinitions(activeWorkId,ShiftRepository.shiftDefinitions)
+                                            if(availableStarters.isNotEmpty()) {
+                                                CloudCard("Modelli di turno","Esempi modificabili pronti per il tuo lavoro · il calendario resta vuoto") {
+                                                    ShiftChipPreviewRow(availableStarters,ObsidianSurface)
+                                                    CloudButton(if(availableStarters.size==5)"Parti da 5 modelli base" else "Aggiungi ${availableStarters.size} modelli base","plus",{
+                                                        val missing=missingStarterShiftDefinitions(activeWorkId,ShiftRepository.shiftDefinitions)
+                                                        if(missing.isNotEmpty()) {
+                                                            ShiftRepository.shiftDefinitions.addAll(missing)
+                                                            ShiftRepository.notifyDataChanged()
+                                                            feedback=ActionFeedback("${missing.size} modelli base aggiunti")
+                                                        }
+                                                    })
+                                                    CloudButton("Crea i tuoi modelli","clock",{persistWorkName();page="models"},secondary=true)
+                                                }
+                                            } else {
+                                                CloudCard("Modelli di turno","Nessun modello per questo lavoro · il calendario resta vuoto") {
+                                                    CloudButton("Crea i tuoi modelli","clock",{persistWorkName();page="models"})
+                                                }
+                                            }
+                                        } else {
+                                            val rotCount=ShiftRepository.rotations.size
+                                            CloudCard(
+                                                "${profileModels.size} ${if(profileModels.size==1)"modello pronto" else "modelli pronti"}",
+                                                if(rotCount==0)"Puoi già usarli o aggiungere una rotazione." else "$rotCount ${if(rotCount==1)"rotazione configurata" else "rotazioni configurate"}."
+                                            ) {
+                                                ShiftChipPreviewRow(profileModels,ObsidianSurface)
+                                                CloudButton("Modifica modelli e rotazioni","clock",{persistWorkName();page="models"},secondary=true)
+                                            }
+                                        }
+                                        SetupLink("ai","scan-text","Hai già un prospetto turni?","Importa gratis con la tua AI (nessuna API key): copi il prompt, incolli la risposta e controlli prima di salvare."){persistWorkName();page=it}
                                     }
                                     3 -> {
-                                        SetupTitle("I turni, una volta sola","Crea i modelli che usi ogni giorno: nome, colore e orario. Le rotazioni li ripetono nella sequenza che scegli.")
-                                        CloudCard("${ShiftRepository.shiftDefinitions.count{it.workProfileId==ShiftRepository.activeWorkProfileId}} modelli pronti") {
-                                            Text("La tua scelta non inserisce turni sul calendario: li applicherai tu ai giorni.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                                            if(ShiftRepository.shiftDefinitions.isEmpty())CloudButton("Parti da 5 esempi modificabili","plus",{
-                                                if(ShiftRepository.shiftDefinitions.isEmpty())ShiftRepository.shiftDefinitions.addAll(starterShiftDefinitions(ShiftRepository.activeWorkProfileId));ShiftRepository.notifyDataChanged();feedback=ActionFeedback("Modelli di esempio aggiunti")
-                                            })
-                                            CloudButton(if(ShiftRepository.shiftDefinitions.isEmpty())"Crea i tuoi modelli" else "Controlla modelli e rotazioni","clock",{page="models"},secondary=true)
-                                        }
-                                        SetupLink("ai","scan-text","Hai già un prospetto?","Copia un prompt nella tua AI, allega il prospetto e incolla qui la risposta. Controlla e correggi ogni modello prima di salvarlo."){page=it}
-                                    }
-                                    4 -> {
-                                        SetupTitle("Prova le funzioni di modifica","Tieni premuto per scegliere un intervallo.")
+                                        SetupTitle("Prova le funzioni di modifica","Tocca, tieni premuto o scorri le funzioni.")
                                         GesturePractice()
                                     }
                                     else -> {
-                                        SetupTitle("L’essenziale è pronto","Vuoi aggiungere qualcosa? Apri solo ciò che ti serve: tutte queste opzioni restano nelle Impostazioni.")
-                                        SetupOptions {page=it}
-                                        CloudCard("Da qui cominci tu") {Text("L’esempio non viene copiato: il tuo calendario parte vuoto. La matita inserisce i turni, l’orologio gestisce modelli e rotazioni. Le statistiche si aggiornano da sole.",color=TextSecondary,fontSize=13.sp,lineHeight=20.sp)}
+                                        SetupTitle("Tutto pronto","Puoi aprire subito il calendario, oppure rifinire ora le opzioni qui sotto.")
+                                        SetupRecapCard(onOpenModels={page="models"})
+                                        SetupOptions(localBackupInfo=localBackupInfo,driveAutoEnabled=automaticBackup.enabled,onOpen={page=it})
+                                        SetupCalendarLegendCard()
                                     }
                                 }
                             }
                         }
-                        Spacer(Modifier.height(8.dp))
+                        Spacer(Modifier.height(6.dp))
                     }
                     if(step==0) {
-                        Spacer(Modifier.height(10.dp))
+                        Spacer(Modifier.height(8.dp))
                         CloudButton("Inizia","arrow-right",{FirstRunStore.goTo(context,1)})
                         Spacer(Modifier.height(8.dp))
                         CloudButton("Hai già un account? Accedi","users",{page="restore"},secondary=true)
                     }
                     if(step>0) {
-                        Spacer(Modifier.height(10.dp))
-                        CloudButton(if(finishing)"Salvataggio…" else if(step==5)"Apri il mio calendario" else "Continua",if(step==5)"check" else "arrow-right",{
+                        Spacer(Modifier.height(8.dp))
+                        CloudButton(if(finishing)"Salvataggio…" else if(step==lastStep)"Apri il mio calendario" else "Continua",if(step==lastStep)"check" else "arrow-right",{
                             if(!finishing) {
                                 finishing=true
                                 focus.clearFocus();keyboard?.hide()
                                 scope.launch {
                                     try {
-                                        if(step==2) {ShiftRepository.updateWorkProfile(ShiftRepository.activeWorkProfile.copy(name=name.trim()));ShiftRepository.notifyDataChanged()}
+                                        if(step==2)persistWorkName()
                                         LocalDatabaseStore.awaitCurrentSave()
-                                        if(step==5)FirstRunStore.complete(context)else FirstRunStore.goTo(context,step+1)
-                                    } catch(e:CancellationException){throw e}
+                                        if(step==lastStep)FirstRunStore.complete(context)else FirstRunStore.goTo(context,step+1)
+                                    } catch(e:TimeoutCancellationException){feedback=ActionFeedback("Salvataggio locale non completato: riprova tra poco",true)}
+                                    catch(e:CancellationException){throw e}
                                     catch(e:Exception){feedback=ActionFeedback("Salvataggio locale non completato: riprova tra poco",true)}
                                     finally{finishing=false}
                                 }
                             }
                         },enabled=!finishing&&(step!=2||name.isNotBlank()))
-                        Text("Puoi cambiare queste scelte in qualsiasi momento",color=TextSecondary,fontSize=10.sp,modifier=Modifier.align(Alignment.CenterHorizontally).padding(top=8.dp,bottom=3.dp))
+                        Text("Puoi cambiare queste scelte in qualsiasi momento",color=TextSecondary,fontSize=10.sp,modifier=Modifier.align(Alignment.CenterHorizontally).padding(top=6.dp,bottom=2.dp))
                     }
                 }
                 MagicalActionFeedbackHUD(feedback,{feedback=null},Modifier.align(Alignment.TopCenter))
@@ -175,10 +235,10 @@ fun FirstRunScreen() {
     }
 }
 
-@Composable private fun SetupTitle(title:String,description:String) {
-    Column(verticalArrangement=Arrangement.spacedBy(10.dp),modifier=Modifier.padding(top=12.dp,bottom=4.dp)) {
-        Text(title,color=TextPrimary,fontSize=29.sp,lineHeight=33.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.6).sp)
-        Text(description,color=TextSecondary,fontSize=14.sp,lineHeight=21.sp)
+@Composable private fun SetupTitle(title:String,description:String,large:Boolean=false) {
+    Column(verticalArrangement=Arrangement.spacedBy(if(large)8.dp else 5.dp),modifier=Modifier.padding(top=if(large)8.dp else 0.dp,bottom=2.dp)) {
+        Text(title,color=TextPrimary,fontSize=if(large)29.sp else 26.sp,lineHeight=if(large)33.sp else 30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-.6).sp)
+        Text(description,color=TextSecondary,fontSize=13.sp,lineHeight=19.sp)
     }
 }
 @Composable private fun SetupToggle(label:String,value:Boolean,onChange:(Boolean)->Unit) {
@@ -186,32 +246,198 @@ fun FirstRunScreen() {
         Text(label,color=TextPrimary,fontSize=13.sp,modifier=Modifier.weight(1f));Switch(checked=value,onCheckedChange=onChange)
     }
 }
+@Composable private fun SetupCalendarFormatCard() {
+    val largeFont=LocalDensity.current.fontScale>1.3f
+    val prefs=ShiftRepository.appPreferences
+    Surface(shape=RoundedCornerShape(18.dp),color=ObsidianSurface,modifier=Modifier.fillMaxWidth()) {
+        if(!largeFont) {
+            Row(Modifier.fillMaxWidth().padding(horizontal=12.dp,vertical=10.dp),horizontalArrangement=Arrangement.spacedBy(10.dp)) {
+                FormatSegmentGroup(
+                    label="Settimana",
+                    options=listOf(
+                        Triple("Lun","Inizio settimana da lunedì",prefs.weekStartMonday),
+                        Triple("Dom","Inizio settimana da domenica",!prefs.weekStartMonday)
+                    ),
+                    modifier=Modifier.weight(1f)
+                ) { idx ->
+                    ShiftRepository.appPreferences=prefs.copy(weekStartMonday=idx==0)
+                    ShiftRepository.notifyDataChanged()
+                }
+                FormatSegmentGroup(
+                    label="Orario",
+                    options=listOf(
+                        Triple("24h","Formato 24 ore",prefs.timeFormat24h),
+                        Triple("12h","Formato 12 ore",!prefs.timeFormat24h)
+                    ),
+                    modifier=Modifier.weight(1f)
+                ) { idx ->
+                    ShiftRepository.appPreferences=prefs.copy(timeFormat24h=idx==0)
+                    ShiftRepository.notifyDataChanged()
+                }
+            }
+        } else {
+            Column(Modifier.fillMaxWidth().padding(12.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
+                FormatSegmentGroup(
+                    label="Settimana",
+                    options=listOf(
+                        Triple("Lunedì","Inizio settimana da lunedì",prefs.weekStartMonday),
+                        Triple("Domenica","Inizio settimana da domenica",!prefs.weekStartMonday)
+                    ),
+                    modifier=Modifier.fillMaxWidth()
+                ) { idx ->
+                    ShiftRepository.appPreferences=prefs.copy(weekStartMonday=idx==0)
+                    ShiftRepository.notifyDataChanged()
+                }
+                FormatSegmentGroup(
+                    label="Orario",
+                    options=listOf(
+                        Triple("24 ore","Formato 24 ore",prefs.timeFormat24h),
+                        Triple("12 ore","Formato 12 ore",!prefs.timeFormat24h)
+                    ),
+                    modifier=Modifier.fillMaxWidth()
+                ) { idx ->
+                    ShiftRepository.appPreferences=prefs.copy(timeFormat24h=idx==0)
+                    ShiftRepository.notifyDataChanged()
+                }
+            }
+        }
+    }
+}
+@Composable private fun FormatSegmentGroup(label:String,options:List<Triple<String,String,Boolean>>,modifier:Modifier=Modifier,onSelect:(Int)->Unit) {
+    Column(modifier,verticalArrangement=Arrangement.spacedBy(4.dp)) {
+        Text(label,color=TextSecondary,fontSize=11.sp,fontWeight=FontWeight.Medium)
+        Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceHigh).padding(3.dp).selectableGroup(),horizontalArrangement=Arrangement.spacedBy(3.dp)) {
+            options.forEachIndexed { idx,(text,semanticLabel,active) ->
+                val fill by animateColorAsState(if(active)ObsidianPrimary else Color.Transparent,tween(180))
+                val ink=if(active)OnBrand else TextSecondary
+                Box(Modifier.weight(1f).heightIn(min=40.dp).clip(RoundedCornerShape(9.dp)).background(fill)
+                    .semantics { stateDescription=semanticLabel; selected=active; role=Role.Tab }.bouncyClickable { if(!active)onSelect(idx) },contentAlignment=Alignment.Center) {
+                    Text(text,color=ink,fontSize=12.sp,fontWeight=if(active)FontWeight.SemiBold else FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+            }
+        }
+    }
+}
+@Composable private fun ShiftChipPreviewRow(models:List<ShiftDefinition>,backdrop:Color) {
+    val dark=TurniThemeState.dark
+    Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        models.forEach { def ->
+            val tone=shiftColorStyle(Color(def.colorHex),dark,backdrop,definitionId=def.id)
+            Column(Modifier.clip(RoundedCornerShape(10.dp)).background(tone.codeFill).padding(horizontal=10.dp,vertical=6.dp),horizontalAlignment=Alignment.CenterHorizontally) {
+                Text(def.shortCode.ifBlank { def.name.take(4) },color=tone.codeInk,fontSize=11.sp,fontWeight=FontWeight.Bold,maxLines=1)
+                Text(if(def.isAllDay)def.name else def.startTime,color=tone.codeInk,fontSize=10.sp,maxLines=1,overflow=TextOverflow.Ellipsis)
+            }
+        }
+    }
+}
 @Composable private fun SetupLink(id:String,icon:String,title:String,description:String,onOpen:(String)->Unit) {
     Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(ObsidianSurface).bouncyClickable {onOpen(id)}.padding(14.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)) {
         SiteIcon(icon,null,Modifier.size(22.dp),BrandInk)
-        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(4.dp)){Text(title,color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.SemiBold);Text(description,color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)}
+        Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(3.dp)){Text(title,color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.SemiBold);Text(description,color=TextSecondary,fontSize=12.sp,lineHeight=17.sp)}
         SiteIcon("chevron-right",null,Modifier.size(16.dp),TextSecondary)
     }
 }
-@Composable private fun SetupPreview() {
-    GesturePractice(showGuide=false)
+@Composable private fun SetupPreview(compact:Boolean=false) {
+    GesturePractice(showGuide=false,compactPreview=compact)
+}
+@Composable private fun SetupRecapCard(onOpenModels:()->Unit) {
+    val palette=currentTurniPalette
+    val activeWork=ShiftRepository.activeWorkProfile
+    val prefs=ShiftRepository.appPreferences
+    val modelCount=ShiftRepository.shiftDefinitions.count { it.workProfileId==ShiftRepository.activeWorkProfileId }
+    CloudCard("La tua base") {
+        RecapLine("Lavoro",activeWork.name.ifBlank { "Il mio lavoro" })
+        RecapLine("Stile","${TurniThemeState.mode.label} · ${if(prefs.weekStartMonday)"Lun–Dom" else "Dom–Sab"} · ${if(prefs.timeFormat24h)"24h" else "12h"}")
+        Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("Modelli",color=TextSecondary,fontSize=12.sp,modifier=Modifier.widthIn(min=58.dp))
+            if(modelCount>0) {
+                Row(Modifier.weight(1f),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                    SiteIcon("check",null,Modifier.size(14.dp),Color(palette.success.ink))
+                    Text("$modelCount ${if(modelCount==1)"pronto" else "pronti"}",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis)
+                }
+            } else {
+                Text("Nessuno",color=TextSecondary,fontSize=13.sp,modifier=Modifier.weight(1f))
+                Box(Modifier.heightIn(min=40.dp).clip(RoundedCornerShape(10.dp)).background(ObsidianPrimarySubtle).bouncyClickable(onClick=onOpenModels).padding(horizontal=12.dp),contentAlignment=Alignment.Center) {
+                    Text("Aggiungi",color=BrandInk,fontSize=12.sp,fontWeight=FontWeight.SemiBold)
+                }
+            }
+        }
+    }
+}
+@Composable private fun RecapLine(label:String,value:String) {
+    Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        Text(label,color=TextSecondary,fontSize=12.sp,modifier=Modifier.widthIn(min=58.dp))
+        Text(value,color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium,maxLines=1,overflow=TextOverflow.Ellipsis,modifier=Modifier.weight(1f))
+    }
+}
+@Composable private fun SetupCalendarLegendCard() {
+    val largeFont=LocalDensity.current.fontScale>1.3f
+    val items=listOf(
+        Triple("edit","Matita","Inserisci turni"),
+        Triple("clock","Orologio","Modelli e rotazioni"),
+        Triple("report","Grafico","Statistiche"),
+        Triple("settings","Ingranaggio","Opzioni e backup")
+    )
+    CloudCard("Dove trovi tutto nel calendario","Il tuo calendario parte vuoto: l’esempio di prova non viene copiato.") {
+        if(!largeFont) {
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                items.chunked(2).forEach { pair ->
+                    Row(Modifier.fillMaxWidth().height(IntrinsicSize.Max),horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                        pair.forEach { (icon,title,subtitle) -> LegendTile(icon,title,subtitle,Modifier.weight(1f).fillMaxHeight()) }
+                    }
+                }
+            }
+        } else {
+            Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
+                items.forEach { (icon,title,subtitle) -> LegendTile(icon,title,subtitle,Modifier.fillMaxWidth()) }
+            }
+        }
+    }
+}
+@Composable private fun LegendTile(icon:String,title:String,subtitle:String,modifier:Modifier=Modifier) {
+    Row(modifier.clip(RoundedCornerShape(12.dp)).background(ObsidianSurfaceContainer).padding(10.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(9.dp)) {
+        SiteIcon(icon,null,Modifier.size(18.dp),BrandInk)
+        Column(verticalArrangement=Arrangement.spacedBy(1.dp)) {
+            Text(title,color=TextPrimary,fontSize=12.sp,fontWeight=FontWeight.SemiBold,maxLines=1,overflow=TextOverflow.Ellipsis)
+            Text(subtitle,color=TextSecondary,fontSize=11.sp,lineHeight=14.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+        }
+    }
 }
 
-private val setupGroups=listOf(
-    "Regole del tuo calendario" to listOf(
-        listOf("holidays","calendar-heart","Festività","Scegli le ricorrenze del tuo lavoro. Un piccolo contorno sulla data le distingue senza coprire i turni."),
-        listOf("oncall","bell-ring","Reperibilità","Segna le date a mano oppure scegli regole basate su turni o periodi dell’anno."),
-        listOf("rules","chart-no-axes-combined","Conteggio statistiche","La visibilità dell’ex turno non cambia i totali. Scegli se contare il turno visibile o l’originale, e le esclusioni nei festivi.")),
-    "Attività e promemoria" to listOf(
-        listOf("labels","tag","Etichette dei giorni","Crea attività come Formazione: nelle statistiche ritrovi il numero di giorni e le date."),
-        listOf("alarms","alarm-clock","Sveglie dei turni","Scegli regole e orari. Android ti chiederà le autorizzazioni quando le attivi.")),
-    "Copie e condivisione" to listOf(
-        listOf("backup","database-backup","Backup e ripristino","Salva dati e impostazioni in un file o nel tuo Drive. Il backup automatico si attiva solo se lo scegli."),
-        listOf("google","calendar-sync","Google Calendar","Copia i tuoi turni nel calendario Google selezionato. Ogni utente usa il proprio account."),
-        listOf("pdf","file-text","Esporta e stampa PDF","Controlla l’anteprima e condividi un prospetto nel periodo e nel formato che preferisci."))
-)
-@Composable private fun SetupOptions(onOpen:(String)->Unit) {
-    setupGroups.forEach { group ->
+private data class SetupOptionItem(val id:String,val icon:String,val title:String,val description:String)
+@Composable private fun SetupOptions(localBackupInfo:String?,driveAutoEnabled:Boolean,onOpen:(String)->Unit) {
+    val prefs=ShiftRepository.appPreferences
+    val holidayStatus=if(!prefs.showHolidays)"Disattivate nel calendario" else "${ShiftRepository.enabledHolidayIds.size} attive · Nazionali, Patroni e CCNL"
+    val tagCount=ShiftRepository.dayTags.size
+    val labelsStatus=if(tagCount==0)"Nessuna etichetta · es. Formazione, Visita" else "$tagCount ${if(tagCount==1)"etichetta pronta" else "etichette pronte"}"
+    val rulesCount=ShiftRepository.statisticsRules.count { it.enabled }
+    val exStatus=if(prefs.showExShifts)"mostra ex turno" else "ex turno nascosto"
+    val rulesStatus=if(rulesCount==0)"Standard · $exStatus" else "$rulesCount ${if(rulesCount==1)"regola attiva" else "regole attive"} · $exStatus"
+    val onCallStatus=reperibilitaSetupSummary(ShiftRepository.reperibilitaConfig)
+    val alarmsStatus=alarmsSetupSummary(ShiftRepository.smartAlarmsConfig)
+    val account=ShiftRepository.googleAccountProfile
+    val backupStatus=when {
+        account!=null -> "Account collegato (${account.email})" + if(driveAutoEnabled)" · Drive auto attivo" else ""
+        localBackupInfo!=null -> "Copia locale ($localBackupInfo) · Drive facoltativo"
+        else -> "Solo su telefono · Drive o file facoltativo"
+    }
+    val googleCalStatus=if(account!=null)"Account collegato · esporta su un calendario" else "Facoltativo · copia i turni sul tuo calendario"
+    val groups=listOf(
+        "Calendario e statistiche" to listOf(
+            SetupOptionItem("holidays","calendar-heart","Festività",holidayStatus),
+            SetupOptionItem("labels","tag","Etichette dei giorni",labelsStatus),
+            SetupOptionItem("rules","chart-no-axes-combined","Conteggio statistiche",rulesStatus)
+        ),
+        "Reperibilità e sveglie" to listOf(
+            SetupOptionItem("oncall","bell-ring","Reperibilità",onCallStatus),
+            SetupOptionItem("alarms","alarm-clock","Sveglie dei turni",alarmsStatus)
+        ),
+        "Backup e sincronizzazione" to listOf(
+            SetupOptionItem("backup","database-backup","Backup e ripristino",backupStatus),
+            SetupOptionItem("google","calendar-sync","Google Calendar",googleCalStatus)
+        )
+    )
+    groups.forEach { group ->
         var expanded by rememberSaveable(group.first) {mutableStateOf(false)}
         val chevronAngle by animateFloatAsState(if(expanded)180f else 0f,spring(.8f,380f))
         Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
@@ -220,7 +446,7 @@ private val setupGroups=listOf(
                 SiteIcon("chevron-down",null,Modifier.size(18.dp).rotate(chevronAngle),BrandInk)
             }
             AnimatedVisibility(expanded,enter=expandVertically(spring(.9f,400f))+fadeIn(),exit=shrinkVertically(spring(.95f,400f))+fadeOut()) {
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)){group.second.forEach {row->SetupLink(row[0],row[1],row[2],row[3],onOpen)}}
+                Column(verticalArrangement=Arrangement.spacedBy(8.dp)){group.second.forEach {row->SetupLink(row.id,row.icon,row.title,row.description,onOpen)}}
             }
         }
     }
