@@ -1,12 +1,14 @@
-@file:OptIn(androidx.compose.animation.ExperimentalAnimationApi::class, androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
-import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
@@ -19,17 +21,18 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.platform.LocalFocusManager
-import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
@@ -44,19 +47,245 @@ private val tagSwatches = listOf(0xFF94C4EFL, 0xFF83CDB7L, 0xFFF2C46DL, 0xFFEE9C
 private val tagIconLabels = listOf("Etichetta", "Formazione", "Salute", "Studio", "Sorriso", "Obiettivo")
 
 @Composable
-internal fun DayTagChip(tag: DayTag, selected: Boolean = false, compact: Boolean = false, modifier: Modifier = Modifier, onClick: (() -> Unit)? = null) {
+internal fun DayTagChip(
+    tag: DayTag,
+    selected: Boolean = false,
+    compact: Boolean = false,
+    modifier: Modifier = Modifier,
+    onClick: (() -> Unit)? = null,
+) {
     val colors = shiftColorStyle(Color(tag.colorHex), TurniThemeState.dark, ObsidianSurface)
-    val fill by animateColorAsState(if (selected) colors.codeFill else ObsidianSurfaceContainer, tween(220))
-    val ink = if (selected) colors.codeInk else TextPrimary
-    val phase by animateFloatAsState(if (selected) 1f else 0f, spring(.85f, 420f))
-    Row(modifier.heightIn(min = if(compact)28.dp else 36.dp).clip(RoundedCornerShape(11.dp)).background(fill)
-        .border(if (selected) 1.5.dp else 0.dp, if (selected) colors.codeInk.copy(alpha=.5f) else Color.Transparent, RoundedCornerShape(11.dp))
-        .then(if (onClick != null) Modifier.semantics { this.selected = selected; role = Role.Checkbox }.bouncyClickable(onClick=onClick) else Modifier)
-        .padding(horizontal=if(compact)7.dp else 10.dp, vertical=if(compact)4.dp else 7.dp), verticalAlignment=Alignment.CenterVertically,
-        horizontalArrangement=Arrangement.spacedBy(6.dp)) {
-        SiteIcon(tag.iconKey, null, Modifier.size(16.dp), if(selected)ink else readablePigment(fill,shiftDisplayColor(Color(tag.colorHex))), phase)
-        Text(tag.name, color=ink, fontSize=if(compact)11.sp else 12.sp, maxLines=1, overflow=TextOverflow.Ellipsis, modifier=Modifier.widthIn(max=if(compact)160.dp else 220.dp))
-        if (selected && onClick != null) SiteIcon("check", null, Modifier.size(13.dp), ink)
+    val fill by animateColorAsState(
+        targetValue = if (selected) colors.codeFill else ObsidianSurfaceContainer,
+        animationSpec = tween(220),
+        label = "dayTagChipFill",
+    )
+    val ink by animateColorAsState(
+        targetValue = if (selected) colors.codeInk else TextPrimary,
+        animationSpec = tween(220),
+        label = "dayTagChipInk",
+    )
+    val borderColor by animateColorAsState(
+        targetValue = if (selected) colors.codeInk.copy(alpha = 0.45f) else ObsidianBorderSubtle,
+        animationSpec = tween(220),
+        label = "dayTagChipBorder",
+    )
+    val phase by animateFloatAsState(
+        targetValue = if (selected) 1f else 0f,
+        animationSpec = spring(0.85f, 420f),
+        label = "dayTagChipPhase",
+    )
+    val chipShape = RoundedCornerShape(11.dp)
+    Row(
+        modifier = modifier
+            .heightIn(min = if (compact) 28.dp else 36.dp)
+            .clip(chipShape)
+            .background(fill)
+            .border(if (selected) 1.5.dp else 1.dp, borderColor, chipShape)
+            .then(
+                if (onClick != null) {
+                    Modifier
+                        .semantics {
+                            this.selected = selected
+                            role = Role.Checkbox
+                        }
+                        .bouncyClickable(onClick = onClick)
+                } else {
+                    Modifier
+                }
+            )
+            .padding(
+                horizontal = if (compact) 7.dp else 10.dp,
+                vertical = if (compact) 4.dp else 7.dp,
+            ),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        SiteIcon(
+            name = tag.iconKey,
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = if (selected) ink else readablePigment(fill, shiftDisplayColor(Color(tag.colorHex))),
+            progress = phase,
+        )
+        Text(
+            text = tag.name,
+            color = ink,
+            fontSize = if (compact) 11.sp else 12.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.widthIn(max = if (compact) 160.dp else 220.dp),
+        )
+        if (selected && onClick != null) {
+            SiteIcon("check", null, Modifier.size(13.dp), ink)
+        }
+    }
+}
+
+internal fun dayTagMutationFeedback(savedTag: DayTag): ActionFeedback {
+    val removed = ShiftRepository.dayTags.none { tag -> tag.id == savedTag.id }
+    val message = when {
+        removed -> "Etichetta eliminata"
+        savedTag.archived -> "Etichetta archiviata"
+        else -> "Etichetta salvata"
+    }
+    return ActionFeedback(message, isDestructive = removed)
+}
+
+@Composable
+internal fun DayTagsCatalogContent(
+    onEditorActiveChanged: ((Boolean) -> Unit)? = null,
+    showHeaderCard: Boolean = true,
+    modifier: Modifier = Modifier,
+    onEditTag: (DayTag) -> Unit,
+    onFeedback: (ActionFeedback) -> Unit,
+) {
+    var showArchived by remember { mutableStateOf(false) }
+    var pendingDelete by remember { mutableStateOf<DayTag?>(null) }
+    val tags = ShiftRepository.dayTags.toList()
+    val activeTags = tags.filter { !it.archived }
+    val archivedTags = tags.filter { it.archived }
+    val chevronAngle by animateFloatAsState(
+        targetValue = if (showArchived) 180f else 0f,
+        animationSpec = spring(0.85f, 380f),
+        label = "archivedTagsChevron",
+    )
+
+    var wasDeleting by remember { mutableStateOf(false) }
+    LaunchedEffect(pendingDelete) {
+        val isDeleting = pendingDelete != null
+        if (isDeleting != wasDeleting) {
+            wasDeleting = isDeleting
+            onEditorActiveChanged?.invoke(isDeleting)
+        }
+    }
+
+    LazyColumn(
+        modifier = modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+        contentPadding = PaddingValues(bottom = 12.dp),
+    ) {
+        if (showHeaderCard) {
+            item(key = "tags-intro", contentType = "tags-intro") {
+                CloudCard(
+                    title = "Ritrova ciò che hai fatto",
+                    subtitle = "Aggiungi etichette come Formazione o Visita medica. Ogni etichetta conta i giorni nelle statistiche; puoi affiancarle una nota con i dettagli.",
+                ) {}
+            }
+        }
+        if (activeTags.isEmpty()) {
+            item(key = "tags-empty", contentType = "tags-empty") {
+                CloudCard("Le tue etichette") {
+                    Text(
+                        text = if (archivedTags.isEmpty()) {
+                            "Crea la prima etichetta dal pulsante qui sotto, poi apri un giorno del calendario e tocca Note ed etichette per assegnarla."
+                        } else {
+                            "Tutte le etichette sono archiviate. Puoi riattivarle qui sotto o crearne una nuova."
+                        },
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                }
+            }
+        }
+        items(activeTags, key = { it.id }, contentType = { "tag-row" }) { tag ->
+            val usageCount = ShiftRepository.dayExtraInfo.values.count { tag.id in it.tagIds }
+            TagManagementRow(
+                tag = tag,
+                usageCount = usageCount,
+                onEdit = { onEditTag(tag) },
+                onDelete = if (usageCount == 0) {
+                    { pendingDelete = tag }
+                } else {
+                    null
+                },
+            )
+        }
+        if (archivedTags.isNotEmpty()) {
+            item(key = "tags-archived-toggle", contentType = "tags-archived-toggle") {
+                val toggleShape = RoundedCornerShape(14.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(toggleShape)
+                        .background(ObsidianSurfaceContainer)
+                        .border(1.dp, ObsidianBorderSubtle, toggleShape)
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                        ) { showArchived = !showArchived }
+                        .padding(horizontal = 14.dp, vertical = 12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    SiteIcon("folder-open", null, Modifier.size(17.dp), BrandInk)
+                    Text(
+                        text = "Archiviate (${archivedTags.size})",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f),
+                    )
+                    SiteIcon(
+                        name = "chevron-down",
+                        contentDescription = if (showArchived) "Nascondi archiviate" else "Mostra archiviate",
+                        modifier = Modifier.size(18.dp).rotate(chevronAngle),
+                        tint = TextSecondary,
+                    )
+                }
+            }
+            item(key = "tags-archived-list", contentType = "tags-archived-list") {
+                AnimatedVisibility(
+                    visible = showArchived,
+                    enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "Restano visibili sui giorni già segnati e nelle statistiche.",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            modifier = Modifier.padding(horizontal = 4.dp),
+                        )
+                        archivedTags.forEach { tag ->
+                            val usageCount = ShiftRepository.dayExtraInfo.values.count { tag.id in it.tagIds }
+                            TagManagementRow(
+                                tag = tag,
+                                usageCount = usageCount,
+                                onEdit = { onEditTag(tag) },
+                                onDelete = if (usageCount == 0) {
+                                    { pendingDelete = tag }
+                                } else {
+                                    null
+                                },
+                            )
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    pendingDelete?.let { target ->
+        AppConfirmationDialog(
+            title = "Eliminare questa etichetta?",
+            message = "«${target.name}» non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
+            confirmLabel = "Elimina etichetta",
+            dismissLabel = "Annulla",
+            onDismiss = { pendingDelete = null },
+            onConfirm = {
+                pendingDelete = null
+                try {
+                    ShiftRepository.deleteUnusedDayTag(target.id)
+                    onFeedback(ActionFeedback("Etichetta eliminata", isDestructive = true))
+                } catch (problem: IllegalArgumentException) {
+                    onFeedback(ActionFeedback(problem.message ?: "Impossibile eliminare l’etichetta", isDestructive = true))
+                }
+            },
+        )
     }
 }
 
@@ -64,129 +293,410 @@ internal fun DayTagChip(tag: DayTag, selected: Boolean = false, compact: Boolean
 internal fun DayTagsSettingsScreen(onDismiss: () -> Unit) {
     var editing by remember { mutableStateOf<DayTag?>(null) }
     var creating by remember { mutableStateOf(false) }
-    var showArchived by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
-    val tags = ShiftRepository.dayTags.toList()
-    CloudFeatureScaffold("Etichette dei giorni", onDismiss, feedback, { feedback=null }) {
-        CloudCard("Ritrova ciò che hai fatto", "Aggiungi etichette come Formazione o Visita medica. Ogni etichetta conta i giorni nelle statistiche; puoi affiancarle una nota con i dettagli.") {
-            CloudButton("Nuova etichetta", "plus", { creating=true })
+    val tagsCount = ShiftRepository.dayTags.size
+
+    Box(Modifier.fillMaxSize()) {
+        CloudFeatureScaffold(
+            title = "Etichette dei giorni",
+            subtitle = "Attività e note da ritrovare nelle statistiche",
+            onDismiss = onDismiss,
+            feedback = feedback,
+            onDismissFeedback = { feedback = null },
+            scrollable = false,
+            bottomBar = {
+                CloudButton(
+                    label = "Nuova etichetta",
+                    icon = "plus",
+                    onClick = { creating = true },
+                    enabled = tagsCount < 500,
+                )
+            },
+        ) {
+            DayTagsCatalogContent(
+                showHeaderCard = true,
+                onEditTag = { editing = it },
+                onFeedback = { feedback = it },
+                modifier = Modifier.weight(1f),
+            )
         }
-        if (tags.none { !it.archived }) CloudCard("Le tue etichette") {
-            Text("Crea la prima etichetta, poi apri un giorno del calendario e tocca Note ed etichette per assegnarla.", color=TextSecondary, fontSize=13.sp, lineHeight=19.sp)
+        if (creating || editing != null) {
+            DayTagEditor(
+                original = editing,
+                onClose = {
+                    creating = false
+                    editing = null
+                },
+                onSaved = { saved ->
+                    creating = false
+                    editing = null
+                    feedback = dayTagMutationFeedback(saved)
+                },
+            )
         }
-        tags.filter { !it.archived }.forEach { tag ->
-            TagManagementRow(tag) { editing=tag }
-        }
-        if (tags.any { it.archived }) {
-            TextButton(onClick={showArchived=!showArchived}, colors=ButtonDefaults.textButtonColors(contentColor=BrandInk)) {
-                Text("Archiviate (${tags.count { it.archived }})")
-            }
-            AnimatedVisibility(showArchived, enter=expandVertically(spring())+fadeIn(), exit=shrinkVertically()+fadeOut()) {
-                Column(verticalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Text("Restano visibili sui giorni già segnati e nelle statistiche.", color=TextSecondary, fontSize=12.sp)
-                    tags.filter { it.archived }.forEach { tag -> TagManagementRow(tag) { editing=tag } }
-                }
-            }
-        }
-        Spacer(Modifier.height(80.dp))
-    }
-    if (creating || editing != null) DayTagEditor(editing, { creating=false; editing=null }) {
-        creating=false
-        editing=null
-        val removed=ShiftRepository.dayTags.none { tag -> tag.id==it.id }
-        val message=when {
-            removed -> "Etichetta eliminata"
-            it.archived -> "Etichetta archiviata"
-            else -> "Etichetta salvata"
-        }
-        feedback=ActionFeedback(message,isDestructive=removed)
     }
 }
 
 @Composable
-private fun TagManagementRow(tag: DayTag, onEdit: () -> Unit) {
-    val count = ShiftRepository.dayExtraInfo.values.count { tag.id in it.tagIds }
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(17.dp)).background(ObsidianSurface).bouncyClickable(onClick=onEdit).padding(12.dp),
-        verticalAlignment=Alignment.CenterVertically, horizontalArrangement=Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.weight(1f)) { DayTagChip(tag) }
-        Text("$count ${if(count==1) "giorno" else "giorni"}", color=TextSecondary, fontSize=11.sp)
-        SiteIcon("pencil", "Modifica ${tag.name}", Modifier.size(18.dp), BrandInk)
+private fun TagManagementRow(
+    tag: DayTag,
+    usageCount: Int,
+    onEdit: () -> Unit,
+    onDelete: (() -> Unit)? = null,
+) {
+    val style = shiftColorStyle(Color(tag.colorHex), TurniThemeState.dark, ObsidianSurface)
+    val cardShape = RoundedCornerShape(17.dp)
+    val countLabel = when {
+        usageCount == 0 -> "Non ancora usata"
+        usageCount == 1 -> "1 giorno segnato"
+        else -> "$usageCount giorni segnati"
+    }
+    val subtitle = if (tag.archived) "$countLabel · Archiviata" else countLabel
+
+    Surface(
+        color = ObsidianSurface,
+        shape = cardShape,
+        border = BorderStroke(1.dp, ObsidianBorderSubtle),
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardShape)
+                .bouncyClickable(onClick = onEdit)
+                .padding(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(11.dp))
+                    .background(style.codeFill),
+                contentAlignment = Alignment.Center,
+            ) {
+                SiteIcon(
+                    name = tag.iconKey,
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = style.codeInk,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = tag.name,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = subtitle,
+                    color = TextSecondary,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            if (onDelete != null) {
+                TagRowIconButton(
+                    icon = "trash-2",
+                    description = "Elimina ${tag.name}",
+                    tint = ColorNegative,
+                    onClick = onDelete,
+                )
+            }
+            TagRowIconButton(
+                icon = "edit",
+                description = "Modifica ${tag.name}",
+                tint = BrandInk,
+                onClick = onEdit,
+            )
+        }
     }
 }
 
 @Composable
-internal fun DayTagEditor(original: DayTag?, onClose: () -> Unit,
-    inlineContent:Boolean=false,inlineScope:ColumnScope?=null,onExit:(()->Unit)?=null,onSaved:(DayTag)->Unit) {
-    val focus=LocalFocusManager.current
-    val keyboard=LocalSoftwareKeyboardController.current
+private fun TagRowIconButton(
+    icon: String,
+    description: String,
+    tint: Color,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(11.dp)
+    Box(
+        modifier = Modifier
+            .size(36.dp)
+            .clip(shape)
+            .background(ObsidianSurfaceContainer)
+            .border(1.dp, ObsidianBorderSubtle, shape)
+            .bouncyClickable(onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) {
+        SiteIcon(icon, description, Modifier.size(18.dp), tint)
+    }
+}
+
+@Composable
+internal fun DayTagEditor(
+    original: DayTag?,
+    onClose: () -> Unit,
+    inlineContent: Boolean = false,
+    inlineScope: ColumnScope? = null,
+    onExit: (() -> Unit)? = null,
+    onSaved: (DayTag) -> Unit,
+) {
+    val focus = LocalFocusManager.current
+    val keyboard = LocalSoftwareKeyboardController.current
     var name by remember(original?.id) { mutableStateOf(original?.name ?: "") }
     var icon by remember(original?.id) { mutableStateOf(original?.iconKey ?: "tag") }
     var color by remember(original?.id) { mutableStateOf(original?.colorHex ?: tagSwatches.first()) }
     var error by remember { mutableStateOf<String?>(null) }
     var savedTag by remember { mutableStateOf<DayTag?>(null) }
     var deleting by remember { mutableStateOf(false) }
-    val editor:@Composable ColumnScope.(() -> Unit)->Unit = { close ->
+
+    val editor: @Composable ColumnScope.(() -> Unit) -> Unit = { close ->
         fun save(archived: Boolean) {
-            if(savedTag!=null)return
+            if (savedTag != null) return
             val tag = DayTag(original?.id ?: UUID.randomUUID().toString(), name.trim(), icon, color, archived)
-            try { ShiftRepository.saveDayTag(tag);focus.clearFocus();keyboard?.hide();savedTag=tag;close() }
-            catch (problem: IllegalArgumentException) { error=problem.message }
+            try {
+                ShiftRepository.saveDayTag(tag)
+                focus.clearFocus()
+                keyboard?.hide()
+                savedTag = tag
+                close()
+            } catch (problem: IllegalArgumentException) {
+                error = problem.message
+            }
         }
-        if(deleting&&original!=null)AppConfirmationDialog("Eliminare questa etichetta?", "Non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.", "Elimina etichetta", "Annulla",
-            onDismiss={deleting=false},onConfirm={
-                deleting=false
-                try { ShiftRepository.deleteUnusedDayTag(original.id);savedTag=original;close() }
-                catch(problem:IllegalArgumentException) { error=problem.message }
-            })
-        TagSheetHeading(if(original==null)"Nuova etichetta" else "Modifica etichetta",
-            onClose=onExit?:close,onBack=close,showClose=false)
-        Column(Modifier.verticalScroll(rememberScrollState()).weight(1f, fill=false), verticalArrangement=Arrangement.spacedBy(12.dp)) {
-            Text("Nome", color=TextSecondary, fontSize=12.sp)
-            BasicTextField(name, { name=it.take(40);error=null }, singleLine=true,
-                textStyle=TextStyle(color=TextPrimary,fontSize=14.sp), cursorBrush=SolidColor(ObsidianPrimary),
-                modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(13.dp)).background(ObsidianSurfaceContainer).padding(14.dp),
-                decorationBox={ field -> if(name.isBlank()) Text("Es. Formazione", color=TextSecondary,fontSize=14.sp);field() })
-            error?.let { Text(it, color=ColorNegative, fontSize=12.sp) }
-            Text("Icona", color=TextSecondary, fontSize=12.sp)
+        if (deleting && original != null) {
+            AppConfirmationDialog(
+                title = "Eliminare questa etichetta?",
+                message = "Non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
+                confirmLabel = "Elimina etichetta",
+                dismissLabel = "Annulla",
+                onDismiss = { deleting = false },
+                onConfirm = {
+                    deleting = false
+                    try {
+                        ShiftRepository.deleteUnusedDayTag(original.id)
+                        savedTag = original
+                        close()
+                    } catch (problem: IllegalArgumentException) {
+                        error = problem.message
+                    }
+                },
+            )
+        }
+        if (inlineContent) {
+            TagSheetHeading(
+                title = if (original == null) "Nuova etichetta" else "Modifica etichetta",
+                onClose = onExit ?: close,
+                onBack = close,
+                showClose = false,
+            )
+        }
+        val canDeleteUnused = original != null &&
+            ShiftRepository.dayExtraInfo.values.none { original.id in it.tagIds }
+        val inputShape = RoundedCornerShape(13.dp)
+        val inputBorder by animateColorAsState(
+            targetValue = if (error != null) ColorNegative else ObsidianBorderSubtle,
+            animationSpec = tween(180),
+            label = "tagNameBorder",
+        )
+        Column(
+            modifier = Modifier
+                .weight(1f, fill = !inlineContent)
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = if (inlineContent) 0.dp else 14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Text("Nome", color = TextSecondary, fontSize = 12.sp)
+            BasicTextField(
+                value = name,
+                onValueChange = { name = it.take(40); error = null },
+                singleLine = true,
+                textStyle = TextStyle(color = TextPrimary, fontSize = 14.sp),
+                cursorBrush = SolidColor(ObsidianPrimary),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(inputShape)
+                    .background(ObsidianSurfaceContainer)
+                    .border(1.dp, inputBorder, inputShape)
+                    .padding(14.dp),
+                decorationBox = { field ->
+                    if (name.isBlank()) Text("Es. Formazione", color = TextSecondary, fontSize = 14.sp)
+                    field()
+                },
+            )
+            AnimatedVisibility(visible = error != null) {
+                error?.let { Text(it, color = ColorNegative, fontSize = 12.sp) }
+            }
+            Text("Icona", color = TextSecondary, fontSize = 12.sp)
             dayTagIcons.chunked(3).forEachIndexed { row, icons ->
-                Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     icons.forEachIndexed { column, key ->
-                        val chosen=key==icon
-                        Box(Modifier.weight(1f).height(42.dp).clip(RoundedCornerShape(11.dp))
-                            .background(if(chosen)ObsidianPrimaryContainer else ObsidianSurfaceContainer)
-                            .border(if(chosen)1.5.dp else 0.dp,if(chosen)BrandInk else Color.Transparent,RoundedCornerShape(11.dp))
-                            .semantics { contentDescription=tagIconLabels[row*3+column]; selected=chosen }
-                            .bouncyClickable { icon=key }, contentAlignment=Alignment.Center) {
-                            SiteIcon(key,null,Modifier.size(22.dp),if(chosen)BrandInk else TextPrimary)
+                        val chosen = key == icon
+                        val tileFill by animateColorAsState(
+                            targetValue = if (chosen) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+                            animationSpec = tween(180),
+                            label = "tagIconFill",
+                        )
+                        val tileBorder by animateColorAsState(
+                            targetValue = if (chosen) BrandInk else ObsidianBorderSubtle,
+                            animationSpec = tween(180),
+                            label = "tagIconBorder",
+                        )
+                        val tileInk by animateColorAsState(
+                            targetValue = if (chosen) BrandInk else TextPrimary,
+                            animationSpec = tween(180),
+                            label = "tagIconInk",
+                        )
+                        val tileShape = RoundedCornerShape(11.dp)
+                        Box(
+                            modifier = Modifier
+                                .weight(1f)
+                                .height(42.dp)
+                                .clip(tileShape)
+                                .background(tileFill)
+                                .border(if (chosen) 1.5.dp else 1.dp, tileBorder, tileShape)
+                                .semantics {
+                                    contentDescription = tagIconLabels[row * 3 + column]
+                                    selected = chosen
+                                }
+                                .bouncyClickable { icon = key },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            SiteIcon(key, null, Modifier.size(22.dp), tileInk)
                         }
                     }
                 }
             }
-            Text("Colore",color=TextSecondary,fontSize=12.sp)
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+            Text("Colore", color = TextSecondary, fontSize = 12.sp)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                 tagSwatches.forEachIndexed { index, swatch ->
-                    val colors=shiftColorStyle(Color(swatch),TurniThemeState.dark,ObsidianSurface)
-                    Box(Modifier.size(38.dp).clip(RoundedCornerShape(12.dp)).background(colors.codeFill)
-                        .semantics { contentDescription="Colore ${index+1}"; selected=color==swatch }
-                        .bouncyClickable { color=swatch },contentAlignment=Alignment.Center) {
-                        if(color==swatch)SiteIcon("check",null,Modifier.size(20.dp),colors.codeInk)
+                    val swatchColors = shiftColorStyle(Color(swatch), TurniThemeState.dark, ObsidianSurface)
+                    val selectedSwatch = color == swatch
+                    val swatchBorder by animateColorAsState(
+                        targetValue = if (selectedSwatch) swatchColors.codeInk else ObsidianBorderSubtle,
+                        animationSpec = tween(180),
+                        label = "tagSwatchBorder",
+                    )
+                    val swatchShape = RoundedCornerShape(12.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(38.dp)
+                            .clip(swatchShape)
+                            .background(swatchColors.codeFill)
+                            .border(if (selectedSwatch) 2.dp else 1.dp, swatchBorder, swatchShape)
+                            .semantics {
+                                contentDescription = "Colore ${index + 1}"
+                                selected = selectedSwatch
+                            }
+                            .bouncyClickable { color = swatch },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        if (selectedSwatch) {
+                            SiteIcon("check", null, Modifier.size(20.dp), swatchColors.codeInk)
+                        }
                     }
                 }
             }
-            DayTagChip(DayTag("preview",name.ifBlank { "La tua etichetta" },icon,color),true)
-            if(original!=null) {
-                Text("Le modifiche aggiornano anche i giorni già segnati. Archiviare nasconde l’etichetta dalle nuove selezioni e conserva lo storico.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                CloudButton(if(original.archived) "Riattiva etichetta" else "Archivia etichetta", "folder", { save(!original.archived) }, enabled=name.isNotBlank()&&savedTag==null, secondary=true)
-                if(ShiftRepository.dayExtraInfo.values.none { original.id in it.tagIds }) {
-                    TextButton(onClick={deleting=true},colors=ButtonDefaults.textButtonColors(contentColor=ColorNegative)) { Text("Elimina etichetta inutilizzata") }
+            DayTagChip(DayTag("preview", name.ifBlank { "La tua etichetta" }, icon, color), selected = true)
+            if (original != null) {
+                Text(
+                    text = "Le modifiche aggiornano anche i giorni già segnati. Archiviare nasconde l’etichetta dalle nuove selezioni e conserva lo storico.",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+                CloudButton(
+                    label = if (original.archived) "Riattiva etichetta" else "Archivia etichetta",
+                    icon = "folder",
+                    onClick = { save(!original.archived) },
+                    enabled = name.isNotBlank() && savedTag == null,
+                    secondary = true,
+                )
+                if (inlineContent && canDeleteUnused) {
+                    TextButton(
+                        onClick = { deleting = true },
+                        colors = ButtonDefaults.textButtonColors(contentColor = ColorNegative),
+                    ) {
+                        Text("Elimina etichetta inutilizzata")
+                    }
                 }
             }
+            if (!inlineContent) Spacer(Modifier.height(4.dp))
         }
-        Spacer(Modifier.height(12.dp))
-        CloudButton("Salva etichetta","check",{ save(original?.archived ?: false) },enabled=name.isNotBlank()&&savedTag==null)
+        if (inlineContent) {
+            Spacer(Modifier.height(12.dp))
+            CloudButton(
+                label = "Salva etichetta",
+                icon = "check",
+                onClick = { save(original?.archived ?: false) },
+                enabled = name.isNotBlank() && savedTag == null,
+            )
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ObsidianBackground)
+                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                if (canDeleteUnused) {
+                    val deleteShape = RoundedCornerShape(14.dp)
+                    Box(
+                        modifier = Modifier
+                            .size(46.dp)
+                            .clip(deleteShape)
+                            .background(ObsidianSurfaceHigh)
+                            .border(1.dp, ObsidianBorderSubtle, deleteShape)
+                            .bouncyClickable { deleting = true },
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SiteIcon("trash-2", "Elimina etichetta inutilizzata", Modifier.size(20.dp), ColorNegative)
+                    }
+                }
+                CloudButton(
+                    label = "Salva etichetta",
+                    icon = "check",
+                    onClick = { save(original?.archived ?: false) },
+                    enabled = name.isNotBlank() && savedTag == null,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
-    if(inlineContent)with(requireNotNull(inlineScope)){editor { savedTag?.let(onSaved)?:onClose() }}
-    else NativeBottomDialog({savedTag?.let(onSaved)?:onClose()},scrollContent=false,content=editor)
+
+    if (inlineContent) {
+        with(requireNotNull(inlineScope)) {
+            editor { savedTag?.let(onSaved) ?: onClose() }
+        }
+    } else {
+        CatalogEditorSheet(
+            title = if (original == null) "Nuova etichetta" else "Modifica etichetta",
+            onDismiss = { savedTag?.let(onSaved) ?: onClose() },
+            heightFraction = 0.86f,
+            subtitle = "Attività da segnare sui giorni",
+        ) { finish ->
+            editor {
+                finish { savedTag?.let(onSaved) ?: onClose() }
+            }
+        }
+    }
 }
 
 @Composable

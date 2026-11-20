@@ -4,19 +4,29 @@ package com.turni.calendario.ui.screens
 import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.compose.animation.*
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.foundation.layout.*
+import androidx.compose.animation.core.tween
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.rotate
-import com.turni.calendario.ui.components.SiteIcon
-import com.turni.calendario.ui.components.bouncyClickable
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -24,14 +34,14 @@ import androidx.compose.ui.unit.sp
 import com.turni.calendario.repository.*
 import com.turni.calendario.sync.*
 import com.turni.calendario.ui.components.ActionFeedback
+import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.*
 import java.io.File
 import java.time.Instant
 import java.time.ZoneId
 import java.time.format.DateTimeFormatter
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 
 private data class BackupRestorePreview(val data:DatabaseSnapshot,val source:String,val remoteOwner:String?=null)
 private data class BackupReviewRequest(val token:String,val owner:String,val latest:DriveBackupFile,val save:Boolean,val automaticHours:Int?)
@@ -133,162 +143,580 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             checkRemote(token,hours=hours)
         }
     }
-    CloudFeatureScaffold(if(accountEntry)"Accedi a TurniSync" else "Backup e ripristino",onDismiss,feedback,{feedback=null}){
-        GoogleAccountCard(access,{feedback=it},enabled=!busy&&!automatic.running,feature=GoogleFeature.DRIVE,
-            explanation=if(accountEntry)"Accedi con l’account Google che usavi con TurniSync per recuperare il tuo calendario." else "L’accesso controlla le copie esistenti: non avvia salvataggi e non sostituisce i tuoi dati.",
-            onConnected={token->if(!restoreOnly)checkRemote(token)else feedback=ActionFeedback(if(accountEntry)"Account collegato: recupera il tuo calendario" else "Account collegato: scegli Ripristina")})
-        CloudCard(if(restoreOnly)"Recupera il tuo calendario" else "Backup su Google Drive"){
-            if(restoreOnly)Text("Scegli una copia e controllane il contenuto. Il collegamento non crea backup e non modifica quelli esistenti.",color=TextSecondary,fontSize=13.sp,lineHeight=19.sp)
-            if(!restoreOnly) {
-            Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                Column(Modifier.weight(1f)){
-                    Text("Salvataggio automatico",color=TextPrimary,fontSize=14.sp,fontWeight=FontWeight.Medium)
-                    Text(if(automatic.running)"Salvataggio in corso…" else if(automatic.enabled)"In background, quando c’è connessione" else "Attivalo per proteggere le modifiche",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)
+    val intervals = remember { listOf(6, 12, 24, 168) }
+    val intervalItems = remember(intervals) {
+        intervals.map { hours ->
+            when (hours) {
+                24 -> "1 giorno"
+                168 -> "7 giorni"
+                else -> "${hours}h"
+            } to null
+        }
+    }
+    CloudFeatureScaffold(
+        title = if (accountEntry) "Accedi a TurniSync" else "Backup e ripristino",
+        subtitle = when {
+            accountEntry -> "Recupera i tuoi turni da Google Drive"
+            restoreOnly -> "Scegli e controlla una copia prima di ripristinarla"
+            else -> "Google Drive e copie locali sul dispositivo"
+        },
+        onDismiss = onDismiss,
+        feedback = feedback,
+        onDismissFeedback = { feedback = null },
+    ) {
+        GoogleAccountCard(
+            access = access,
+            onFeedback = { feedback = it },
+            enabled = !busy && !automatic.running,
+            feature = GoogleFeature.DRIVE,
+            explanation = if (accountEntry) {
+                "Accedi con l’account Google che usavi con TurniSync per recuperare il tuo calendario."
+            } else {
+                "L’accesso controlla le copie esistenti: non avvia salvataggi e non sostituisce i tuoi dati."
+            },
+            onConnected = { token ->
+                if (!restoreOnly) {
+                    checkRemote(token)
+                } else {
+                    feedback = ActionFeedback(
+                        if (accountEntry) "Account collegato: recupera il tuo calendario" else "Account collegato: scegli Ripristina",
+                    )
                 }
-                Switch(checked=automatic.enabled,enabled=enabled,onCheckedChange={on->
-                    if(on)enableAutomatic(automatic.intervalHours) else {DriveAutomaticBackup.disable(context);refreshAutomatic();feedback=ActionFeedback("Backup automatico disattivato")}
-                })
+            },
+        )
+        CloudCard(if (restoreOnly) "Recupera il tuo calendario" else "Backup su Google Drive") {
+            if (restoreOnly) {
+                Text(
+                    text = "Scegli una copia e controllane il contenuto. Il collegamento non crea backup e non modifica quelli esistenti.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                )
             }
-            AnimatedVisibility(automatic.enabled,enter=expandVertically(spring(stiffness=450f))+fadeIn(),exit=shrinkVertically(spring(stiffness=550f))+fadeOut()){
-                Column(verticalArrangement=Arrangement.spacedBy(6.dp)){
-                    Text("Ogni quanto salvare",color=TextSecondary,fontSize=12.sp)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(6.dp)){
-                        listOf(6,12,24,168).forEach{hours->
-                            val selected=automatic.intervalHours==hours
-                            Box(Modifier.weight(1f).clip(RoundedCornerShape(12.dp)).background(if(selected)ObsidianPrimary else ObsidianSurfaceHigh)
-                                .bouncyClickable(enabled){enableAutomatic(hours)}.padding(vertical=10.dp),contentAlignment=Alignment.Center){
-                                Text(when(hours){24->"1 giorno";168->"7 giorni";else->"${hours}h"},fontSize=11.sp,fontWeight=FontWeight.Medium,color=if(selected)catalogInk(ObsidianPrimary)else TextPrimary)
+            if (!restoreOnly) {
+                val toggleAutomatic: (Boolean) -> Unit = { on ->
+                    if (on) {
+                        enableAutomatic(automatic.intervalHours)
+                    } else {
+                        DriveAutomaticBackup.disable(context)
+                        refreshAutomatic()
+                        feedback = ActionFeedback("Backup automatico disattivato")
+                    }
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clickable(
+                            interactionSource = remember { MutableInteractionSource() },
+                            indication = null,
+                            enabled = enabled,
+                        ) { toggleAutomatic(!automatic.enabled) },
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Column(Modifier.weight(1f)) {
+                        Text("Salvataggio automatico", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                        Text(
+                            text = if (automatic.running) {
+                                "Salvataggio in corso…"
+                            } else if (automatic.enabled) {
+                                "In background, quando c’è connessione"
+                            } else {
+                                "Attivalo per proteggere le modifiche"
+                            },
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
+                        )
+                    }
+                    TurniSwitch(
+                        checked = automatic.enabled,
+                        onCheckedChange = toggleAutomatic,
+                        enabled = enabled,
+                    )
+                }
+                AnimatedVisibility(
+                    visible = automatic.enabled,
+                    enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(200)),
+                    exit = shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(160)),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text("Ogni quanto salvare", color = TextSecondary, fontSize = 12.sp)
+                        SlidingSegmentBar(
+                            items = intervalItems,
+                            selectedIndex = intervals.indexOf(automatic.intervalHours).coerceAtLeast(0),
+                            onSelect = { idx -> enableAutomatic(intervals[idx]) },
+                            enabled = enabled,
+                            height = 42.dp,
+                        )
+                    }
+                }
+                SettingsDivider()
+            }
+            val last = remoteInfo ?: automatic.lastSuccessAt.takeIf { it > 0L }?.let { formatBackupInstant(it) }
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                SiteIcon(if (last == null) "cloud" else "check", null, Modifier.size(16.dp), if (last == null) TextSecondary else BrandInk)
+                Text(
+                    text = last?.let { "Ultimo backup · $it" } ?: "Nessun salvataggio Drive confermato",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                )
+            }
+            if (!restoreOnly && automatic.needsConsent) {
+                TextButton(
+                    onClick = { enableAutomatic(automatic.intervalHours) },
+                    enabled = enabled,
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
+                ) {
+                    Text("Ricollega Google per riprendere i backup", color = BrandInk, fontSize = 12.sp)
+                }
+            }
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!restoreOnly) {
+                    CloudButton(
+                        label = if (busy) "Operazione…" else "Salva ora",
+                        icon = "upload",
+                        onClick = { access.authorize(GoogleFeature.DRIVE) { checkRemote(it, save = true) } },
+                        enabled = enabled,
+                        modifier = Modifier.weight(1f),
+                    )
+                }
+                CloudButton(
+                    label = if (accountEntry) "Recupera il calendario" else "Ripristina",
+                    icon = "download",
+                    onClick = {
+                        access.authorize(GoogleFeature.DRIVE) { token ->
+                            val owner = ShiftRepository.googleAccountProfile?.email ?: return@authorize
+                            busy = true
+                            scope.launch {
+                                try {
+                                    val copies = withContext(Dispatchers.IO) { GoogleDriveRemote.history(token) }
+                                    check(copies.isNotEmpty()) { "Nessun backup TurniSync trovato in questo account Google." }
+                                    if (DriveBackupPolicy.sameAccount(owner, ShiftRepository.googleAccountProfile?.email)) {
+                                        history = copies
+                                        historyToken = token
+                                        historyOwner = owner
+                                    }
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    failed(e)
+                                } finally {
+                                    busy = false
+                                }
                             }
                         }
-                    }
-                }
+                    },
+                    enabled = enabled,
+                    modifier = Modifier.weight(1f),
+                    secondary = true,
+                )
             }
-            }
-            val last=remoteInfo?:automatic.lastSuccessAt.takeIf{it>0L}?.let{formatBackupInstant(it)}
-            Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(7.dp)){
-                SiteIcon(if(last==null)"cloud" else "check",null,Modifier.size(16.dp),TextSecondary)
-                Text(last?.let{"Ultimo backup · $it"}?:"Nessun salvataggio Drive confermato",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)
-            }
-            if(!restoreOnly&&automatic.needsConsent)TextButton(onClick={enableAutomatic(automatic.intervalHours)},enabled=enabled, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Ricollega Google per riprendere i backup",color=BrandInk,fontSize=12.sp)}
-            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                if(!restoreOnly)CloudButton(if(busy)"Operazione…" else "Salva ora","upload",{access.authorize(GoogleFeature.DRIVE){checkRemote(it,save=true)}},enabled,modifier=Modifier.weight(1f))
-                CloudButton(if(accountEntry)"Recupera il calendario" else "Ripristina","download",{
-                    access.authorize(GoogleFeature.DRIVE){token->
-                        val owner=ShiftRepository.googleAccountProfile?.email?:return@authorize
-                        busy=true
-                        scope.launch{try{
-                            val copies=withContext(Dispatchers.IO){GoogleDriveRemote.history(token)}
-                            check(copies.isNotEmpty()){"Nessun backup TurniSync trovato in questo account Google."}
-                            if(DriveBackupPolicy.sameAccount(owner,ShiftRepository.googleAccountProfile?.email)){
-                                history=copies;historyToken=token;historyOwner=owner
-                            }
-                        }catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
-                    }
-                },enabled,modifier=Modifier.weight(1f),secondary=true)
-            }
-            Text(if(restoreOnly)"Il calendario viene recuperato da una copia salvata. Potrai controllarla prima di applicarla." else "Ogni salvataggio crea una nuova copia: le precedenti restano ripristinabili. Dopo una reinstallazione scegli prima se recuperare i dati da Drive. Il backup automatico si attiva solo con il tuo consenso.",color=TextMuted,fontSize=11.sp,lineHeight=17.sp)
+            Text(
+                text = if (restoreOnly) {
+                    "Il calendario viene recuperato da una copia salvata. Potrai controllarla prima di applicarla."
+                } else {
+                    "Ogni salvataggio crea una nuova copia: le precedenti restano ripristinabili. Dopo una reinstallazione scegli prima se recuperare i dati da Drive. Il backup automatico si attiva solo con il tuo consenso."
+                },
+                color = TextMuted,
+                fontSize = 11.sp,
+                lineHeight = 17.sp,
+            )
         }
-        CloudCard("Altre copie"){
-            Row(Modifier.fillMaxWidth().bouncyClickable{otherCopies=!otherCopies}.padding(vertical=3.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(10.dp)){
-                SiteIcon("folder",null,Modifier.size(20.dp),BrandInk)
-                Column(Modifier.weight(1f)){Text("Dispositivo e file",fontSize=14.sp,color=TextPrimary,fontWeight=FontWeight.Medium);Text("Copia locale, importa ed esporta",fontSize=11.sp,color=TextSecondary)}
-                val rotation by androidx.compose.animation.core.animateFloatAsState(if(otherCopies)180f else 0f,spring(stiffness=450f))
-                SiteIcon("chevron-down",null,Modifier.size(20.dp).rotate(rotation),TextSecondary)
+        CloudCard("Altre copie") {
+            val rotation by animateFloatAsState(
+                targetValue = if (otherCopies) 180f else 0f,
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                label = "otherCopiesChevron",
+            )
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(12.dp))
+                    .bouncyClickable { otherCopies = !otherCopies }
+                    .padding(vertical = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                SiteIcon("folder-open", null, Modifier.size(20.dp), BrandInk)
+                Column(Modifier.weight(1f)) {
+                    Text("Dispositivo e file", fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                    Text("Copia locale, importa ed esporta", fontSize = 11.sp, color = TextSecondary)
+                }
+                SiteIcon("chevron-down", null, Modifier.size(20.dp).rotate(rotation), TextSecondary)
             }
-            AnimatedVisibility(otherCopies,enter=expandVertically(spring(stiffness=450f))+fadeIn(),exit=shrinkVertically()+fadeOut()){
-                Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-                    if(!restoreOnly)Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(12.dp)){
-                        Column(Modifier.weight(1f)){Text("Copia locale automatica",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium);Text("All’apertura dell’app · resta su questo telefono",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp)}
-                        Switch(checked=ShiftRepository.appPreferences.autoBackupDaily,enabled=enabled,onCheckedChange={ShiftRepository.appPreferences=ShiftRepository.appPreferences.copy(autoBackupDaily=it);ShiftRepository.notifyDataChanged()})
+            AnimatedVisibility(
+                visible = otherCopies,
+                enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(tween(200)),
+                exit = shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeOut(tween(160)),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SettingsDivider()
+                    if (!restoreOnly) {
+                        val toggleLocalAuto: (Boolean) -> Unit = { checked ->
+                            ShiftRepository.appPreferences = ShiftRepository.appPreferences.copy(autoBackupDaily = checked)
+                            ShiftRepository.notifyDataChanged()
+                        }
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                    enabled = enabled,
+                                ) { toggleLocalAuto(!ShiftRepository.appPreferences.autoBackupDaily) },
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f)) {
+                                Text("Copia locale automatica", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                                Text("All’apertura dell’app · resta su questo telefono", color = TextSecondary, fontSize = 11.sp, lineHeight = 16.sp)
+                            }
+                            TurniSwitch(
+                                checked = ShiftRepository.appPreferences.autoBackupDaily,
+                                onCheckedChange = toggleLocalAuto,
+                                enabled = enabled,
+                            )
+                        }
+                        SettingsDivider()
                     }
                     importRecovery?.let { recovery ->
-                        Text("Prima dell’ultima importazione · ${formatBackupInstant(recovery.lastModified())}",color=TextSecondary,fontSize=11.sp)
-                        CloudButton("Ripristina prima dell’importazione","undo",{prepareRestore("Copia precedente all’importazione"){check(recovery.length() in 1..24L*1024*1024){"Copia di sicurezza non valida."};recovery.readText(Charsets.UTF_8)}},enabled,secondary=true)
+                        Text(
+                            text = "Prima dell’ultima importazione · ${formatBackupInstant(recovery.lastModified())}",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                        )
+                        CloudButton(
+                            label = "Ripristina prima dell’importazione",
+                            icon = "undo",
+                            onClick = {
+                                prepareRestore("Copia precedente all’importazione") {
+                                    check(recovery.length() in 1..24L * 1024 * 1024) { "Copia di sicurezza non valida." }
+                                    recovery.readText(Charsets.UTF_8)
+                                }
+                            },
+                            enabled = enabled,
+                            secondary = true,
+                        )
+                        SettingsDivider()
                     }
-                    localInfo?.let{Text("Ultima copia locale · $it",color=TextSecondary,fontSize=11.sp)}
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        if(!restoreOnly)CloudButton("Salva locale","database-backup",{
-                            val snapshot=DatabaseSnapshot.capture();busy=true
-                            scope.launch{try{val ok=withContext(Dispatchers.IO){GoogleDriveBackupHelper.saveLocalBackupDirect(context,snapshot)};check(ok){"Impossibile salvare la copia sul dispositivo."};localInfo=GoogleDriveBackupHelper.getLocalBackupInfo(context);feedback=ActionFeedback("Copia locale salvata")}
-                                catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
-                        },enabled,modifier=Modifier.weight(1f),secondary=true)
-                        CloudButton("Ripristina locale","undo",{
-                            busy=true
-                            scope.launch{try{
-                                localHistory=withContext(Dispatchers.IO){LocalBackupArchive.copies(File(context.filesDir,"cloud_backups"))}
-                                check(localHistory.isNotEmpty()){"Nessuna copia locale disponibile."}
-                            }catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
-                        },enabled&&localInfo!=null,modifier=Modifier.weight(1f),secondary=true)
+                    localInfo?.let {
+                        Text("Ultima copia locale · $it", color = TextSecondary, fontSize = 11.sp)
                     }
-                    Text("Hai i turni nell’altra app?",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.Medium)
-                    Text("Nella vecchia app apri Backup e ripristino ed esporta un file JSON. Importalo qui e controlla l’anteprima prima di confermare. Le copie locali restano separate tra le due app; per trasferire il file non serve accedere a Google.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                    Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.spacedBy(8.dp)){
-                        if(!restoreOnly)CloudButton("Esporta file","upload",{exportSnapshot=DatabaseSnapshot.capture();export.launch("TurniSync-backup-${java.time.LocalDate.now()}.json")},enabled,modifier=Modifier.weight(1f),secondary=true)
-                        CloudButton("Importa file","download",{import.launch(arrayOf("application/json","text/json","text/plain","application/octet-stream"))},enabled,modifier=Modifier.weight(1f),secondary=true)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!restoreOnly) {
+                            CloudButton(
+                                label = "Salva locale",
+                                icon = "database-backup",
+                                onClick = {
+                                    val snapshot = DatabaseSnapshot.capture()
+                                    busy = true
+                                    scope.launch {
+                                        try {
+                                            val ok = withContext(Dispatchers.IO) {
+                                                GoogleDriveBackupHelper.saveLocalBackupDirect(context, snapshot)
+                                            }
+                                            check(ok) { "Impossibile salvare la copia sul dispositivo." }
+                                            localInfo = GoogleDriveBackupHelper.getLocalBackupInfo(context)
+                                            feedback = ActionFeedback("Copia locale salvata")
+                                        } catch (e: CancellationException) {
+                                            throw e
+                                        } catch (e: Exception) {
+                                            failed(e)
+                                        } finally {
+                                            busy = false
+                                        }
+                                    }
+                                },
+                                enabled = enabled,
+                                modifier = Modifier.weight(1f),
+                                secondary = true,
+                            )
+                        }
+                        CloudButton(
+                            label = "Ripristina locale",
+                            icon = "undo",
+                            onClick = {
+                                busy = true
+                                scope.launch {
+                                    try {
+                                        localHistory = withContext(Dispatchers.IO) {
+                                            LocalBackupArchive.copies(File(context.filesDir, "cloud_backups"))
+                                        }
+                                        check(localHistory.isNotEmpty()) { "Nessuna copia locale disponibile." }
+                                    } catch (e: CancellationException) {
+                                        throw e
+                                    } catch (e: Exception) {
+                                        failed(e)
+                                    } finally {
+                                        busy = false
+                                    }
+                                }
+                            },
+                            enabled = enabled && localInfo != null,
+                            modifier = Modifier.weight(1f),
+                            secondary = true,
+                        )
+                    }
+                    SettingsDivider()
+                    Text("Hai i turni nell’altra app?", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text(
+                        text = "Nella vecchia app apri Backup e ripristino ed esporta un file JSON. Importalo qui e controlla l’anteprima prima di confermare. Le copie locali restano separate tra le due app; per trasferire il file non serve accedere a Google.",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                    )
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        if (!restoreOnly) {
+                            CloudButton(
+                                label = "Esporta file",
+                                icon = "upload",
+                                onClick = {
+                                    exportSnapshot = DatabaseSnapshot.capture()
+                                    export.launch("TurniSync-backup-${java.time.LocalDate.now()}.json")
+                                },
+                                enabled = enabled,
+                                modifier = Modifier.weight(1f),
+                                secondary = true,
+                            )
+                        }
+                        CloudButton(
+                            label = "Importa file",
+                            icon = "download",
+                            onClick = {
+                                import.launch(arrayOf("application/json", "text/json", "text/plain", "application/octet-stream"))
+                            },
+                            enabled = enabled,
+                            modifier = Modifier.weight(1f),
+                            secondary = true,
+                        )
                     }
                 }
             }
         }
     }
-    review?.let{request->
-        AlertDialog(onDismissRequest={review=null},containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),
-            title={Text("Backup già presente",color=TextPrimary)},
-            text={Column(verticalArrangement=Arrangement.spacedBy(12.dp)){
-                Text("Su Drive c’è una copia del ${formatBackupTime(request.latest.modifiedTime)}. Nessun dato è stato inviato.",color=TextPrimary,fontSize=14.sp)
-                Text("Controlla la copia prima di ripristinarla, oppure scegli esplicitamente di proseguire con i dati di questo dispositivo. Le copie precedenti verranno conservate.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                TextButton(onClick={review=null;proceed(request.token,request.owner,request.save,request.automaticHours)}, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){
-                    Text("Usa i dati di questo dispositivo",color=BrandInk)
-                }
-            }},
-            confirmButton={TextButton(onClick={
-                review=null
-                prepareRestore("Google Drive · ${formatBackupTime(request.latest.modifiedTime)}",request.owner){GoogleDriveRemote.download(request.token,request.latest.id)}
-            }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Controlla il backup",color=BrandInk)}},
-            dismissButton={TextButton(onClick={review=null}, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Più tardi",color=TextSecondary)}})
-    }
-    if(history.isNotEmpty())AlertDialog(onDismissRequest={history=emptyList();historyToken=null},
-        containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),title={Text("Copie su Google Drive",color=TextPrimary)},
-        text={Column(Modifier.heightIn(max=340.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            Text("Scegli una copia per controllarne il contenuto. Il ripristino richiederà una seconda conferma.",fontSize=12.sp,color=TextSecondary,lineHeight=18.sp)
-            history.forEachIndexed{index,copy->
-                CloudButton("${if(index==0)"Ultima · " else ""}${formatBackupTime(copy.modifiedTime)}","database-backup",{
-                    val token=historyToken;val owner=historyOwner
-                    history=emptyList();historyToken=null
-                    if(token!=null&&owner!=null)prepareRestore("Google Drive · ${formatBackupTime(copy.modifiedTime)}",owner){GoogleDriveRemote.download(token,copy.id)}
-                },enabled=enabled,secondary=true)
-            }
-        }},confirmButton={TextButton(onClick={history=emptyList();historyToken=null}, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Chiudi",color=BrandInk)}})
-    if(localHistory.isNotEmpty())AlertDialog(onDismissRequest={localHistory=emptyList()},
-        containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),title={Text("Copie sul dispositivo",color=TextPrimary)},
-        text={Column(Modifier.heightIn(max=340.dp).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(8.dp)){
-            localHistory.forEachIndexed{index,copy->
-                CloudButton("${if(index==0)"Ultima · " else ""}${formatBackupInstant(copy.lastModified())}","database-backup",{
-                    localHistory=emptyList()
-                    prepareRestore("Copia locale · ${formatBackupInstant(copy.lastModified())}"){
-                        check(copy.length() in 1..16L*1024*1024){"Copia locale non valida."};copy.readText(Charsets.UTF_8)
+    review?.let { request ->
+        AlertDialog(
+            onDismissRequest = { review = null },
+            containerColor = ObsidianSurface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(24.dp),
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Backup già presente", color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Text(
+                        text = "Su Drive c’è una copia del ${formatBackupTime(request.latest.modifiedTime)}. Nessun dato è stato inviato.",
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                    )
+                    Text(
+                        text = "Controlla la copia prima di ripristinarla, oppure scegli esplicitamente di proseguire con i dati di questo dispositivo. Le copie precedenti verranno conservate.",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                    )
+                    TextButton(
+                        onClick = {
+                            review = null
+                            proceed(request.token, request.owner, request.save, request.automaticHours)
+                        },
+                        colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
+                    ) {
+                        Text("Usa i dati di questo dispositivo", color = BrandInk)
                     }
-                },enabled=enabled,secondary=true)
-            }
-        }},confirmButton={TextButton(onClick={localHistory=emptyList()}, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Chiudi",color=BrandInk)}})
-    preview?.let{candidate->
-        AlertDialog(onDismissRequest={preview=null},containerColor=ObsidianSurface,shape=RoundedCornerShape(22.dp),
-            title={Text("Ripristinare il backup?",color=TextPrimary)},
-            text={Column(verticalArrangement=Arrangement.spacedBy(10.dp)){
-                Text(candidate.source,color=TextSecondary,fontSize=12.sp)
-                Text("${candidate.data.shifts.values.sumOf{it.size}} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if(candidate.data.profiles.size==1)"lavoro" else "lavori"}",color=TextPrimary,fontSize=14.sp)
-                Text("${candidate.data.rotations.size} rotazioni · note, turni originali e configurazioni incluse",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                Text("I dati attuali verranno sostituiti con quelli del backup selezionato.",color=TextSecondary,fontSize=13.sp,lineHeight=19.sp)
-            }},
-            confirmButton={TextButton(onClick={
-                try{
-                    check(candidate.remoteOwner==null||DriveBackupPolicy.sameAccount(candidate.remoteOwner,ShiftRepository.googleAccountProfile?.email)){"L’account è cambiato: seleziona nuovamente la copia."}
-                    DriveAutomaticBackup.disable(context)
-                    candidate.remoteOwner?.let{BackupInstallationApproval.approve(context.noBackupFilesDir,it)}
-                    LocalDatabaseStore.allowPersistenceAfterRestore();DatabaseRestore.apply(candidate.data)
-                    refreshAutomatic();preview=null;feedback=ActionFeedback("Backup ripristinato · salvataggio automatico disattivato");onRestored()
                 }
-                catch(e:Exception){preview=null;failed(e)}
-            }, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Conferma ripristino",color=BrandInk)}},dismissButton={TextButton(onClick={preview=null}, colors = ButtonDefaults.textButtonColors(contentColor = BrandInk)){Text("Annulla",color=TextSecondary)}})
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        review = null
+                        prepareRestore("Google Drive · ${formatBackupTime(request.latest.modifiedTime)}", request.owner) {
+                            GoogleDriveRemote.download(request.token, request.latest.id)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
+                ) {
+                    Text("Controlla il backup", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { review = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                ) {
+                    Text("Più tardi", color = TextSecondary)
+                }
+            },
+        )
+    }
+    if (history.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = {
+                history = emptyList()
+                historyToken = null
+            },
+            containerColor = ObsidianSurface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(24.dp),
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Copie su Google Drive", color = TextPrimary) },
+            text = {
+                Column(
+                    modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    Text(
+                        text = "Scegli una copia per controllarne il contenuto. Il ripristino richiederà una seconda conferma.",
+                        fontSize = 12.sp,
+                        color = TextSecondary,
+                        lineHeight = 18.sp,
+                    )
+                    history.forEachIndexed { index, copy ->
+                        CloudButton(
+                            label = "${if (index == 0) "Ultima · " else ""}${formatBackupTime(copy.modifiedTime)}",
+                            icon = "database-backup",
+                            onClick = {
+                                val token = historyToken
+                                val owner = historyOwner
+                                history = emptyList()
+                                historyToken = null
+                                if (token != null && owner != null) {
+                                    prepareRestore("Google Drive · ${formatBackupTime(copy.modifiedTime)}", owner) {
+                                        GoogleDriveRemote.download(token, copy.id)
+                                    }
+                                }
+                            },
+                            enabled = enabled,
+                            secondary = true,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = {
+                        history = emptyList()
+                        historyToken = null
+                    },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
+                ) {
+                    Text("Chiudi", color = BrandInk)
+                }
+            },
+        )
+    }
+    if (localHistory.isNotEmpty()) {
+        AlertDialog(
+            onDismissRequest = { localHistory = emptyList() },
+            containerColor = ObsidianSurface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(24.dp),
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Copie sul dispositivo", color = TextPrimary) },
+            text = {
+                Column(
+                    modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    localHistory.forEachIndexed { index, copy ->
+                        CloudButton(
+                            label = "${if (index == 0) "Ultima · " else ""}${formatBackupInstant(copy.lastModified())}",
+                            icon = "database-backup",
+                            onClick = {
+                                localHistory = emptyList()
+                                prepareRestore("Copia locale · ${formatBackupInstant(copy.lastModified())}") {
+                                    check(copy.length() in 1..16L * 1024 * 1024) { "Copia locale non valida." }
+                                    copy.readText(Charsets.UTF_8)
+                                }
+                            },
+                            enabled = enabled,
+                            secondary = true,
+                        )
+                    }
+                }
+            },
+            confirmButton = {
+                TextButton(
+                    onClick = { localHistory = emptyList() },
+                    colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
+                ) {
+                    Text("Chiudi", color = BrandInk)
+                }
+            },
+        )
+    }
+    preview?.let { candidate ->
+        AlertDialog(
+            onDismissRequest = { preview = null },
+            containerColor = ObsidianSurface,
+            tonalElevation = 0.dp,
+            shape = RoundedCornerShape(24.dp),
+            titleContentColor = TextPrimary,
+            textContentColor = TextSecondary,
+            title = { Text("Ripristinare il backup?", color = TextPrimary) },
+            text = {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(candidate.source, color = TextSecondary, fontSize = 12.sp)
+                    Text(
+                        text = "${candidate.data.shifts.values.sumOf { it.size }} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if (candidate.data.profiles.size == 1) "lavoro" else "lavori"}",
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                    )
+                    Text(
+                        text = "${candidate.data.rotations.size} rotazioni · note, turni originali e configurazioni incluse",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                    )
+                    Text(
+                        text = "I dati attuali verranno sostituiti con quelli del backup selezionato.",
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                }
+            },
+            confirmButton = {
+                Button(
+                    onClick = {
+                        try {
+                            check(candidate.remoteOwner == null || DriveBackupPolicy.sameAccount(candidate.remoteOwner, ShiftRepository.googleAccountProfile?.email)) {
+                                "L’account è cambiato: seleziona nuovamente la copia."
+                            }
+                            DriveAutomaticBackup.disable(context)
+                            candidate.remoteOwner?.let { BackupInstallationApproval.approve(context.noBackupFilesDir, it) }
+                            LocalDatabaseStore.allowPersistenceAfterRestore()
+                            DatabaseRestore.apply(candidate.data)
+                            refreshAutomatic()
+                            preview = null
+                            feedback = ActionFeedback("Backup ripristinato · salvataggio automatico disattivato")
+                            onRestored()
+                        } catch (e: Exception) {
+                            preview = null
+                            failed(e)
+                        }
+                    },
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
+                ) {
+                    Text("Conferma ripristino", fontWeight = FontWeight.SemiBold)
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = { preview = null },
+                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
+                ) {
+                    Text("Annulla", color = TextSecondary)
+                }
+            },
+        )
     }
 }
 private fun readBackupDocument(context:android.content.Context,uri:Uri):String{
