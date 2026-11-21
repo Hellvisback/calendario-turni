@@ -4,8 +4,10 @@ import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
@@ -22,6 +24,7 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -36,15 +39,18 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -59,6 +65,9 @@ import com.turni.calendario.model.holidayExclusionSelectionForToggle
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
+import com.turni.calendario.ui.theme.BrandInk
+import com.turni.calendario.ui.theme.ObsidianPrimaryContainer
 import com.turni.calendario.ui.theme.ObsidianSurface
 import com.turni.calendario.ui.theme.ObsidianSurfaceContainer
 import com.turni.calendario.ui.theme.TextMuted
@@ -68,6 +77,8 @@ import com.turni.calendario.ui.theme.TurniThemeState
 import com.turni.calendario.ui.theme.shiftColorStyle
 import com.turni.calendario.ui.theme.shiftDisplayColor
 import java.util.UUID
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 @Composable
 fun StatisticsRulesScreen(onDismiss: () -> Unit) {
@@ -131,18 +142,37 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                     val preferences = ShiftRepository.appPreferences
                     val holidayActive = preferences.excludeVacationOnHolidays
                     val excludedDefinitions = definitions.filter { it.id in preferences.holidayExcludedShiftIds }
+                    val scope = rememberCoroutineScope()
+                    val holidayBadgeMotion = remember { Animatable(0f) }
+                    var holidayBadgeJob by remember { mutableStateOf<Job?>(null) }
+                    fun pulseHolidayBadge() {
+                        holidayBadgeJob?.cancel()
+                        holidayBadgeJob = scope.launch {
+                            holidayBadgeMotion.snapTo(0f)
+                            holidayBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                            holidayBadgeMotion.snapTo(0f)
+                        }
+                    }
 
                     CloudCard {
                         Row(
-                            modifier = Modifier.fillMaxWidth(),
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(
+                                    interactionSource = remember { MutableInteractionSource() },
+                                    indication = null,
+                                ) { pulseHolidayBadge() },
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            PastelIconBadge(
-                                pastel = ExpressivePastel.SAGE,
+                            NeutralIconBadge(
                                 icon = "calendar-heart",
                                 size = 44.dp,
+                                cornerRadius = 13.dp,
                                 iconSize = 21.dp,
+                                fill = ObsidianSurfaceContainer,
+                                tint = BrandInk,
+                                progress = holidayBadgeMotion.value,
                             )
                             Column(
                                 modifier = Modifier
@@ -162,19 +192,16 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                     fontWeight = FontWeight.SemiBold,
                                     color = TextPrimary,
                                 )
-                                PastelPill(
-                                    text = if (holidayActive) "Attiva" else "Disattivata",
-                                    color = if (holidayActive) {
-                                        ExpressivePastel.MINT.sourceColor
-                                    } else {
-                                        ExpressivePastel.PEARL.sourceColor
-                                    },
-                                    solid = holidayActive,
+                                StatisticsStatusPill(
+                                    active = holidayActive,
+                                    activeText = "Attiva",
+                                    inactiveText = "Disattivata",
                                 )
                             }
                             TurniSwitch(
                                 checked = holidayActive,
                                 onCheckedChange = { enabled ->
+                                    pulseHolidayBadge()
                                     val current = ShiftRepository.appPreferences
                                     ShiftRepository.appPreferences = current.copy(
                                         excludeVacationOnHolidays = enabled,
@@ -210,17 +237,34 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                     }
 
                     if (rules.isEmpty()) {
+                        val layersMotion = remember { Animatable(0f) }
+                        var layersJob by remember { mutableStateOf<Job?>(null) }
                         CloudCard {
                             Row(
-                                modifier = Modifier.fillMaxWidth(),
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .clickable(
+                                        interactionSource = remember { MutableInteractionSource() },
+                                        indication = null,
+                                    ) {
+                                        layersJob?.cancel()
+                                        layersJob = scope.launch {
+                                            layersMotion.snapTo(0f)
+                                            layersMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                                            layersMotion.snapTo(0f)
+                                        }
+                                    },
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.MINT,
+                                NeutralIconBadge(
                                     icon = "layers",
                                     size = 44.dp,
+                                    cornerRadius = 13.dp,
                                     iconSize = 21.dp,
+                                    fill = ObsidianSurfaceContainer,
+                                    tint = BrandInk,
+                                    progress = layersMotion.value,
                                 )
                                 Column(
                                     modifier = Modifier.weight(1f),
@@ -255,6 +299,22 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                             val visible = definitions.find { it.id == rule.displayedShiftId }
                             if (visible != null) {
                                 val originalDefinitions = definitions.filter { it.id in rule.originalShiftIds }
+                                val badgeScale = remember(rule.id) { Animatable(1f) }
+                                var lastEnabled by remember(rule.id) { mutableStateOf(rule.enabled) }
+                                LaunchedEffect(rule.enabled) {
+                                    if (rule.enabled != lastEnabled) {
+                                        lastEnabled = rule.enabled
+                                        badgeScale.snapTo(1f)
+                                        badgeScale.animateTo(
+                                            targetValue = if (rule.enabled) 1.08f else 0.94f,
+                                            animationSpec = tween(90),
+                                        )
+                                        badgeScale.animateTo(
+                                            targetValue = 1f,
+                                            animationSpec = spring(dampingRatio = 0.62f, stiffness = 460f),
+                                        )
+                                    }
+                                }
                                 CloudCard {
                                     Row(
                                         modifier = Modifier.fillMaxWidth(),
@@ -266,6 +326,10 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                             size = 44.dp,
                                             cornerRadius = 13.dp,
                                             definitionId = visible.id,
+                                            modifier = Modifier.graphicsLayer {
+                                                scaleX = badgeScale.value
+                                                scaleY = badgeScale.value
+                                            },
                                         ) { ink ->
                                             Text(
                                                 text = visible.shortCode.ifBlank { visible.name.take(3) }.take(4),
@@ -294,14 +358,10 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                                 fontWeight = FontWeight.SemiBold,
                                                 color = TextPrimary,
                                             )
-                                            PastelPill(
-                                                text = if (rule.enabled) "Attiva" else "In pausa",
-                                                color = if (rule.enabled) {
-                                                    ExpressivePastel.MINT.sourceColor
-                                                } else {
-                                                    ExpressivePastel.PEARL.sourceColor
-                                                },
-                                                solid = rule.enabled,
+                                            StatisticsStatusPill(
+                                                active = rule.enabled,
+                                                activeText = "Attiva",
+                                                inactiveText = "In pausa",
                                             )
                                         }
                                         TurniSwitch(
@@ -352,7 +412,6 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                     CloudCard(
                         title = "1 · Il turno che inserisci sopra",
                         subtitle = "Scegli il modello che usi per sostituire un turno originale, per esempio Ferie.",
-                        accent = ExpressivePastel.MINT,
                     ) {
                         CloudButton(
                             label = selected?.name ?: "Seleziona un turno",
@@ -404,7 +463,6 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                         CloudCard(
                             title = "2 · Gli ex turni da contare",
                             subtitle = "Scegli cosa contare al suo posto. La regola vale solo se uno di questi modelli è registrato come ex turno.",
-                            accent = ExpressivePastel.SAGE,
                         ) {
                             if (candidateOriginals.isEmpty()) {
                                 Text(
@@ -444,9 +502,14 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                         exit = shrinkVertically() + fadeOut(tween(150)),
                     ) {
                         val selectedOriginals = definitions.filter { it.id in originals }
+                        val previewArrowMotion = remember { Animatable(0f) }
+                        LaunchedEffect(displayed, originals) {
+                            previewArrowMotion.snapTo(0f)
+                            previewArrowMotion.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+                            previewArrowMotion.snapTo(0f)
+                        }
                         CloudCard(
                             title = "La tua regola",
-                            accent = ExpressivePastel.MINT,
                         ) {
                             Column(
                                 modifier = Modifier.animateContentSize(
@@ -464,12 +527,14 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                                     ) {
                                         ShiftCodePill(selected)
-                                        SiteIcon(
+                                        SiteIconMotion(
                                             name = "arrow-right",
-                                            contentDescription = null,
+                                            description = null,
                                             modifier = Modifier.size(14.dp),
                                             tint = TextSecondary,
-                                        )
+                                        ) {
+                                            previewArrowMotion.value
+                                        }
                                         selectedOriginals.forEach { origin ->
                                             ShiftCodePill(origin)
                                         }
@@ -516,20 +581,74 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
 }
 
 @Composable
+private fun StatisticsStatusPill(
+    active: Boolean,
+    activeText: String,
+    inactiveText: String,
+) {
+    val fill by animateColorAsState(
+        targetValue = if (active) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+        animationSpec = tween(180),
+        label = "statisticsStatusPillFill",
+    )
+    val ink by animateColorAsState(
+        targetValue = if (active) BrandInk else TextSecondary,
+        animationSpec = tween(180),
+        label = "statisticsStatusPillInk",
+    )
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = if (active) activeText else inactiveText,
+            color = ink,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun StatisticsRulesExplainerCard() {
     val compactStack = LocalDensity.current.fontScale > 1.3f
+    val scope = rememberCoroutineScope()
+    val reportMotion = remember { Animatable(0f) }
+    val arrowMotion = remember { Animatable(0f) }
+    var reportJob by remember { mutableStateOf<Job?>(null) }
+    var arrowJob by remember { mutableStateOf<Job?>(null) }
 
     CloudCard {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) {
+                    reportJob?.cancel()
+                    reportJob = scope.launch {
+                        reportMotion.snapTo(0f)
+                        reportMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                        reportMotion.snapTo(0f)
+                    }
+                },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PastelIconBadge(
-                pastel = ExpressivePastel.MINT,
+            NeutralIconBadge(
                 icon = "report",
                 size = 44.dp,
+                cornerRadius = 13.dp,
                 iconSize = 21.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = BrandInk,
+                progress = reportMotion.value,
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -557,14 +676,24 @@ private fun StatisticsRulesExplainerCard() {
             stacked = compactStack,
             title = "Turno originale",
             description = "Conta l’ex turno al posto di quello sopra",
+            onTap = {
+                arrowJob?.cancel()
+                arrowJob = scope.launch {
+                    arrowMotion.snapTo(0f)
+                    arrowMotion.animateTo(1f, tween(420, easing = FastOutSlowInEasing))
+                    arrowMotion.snapTo(0f)
+                }
+            },
             pills = {
                 PastelPill(text = "RIP", color = ExpressivePastel.PEARL.sourceColor, solid = true)
-                SiteIcon(
+                SiteIconMotion(
                     name = "arrow-right",
-                    contentDescription = null,
+                    description = null,
                     modifier = Modifier.size(13.dp),
                     tint = TextSecondary,
-                )
+                ) {
+                    arrowMotion.value
+                }
                 PastelPill(text = "FER", color = ExpressivePastel.SAGE.sourceColor, solid = true)
             },
         )
@@ -592,13 +721,22 @@ private fun ExplainerExampleRow(
     stacked: Boolean,
     title: String,
     description: String,
+    onTap: (() -> Unit)? = null,
     pills: @Composable () -> Unit,
 ) {
-    val containerModifier = Modifier
+    val baseModifier = Modifier
         .fillMaxWidth()
         .clip(RoundedCornerShape(15.dp))
         .background(ObsidianSurfaceContainer)
-        .padding(horizontal = 12.dp, vertical = 10.dp)
+    val containerModifier = (if (onTap != null) {
+        baseModifier.clickable(
+            interactionSource = remember { MutableInteractionSource() },
+            indication = null,
+            onClick = onTap,
+        )
+    } else {
+        baseModifier
+    }).padding(horizontal = 12.dp, vertical = 10.dp)
 
     if (stacked) {
         Column(
@@ -697,6 +835,9 @@ private fun HolidayStatisticsRuleEditor(
     val initial = remember { ShiftRepository.appPreferences }
     var selected by remember { mutableStateOf(initial.holidayExcludedShiftIds) }
     var enabled by remember { mutableStateOf(initial.excludeVacationOnHolidays) }
+    val scope = rememberCoroutineScope()
+    val editorBadgeMotion = remember { Animatable(0f) }
+    var editorBadgeJob by remember { mutableStateOf<Job?>(null) }
     val toggleLabelColor by animateColorAsState(
         targetValue = if (enabled) TextPrimary else TextSecondary,
         animationSpec = tween(180),
@@ -709,11 +850,14 @@ private fun HolidayStatisticsRuleEditor(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            PastelIconBadge(
-                pastel = ExpressivePastel.SAGE,
+            NeutralIconBadge(
                 icon = "calendar-heart",
                 size = 42.dp,
+                cornerRadius = 12.dp,
                 iconSize = 20.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = BrandInk,
+                progress = editorBadgeMotion.value,
             )
             Column(
                 modifier = Modifier
@@ -744,7 +888,18 @@ private fun HolidayStatisticsRuleEditor(
                     color = TextSecondary,
                 )
             }
-            TurniSwitch(checked = enabled, onCheckedChange = { enabled = it })
+            TurniSwitch(
+                checked = enabled,
+                onCheckedChange = {
+                    enabled = it
+                    editorBadgeJob?.cancel()
+                    editorBadgeJob = scope.launch {
+                        editorBadgeMotion.snapTo(0f)
+                        editorBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                        editorBadgeMotion.snapTo(0f)
+                    }
+                },
+            )
         }
         SettingsDivider()
         Text(
@@ -758,7 +913,6 @@ private fun HolidayStatisticsRuleEditor(
     CloudCard(
         title = "2 · Modelli da escludere",
         subtitle = "Scegli uno o più modelli, anche con nomi personalizzati. Nei giorni feriali continuano a essere contati.",
-        accent = ExpressivePastel.SAGE,
     ) {
         definitions.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -850,11 +1004,21 @@ private fun StatisticsModelTile(
         label = "statisticsModelTileTitle",
     )
     val interactionSource = remember(model.id) { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val tileScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.97f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+        label = "statisticsModelTilePress",
+    )
     val haptic = LocalHapticFeedback.current
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
+            .graphicsLayer {
+                scaleX = tileScale
+                scaleY = tileScale
+            }
             .heightIn(min = 60.dp)
             .clip(tileShape)
             .background(fill)
@@ -917,7 +1081,7 @@ private fun StatisticsModelTile(
         }
         AnimatedVisibility(
             visible = selected,
-            enter = fadeIn(tween(160)) + scaleIn(tween(160)),
+            enter = fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.65f, stiffness = 500f)),
             exit = fadeOut(tween(140)) + scaleOut(tween(140)),
         ) {
             Box(

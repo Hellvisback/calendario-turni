@@ -13,8 +13,12 @@ internal fun reportMetrics(assignments:List<AssignedShift>,definitions:List<Shif
         val matching=byDefinition[definition.id].orEmpty()
         if(matching.isEmpty()) null else ShiftMetric(definition,matching.size,
             if(definition.category==ShiftCategory.LAVORO) matching.sumOf { shift ->
-                definition.copy(startTime=shift.customStartTime?:definition.startTime,
-                    endTime=shift.customEndTime?:definition.endTime).durationHoursFloat.toDouble()+shift.overtimeHours
+                val baseHours = definition.copy(
+                    startTime = shift.customStartTime ?: definition.startTime,
+                    endTime = shift.customEndTime ?: definition.endTime
+                ).durationHoursFloat
+                val perm = (if (shift.permissionHours.isFinite()) shift.permissionHours else 0f).coerceIn(0f, baseHours)
+                (baseHours - perm).toDouble() + shift.overtimeHours
             }.toFloat() else 0f)
     }
 }

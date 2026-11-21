@@ -24,15 +24,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.defaultMinSize
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -58,6 +57,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
@@ -76,6 +76,7 @@ import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.WorkProfile
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.theme.BrandInk
 import com.turni.calendario.ui.theme.ObsidianPrimary
 import com.turni.calendario.ui.theme.ObsidianSurface
@@ -86,7 +87,6 @@ import com.turni.calendario.ui.theme.TextPrimary
 import com.turni.calendario.ui.theme.TextSecondary
 import com.turni.calendario.ui.theme.TurniThemeState
 import com.turni.calendario.ui.theme.readableInk
-import com.turni.calendario.ui.theme.shiftChartColor
 import com.turni.calendario.ui.theme.shiftColorStyle
 import java.time.LocalDate
 import java.time.Month
@@ -94,6 +94,7 @@ import java.time.YearMonth
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
 import java.util.Locale
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 internal fun annualDayInMonth(month: Int, day: Int): Int = day.coerceIn(1, Month.of(month).maxLength())
@@ -339,7 +340,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                         label = "Settimane senza reperibilità",
                                         value = seasonal.summerCycleWorkWeeks,
                                         minValue = 0,
-                                        accent = ExpressivePastel.PEARL,
+                                        accent = null,
                                         onChange = { value ->
                                             updateConfig {
                                                 it.copy(
@@ -367,7 +368,6 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
 
         CloudCard(
             title = "Precedenza sul calendario",
-            accent = ExpressivePastel.PEARL,
         ) {
             Text(
                 text = "La campanella impostata su un singolo giorno dal calendario ha sempre la precedenza sulle regole automatiche.",
@@ -393,6 +393,7 @@ private fun OnCallHeroCard(
 ) {
     val scope = rememberCoroutineScope()
     val bellMotion = remember { Animatable(0f) }
+    var bellJob by remember { mutableStateOf<Job?>(null) }
     val badgeAlpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.58f,
         animationSpec = tween(200),
@@ -424,24 +425,31 @@ private fun OnCallHeroCard(
                     lineHeight = 21.sp,
                     fontWeight = FontWeight.SemiBold,
                 )
-                Text(
-                    text = statusSummary,
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
+                AnimatedContent(
+                    targetState = statusSummary,
+                    transitionSpec = {
+                        fadeIn(tween(180)) togetherWith fadeOut(tween(130))
+                    },
+                    label = "onCallHeroSummary",
+                ) { summary ->
+                    Text(
+                        text = summary,
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
             }
             TurniSwitch(
                 checked = enabled,
                 onCheckedChange = { next ->
-                    if (next) {
-                        scope.launch {
-                            bellMotion.snapTo(0f)
-                            bellMotion.animateTo(1f, tween(560))
-                            bellMotion.snapTo(0f)
-                        }
+                    bellJob?.cancel()
+                    bellJob = scope.launch {
+                        bellMotion.snapTo(0f)
+                        bellMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+                        bellMotion.snapTo(0f)
                     }
                     onToggle(next)
                 },
@@ -458,12 +466,16 @@ private fun OnCallHeroCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            PastelPill(
-                text = if (enabled) "Attiva" else "Disattiva",
-                color = if (enabled) ExpressivePastel.AMBER.sourceColor else ExpressivePastel.PEARL.sourceColor,
-                solid = enabled,
-                icon = if (enabled) "bell" else null,
-            )
+            if (enabled) {
+                PastelPill(
+                    text = "Attiva",
+                    color = ExpressivePastel.AMBER.sourceColor,
+                    solid = true,
+                    icon = "bell",
+                )
+            } else {
+                OnCallNeutralPill(text = "Disattiva")
+            }
             Text(
                 text = if (enabled) {
                     "La campanella segue la regola automatica configurata."
@@ -477,6 +489,37 @@ private fun OnCallHeroCard(
             )
         }
     }
+}
+
+@Composable
+private fun OnCallNeutralPill(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(ObsidianSurfaceContainer)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = text,
+            color = TextSecondary,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+private fun safeOnCallWorkIcon(iconKey: String?): String = when (iconKey) {
+    "people", "users", "groups" -> "users"
+    "computer", "laptop" -> "laptop"
+    "transit", "train", "train-front" -> "train"
+    "hospital", "medical", "health" -> "hospital"
+    "factory", "build", "wrench" -> "wrench"
+    "shipping", "local_shipping", "truck" -> "truck"
+    "business", "building", "building-2" -> "building"
+    else -> "briefcase"
 }
 
 @Composable
@@ -514,7 +557,6 @@ private fun OnCallWorkGroupedCards(
         SectionLabel(
             text = "Modelli per lavoro",
             trailing = "${selected.count { id -> all.any { it.id == id } }} scelti",
-            accent = ExpressivePastel.AMBER,
         )
         grouped.forEachIndexed { groupIndex, (workId, models) ->
             val profile = profiles.firstOrNull { it.id == workId }
@@ -541,24 +583,16 @@ private fun OnCallWorkGroupHeader(
     profile: WorkProfile?,
     chosenCount: Int,
 ) {
-    val dark = TurniThemeState.dark
-    val dotColor = remember(profile?.colorHex, dark) {
-        if (profile != null) {
-            shiftChartColor(Color(profile.colorHex), dark)
-        } else {
-            shiftChartColor(ExpressivePastel.PEARL.sourceColor, dark)
-        }
-    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .size(9.dp)
-                .clip(CircleShape)
-                .background(dotColor),
+        SiteIcon(
+            name = safeOnCallWorkIcon(profile?.iconKey),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+            tint = BrandInk,
         )
         Text(
             text = profile?.name ?: "Altro lavoro",
@@ -570,11 +604,15 @@ private fun OnCallWorkGroupHeader(
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        PastelPill(
-            text = if (chosenCount == 1) "1 attivo" else "$chosenCount attivi",
-            color = if (chosenCount > 0) ExpressivePastel.AMBER.sourceColor else ExpressivePastel.PEARL.sourceColor,
-            solid = chosenCount > 0,
-        )
+        if (chosenCount > 0) {
+            PastelPill(
+                text = if (chosenCount == 1) "1 attivo" else "$chosenCount attivi",
+                color = ExpressivePastel.AMBER.sourceColor,
+                solid = true,
+            )
+        } else {
+            OnCallNeutralPill(text = "0 attivi")
+        }
     }
 }
 
@@ -624,20 +662,15 @@ private fun OnCallModelChoices(
         }
         if (profiles.size > 1) {
             val profile = profiles.firstOrNull { it.id == workId }
-            val dotColor = if (profile != null) {
-                shiftChartColor(Color(profile.colorHex), TurniThemeState.dark)
-            } else {
-                TextSecondary
-            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(8.dp)
-                        .clip(CircleShape)
-                        .background(dotColor),
+                SiteIcon(
+                    name = safeOnCallWorkIcon(profile?.iconKey),
+                    contentDescription = null,
+                    modifier = Modifier.size(14.dp),
+                    tint = BrandInk,
                 )
                 Text(
                     text = profile?.name ?: "Altro lavoro",
@@ -659,42 +692,28 @@ private fun OnCallModelGrid(
     onChange: (List<String>) -> Unit,
 ) {
     val haptic = LocalHapticFeedback.current
-    BoxWithConstraints(Modifier.fillMaxWidth()) {
-        val columns = if (maxWidth >= 460.dp && LocalDensity.current.fontScale <= 1.3f) 2 else 1
-        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            models.chunked(columns).forEach { row ->
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(IntrinsicSize.Max),
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    row.forEach { model ->
-                        OnCallModelTile(
-                            model = model,
-                            chosen = model.id in selected,
-                            modifier = Modifier
-                                .weight(1f)
-                                .fillMaxHeight(),
-                            onToggle = { checked ->
-                                try {
-                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                } catch (_: Exception) {
-                                }
-                                val updated = if (checked) {
-                                    (selected + model.id).distinct()
-                                } else {
-                                    selected.filterNot { it == model.id }
-                                }
-                                onChange(updated)
-                            },
-                        )
+    Column(
+        modifier = Modifier.fillMaxWidth(),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        models.forEach { model ->
+            OnCallModelTile(
+                model = model,
+                chosen = model.id in selected,
+                modifier = Modifier.fillMaxWidth(),
+                onToggle = { checked ->
+                    try {
+                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                    } catch (_: Exception) {
                     }
-                    repeat(columns - row.size) {
-                        Spacer(Modifier.weight(1f))
+                    val updated = if (checked) {
+                        (selected + model.id).distinct()
+                    } else {
+                        selected.filterNot { it == model.id }
                     }
-                }
-            }
+                    onChange(updated)
+                },
+            )
         }
     }
 }
@@ -718,6 +737,13 @@ private fun OnCallModelTile(
             definitionId = model.id,
         )
     }
+    val interactionSource = remember(model.id) { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+        label = "onCallModelPressScale",
+    )
     val tileFill by animateColorAsState(
         targetValue = if (chosen) {
             lerp(container, tone.codeFill, if (dark) 0.20f else 0.28f)
@@ -737,11 +763,14 @@ private fun OnCallModelTile(
         animationSpec = tween(180),
         label = "onCallModelIndicatorFill",
     )
-    val interactionSource = remember(model.id) { MutableInteractionSource() }
     val shape = RoundedCornerShape(15.dp)
 
     Row(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = pressScale
+                scaleY = pressScale
+            }
             .heightIn(min = 58.dp)
             .clip(shape)
             .background(tileFill)
@@ -804,7 +833,7 @@ private fun OnCallModelTile(
         ) {
             androidx.compose.animation.AnimatedVisibility(
                 visible = chosen,
-                enter = fadeIn(tween(150)) + scaleIn(tween(150)),
+                enter = fadeIn(tween(150)) + scaleIn(spring(dampingRatio = 0.65f, stiffness = 500f)),
                 exit = fadeOut(tween(120)) + scaleOut(tween(120)),
             ) {
                 SiteIcon(
@@ -844,6 +873,15 @@ private fun AnnualOnCallDate(
     )
     val rowShape = RoundedCornerShape(15.dp)
     val headerInteraction = remember { MutableInteractionSource() }
+    val isHeaderPressed by headerInteraction.collectIsPressedAsState()
+    val headerScale by animateFloatAsState(
+        targetValue = if (isHeaderPressed) 0.985f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+        label = "annualHeaderPressScale",
+    )
+    val calendarMotion = remember { Animatable(0f) }
+    var calendarJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
 
     Column(
@@ -857,6 +895,10 @@ private fun AnnualOnCallDate(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = headerScale
+                    scaleY = headerScale
+                }
                 .clip(rowShape)
                 .background(pillFill)
                 .clickable(
@@ -866,6 +908,12 @@ private fun AnnualOnCallDate(
                 ) {
                     if (!open) shown = month
                     open = !open
+                    calendarJob?.cancel()
+                    calendarJob = scope.launch {
+                        calendarMotion.snapTo(0f)
+                        calendarMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                        calendarMotion.snapTo(0f)
+                    }
                 }
                 .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -886,12 +934,14 @@ private fun AnnualOnCallDate(
                     color = TextPrimary,
                 )
             }
-            SiteIcon(
+            SiteIconMotion(
                 name = "calendar",
-                contentDescription = null,
+                description = null,
                 modifier = Modifier.size(19.dp),
                 tint = BrandInk,
-            )
+            ) {
+                calendarMotion.value
+            }
             SiteIcon(
                 name = "chevron-down",
                 contentDescription = if (open) "Chiudi selezione data" else "Scegli data",
@@ -929,15 +979,23 @@ private fun AnnualOnCallDate(
                         fill = ObsidianSurface,
                         onClick = { shown = if (shown == 1) 12 else shown - 1 },
                     )
-                    Text(
-                        text = monthName,
+                    AnimatedContent(
+                        targetState = monthName,
+                        transitionSpec = {
+                            fadeIn(tween(160)) togetherWith fadeOut(tween(120))
+                        },
                         modifier = Modifier.weight(1f),
-                        textAlign = TextAlign.Center,
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
+                        label = "annualMonthTitle",
+                    ) { title ->
+                        Text(
+                            text = title,
+                            textAlign = TextAlign.Center,
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                    }
                     CompactIconButton(
                         icon = "chevron-right",
                         contentDescription = "Mese successivo",
@@ -946,55 +1004,89 @@ private fun AnnualOnCallDate(
                     )
                 }
 
-                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    (1..Month.of(shown).maxLength()).toList().chunked(7).forEach { week ->
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            week.forEach { number ->
-                                val selectedDay = shown == month && number == clampedDay
-                                val dayFill by animateColorAsState(
-                                    targetValue = if (selectedDay) ObsidianPrimary else ObsidianSurfaceHigh,
-                                    animationSpec = tween(160),
-                                    label = "annualDayFill",
-                                )
-                                val dayInk by animateColorAsState(
-                                    targetValue = if (selectedDay) OnBrand else TextPrimary,
-                                    animationSpec = tween(160),
-                                    label = "annualDayInk",
-                                )
-                                val dayInteraction = remember(shown, number) { MutableInteractionSource() }
-                                Box(
-                                    modifier = Modifier
-                                        .weight(1f)
-                                        .heightIn(min = 40.dp)
-                                        .clip(RoundedCornerShape(10.dp))
-                                        .background(dayFill)
-                                        .clickable(
-                                            interactionSource = dayInteraction,
-                                            indication = null,
-                                            role = Role.Button,
-                                        ) {
-                                            try {
-                                                haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                            } catch (_: Exception) {
-                                            }
-                                            onDate(shown, number)
-                                            open = false
+                AnimatedContent(
+                    targetState = shown,
+                    transitionSpec = {
+                        val forward = (targetState > initialState && !(initialState == 1 && targetState == 12)) ||
+                            (initialState == 12 && targetState == 1)
+                        (fadeIn(tween(180)) + slideInHorizontally(tween(200, easing = FastOutSlowInEasing)) {
+                            if (forward) it / 8 else -it / 8
+                        }) togetherWith (fadeOut(tween(120)) + slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) {
+                            if (forward) -it / 8 else it / 8
+                        })
+                    },
+                    label = "annualMonthGrid",
+                ) { displayMonth ->
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        (1..Month.of(displayMonth).maxLength()).toList().chunked(7).forEach { week ->
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                week.forEach { number ->
+                                    val selectedDay = displayMonth == month && number == clampedDay
+                                    val dayInteraction = remember(displayMonth, number) { MutableInteractionSource() }
+                                    val dayPressed by dayInteraction.collectIsPressedAsState()
+                                    val dayScale by animateFloatAsState(
+                                        targetValue = when {
+                                            dayPressed -> 0.92f
+                                            selectedDay -> 1.03f
+                                            else -> 1f
                                         },
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = "$number",
-                                        color = dayInk,
-                                        fontSize = 12.sp,
-                                        fontWeight = if (selectedDay) FontWeight.Bold else FontWeight.Medium,
+                                        animationSpec = spring(dampingRatio = 0.72f, stiffness = 540f),
+                                        label = "annualDayChipScale",
                                     )
+                                    val dayFill by animateColorAsState(
+                                        targetValue = if (selectedDay) ObsidianPrimary else ObsidianSurfaceHigh,
+                                        animationSpec = tween(160),
+                                        label = "annualDayFill",
+                                    )
+                                    val dayInk by animateColorAsState(
+                                        targetValue = if (selectedDay) OnBrand else TextPrimary,
+                                        animationSpec = tween(160),
+                                        label = "annualDayInk",
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .heightIn(min = 40.dp)
+                                            .graphicsLayer {
+                                                scaleX = dayScale
+                                                scaleY = dayScale
+                                            }
+                                            .clip(RoundedCornerShape(10.dp))
+                                            .background(dayFill)
+                                            .clickable(
+                                                interactionSource = dayInteraction,
+                                                indication = null,
+                                                role = Role.Button,
+                                            ) {
+                                                try {
+                                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                                } catch (_: Exception) {
+                                                }
+                                                calendarJob?.cancel()
+                                                calendarJob = scope.launch {
+                                                    calendarMotion.snapTo(0f)
+                                                    calendarMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                                                    calendarMotion.snapTo(0f)
+                                                }
+                                                onDate(displayMonth, number)
+                                                open = false
+                                            },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = "$number",
+                                            color = dayInk,
+                                            fontSize = 12.sp,
+                                            fontWeight = if (selectedDay) FontWeight.Bold else FontWeight.Medium,
+                                        )
+                                    }
                                 }
-                            }
-                            repeat(7 - week.size) {
-                                Spacer(Modifier.weight(1f))
+                                repeat(7 - week.size) {
+                                    Spacer(Modifier.weight(1f))
+                                }
                             }
                         }
                     }
@@ -1025,6 +1117,15 @@ private fun OnCallReferenceDate(
     )
     val rowShape = RoundedCornerShape(15.dp)
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val headerScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.985f else 1f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 520f),
+        label = "referenceHeaderScale",
+    )
+    val calendarMotion = remember { Animatable(0f) }
+    var calendarJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
 
     Column(
         modifier = Modifier.animateContentSize(
@@ -1037,6 +1138,10 @@ private fun OnCallReferenceDate(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .graphicsLayer {
+                    scaleX = headerScale
+                    scaleY = headerScale
+                }
                 .clip(rowShape)
                 .background(pillFill)
                 .clickable(
@@ -1046,6 +1151,12 @@ private fun OnCallReferenceDate(
                 ) {
                     if (!open) month = YearMonth.from(value)
                     open = !open
+                    calendarJob?.cancel()
+                    calendarJob = scope.launch {
+                        calendarMotion.snapTo(0f)
+                        calendarMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                        calendarMotion.snapTo(0f)
+                    }
                 }
                 .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -1066,12 +1177,14 @@ private fun OnCallReferenceDate(
                     color = TextPrimary,
                 )
             }
-            SiteIcon(
+            SiteIconMotion(
                 name = "calendar",
-                contentDescription = null,
+                description = null,
                 modifier = Modifier.size(19.dp),
                 tint = BrandInk,
-            )
+            ) {
+                calendarMotion.value
+            }
             SiteIcon(
                 name = "chevron-down",
                 contentDescription = if (open) "Chiudi calendario" else "Scegli inizio ciclo",
@@ -1100,6 +1213,12 @@ private fun OnCallReferenceDate(
                     changeMonth = { month = it },
                     compact = true,
                     select = {
+                        calendarJob?.cancel()
+                        calendarJob = scope.launch {
+                            calendarMotion.snapTo(0f)
+                            calendarMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                            calendarMotion.snapTo(0f)
+                        }
                         onDate(it)
                         open = false
                     },
@@ -1192,11 +1311,21 @@ private fun OnCallPresetPill(
         label = "onCallPresetInk",
     )
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pillScale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 540f),
+        label = "onCallPresetScale",
+    )
     val shape = RoundedCornerShape(13.dp)
 
     Box(
         modifier = modifier
             .heightIn(min = 40.dp)
+            .graphicsLayer {
+                scaleX = pillScale
+                scaleY = pillScale
+            }
             .clip(shape)
             .background(fill)
             .clickable(
@@ -1226,18 +1355,29 @@ private fun OnCallWeekCount(
     label: String,
     value: Int,
     minValue: Int,
-    accent: ExpressivePastel,
+    accent: ExpressivePastel?,
     onChange: (Int) -> Unit,
 ) {
     val canDecrease = value > minValue
     val canIncrease = value < Int.MAX_VALUE
     val dark = TurniThemeState.dark
-    val tone = accent.style()
-    val countFill = remember(tone.codeFill, dark) {
-        lerp(ObsidianSurfaceContainer, tone.codeFill, if (dark) 0.28f else 0.48f)
+    val container = ObsidianSurfaceContainer
+    val textPrimary = TextPrimary
+    val countFill = remember(accent, container, dark) {
+        if (accent != null) {
+            val tone = accent.style(dark = dark, backdrop = ObsidianSurface)
+            lerp(container, tone.codeFill, if (dark) 0.28f else 0.48f)
+        } else {
+            container
+        }
     }
-    val countInk = remember(countFill, tone.codeInk) {
-        readableInk(countFill, tone.codeInk)
+    val countInk = remember(accent, countFill, dark, textPrimary) {
+        if (accent != null) {
+            val tone = accent.style(dark = dark, backdrop = ObsidianSurface)
+            readableInk(countFill, tone.codeInk)
+        } else {
+            textPrimary
+        }
     }
 
     Row(
@@ -1269,13 +1409,21 @@ private fun OnCallWeekCount(
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = "$value",
-                fontSize = 15.sp,
-                color = countInk,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-            )
+            AnimatedContent(
+                targetState = value,
+                transitionSpec = {
+                    fadeIn(tween(150)) togetherWith fadeOut(tween(110))
+                },
+                label = "onCallWeekCountValue",
+            ) { shownValue ->
+                Text(
+                    text = "$shownValue",
+                    fontSize = 15.sp,
+                    color = countInk,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
         CompactIconButton(
             icon = "plus",
@@ -1295,11 +1443,24 @@ private fun CompactIconButton(
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val buttonScale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 540f),
+        label = "compactIconScale",
+    )
+    val iconMotion = remember { Animatable(0f) }
+    var motionJob by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
     val shape = RoundedCornerShape(12.dp)
     Box(
         modifier = Modifier
             .defaultMinSize(minWidth = 42.dp, minHeight = 42.dp)
+            .graphicsLayer {
+                scaleX = buttonScale
+                scaleY = buttonScale
+            }
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
             .background(fill)
@@ -1317,16 +1478,24 @@ private fun CompactIconButton(
                     haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
                 } catch (_: Exception) {
                 }
+                motionJob?.cancel()
+                motionJob = scope.launch {
+                    iconMotion.snapTo(0f)
+                    iconMotion.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+                    iconMotion.snapTo(0f)
+                }
                 onClick()
             },
         contentAlignment = Alignment.Center,
     ) {
-        SiteIcon(
+        SiteIconMotion(
             name = icon,
-            contentDescription = null,
+            description = null,
             modifier = Modifier.size(16.dp),
             tint = TextPrimary,
-        )
+        ) {
+            iconMotion.value
+        }
     }
 }
 
@@ -1347,12 +1516,8 @@ private fun OnCallCycleSummary(
     }
 
     val amberStyle = ExpressivePastel.AMBER.style()
-    val pearlStyle = ExpressivePastel.PEARL.style()
     val amberBrush = remember(amberStyle.codeFill, amberStyle.codeInk) {
         pastelSheenBrush(amberStyle.codeFill, amberStyle.codeInk)
-    }
-    val pearlBrush = remember(pearlStyle.codeFill, pearlStyle.codeInk) {
-        pastelSheenBrush(pearlStyle.codeFill, pearlStyle.codeInk)
     }
 
     val maxSlots = 10
@@ -1415,7 +1580,7 @@ private fun OnCallCycleSummary(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(RoundedCornerShape(3.dp))
-                            .background(pearlStyle.codeFill),
+                            .background(ObsidianSurfaceHigh),
                     )
                     Text(
                         text = "Ordinaria · ${workWeeks}s",
@@ -1472,12 +1637,12 @@ private fun OnCallCycleSummary(
                         .weight(1f)
                         .height(26.dp)
                         .clip(RoundedCornerShape(7.dp))
-                        .background(pearlBrush),
+                        .background(ObsidianSurface),
                     contentAlignment = Alignment.Center,
                 ) {
                     Text(
                         text = label,
-                        color = pearlStyle.codeInk,
+                        color = TextSecondary,
                         fontSize = 10.sp,
                         fontWeight = FontWeight.SemiBold,
                         maxLines = 1,

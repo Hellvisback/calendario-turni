@@ -26,7 +26,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.*
 import androidx.compose.ui.text.TextStyle
@@ -39,6 +41,8 @@ import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.util.Locale
@@ -153,6 +157,23 @@ internal fun DayTagsCatalogContent(
         animationSpec = spring(0.85f, 380f),
         label = "archivedTagsChevron",
     )
+    val archivedTogglePhase = remember { Animatable(0f) }
+    val archivedFolderScale = remember { Animatable(1f) }
+    var initializedArchived by remember { mutableStateOf(false) }
+    LaunchedEffect(showArchived) {
+        if (!initializedArchived) {
+            initializedArchived = true
+        } else {
+            launch {
+                archivedFolderScale.snapTo(0.92f)
+                archivedFolderScale.animateTo(1.08f, spring(dampingRatio = 0.6f, stiffness = 460f))
+                archivedFolderScale.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 420f))
+            }
+            archivedTogglePhase.snapTo(0f)
+            archivedTogglePhase.animateTo(1f, tween(durationMillis = 360, easing = FastOutSlowInEasing))
+            archivedTogglePhase.snapTo(0f)
+        }
+    }
 
     var wasDeleting by remember { mutableStateOf(false) }
     LaunchedEffect(pendingDelete) {
@@ -174,6 +195,7 @@ internal fun DayTagsCatalogContent(
                     title = "Ritrova ciò che hai fatto",
                     subtitle = "Aggiungi etichette come Formazione o Visita medica. Ogni etichetta conta i giorni nelle statistiche; puoi affiancarle una nota con i dettagli.",
                     accent = ExpressivePastel.MINT,
+                    modifier = Modifier.animateItem(),
                 ) {}
             }
         }
@@ -182,6 +204,7 @@ internal fun DayTagsCatalogContent(
                 CloudCard(
                     title = "Le tue etichette",
                     accent = ExpressivePastel.MINT,
+                    modifier = Modifier.animateItem(),
                 ) {
                     Text(
                         text = if (archivedTags.isEmpty()) {
@@ -207,6 +230,7 @@ internal fun DayTagsCatalogContent(
                 } else {
                     null
                 },
+                modifier = Modifier.animateItem(),
             )
         }
         if (archivedTags.isNotEmpty()) {
@@ -214,13 +238,11 @@ internal fun DayTagsCatalogContent(
                 val toggleShape = RoundedCornerShape(16.dp)
                 Row(
                     modifier = Modifier
+                        .animateItem()
                         .fillMaxWidth()
                         .clip(toggleShape)
                         .background(ObsidianSurface)
-                        .clickable(
-                            interactionSource = remember { MutableInteractionSource() },
-                            indication = null,
-                        ) { showArchived = !showArchived }
+                        .bouncyClickable { showArchived = !showArchived }
                         .padding(horizontal = 14.dp, vertical = 12.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -230,6 +252,10 @@ internal fun DayTagsCatalogContent(
                         icon = "folder-open",
                         size = 34.dp,
                         iconSize = 16.dp,
+                        modifier = Modifier.graphicsLayer {
+                            scaleX = archivedFolderScale.value
+                            scaleY = archivedFolderScale.value
+                        },
                     )
                     Text(
                         text = "Archiviate (${archivedTags.size})",
@@ -243,12 +269,14 @@ internal fun DayTagsCatalogContent(
                         contentDescription = if (showArchived) "Nascondi archiviate" else "Mostra archiviate",
                         modifier = Modifier.size(18.dp).rotate(chevronAngle),
                         tint = TextSecondary,
+                        progress = archivedTogglePhase.value,
                     )
                 }
             }
             item(key = "tags-archived-list", contentType = "tags-archived-list") {
                 AnimatedVisibility(
                     visible = showArchived,
+                    modifier = Modifier.animateItem(),
                     enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {
@@ -280,11 +308,9 @@ internal fun DayTagsCatalogContent(
     }
 
     pendingDelete?.let { target ->
-        AppConfirmationDialog(
+        DayTagDeleteDialog(
             title = "Eliminare questa etichetta?",
             message = "«${target.name}» non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
-            confirmLabel = "Elimina etichetta",
-            dismissLabel = "Annulla",
             onDismiss = { pendingDelete = null },
             onConfirm = {
                 pendingDelete = null
@@ -359,6 +385,7 @@ private fun TagManagementRow(
     usageCount: Int,
     onEdit: () -> Unit,
     onDelete: (() -> Unit)? = null,
+    modifier: Modifier = Modifier,
 ) {
     val cardShape = RoundedCornerShape(20.dp)
     val usageLabel = when (usageCount) {
@@ -366,11 +393,15 @@ private fun TagManagementRow(
         1 -> "1 giorno"
         else -> "$usageCount giorni"
     }
+    val iconPhase = remember { Animatable(0f) }
+    val badgeScale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    var tapJob by remember { mutableStateOf<Job?>(null) }
 
     Surface(
         color = ObsidianSurface,
         shape = cardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
@@ -383,7 +414,19 @@ private fun TagManagementRow(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
-                .bouncyClickable(onClick = onEdit)
+                .bouncyClickable {
+                    tapJob?.cancel()
+                    tapJob = scope.launch {
+                        launch {
+                            badgeScale.snapTo(0.94f)
+                            badgeScale.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 460f))
+                        }
+                        iconPhase.snapTo(0f)
+                        iconPhase.animateTo(1f, tween(durationMillis = 380, easing = FastOutSlowInEasing))
+                        iconPhase.snapTo(0f)
+                    }
+                    onEdit()
+                }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -392,12 +435,17 @@ private fun TagManagementRow(
                 color = Color(tag.colorHex),
                 size = 46.dp,
                 cornerRadius = 14.dp,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = badgeScale.value
+                    scaleY = badgeScale.value
+                },
             ) { codeInk ->
                 SiteIcon(
                     name = tag.iconKey,
                     contentDescription = null,
                     modifier = Modifier.size(21.dp),
                     tint = codeInk,
+                    progress = iconPhase.value,
                 )
             }
             Column(
@@ -503,11 +551,9 @@ internal fun DayTagEditor(
             }
         }
         if (deleting && original != null) {
-            AppConfirmationDialog(
+            DayTagDeleteDialog(
                 title = "Eliminare questa etichetta?",
                 message = "Non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
-                confirmLabel = "Elimina etichetta",
-                dismissLabel = "Annulla",
                 onDismiss = { deleting = false },
                 onConfirm = {
                     deleting = false
@@ -534,12 +580,30 @@ internal fun DayTagEditor(
         val inputShape = RoundedCornerShape(14.dp)
         val selectedIconIndex = dayTagIcons.indexOf(icon).coerceAtLeast(0)
         val selectedIconLabel = tagIconLabels.getOrNull(selectedIconIndex)
+        val haptic = LocalHapticFeedback.current
+        val heroIconPhase = remember { Animatable(0f) }
+        val heroBadgeScale = remember { Animatable(1f) }
+        var initializedHero by remember { mutableStateOf(false) }
+        LaunchedEffect(icon, color) {
+            if (!initializedHero) {
+                initializedHero = true
+            } else {
+                launch {
+                    heroBadgeScale.snapTo(0.92f)
+                    heroBadgeScale.animateTo(1.06f, spring(dampingRatio = 0.6f, stiffness = 440f))
+                    heroBadgeScale.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 400f))
+                }
+                heroIconPhase.snapTo(0f)
+                heroIconPhase.animateTo(1f, tween(durationMillis = 440, easing = FastOutSlowInEasing))
+                heroIconPhase.snapTo(0f)
+            }
+        }
 
         Column(
             modifier = Modifier
                 .weight(1f, fill = !inlineContent)
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = if (inlineContent) 0.dp else 14.dp),
+                .padding(horizontal = if (inlineContent) 0.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             Surface(
@@ -559,12 +623,17 @@ internal fun DayTagEditor(
                             color = Color(color),
                             size = 48.dp,
                             cornerRadius = 14.dp,
+                            modifier = Modifier.graphicsLayer {
+                                scaleX = heroBadgeScale.value
+                                scaleY = heroBadgeScale.value
+                            },
                         ) { ink ->
                             SiteIcon(
                                 name = icon,
                                 contentDescription = null,
                                 modifier = Modifier.size(22.dp),
                                 tint = ink,
+                                progress = heroIconPhase.value,
                             )
                         }
                         Column(
@@ -628,6 +697,25 @@ internal fun DayTagEditor(
                     Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         icons.forEachIndexed { column, key ->
                             val chosen = key == icon
+                            val tilePhase = remember(key) { Animatable(0f) }
+                            val tilePop = remember(key) { Animatable(1f) }
+                            var wasChosen by remember(key) { mutableStateOf(chosen) }
+                            LaunchedEffect(chosen) {
+                                if (chosen && !wasChosen) {
+                                    tilePop.snapTo(0.92f)
+                                    launch {
+                                        tilePop.animateTo(1.06f, spring(dampingRatio = 0.55f, stiffness = 480f))
+                                        tilePop.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 420f))
+                                    }
+                                    tilePhase.snapTo(0f)
+                                    tilePhase.animateTo(1f, tween(durationMillis = 440, easing = FastOutSlowInEasing))
+                                    tilePhase.snapTo(0f)
+                                } else if (!chosen) {
+                                    tilePhase.snapTo(0f)
+                                    tilePop.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 420f))
+                                }
+                                wasChosen = chosen
+                            }
                             val tileFill by animateColorAsState(
                                 targetValue = if (chosen) selectedTagStyle.codeFill else ObsidianSurfaceContainer,
                                 animationSpec = tween(180),
@@ -648,6 +736,10 @@ internal fun DayTagEditor(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(46.dp)
+                                    .graphicsLayer {
+                                        scaleX = tilePop.value
+                                        scaleY = tilePop.value
+                                    }
                                     .clip(tileShape)
                                     .background(tileFill)
                                     .then(if (chosen) Modifier.border(2.dp, tileRing, tileShape) else Modifier)
@@ -659,10 +751,19 @@ internal fun DayTagEditor(
                                     .clickable(
                                         interactionSource = remember(key) { MutableInteractionSource() },
                                         indication = null,
-                                    ) { icon = key },
+                                    ) {
+                                        runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                        icon = key
+                                    },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                SiteIcon(key, null, Modifier.size(22.dp), tileInk)
+                                SiteIcon(
+                                    name = key,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(22.dp),
+                                    tint = tileInk,
+                                    progress = tilePhase.value,
+                                )
                             }
                         }
                     }
@@ -690,10 +791,19 @@ internal fun DayTagEditor(
                             label = "tagSwatchRing",
                         )
                         val swatchScale by animateFloatAsState(
-                            targetValue = if (selectedSwatch) 1.05f else 1f,
-                            animationSpec = spring(0.8f, 380f),
+                            targetValue = if (selectedSwatch) 1.08f else 1f,
+                            animationSpec = spring(dampingRatio = 0.6f, stiffness = 440f),
                             label = "tagSwatchScale",
                         )
+                        val checkScale = remember(swatch) { Animatable(if (selectedSwatch) 1f else 0f) }
+                        LaunchedEffect(selectedSwatch) {
+                            if (selectedSwatch) {
+                                checkScale.snapTo(0.4f)
+                                checkScale.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = 480f))
+                            } else {
+                                checkScale.snapTo(0f)
+                            }
+                        }
                         val swatchShape = RoundedCornerShape(13.dp)
                         Box(
                             modifier = Modifier
@@ -713,11 +823,24 @@ internal fun DayTagEditor(
                                 .clickable(
                                     interactionSource = remember(swatch) { MutableInteractionSource() },
                                     indication = null,
-                                ) { color = swatch },
+                                ) {
+                                    runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                    color = swatch
+                                },
                             contentAlignment = Alignment.Center,
                         ) {
                             if (selectedSwatch) {
-                                SiteIcon("check", null, Modifier.size(20.dp), swatchColors.codeInk)
+                                SiteIcon(
+                                    name = "check",
+                                    contentDescription = null,
+                                    modifier = Modifier
+                                        .size(20.dp)
+                                        .graphicsLayer {
+                                            scaleX = checkScale.value
+                                            scaleY = checkScale.value
+                                        },
+                                    tint = swatchColors.codeInk,
+                                )
                             }
                         }
                     }
@@ -766,7 +889,7 @@ internal fun DayTagEditor(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(ObsidianBackground)
-                    .padding(horizontal = 14.dp, vertical = 10.dp),
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
             ) {
                 CloudButton(
                     label = "Salva etichetta",
@@ -786,12 +909,82 @@ internal fun DayTagEditor(
         CatalogEditorSheet(
             title = if (original == null) "Nuova etichetta" else "Modifica etichetta",
             onDismiss = { savedTag?.let(onSaved) ?: onClose() },
-            heightFraction = 0.86f,
+            heightFraction = 1f,
             subtitle = "Attività da segnare sui giorni",
+            fullPage = true,
         ) { finish ->
             editor {
                 finish { savedTag?.let(onSaved) ?: onClose() }
             }
+        }
+    }
+}
+
+@Composable
+private fun DayTagDeleteDialog(
+    title: String,
+    message: String,
+    onDismiss: () -> Unit,
+    onConfirm: () -> Unit,
+) {
+    val danger = currentTurniPalette.danger
+    TurniSafeBottomDialog(onClose = onDismiss, scrollContent = true) { finish ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            NeutralIconBadge(
+                icon = "trash-2",
+                size = 40.dp,
+                cornerRadius = 12.dp,
+                iconSize = 20.dp,
+                fill = Color(danger.fill),
+                tint = ColorNegative,
+            )
+            Text(
+                text = title,
+                color = TextPrimary,
+                fontSize = 18.sp,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
+            TonalIconButton(
+                icon = "x",
+                contentDescription = "Chiudi",
+                onClick = { finish(onDismiss) },
+                size = 34.dp,
+                cornerRadius = 11.dp,
+                fill = Color(danger.fill),
+                tint = ColorNegative,
+                iconSize = 17.dp,
+            )
+        }
+        Text(
+            text = message,
+            color = TextSecondary,
+            fontSize = 13.sp,
+            lineHeight = 19.sp,
+        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CloudButton(
+                label = "Annulla",
+                icon = "x",
+                onClick = { finish(onDismiss) },
+                secondary = true,
+                modifier = Modifier.weight(1f),
+            )
+            CloudButton(
+                label = "Elimina",
+                icon = "trash-2",
+                onClick = { finish(onConfirm) },
+                destructive = true,
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Dialoghi sicuri, orologio Grafite, turni consecutivi, permessi e Impostazioni sobrie beta.29
+
+La beta.29 personale (74) introduce `TurniSafeBottomDialog` e `TurniTimePickerDialog` in Grafite/Cobalto su tutta l'app (catalogo, sveglie e dettaglio turno), rende a schermo intero gli editor di turni ed etichette, rimuove la duplicazione dello stato attivo nei profili di lavoro e i parametri/maggiorazioni CCNL dal profilo mantenendo solo la comodità di allegare/aprire il PDF CCNL, aggiunge il limite configurabile di **turni lavorativi consecutivi massimi** (`maxConsecutiveWorkDays`, azzerato da riposi, smonti, ferie o giorni vuoti) con avviso sul calendario, aggiunge le **ore di permesso (`− Permesso`)** su ogni turno (aggiornando card giorno, calcolo riposi minimi, PDF, statistiche e backup Drive/JSON), calma la gerarchia cromatica delle Impostazioni su Grafite/Cobalto + 2 accenti e arricchisce le micro-animazioni delle icone. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.29.md).
+
 ## Restyling espressivo pastello beta.28
 
 La beta.28 personale (73) rinnova l'intera estetica grafica di catalogo (`Modelli e turni`), tutti e quattro gli editor di creazione/modifica, `Impostazioni`, `Aspetto e calendario` e le relative sottoschermate allineandoli a `Calendario`, `Statistiche` e `Modifica`: superfici tonali Grafite senza bordi `1.dp`, palette pastello calibrata da `TurniPalette` con riflesso luminoso e contrasto netto (`ExpressivePastel`, `PastelBadge`, `PastelPill`), mini-celle pastello in `SiteCyclePreview`, anteprima mini-calendario live interattiva in `Aspetto e layout`, righe turno a colonna intera e striscia cicli in `Reperibilità`, tessere Corallo in `Festività` e stepper pastello a 3 passi in `Importazione con AI`. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.28.md).

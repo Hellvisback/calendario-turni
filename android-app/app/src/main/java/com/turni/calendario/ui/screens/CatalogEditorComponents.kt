@@ -15,7 +15,7 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.CubicBezierEasing
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
 import androidx.compose.animation.core.animateFloatAsState
@@ -24,6 +24,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
@@ -31,7 +33,9 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
+import androidx.compose.foundation.hoverable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsHoveredAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +43,6 @@ import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -52,6 +55,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -72,6 +76,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -89,10 +94,8 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
@@ -106,11 +109,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
-import androidx.core.view.WindowCompat
-import com.turni.calendario.model.CcnlCatalog
 import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.ShiftRotation
 import com.turni.calendario.model.WorkProfile
@@ -138,6 +136,7 @@ import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.readablePigment
 import com.turni.calendario.ui.theme.shiftColorStyle
 import com.turni.calendario.ui.theme.shiftDisplayColor
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
@@ -151,8 +150,26 @@ import java.util.UUID
 val catalogPastelColors = listOf(0xFFDBC38EL, 0xFFD9AE9BL, 0xFFAEBCE4L, 0xFF97C6BFL, 0xFF9EC4DEL, 0xFFB8C1C8L)
 internal fun catalogInk(color: Color): Color = readableInk(color, Color(0xFF211728))
 
-private val catalogDialogEasing = CubicBezierEasing(0.3f, 0.08f, 0.3f, 1f)
 private val catalogTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
+
+private fun CoroutineScope.replayCatalogMotion(
+    phase: Animatable<Float, *>,
+    previous: Job?,
+    durationMillis: Int = 480,
+): Job {
+    previous?.cancel()
+    return launch {
+        phase.snapTo(0f)
+        phase.animateTo(1f, tween(durationMillis = durationMillis, easing = FastOutSlowInEasing))
+        phase.snapTo(0f)
+    }
+}
+
+private suspend fun Animatable<Float, *>.popSpring(peak: Float = 1.08f, dip: Float = 0.93f) {
+    snapTo(dip)
+    animateTo(peak, tween(durationMillis = 115, easing = FastOutSlowInEasing))
+    animateTo(1f, spring(dampingRatio = 0.62f, stiffness = 460f))
+}
 
 private fun harmonizedSelectionRing(
     swatchColor: Color,
@@ -322,18 +339,38 @@ internal fun CatalogButton(
     enabled: Boolean = true,
     icon: String? = null,
 ) {
+    CatalogActionButton(
+        label = label,
+        action = action,
+        fillColor = if (primary) ObsidianPrimary else ObsidianSurfaceContainer,
+        inkColor = if (primary) OnBrand else TextPrimary,
+        modifier = modifier,
+        enabled = enabled,
+        icon = icon,
+    )
+}
+
+@Composable
+private fun CatalogActionButton(
+    label: String,
+    action: () -> Unit,
+    fillColor: Color,
+    inkColor: Color,
+    modifier: Modifier = Modifier,
+    enabled: Boolean = true,
+    icon: String? = null,
+) {
     val phase = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    var replay by remember { mutableStateOf<Job?>(null) }
     val buttonShape = RoundedCornerShape(14.dp)
-    val targetFill = if (primary) ObsidianPrimary else ObsidianSurfaceContainer
-    val targetInk = if (primary) OnBrand else TextPrimary
     val fill by animateColorAsState(
-        targetValue = targetFill,
+        targetValue = fillColor,
         animationSpec = tween(180),
         label = "catalogButtonFill",
     )
     val ink by animateColorAsState(
-        targetValue = targetInk,
+        targetValue = inkColor,
         animationSpec = tween(180),
         label = "catalogButtonInk",
     )
@@ -345,10 +382,8 @@ internal fun CatalogButton(
             .background(fill)
             .semantics { role = Role.Button }
             .bouncyClickable(enabled = enabled) {
-                scope.launch {
-                    phase.snapTo(0f)
-                    phase.animateTo(1f, tween(340))
-                    phase.snapTo(0f)
+                if (icon != null) {
+                    replay = scope.replayCatalogMotion(phase, replay, durationMillis = 460)
                 }
                 action()
             }
@@ -401,12 +436,7 @@ internal fun CatalogIconAction(
             .background(fill)
             .semantics { role = Role.Button }
             .bouncyClickable {
-                replay?.cancel()
-                replay = scope.launch {
-                    phase.snapTo(0f)
-                    phase.animateTo(1f, tween(520))
-                    phase.snapTo(0f)
-                }
+                replay = scope.replayCatalogMotion(phase, replay, durationMillis = 520)
                 action()
             },
         contentAlignment = Alignment.Center,
@@ -443,7 +473,8 @@ internal fun CatalogEditorSheet(
     }
     LaunchedEffect(Unit) {
         visible = true
-        headerProgress.animateTo(1f, tween(720))
+        delay(140)
+        headerProgress.animateTo(1f, tween(680, easing = FastOutSlowInEasing))
         headerProgress.snapTo(0f)
     }
     BackHandler { finish(onDismiss) }
@@ -480,7 +511,12 @@ internal fun CatalogEditorSheet(
                 color = ObsidianBackground,
                 shadowElevation = if (fullPage) 0.dp else 16.dp,
             ) {
-                Column(Modifier.navigationBarsPadding().imePadding()) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .navigationBarsPadding()
+                        .imePadding(),
+                ) {
                     Row(
                         modifier = Modifier
                             .fillMaxWidth()
@@ -509,13 +545,12 @@ internal fun CatalogEditorSheet(
                                     .background(ObsidianSurface),
                                 contentAlignment = Alignment.Center,
                             ) {
-                                SiteIcon(
+                                SiteIconMotion(
                                     name = "pencil",
-                                    contentDescription = null,
+                                    description = null,
                                     modifier = Modifier.size(18.dp),
                                     tint = BrandInk,
-                                    progress = headerProgress.value,
-                                )
+                                ) { headerProgress.value }
                             }
                         }
                         Column(
@@ -563,95 +598,6 @@ internal fun CatalogEditorSheet(
     }
 }
 
-/** Seamless borderless Grafite 26.dp bottom dialog matching NativeBottomDialog ergonomics. */
-@Composable
-private fun CatalogBottomDialog(
-    onClose: () -> Unit,
-    bottomInset: Dp = 20.dp,
-    scrollContent: Boolean = true,
-    content: @Composable ColumnScope.(finish: (() -> Unit) -> Unit) -> Unit,
-) {
-    var visible by remember { mutableStateOf(false) }
-    var closing by remember { mutableStateOf(false) }
-    val scope = rememberCoroutineScope()
-    val finish: (() -> Unit) -> Unit = { action ->
-        if (!closing) {
-            closing = true
-            scope.launch {
-                visible = false
-                delay(240)
-                action()
-            }
-        }
-    }
-    LaunchedEffect(Unit) { visible = true }
-    Dialog(
-        onDismissRequest = { finish(onClose) },
-        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
-    ) {
-        val view = LocalView.current
-        val dark = TurniThemeState.dark
-        val dimAmount = if (dark) 0.56f else 0.36f
-        DisposableEffect(view, dark, dimAmount) {
-            val applyChrome = Runnable {
-                val window = (view as? DialogWindowProvider)?.window
-                    ?: (view.parent as? DialogWindowProvider)?.window
-                window?.let {
-                    it.setDimAmount(dimAmount)
-                    WindowCompat.setDecorFitsSystemWindows(it, false)
-                    WindowCompat.getInsetsController(it, it.decorView).apply {
-                        isAppearanceLightStatusBars = !dark
-                        isAppearanceLightNavigationBars = !dark
-                    }
-                }
-            }
-            view.post(applyChrome)
-            onDispose { view.removeCallbacks(applyChrome) }
-        }
-
-        val maxHeight = minOf(620, (LocalConfiguration.current.screenHeightDp - 96).coerceAtLeast(240)).dp
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .imePadding(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .tactileNoFlashClick(enabled = !closing) { finish(onClose) },
-            )
-            AnimatedVisibility(
-                visible = visible,
-                enter = slideInVertically(tween(420, easing = catalogDialogEasing)) { it / 3 } + fadeIn(tween(300)),
-                exit = slideOutVertically(tween(220, easing = catalogDialogEasing)) { it / 3 } + fadeOut(tween(180)),
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(horizontal = 14.dp)
-                    .keyboardAwarePanelClearance(bottomInset),
-            ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = maxHeight),
-                    shape = RoundedCornerShape(26.dp),
-                    color = ObsidianSurface,
-                    shadowElevation = 16.dp,
-                ) {
-                    Column(
-                        modifier = Modifier
-                            .padding(16.dp)
-                            .then(if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier),
-                        verticalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        content(finish)
-                    }
-                }
-            }
-        }
-    }
-}
-
 @Composable
 private fun PastelSwatchTile(
     swatchColor: Color,
@@ -669,9 +615,24 @@ private fun PastelSwatchTile(
         animationSpec = tween(180),
         label = "swatchRing",
     )
+    val popScale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    var popJob by remember { mutableStateOf<Job?>(null) }
+    var wasSelected by remember { mutableStateOf(selected) }
+    LaunchedEffect(selected) {
+        if (selected && !wasSelected) {
+            popJob?.cancel()
+            popJob = scope.launch { popScale.popSpring(peak = 1.1f, dip = 0.92f) }
+        }
+        wasSelected = selected
+    }
     Box(
         modifier = Modifier
             .size(size)
+            .graphicsLayer {
+                scaleX = popScale.value
+                scaleY = popScale.value
+            }
             .clip(RoundedCornerShape(cornerRadius + 3.dp))
             .border(2.dp, ringColor, RoundedCornerShape(cornerRadius + 3.dp))
             .padding(3.dp)
@@ -682,10 +643,18 @@ private fun PastelSwatchTile(
                 this.selected = selected
                 this.role = Role.RadioButton
             }
-            .tactileNoFlashClick(onClick = onClick),
+            .tactileNoFlashClick {
+                popJob?.cancel()
+                popJob = scope.launch { popScale.popSpring(peak = 1.1f, dip = 0.92f) }
+                onClick()
+            },
         contentAlignment = Alignment.Center,
     ) {
-        if (selected) {
+        AnimatedVisibility(
+            visible = selected,
+            enter = scaleIn(spring(dampingRatio = 0.65f, stiffness = 520f)) + fadeIn(tween(150)),
+            exit = scaleOut(tween(120)) + fadeOut(tween(120)),
+        ) {
             SiteIcon("check", null, Modifier.size(16.dp), ink)
         }
     }
@@ -699,6 +668,9 @@ fun UniversalColorPickerRow(
     onColorSelected: (Long) -> Unit,
 ) {
     var showPicker by remember { mutableStateOf(false) }
+    val pickerPhase = remember { Animatable(0f) }
+    val pickerScope = rememberCoroutineScope()
+    var pickerJob by remember { mutableStateOf<Job?>(null) }
     fun display(value: Long) = shiftDisplayColor(Color(value), definitionId = shiftId)
     val selectedColor = display(selectedColorHex)
     val swatchNames = remember { listOf("Ambra", "Corallo", "Lavanda", "Menta", "Azzurro", "Perla") }
@@ -748,7 +720,10 @@ fun UniversalColorPickerRow(
                     .tactileNoFlashClick(
                         role = Role.Button,
                         onClickLabel = "Scegli colore personalizzato",
-                    ) { showPicker = true }
+                    ) {
+                        pickerJob = pickerScope.replayCatalogMotion(pickerPhase, pickerJob, durationMillis = 420)
+                        showPicker = true
+                    }
                     .padding(horizontal = 12.dp, vertical = 10.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -777,7 +752,9 @@ fun UniversalColorPickerRow(
                         color = TextSecondary,
                     )
                 }
-                SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
+                SiteIconMotion("chevron-right", null, Modifier.size(16.dp), TextSecondary) {
+                    pickerPhase.value
+                }
             }
         } else {
             val pipInk = catalogInk(selectedColor)
@@ -843,11 +820,23 @@ internal fun CatalogWorkIcon(
     modifier: Modifier = Modifier,
     tint: Color = TextSecondary,
 ) {
+    CatalogWorkIconMotion(key = key, modifier = modifier, tint = tint)
+}
+
+@Composable
+private fun CatalogWorkIconMotion(
+    key: String,
+    modifier: Modifier = Modifier,
+    tint: Color = TextSecondary,
+    progress: () -> Float = { 0f },
+) {
     val scale = remember { Animatable(1f) }
+    var previousKey by remember { mutableStateOf(key) }
     LaunchedEffect(key) {
-        scale.snapTo(0.84f)
-        scale.animateTo(1.12f, tween(200))
-        scale.animateTo(1f, spring(0.8f, 350f))
+        if (key != previousKey) {
+            previousKey = key
+            scale.popSpring(peak = 1.12f, dip = 0.86f)
+        }
     }
     val name = when (key) {
         "business" -> "building"
@@ -858,17 +847,17 @@ internal fun CatalogWorkIcon(
         "shipping", "truck", "local_shipping" -> "truck"
         "transit", "train" -> "train"
         "security" -> "shield-alert"
-        "store" -> "store"
         else -> "briefcase-business"
     }
-    SiteIcon(
+    SiteIconMotion(
         name = name,
-        contentDescription = null,
+        description = null,
         modifier = modifier.graphicsLayer {
             scaleX = scale.value
             scaleY = scale.value
         },
         tint = tint,
+        progress = progress,
     )
 }
 
@@ -891,7 +880,7 @@ fun CustomColorPickerDialog(
         hex = colorToHex(hsvToColor(hue, saturation, brightness))
     }
 
-    CatalogBottomDialog(onClose = onDismiss, bottomInset = 20.dp) { finish ->
+    TurniSafeBottomDialog(onClose = onDismiss) { finish ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1106,7 +1095,13 @@ fun ShiftEditorScreen(
         breakStartTime = if (hasBreak && !allDay) breakStart else null,
     )
 
-    CatalogEditorSheet(if (existing) "Modifica turno" else "Nuovo turno", onDismiss) { finish ->
+    CatalogEditorSheet(
+        title = if (existing) "Modifica turno" else "Nuovo turno",
+        onDismiss = onDismiss,
+        heightFraction = 1f,
+        subtitle = "Orari, stile e pausa del turno",
+        fullPage = true,
+    ) { finish ->
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -1380,7 +1375,13 @@ fun ShiftEditorScreen(
                                 horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 verticalAlignment = Alignment.Top,
                             ) {
-                                CatalogTimeField("Dalle", breakStart, { breakStart = it }, Modifier.weight(1f))
+                                CatalogTimeField(
+                                    label = "Dalle",
+                                    value = breakStart,
+                                    change = { breakStart = it },
+                                    modifier = Modifier.weight(1f),
+                                    pickerTitle = "Inizio pausa",
+                                )
                                 CatalogField(
                                     label = "Minuti",
                                     value = pause,
@@ -1400,6 +1401,17 @@ fun ShiftEditorScreen(
                             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                                 listOf(15, 30, 60).forEach { value ->
                                     val active = pauseInt == value
+                                    val pillScale = remember { Animatable(1f) }
+                                    val pillScope = rememberCoroutineScope()
+                                    var pillJob by remember { mutableStateOf<Job?>(null) }
+                                    var wasActive by remember { mutableStateOf(active) }
+                                    LaunchedEffect(active) {
+                                        if (active && !wasActive) {
+                                            pillJob?.cancel()
+                                            pillJob = pillScope.launch { pillScale.popSpring(peak = 1.06f, dip = 0.94f) }
+                                        }
+                                        wasActive = active
+                                    }
                                     val pillFill by animateColorAsState(
                                         targetValue = if (active) shiftTone.codeFill else ObsidianSurfaceContainer,
                                         animationSpec = tween(180),
@@ -1415,17 +1427,26 @@ fun ShiftEditorScreen(
                                         modifier = Modifier
                                             .weight(1f)
                                             .height(40.dp)
+                                            .graphicsLayer {
+                                                scaleX = pillScale.value
+                                                scaleY = pillScale.value
+                                            }
                                             .clip(pillShape)
                                             .background(
                                                 if (active) pastelSheenBrush(pillFill, pillInk)
                                                 else SolidColor(pillFill),
                                             )
-                                            .tactileNoFlashClick { pause = value.toString() },
+                                            .tactileNoFlashClick {
+                                                pillJob?.cancel()
+                                                pillJob = pillScope.launch { pillScale.popSpring(peak = 1.06f, dip = 0.94f) }
+                                                pause = value.toString()
+                                            },
                                         contentAlignment = Alignment.Center,
                                     ) {
                                         Text(
                                             text = "$value min",
                                             fontSize = 12.sp,
+                                            lineHeight = 16.sp,
                                             fontWeight = FontWeight.SemiBold,
                                             color = pillInk,
                                             maxLines = 1,
@@ -1448,7 +1469,7 @@ fun ShiftEditorScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .background(ObsidianBackground)
-                .padding(horizontal = 16.dp, vertical = 10.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
@@ -1511,8 +1532,22 @@ private fun CatalogTimeField(
     value: String,
     change: (String) -> Unit,
     modifier: Modifier = Modifier,
+    pickerTitle: String = label,
 ) {
-    val context = LocalContext.current
+    var showTimePicker by remember { mutableStateOf(false) }
+    val fieldInteraction = remember { MutableInteractionSource() }
+    val isHovered by fieldInteraction.collectIsHoveredAsState()
+    val haptic = LocalHapticFeedback.current
+    val clockPhase = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    var clockJob by remember { mutableStateOf<Job?>(null) }
+
+    LaunchedEffect(isHovered) {
+        if (isHovered) {
+            clockJob = scope.replayCatalogMotion(clockPhase, clockJob, durationMillis = 520)
+        }
+    }
+
     Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
         Text(
             text = label,
@@ -1527,26 +1562,32 @@ private fun CatalogTimeField(
                 .height(44.dp)
                 .clip(RoundedCornerShape(14.dp))
                 .background(ObsidianSurfaceContainer)
-                .tactileNoFlashClick(role = Role.Button) {
-                    val current = runCatching { LocalTime.parse(value) }.getOrDefault(LocalTime.of(6, 0))
-                    android.app.TimePickerDialog(
-                        context,
-                        { _, h, m -> change(String.format(Locale.ROOT, "%02d:%02d", h, m)) },
-                        current.hour,
-                        current.minute,
-                        true,
-                    ).show()
+                .hoverable(interactionSource = fieldInteraction)
+                .clickable(
+                    interactionSource = fieldInteraction,
+                    indication = null,
+                    role = Role.Button,
+                ) {
+                    runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                    clockJob = scope.replayCatalogMotion(clockPhase, clockJob, durationMillis = 520)
+                    showTimePicker = true
                 }
                 .padding(horizontal = 10.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.Center,
         ) {
-            SiteIcon("clock", null, Modifier.size(14.dp), TextSecondary)
+            SiteIconMotion(
+                name = "clock",
+                description = null,
+                modifier = Modifier.size(14.dp),
+                tint = TextSecondary,
+            ) { clockPhase.value }
             Spacer(Modifier.width(6.dp))
             Text(
                 text = value,
                 color = TextPrimary,
                 fontSize = 15.sp,
+                lineHeight = 19.sp,
                 fontWeight = FontWeight.SemiBold,
                 style = TextStyle(fontFeatureSettings = "tnum"),
             )
@@ -1566,6 +1607,7 @@ private fun CatalogTimeField(
                             role = Role.Button
                         }
                         .tactileNoFlashClick {
+                            clockJob = scope.replayCatalogMotion(clockPhase, clockJob, durationMillis = 420)
                             runCatching { LocalTime.parse(value).plusMinutes(delta.toLong()) }
                                 .onSuccess { change(it.format(catalogTimeFormatter)) }
                         },
@@ -1575,6 +1617,7 @@ private fun CatalogTimeField(
                         text = stepLabel,
                         color = TextSecondary,
                         fontSize = 11.sp,
+                        lineHeight = 15.sp,
                         fontWeight = FontWeight.SemiBold,
                         style = TextStyle(fontFeatureSettings = "tnum"),
                     )
@@ -1582,11 +1625,29 @@ private fun CatalogTimeField(
             }
         }
     }
+
+    if (showTimePicker) {
+        TurniTimePickerDialog(
+            title = pickerTitle,
+            initialTime = value,
+            onDismiss = { showTimePicker = false },
+            onConfirm = { chosen ->
+                showTimePicker = false
+                change(chosen)
+            },
+        )
+    }
 }
 
 @Composable
 private fun CatalogDeleteDialog(title: String, dismiss: () -> Unit, confirm: () -> Unit) {
-    CatalogBottomDialog(onClose = dismiss, bottomInset = 24.dp) { finish ->
+    val trashPhase = remember { Animatable(0f) }
+    LaunchedEffect(Unit) {
+        delay(120)
+        trashPhase.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+        trashPhase.snapTo(0f)
+    }
+    TurniSafeBottomDialog(onClose = dismiss) { finish ->
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1599,7 +1660,9 @@ private fun CatalogDeleteDialog(title: String, dismiss: () -> Unit, confirm: () 
                     .background(Color(currentTurniPalette.danger.fill)),
                 contentAlignment = Alignment.Center,
             ) {
-                SiteIcon("trash-2", null, Modifier.size(20.dp), ColorNegative)
+                SiteIconMotion("trash-2", null, Modifier.size(20.dp), ColorNegative) {
+                    trashPhase.value
+                }
             }
             Text(
                 text = title,
@@ -1660,6 +1723,7 @@ fun RotationMatrixEditorScreen(
     var favorite by remember(rotation.id) { mutableStateOf(ShiftRepository.defaultRotationId == rotation.id) }
     val starMotion = remember { Animatable(0f) }
     val starScope = rememberCoroutineScope()
+    var starJob by remember { mutableStateOf<Job?>(null) }
     var deleteConfirm by remember { mutableStateOf(false) }
     val existing = ShiftRepository.rotations.any { it.id == rotation.id }
 
@@ -1920,11 +1984,7 @@ fun RotationMatrixEditorScreen(
                 ) {
                     val toggleFavorite = { next: Boolean ->
                         favorite = next
-                        starScope.launch {
-                            starMotion.snapTo(0f)
-                            starMotion.animateTo(1f, tween(720))
-                            starMotion.snapTo(0f)
-                        }
+                        starJob = starScope.replayCatalogMotion(starMotion, starJob, durationMillis = 680)
                         Unit
                     }
                     Row(
@@ -2189,22 +2249,30 @@ fun WorkProfileEditorScreen(
     var department by remember(profile.id) { mutableStateOf(profile.companyOrDepartment) }
     var icon by remember(profile.id) { mutableStateOf(profile.iconKey) }
     var color by remember(profile.id) { mutableStateOf(profile.colorHex) }
-    var advanced by remember(profile.id) { mutableStateOf(profile.enableAdvancedCalc) }
     var active by remember(profile.id) { mutableStateOf(profile.isDefault) }
-    var contract by remember(profile.id) { mutableStateOf(profile.linkedCcnl) }
-    var hours by remember(profile.id) { mutableStateOf(profile.weeklyHours) }
-    var rest by remember(profile.id) { mutableStateOf(profile.minRestHoursBetweenShifts) }
-    var night by remember(profile.id) { mutableStateOf(profile.nightSurchargePercent) }
-    var holiday by remember(profile.id) { mutableStateOf(profile.holidaySurchargePercent) }
-    var nightHoliday by remember(profile.id) { mutableStateOf(profile.nightHolidaySurchargePercent) }
-    var overtime by remember(profile.id) { mutableStateOf(profile.overtimeDaySurchargePercent) }
-    var overtimeNight by remember(profile.id) { mutableStateOf(profile.overtimeNightSurchargePercent) }
+    var hours by remember(profile.id) { mutableIntStateOf(profile.weeklyHours) }
+    var rest by remember(profile.id) { mutableIntStateOf(profile.minRestHoursBetweenShifts) }
+    var maxConsecutive by remember(profile.id) {
+        mutableIntStateOf(profile.maxConsecutiveWorkDays.coerceIn(0, 14))
+    }
+    var lastNonZeroConsecutive by remember(profile.id) {
+        mutableIntStateOf(profile.maxConsecutiveWorkDays.takeIf { it in 1..14 } ?: 6)
+    }
     var documentName by remember(profile.id) { mutableStateOf(profile.ccnlDocumentName) }
     var documentUri by remember(profile.id) { mutableStateOf(profile.ccnlDocumentUri) }
     var documentError by remember { mutableStateOf<String?>(null) }
     var deleteConfirm by remember { mutableStateOf(false) }
-    var showContracts by remember { mutableStateOf(false) }
     var stagedDocument by remember { mutableStateOf<File?>(null) }
+    val heroIconPhase = remember { Animatable(0f) }
+    var previousHeroIcon by remember(profile.id) { mutableStateOf(icon) }
+    LaunchedEffect(icon) {
+        if (icon != previousHeroIcon) {
+            previousHeroIcon = icon
+            heroIconPhase.snapTo(0f)
+            heroIconPhase.animateTo(1f, tween(durationMillis = 480, easing = FastOutSlowInEasing))
+            heroIconPhase.snapTo(0f)
+        }
+    }
     DisposableEffect(Unit) { onDispose { stagedDocument?.delete() } }
 
     val documentPicker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri: Uri? ->
@@ -2270,7 +2338,9 @@ fun WorkProfileEditorScreen(
                             size = 50.dp,
                             cornerRadius = 15.dp,
                         ) { ink ->
-                            CatalogWorkIcon(icon, Modifier.size(25.dp), ink)
+                            CatalogWorkIconMotion(icon, Modifier.size(25.dp), ink) {
+                                heroIconPhase.value
+                            }
                         }
                         Column(
                             modifier = Modifier.weight(1f),
@@ -2308,11 +2378,13 @@ fun WorkProfileEditorScreen(
                             text = "Riposo ${rest}h",
                             color = ExpressivePastel.MINT.sourceColor,
                         )
-                        PastelPill(
-                            text = contract.shortLabel,
-                            color = ExpressivePastel.SKY.sourceColor,
-                            icon = "file-text",
-                        )
+                        AnimatedVisibility(visible = maxConsecutive > 0) {
+                            PastelPill(
+                                text = "Max $maxConsecutive di fila",
+                                color = ExpressivePastel.AMBER.sourceColor,
+                                icon = "calendar",
+                            )
+                        }
                     }
                 }
             }
@@ -2348,6 +2420,24 @@ fun WorkProfileEditorScreen(
                     ) {
                         row.forEach { key ->
                             val isSelected = icon == key
+                            val tileScale = remember { Animatable(1f) }
+                            val tileIconPhase = remember { Animatable(0f) }
+                            val tileScope = rememberCoroutineScope()
+                            var tileScaleJob by remember { mutableStateOf<Job?>(null) }
+                            var tileIconJob by remember { mutableStateOf<Job?>(null) }
+                            var wasSelected by remember { mutableStateOf(isSelected) }
+                            LaunchedEffect(isSelected) {
+                                if (isSelected && !wasSelected) {
+                                    tileScaleJob?.cancel()
+                                    tileScaleJob = tileScope.launch { tileScale.popSpring(peak = 1.07f, dip = 0.92f) }
+                                    tileIconJob = tileScope.replayCatalogMotion(
+                                        tileIconPhase,
+                                        tileIconJob,
+                                        durationMillis = 480,
+                                    )
+                                }
+                                wasSelected = isSelected
+                            }
                             val tileFill by animateColorAsState(
                                 targetValue = if (isSelected) workTone.codeFill else ObsidianSurfaceContainer,
                                 animationSpec = tween(180),
@@ -2383,6 +2473,10 @@ fun WorkProfileEditorScreen(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(54.dp)
+                                    .graphicsLayer {
+                                        scaleX = tileScale.value
+                                        scaleY = tileScale.value
+                                    }
                                     .clip(RoundedCornerShape(15.dp))
                                     .border(2.dp, ringColor, RoundedCornerShape(15.dp))
                                     .padding(ringInset)
@@ -2396,10 +2490,23 @@ fun WorkProfileEditorScreen(
                                         selected = isSelected
                                         role = Role.RadioButton
                                     }
-                                    .tactileNoFlashClick { icon = key },
+                                    .tactileNoFlashClick {
+                                        tileScaleJob?.cancel()
+                                        tileScaleJob = tileScope.launch {
+                                            tileScale.popSpring(peak = 1.07f, dip = 0.92f)
+                                        }
+                                        tileIconJob = tileScope.replayCatalogMotion(
+                                            tileIconPhase,
+                                            tileIconJob,
+                                            durationMillis = 480,
+                                        )
+                                        icon = key
+                                    },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                CatalogWorkIcon(key, Modifier.size(22.dp), tileInk)
+                                CatalogWorkIconMotion(key, Modifier.size(22.dp), tileInk) {
+                                    tileIconPhase.value
+                                }
                             }
                         }
                     }
@@ -2431,113 +2538,163 @@ fun WorkProfileEditorScreen(
                         centered = true,
                     )
                 }
-            }
-
-            CatalogGroup("Parametri CCNL", outlined = true) {
+                SettingsDivider()
+                val consecutiveEnabled = maxConsecutive > 0
+                val toggleConsecutive: (Boolean) -> Unit = { enabled ->
+                    if (enabled) {
+                        maxConsecutive = lastNonZeroConsecutive.coerceIn(1, 14)
+                    } else {
+                        if (maxConsecutive in 1..14) lastNonZeroConsecutive = maxConsecutive
+                        maxConsecutive = 0
+                    }
+                }
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(ObsidianSurfaceContainer)
-                        .tactileNoFlashClick(role = Role.Button) { showContracts = true }
-                        .padding(horizontal = 13.dp, vertical = 11.dp),
+                        .heightIn(min = 48.dp)
+                        .tactileNoFlashClick { toggleConsecutive(!consecutiveEnabled) },
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    PastelBadge(
-                        color = ExpressivePastel.SKY.sourceColor,
-                        size = 34.dp,
-                        cornerRadius = 10.dp,
-                    ) { ink ->
-                        SiteIcon("file-text", null, Modifier.size(17.dp), ink)
-                    }
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(end = 12.dp),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
                         Text(
-                            text = "Contratto di riferimento",
-                            color = TextSecondary,
-                            fontSize = 10.sp,
-                            lineHeight = 13.sp,
-                        )
-                        Text(
-                            text = contract.name,
+                            text = "Controllo turni di fila",
                             color = TextPrimary,
                             fontSize = 13.sp,
-                            lineHeight = 17.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.Medium,
+                        )
+                        Text(
+                            text = if (consecutiveEnabled) {
+                                "Attivo · massimo $maxConsecutive ${if (maxConsecutive == 1) "turno" else "turni"}"
+                            } else {
+                                "Disattivato · nessun avviso di sequenza"
+                            },
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
                         )
                     }
-                    SiteIcon("chevron-down", null, Modifier.size(18.dp), TextSecondary)
+                    TurniSwitch(checked = consecutiveEnabled, onCheckedChange = toggleConsecutive)
                 }
-                CatalogToggle("Parametri CCNL avanzati", advanced) { advanced = it }
-                Text(
-                    text = if (advanced) {
-                        "Maggiorazioni personalizzate attive"
-                    } else {
-                        "Modalità semplice · le maggiorazioni restano conservate"
-                    },
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    color = TextSecondary,
-                )
                 AnimatedVisibility(
-                    visible = advanced,
+                    visible = consecutiveEnabled,
                     enter = expandVertically(spring()) + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CatalogField(
-                                label = "Notturno (%)",
-                                value = night.toString(),
-                                change = { it.toIntOrNull()?.takeIf { n -> n in 0..200 }?.let { n -> night = n } },
-                                modifier = Modifier.weight(1f),
-                                numeric = true,
-                                centered = true,
-                            )
-                            CatalogField(
-                                label = "Festivo (%)",
-                                value = holiday.toString(),
-                                change = { it.toIntOrNull()?.takeIf { n -> n in 0..200 }?.let { n -> holiday = n } },
-                                modifier = Modifier.weight(1f),
-                                numeric = true,
-                                centered = true,
-                            )
+                    val countScale = remember { Animatable(1f) }
+                    var previousCount by remember { mutableIntStateOf(maxConsecutive) }
+                    LaunchedEffect(maxConsecutive) {
+                        if (maxConsecutive > 0 && maxConsecutive != previousCount) {
+                            previousCount = maxConsecutive
+                            countScale.popSpring(peak = 1.09f, dip = 0.93f)
+                        } else if (maxConsecutive > 0) {
+                            previousCount = maxConsecutive
                         }
-                        Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                            CatalogField(
-                                label = "Notturno festivo (%)",
-                                value = nightHoliday.toString(),
-                                change = {
-                                    it.toIntOrNull()?.takeIf { n -> n in 0..200 }?.let { n -> nightHoliday = n }
-                                },
+                    }
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(16.dp))
+                                .background(ObsidianSurfaceContainer)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            Column(
                                 modifier = Modifier.weight(1f),
-                                numeric = true,
-                                centered = true,
-                            )
-                            CatalogField(
-                                label = "Straordinario diurno (%)",
-                                value = overtime.toString(),
-                                change = { it.toIntOrNull()?.takeIf { n -> n in 0..200 }?.let { n -> overtime = n } },
-                                modifier = Modifier.weight(1f),
-                                numeric = true,
-                                centered = true,
-                            )
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = "Turni consecutivi massimi",
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    lineHeight = 17.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                )
+                                Text(
+                                    text = "Soglia tra 1 e 14 turni",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                )
+                            }
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                TonalIconButton(
+                                    icon = "minus",
+                                    contentDescription = "Riduci turni consecutivi massimi",
+                                    onClick = {
+                                        val next = (maxConsecutive - 1).coerceIn(1, 14)
+                                        maxConsecutive = next
+                                        lastNonZeroConsecutive = next
+                                    },
+                                    size = 36.dp,
+                                    cornerRadius = 11.dp,
+                                    fill = ObsidianSurface,
+                                    tint = TextPrimary,
+                                    iconSize = 16.dp,
+                                    enabled = maxConsecutive > 1,
+                                )
+                                Box(
+                                    modifier = Modifier
+                                        .widthIn(min = 72.dp)
+                                        .clip(RoundedCornerShape(11.dp))
+                                        .background(ObsidianPrimaryContainer)
+                                        .padding(horizontal = 10.dp, vertical = 7.dp),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    Text(
+                                        text = if (maxConsecutive == 1) "1 turno" else "$maxConsecutive turni",
+                                        color = BrandInk,
+                                        fontSize = 13.sp,
+                                        lineHeight = 17.sp,
+                                        fontWeight = FontWeight.Bold,
+                                        maxLines = 1,
+                                        style = TextStyle(fontFeatureSettings = "tnum"),
+                                        modifier = Modifier.graphicsLayer {
+                                            scaleX = countScale.value
+                                            scaleY = countScale.value
+                                        },
+                                    )
+                                }
+                                TonalIconButton(
+                                    icon = "plus",
+                                    contentDescription = "Aumenta turni consecutivi massimi",
+                                    onClick = {
+                                        val next = (maxConsecutive + 1).coerceIn(1, 14)
+                                        maxConsecutive = next
+                                        lastNonZeroConsecutive = next
+                                    },
+                                    size = 36.dp,
+                                    cornerRadius = 11.dp,
+                                    fill = ObsidianSurface,
+                                    tint = TextPrimary,
+                                    iconSize = 16.dp,
+                                    enabled = maxConsecutive < 14,
+                                )
+                            }
                         }
-                        CatalogField(
-                            label = "Straordinario notturno/festivo (%)",
-                            value = overtimeNight.toString(),
-                            change = { it.toIntOrNull()?.takeIf { n -> n in 0..200 }?.let { n -> overtimeNight = n } },
-                            modifier = Modifier.fillMaxWidth(),
-                            numeric = true,
-                            centered = true,
+                        Text(
+                            text = "Avvisa sul calendario quando superi $maxConsecutive " +
+                                "${if (maxConsecutive == 1) "turno lavorativo consecutivo" else "turni lavorativi consecutivi"}. " +
+                                "Riposi, smonti e ferie azzerano il conteggio.",
+                            color = TextSecondary,
+                            fontSize = 11.sp,
+                            lineHeight = 16.sp,
                         )
                     }
                 }
             }
 
-            CatalogGroup("Documento CCNL", outlined = true) {
+            CatalogGroup("Documento CCNL · facoltativo", outlined = true) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2547,21 +2704,29 @@ fun WorkProfileEditorScreen(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    PastelBadge(
-                        color = if (documentUri != null) ExpressivePastel.CORAL.sourceColor else ObsidianSurfaceHigh,
-                        size = 34.dp,
-                        cornerRadius = 10.dp,
-                    ) { ink ->
-                        SiteIcon(
-                            name = "file-text",
-                            contentDescription = null,
-                            modifier = Modifier.size(17.dp),
-                            tint = if (documentUri != null) ink else TextSecondary,
+                    if (documentUri != null) {
+                        PastelIconBadge(
+                            pastel = ExpressivePastel.CORAL,
+                            icon = "file-text",
+                            size = 38.dp,
+                            iconSize = 18.dp,
+                        )
+                    } else {
+                        NeutralIconBadge(
+                            icon = "file-text",
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                            iconSize = 18.dp,
+                            fill = ObsidianSurfaceHigh,
+                            tint = TextSecondary,
                         )
                     }
-                    Column(modifier = Modifier.weight(1f)) {
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp),
+                    ) {
                         Text(
-                            text = documentName ?: "Nessun documento selezionato",
+                            text = documentName ?: "Nessun documento allegato",
                             color = TextPrimary,
                             fontSize = 13.sp,
                             lineHeight = 17.sp,
@@ -2570,54 +2735,64 @@ fun WorkProfileEditorScreen(
                             overflow = TextOverflow.Ellipsis,
                         )
                         Text(
-                            text = if (documentUri != null) "PDF allegato al profilo" else "Facoltativo · allega il tuo CCNL",
+                            text = if (documentUri != null) {
+                                "PDF pronto per la consultazione rapida"
+                            } else {
+                                "Allega il tuo PDF per averlo sempre a portata di tap"
+                            },
                             color = TextSecondary,
                             fontSize = 11.sp,
                             lineHeight = 15.sp,
                         )
                     }
                 }
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
+                if (documentUri == null) {
                     CatalogButton(
-                        label = if (documentUri == null) "Scegli PDF" else "Sostituisci PDF",
+                        label = "Scegli PDF",
                         action = { documentPicker.launch(arrayOf("application/pdf")) },
-                        modifier = Modifier.weight(1f),
-                        icon = if (documentUri == null) "upload" else "file-text",
+                        modifier = Modifier.fillMaxWidth(),
+                        icon = "upload",
                     )
-                    if (documentUri != null) {
-                        TonalIconButton(
-                            icon = "book-open",
-                            contentDescription = "Apri documento",
-                            onClick = {
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CatalogActionButton(
+                            label = "Apri CCNL",
+                            action = {
                                 openWorkProfilePdf(
                                     context,
                                     profile.copy(ccnlDocumentUri = documentUri, ccnlDocumentName = documentName),
                                 )
                             },
-                            size = 46.dp,
-                            cornerRadius = 14.dp,
-                            fill = ObsidianSurfaceContainer,
-                            tint = TextPrimary,
-                            iconSize = 19.dp,
+                            fillColor = ObsidianPrimaryContainer,
+                            inkColor = Color(currentTurniPalette.onPrimaryContainer),
+                            modifier = Modifier.fillMaxWidth(),
+                            icon = "book-open",
                         )
-                        TonalIconButton(
-                            icon = "trash-2",
-                            contentDescription = "Rimuovi documento",
-                            onClick = {
-                                stagedDocument?.delete()
-                                stagedDocument = null
-                                documentName = null
-                                documentUri = null
-                            },
-                            size = 46.dp,
-                            cornerRadius = 14.dp,
-                            fill = Color(currentTurniPalette.danger.fill),
-                            tint = ColorNegative,
-                            iconSize = 19.dp,
-                        )
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                        ) {
+                            CatalogButton(
+                                label = "Sostituisci",
+                                action = { documentPicker.launch(arrayOf("application/pdf")) },
+                                modifier = Modifier.weight(1f),
+                                icon = "upload",
+                            )
+                            CatalogActionButton(
+                                label = "Rimuovi",
+                                action = {
+                                    stagedDocument?.delete()
+                                    stagedDocument = null
+                                    documentName = null
+                                    documentUri = null
+                                },
+                                fillColor = Color(currentTurniPalette.danger.fill),
+                                inkColor = Color(currentTurniPalette.danger.ink),
+                                modifier = Modifier.weight(1f),
+                                icon = "trash-2",
+                            )
+                        }
                     }
                 }
                 if (documentError != null) {
@@ -2652,29 +2827,33 @@ fun WorkProfileEditorScreen(
                 onClick = {
                     runCatching {
                         var savedUri = documentUri
+                        val destination = File(context.filesDir, "ccnl_${profile.id}.pdf")
                         stagedDocument?.let { staged ->
-                            val destination = File(context.filesDir, "ccnl_${profile.id}.pdf")
                             staged.copyTo(destination, overwrite = true)
                             savedUri = destination.absolutePath
+                        }
+                        if (savedUri == null && destination.exists()) {
+                            destination.delete()
                         }
                         val saved = profile.copy(
                             name = name.trim(),
                             companyOrDepartment = department.trim(),
                             iconKey = icon,
                             colorHex = color,
-                            enableAdvancedCalc = advanced,
+                            enableAdvancedCalc = profile.enableAdvancedCalc,
                             isDefault = active,
-                            ccnlCode = contract.code,
-                            ccnlName = contract.name,
+                            ccnlCode = profile.ccnlCode,
+                            ccnlName = profile.ccnlName,
                             weeklyHours = hours,
                             minRestHoursBetweenShifts = rest,
-                            nightSurchargePercent = night,
-                            holidaySurchargePercent = holiday,
-                            nightHolidaySurchargePercent = nightHoliday,
-                            overtimeDaySurchargePercent = overtime,
-                            overtimeNightSurchargePercent = overtimeNight,
+                            nightSurchargePercent = profile.nightSurchargePercent,
+                            holidaySurchargePercent = profile.holidaySurchargePercent,
+                            nightHolidaySurchargePercent = profile.nightHolidaySurchargePercent,
+                            overtimeDaySurchargePercent = profile.overtimeDaySurchargePercent,
+                            overtimeNightSurchargePercent = profile.overtimeNightSurchargePercent,
                             ccnlDocumentName = documentName,
                             ccnlDocumentUri = savedUri,
+                            maxConsecutiveWorkDays = maxConsecutive,
                         )
                         finish { onSave(saved) }
                     }.onFailure { documentError = "Impossibile salvare il documento. Riprova." }
@@ -2689,127 +2868,6 @@ fun WorkProfileEditorScreen(
                 finish { onDelete(profile.id) }
             }
         }
-
-        if (showContracts) {
-            CatalogBottomDialog(
-                onClose = { showContracts = false },
-                bottomInset = 20.dp,
-                scrollContent = false,
-            ) { finishDialog ->
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            text = "Contratto di riferimento",
-                            color = TextPrimary,
-                            fontSize = 18.sp,
-                            lineHeight = 23.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        Text(
-                            text = "Aggiorna ore settimanali, riposo e maggiorazioni",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 16.sp,
-                            modifier = Modifier.padding(top = 2.dp),
-                        )
-                    }
-                    TonalIconButton(
-                        icon = "x",
-                        contentDescription = "Chiudi",
-                        onClick = { finishDialog { showContracts = false } },
-                        size = 36.dp,
-                        cornerRadius = 12.dp,
-                        fill = Color(currentTurniPalette.danger.fill),
-                        tint = ColorNegative,
-                        iconSize = 18.dp,
-                    )
-                }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .weight(1f, fill = false)
-                        .verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    CcnlCatalog.presets.forEach { preset ->
-                        val isSelected = preset.code == contract.code
-                        val rowFill = if (isSelected) {
-                            lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (TurniThemeState.dark) 0.22f else 0.12f)
-                        } else {
-                            ObsidianSurfaceContainer
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(rowFill)
-                                .tactileNoFlashClick(role = Role.RadioButton) {
-                                    contract = preset
-                                    hours = preset.standardWeeklyHours
-                                    rest = preset.minRestHoursBetweenShifts
-                                    night = preset.nightSurchargePercent
-                                    holiday = preset.holidaySurchargePercent
-                                    nightHoliday = preset.nightHolidaySurchargePercent
-                                    overtime = preset.overtimeDaySurchargePercent
-                                    overtimeNight = preset.overtimeNightSurchargePercent
-                                    finishDialog { showContracts = false }
-                                }
-                                .padding(horizontal = 13.dp, vertical = 11.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                        ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Text(
-                                    text = preset.name,
-                                    color = if (isSelected) BrandInk else TextPrimary,
-                                    fontSize = 14.sp,
-                                    lineHeight = 19.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                Text(
-                                    text = preset.sector,
-                                    color = TextSecondary,
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
-                                    maxLines = 2,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
-                                Text(
-                                    text = "${preset.standardWeeklyHours}h/sett · Riposo ${preset.minRestHoursBetweenShifts}h",
-                                    color = if (isSelected) BrandInk else TextSecondary,
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
-                                    fontWeight = FontWeight.Medium,
-                                )
-                            }
-                            if (isSelected) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(26.dp)
-                                        .clip(CircleShape)
-                                        .background(ObsidianPrimary),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    SiteIcon("check", "Selezionato", Modifier.size(14.dp), OnBrand)
-                                }
-                            }
-                        }
-                    }
-                }
-                CatalogButton(
-                    label = "Chiudi",
-                    action = { finishDialog { showContracts = false } },
-                    modifier = Modifier.fillMaxWidth(),
-                )
-            }
-        }
     }
 }
 
@@ -2821,19 +2879,36 @@ internal fun CatalogDefaultStar(
     modifier: Modifier = Modifier.size(21.dp),
     progress: Float = 0f,
 ) {
+    val popScale = remember { Animatable(1f) }
+    var wasSelected by remember { mutableStateOf(selected) }
+    LaunchedEffect(selected) {
+        if (selected != wasSelected) {
+            wasSelected = selected
+            popScale.popSpring(peak = 1.14f, dip = 0.88f)
+        }
+    }
     if (selected) {
         val wave = kotlin.math.sin(progress.coerceIn(0f, 1f) * kotlin.math.PI).toFloat()
         Icon(
             imageVector = Icons.Filled.Star,
             contentDescription = description,
             modifier = modifier.graphicsLayer {
-                scaleX = 1f + .18f * wave
+                scaleX = (1f + .18f * wave) * popScale.value
                 scaleY = scaleX
                 rotationZ = 10f * kotlin.math.sin(progress * 2f * kotlin.math.PI).toFloat()
             },
             tint = Color(currentTurniPalette.warning.ink),
         )
     } else {
-        SiteIcon("star", description, modifier, TextSecondary, progress)
+        SiteIcon(
+            name = "star",
+            contentDescription = description,
+            modifier = modifier.graphicsLayer {
+                scaleX = popScale.value
+                scaleY = popScale.value
+            },
+            tint = TextSecondary,
+            progress = progress,
+        )
     }
 }

@@ -5,6 +5,9 @@ import android.net.Uri
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
@@ -26,6 +29,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -35,6 +39,7 @@ import com.turni.calendario.repository.*
 import com.turni.calendario.sync.*
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.*
@@ -153,6 +158,27 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             } to null
         }
     }
+    val palette = currentTurniPalette
+    val driveBadgeMotion = remember { Animatable(0f) }
+    var wasBackupBusy by remember { mutableStateOf(false) }
+    val driveActivityBusy = busy || automatic.running
+    LaunchedEffect(driveActivityBusy) {
+        if (driveActivityBusy) {
+            wasBackupBusy = true
+            while (true) {
+                driveBadgeMotion.snapTo(0f)
+                driveBadgeMotion.animateTo(1f, tween(580, easing = FastOutSlowInEasing))
+                driveBadgeMotion.snapTo(0f)
+                delay(420L)
+            }
+        } else if (wasBackupBusy) {
+            wasBackupBusy = false
+            driveBadgeMotion.snapTo(0f)
+        }
+    }
+    val localSectionMotion = remember { Animatable(0f) }
+    var localSectionJob by remember { mutableStateOf<Job?>(null) }
+
     CloudFeatureScaffold(
         title = if (accountEntry) "Accedi a TurniSync" else "Backup e ripristino",
         subtitle = when {
@@ -193,7 +219,26 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 last != null -> if (restoreOnly) "Disponibile" else "Protetto"
                 else -> "In attesa"
             }
-            val statusColor = if (driveHealthy) ExpressivePastel.MINT.sourceColor else ExpressivePastel.AMBER.sourceColor
+            val statusFill by animateColorAsState(
+                targetValue = when {
+                    automatic.running -> ObsidianPrimarySubtle
+                    !restoreOnly && automatic.needsConsent -> Color(palette.warning.fill)
+                    driveHealthy -> Color(palette.success.fill)
+                    else -> ObsidianSurfaceContainer
+                },
+                animationSpec = tween(180),
+                label = "backupStatusFill",
+            )
+            val statusInk by animateColorAsState(
+                targetValue = when {
+                    automatic.running -> BrandInk
+                    !restoreOnly && automatic.needsConsent -> Color(palette.warning.ink)
+                    driveHealthy -> Color(palette.success.ink)
+                    else -> TextSecondary
+                },
+                animationSpec = tween(180),
+                label = "backupStatusInk",
+            )
             val statusIcon = if (driveHealthy) "check" else "cloud"
 
             Row(
@@ -201,11 +246,14 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PastelIconBadge(
-                    pastel = ExpressivePastel.LAVENDER,
+                NeutralIconBadge(
                     icon = "database-backup",
                     size = 42.dp,
+                    cornerRadius = 13.dp,
                     iconSize = 20.dp,
+                    fill = if (driveHealthy) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+                    tint = BrandInk,
+                    progress = driveBadgeMotion.value,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -226,10 +274,12 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                PastelPill(
+                BackupStatusPill(
                     text = statusLabel,
-                    color = statusColor,
+                    fill = statusFill,
+                    ink = statusInk,
                     icon = statusIcon,
+                    progress = driveBadgeMotion.value,
                 )
             }
 
@@ -310,11 +360,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                val statusIconTint = if (driveHealthy) {
-                    shiftChartColor(ExpressivePastel.MINT.sourceColor, TurniThemeState.dark)
-                } else {
-                    TextSecondary
-                }
+                val statusIconTint = if (driveHealthy) Color(palette.success.ink) else TextSecondary
                 SiteIcon(if (last == null) "cloud" else "check", null, Modifier.size(16.dp), statusIconTint)
                 Text(
                     text = last?.let { "Ultimo backup · $it" } ?: "Nessun salvataggio Drive confermato",
@@ -394,25 +440,35 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(14.dp))
-                    .bouncyClickable { otherCopies = !otherCopies }
+                    .bouncyClickable {
+                        otherCopies = !otherCopies
+                        localSectionJob?.cancel()
+                        localSectionJob = scope.launch {
+                            localSectionMotion.snapTo(0f)
+                            localSectionMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                            localSectionMotion.snapTo(0f)
+                        }
+                    }
                     .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PastelIconBadge(
-                    pastel = ExpressivePastel.PEARL,
+                NeutralIconBadge(
                     icon = "folder-open",
                     size = 42.dp,
+                    cornerRadius = 13.dp,
                     iconSize = 20.dp,
+                    progress = localSectionMotion.value,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text("Dispositivo e file", fontSize = 15.sp, lineHeight = 20.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
                     Text("Copia locale, importa ed esporta", fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = TextSecondary)
                 }
                 if (localInfo != null && !otherCopies) {
-                    PastelPill(
+                    BackupStatusPill(
                         text = "Locale",
-                        color = ExpressivePastel.PEARL.sourceColor,
+                        fill = ObsidianSurfaceContainer,
+                        ink = TextSecondary,
                     )
                 }
                 SiteIcon("chevron-down", null, Modifier.size(20.dp).rotate(rotation), TextSecondary)
@@ -580,93 +636,150 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
         }
     }
     review?.let { request ->
-        AlertDialog(
-            onDismissRequest = { review = null },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Backup già presente", color = TextPrimary) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text(
-                        text = "Su Drive c’è una copia del ${formatBackupTime(request.latest.modifiedTime)}. Nessun dato è stato inviato.",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                    Text(
-                        text = "Controlla la copia prima di ripristinarla, oppure scegli esplicitamente di proseguire con i dati di questo dispositivo. Le copie precedenti verranno conservate.",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                    )
-                    TextButton(
-                        onClick = {
-                            review = null
-                            proceed(request.token, request.owner, request.save, request.automaticHours)
-                        },
-                        colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
-                    ) {
-                        Text("Usa i dati di questo dispositivo", color = BrandInk)
-                    }
-                }
-            },
-            confirmButton = {
-                Button(
-                    onClick = {
+        TurniSafeBottomDialog(onClose = { review = null }) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "database-backup",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
+                )
+                Text(
+                    text = "Backup già presente",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { review = null } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            Text(
+                text = "Su Drive c’è una copia del ${formatBackupTime(request.latest.modifiedTime)}. Nessun dato è stato inviato.",
+                color = TextPrimary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+            )
+            Text(
+                text = "Controlla la copia prima di ripristinarla, oppure scegli esplicitamente di proseguire con i dati di questo dispositivo. Le copie precedenti verranno conservate.",
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+            )
+            CloudButton(
+                label = "Usa i dati di questo dispositivo",
+                icon = "smartphone",
+                onClick = {
+                    finish {
                         review = null
-                        prepareRestore("Google Drive · ${formatBackupTime(request.latest.modifiedTime)}", request.owner) {
-                            GoogleDriveRemote.download(request.token, request.latest.id)
+                        proceed(request.token, request.owner, request.save, request.automaticHours)
+                    }
+                },
+                secondary = true,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CloudButton(
+                    label = "Più tardi",
+                    icon = "x",
+                    onClick = { finish { review = null } },
+                    modifier = Modifier.weight(1f),
+                    secondary = true,
+                )
+                CloudButton(
+                    label = "Controlla il backup",
+                    icon = "download",
+                    onClick = {
+                        finish {
+                            review = null
+                            prepareRestore("Google Drive · ${formatBackupTime(request.latest.modifiedTime)}", request.owner) {
+                                GoogleDriveRemote.download(request.token, request.latest.id)
+                            }
                         }
                     },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
-                ) {
-                    Text("Controlla il backup", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { review = null },
-                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                ) {
-                    Text("Più tardi", color = TextSecondary)
-                }
-            },
-        )
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
     if (history.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = {
+        TurniSafeBottomDialog(
+            onClose = {
                 history = emptyList()
                 historyToken = null
             },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Copie su Google Drive", color = TextPrimary) },
-            text = {
-                Column(
-                    modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "Scegli una copia per controllarne il contenuto. Il ripristino richiederà una seconda conferma.",
-                        fontSize = 12.sp,
-                        color = TextSecondary,
-                        lineHeight = 18.sp,
-                    )
-                    history.forEachIndexed { index, copy ->
-                        CloudButton(
-                            label = "${if (index == 0) "Ultima · " else ""}${formatBackupTime(copy.modifiedTime)}",
-                            icon = "database-backup",
-                            onClick = {
-                                val token = historyToken
-                                val owner = historyOwner
+            scrollContent = false,
+        ) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "cloud",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
+                )
+                Text(
+                    text = "Copie su Google Drive",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = {
+                        finish {
+                            history = emptyList()
+                            historyToken = null
+                        }
+                    },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            Text(
+                text = "Scegli una copia per controllarne il contenuto. Il ripristino richiederà una seconda conferma.",
+                fontSize = 12.sp,
+                color = TextSecondary,
+                lineHeight = 18.sp,
+            )
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                history.forEachIndexed { index, copy ->
+                    CloudButton(
+                        label = "${if (index == 0) "Ultima · " else ""}${formatBackupTime(copy.modifiedTime)}",
+                        icon = "database-backup",
+                        onClick = {
+                            val token = historyToken
+                            val owner = historyOwner
+                            finish {
                                 history = emptyList()
                                 historyToken = null
                                 if (token != null && owner != null) {
@@ -674,133 +787,228 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                                         GoogleDriveRemote.download(token, copy.id)
                                     }
                                 }
-                            },
-                            enabled = enabled,
-                            secondary = true,
-                        )
-                    }
+                            }
+                        },
+                        enabled = enabled,
+                        secondary = true,
+                    )
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = {
+            }
+            CloudButton(
+                label = "Chiudi",
+                icon = "x",
+                onClick = {
+                    finish {
                         history = emptyList()
                         historyToken = null
-                    },
-                    colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
-                ) {
-                    Text("Chiudi", color = BrandInk)
-                }
-            },
-        )
+                    }
+                },
+                secondary = true,
+            )
+        }
     }
     if (localHistory.isNotEmpty()) {
-        AlertDialog(
-            onDismissRequest = { localHistory = emptyList() },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Copie sul dispositivo", color = TextPrimary) },
-            text = {
-                Column(
-                    modifier = Modifier.heightIn(max = 340.dp).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    localHistory.forEachIndexed { index, copy ->
-                        CloudButton(
-                            label = "${if (index == 0) "Ultima · " else ""}${formatBackupInstant(copy.lastModified())}",
-                            icon = "database-backup",
-                            onClick = {
+        TurniSafeBottomDialog(
+            onClose = { localHistory = emptyList() },
+            scrollContent = false,
+        ) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "folder-open",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
+                )
+                Text(
+                    text = "Copie sul dispositivo",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { localHistory = emptyList() } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                localHistory.forEachIndexed { index, copy ->
+                    CloudButton(
+                        label = "${if (index == 0) "Ultima · " else ""}${formatBackupInstant(copy.lastModified())}",
+                        icon = "database-backup",
+                        onClick = {
+                            finish {
                                 localHistory = emptyList()
                                 prepareRestore("Copia locale · ${formatBackupInstant(copy.lastModified())}") {
                                     check(copy.length() in 1..16L * 1024 * 1024) { "Copia locale non valida." }
                                     copy.readText(Charsets.UTF_8)
                                 }
-                            },
-                            enabled = enabled,
-                            secondary = true,
-                        )
-                    }
+                            }
+                        },
+                        enabled = enabled,
+                        secondary = true,
+                    )
                 }
-            },
-            confirmButton = {
-                TextButton(
-                    onClick = { localHistory = emptyList() },
-                    colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
-                ) {
-                    Text("Chiudi", color = BrandInk)
-                }
-            },
-        )
+            }
+            CloudButton(
+                label = "Chiudi",
+                icon = "x",
+                onClick = { finish { localHistory = emptyList() } },
+                secondary = true,
+            )
+        }
     }
     preview?.let { candidate ->
-        AlertDialog(
-            onDismissRequest = { preview = null },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Ripristinare il backup?", color = TextPrimary) },
-            text = {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(candidate.source, color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
-                    Text(
-                        text = "${candidate.data.shifts.values.sumOf { it.size }} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if (candidate.data.profiles.size == 1) "lavoro" else "lavori"}",
-                        color = TextPrimary,
-                        fontSize = 14.sp,
-                        lineHeight = 20.sp,
-                    )
-                    Text(
-                        text = "${candidate.data.rotations.size} rotazioni · note, turni originali e configurazioni incluse",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                    )
-                    Text(
-                        text = "I dati attuali verranno sostituiti con quelli del backup selezionato.",
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
-                    )
-                }
-            },
-            confirmButton = {
-                Button(
+        TurniSafeBottomDialog(onClose = { preview = null }) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "database-backup",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = Color(palette.warning.fill),
+                    tint = Color(palette.warning.ink),
+                )
+                Text(
+                    text = "Ripristinare il backup?",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { preview = null } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .padding(12.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(candidate.source, color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
+                Text(
+                    text = "${candidate.data.shifts.values.sumOf { it.size }} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if (candidate.data.profiles.size == 1) "lavoro" else "lavori"}",
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = "${candidate.data.rotations.size} rotazioni · note, turni originali e configurazioni incluse",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 18.sp,
+                )
+            }
+            Text(
+                text = "I dati attuali verranno sostituiti con quelli del backup selezionato.",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CloudButton(
+                    label = "Annulla",
+                    icon = "x",
+                    onClick = { finish { preview = null } },
+                    modifier = Modifier.weight(1f),
+                    secondary = true,
+                )
+                CloudButton(
+                    label = "Conferma ripristino",
+                    icon = "check",
                     onClick = {
-                        try {
-                            check(candidate.remoteOwner == null || DriveBackupPolicy.sameAccount(candidate.remoteOwner, ShiftRepository.googleAccountProfile?.email)) {
-                                "L’account è cambiato: seleziona nuovamente la copia."
+                        finish {
+                            try {
+                                check(candidate.remoteOwner == null || DriveBackupPolicy.sameAccount(candidate.remoteOwner, ShiftRepository.googleAccountProfile?.email)) {
+                                    "L’account è cambiato: seleziona nuovamente la copia."
+                                }
+                                DriveAutomaticBackup.disable(context)
+                                candidate.remoteOwner?.let { BackupInstallationApproval.approve(context.noBackupFilesDir, it) }
+                                LocalDatabaseStore.allowPersistenceAfterRestore()
+                                DatabaseRestore.apply(candidate.data)
+                                refreshAutomatic()
+                                preview = null
+                                feedback = ActionFeedback("Backup ripristinato · salvataggio automatico disattivato")
+                                onRestored()
+                            } catch (e: Exception) {
+                                preview = null
+                                failed(e)
                             }
-                            DriveAutomaticBackup.disable(context)
-                            candidate.remoteOwner?.let { BackupInstallationApproval.approve(context.noBackupFilesDir, it) }
-                            LocalDatabaseStore.allowPersistenceAfterRestore()
-                            DatabaseRestore.apply(candidate.data)
-                            refreshAutomatic()
-                            preview = null
-                            feedback = ActionFeedback("Backup ripristinato · salvataggio automatico disattivato")
-                            onRestored()
-                        } catch (e: Exception) {
-                            preview = null
-                            failed(e)
                         }
                     },
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
-                ) {
-                    Text("Conferma ripristino", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { preview = null },
-                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                ) {
-                    Text("Annulla", color = TextSecondary)
-                }
-            },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun BackupStatusPill(
+    text: String,
+    fill: Color,
+    ink: Color,
+    icon: String? = null,
+    progress: Float = 0f,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (icon != null) {
+            SiteIconMotion(
+                name = icon,
+                description = null,
+                modifier = Modifier.size(12.dp),
+                tint = ink,
+            ) { progress }
+        }
+        Text(
+            text = text,
+            color = ink,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }

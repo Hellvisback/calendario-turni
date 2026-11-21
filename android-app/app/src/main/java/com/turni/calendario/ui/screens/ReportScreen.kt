@@ -59,7 +59,8 @@ private enum class ReportPeriodMode(val label: String) { MESE("Mese"), ANNO("Ann
 private typealias ReportProgress = Animatable<Float, AnimationVector1D>
 private data class WorkReportSummary(
     val profile: WorkProfile, val metrics: List<ShiftMetric>, val hours: Float,
-    val days: Int, val count: Int, val overtime: Float, val travel: Int, val onCallDays: Int
+    val days: Int, val count: Int, val overtime: Float, val permission: Float,
+    val travel: Int, val onCallDays: Int
 )
 private fun reportNumber(value: Float) = String.format(Locale.ITALIAN, "%.1f", value)
 private fun hourLabel(value: Float) = reportNumber(value) + " h"
@@ -119,9 +120,19 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
         profiles.map { work ->
             val shifts = byWork[work.id].orEmpty()
             val workMetrics = metricsByWork[work.id].orEmpty()
+            val permissionTotal = shifts.sumOf { (assigned, def) ->
+                if (def.category == ShiftCategory.LAVORO && !def.isAllDay) {
+                    val baseHours = def.copy(
+                        startTime = assigned.customStartTime ?: def.startTime,
+                        endTime = assigned.customEndTime ?: def.endTime,
+                    ).durationHoursFloat
+                    val raw = if (assigned.permissionHours.isFinite()) assigned.permissionHours else 0f
+                    raw.coerceIn(0f, baseHours).toDouble()
+                } else 0.0
+            }.toFloat()
             WorkReportSummary(work, workMetrics, workMetrics.sumOf { it.hours.toDouble() }.toFloat(),
                 shifts.filter { it.second.category == ShiftCategory.LAVORO }.map { it.first.date }.distinct().size,
-                shifts.size, shifts.sumOf { it.first.overtimeHours.toDouble() }.toFloat(),
+                shifts.size, shifts.sumOf { it.first.overtimeHours.toDouble() }.toFloat(), permissionTotal,
                 shifts.count { it.first.isTrasferta }, shifts.map { it.first.date }.distinct().count { ShiftRepository.isOnCall(it) })
         }
     }
@@ -180,7 +191,7 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
         }
         }
         }
-        item("hero:$periodKey") { ReportHero(stats.totalHours,stats.workedDays,assignments.size,stats.totalOvertimeHours,metrics,progress) }
+        item("hero:$periodKey") { ReportHero(stats.totalHours,stats.workedDays,assignments.size,stats.totalOvertimeHours,stats.totalPermissionHours,metrics,progress) }
         item("hero-gap") { Spacer(Modifier.height(12.dp)) }
         val metricsPerRow = if (density.fontScale > 1.3f) 1 else 2
         val metricRows = metrics.chunked(metricsPerRow)
@@ -314,6 +325,7 @@ private fun ReportWorkSection(summary:WorkReportSummary,index:Int,lastIndex:Int,
                 } }
             }
             if(summary.overtime>0)ReportWorkExtra("Straordinari",hourLabel(summary.overtime))
+            if(summary.permission>0f)ReportWorkExtra("Permessi","−"+hourLabel(summary.permission))
             if(summary.travel>0)ReportWorkExtra("Trasferte","${summary.travel}")
             if(summary.onCallDays>0)ReportWorkExtra("Reperibilità","${summary.onCallDays} giorni")
             if(summary.count==0)Text("Nessun turno nel periodo",Modifier.padding(vertical=10.dp),fontSize=10.sp,color=reportMuted)
@@ -391,8 +403,9 @@ private fun ReportDistributionDial(metrics:List<ShiftMetric>,colors:List<Color>,
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
+private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,permission:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
     val palette=currentTurniPalette
     val largeText=LocalDensity.current.fontScale>1.3f
     val fill=Color(palette.surface)
@@ -429,7 +442,10 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,metri
                         Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
                     } };if(row.size==1&&!largeText)Spacer(Modifier.weight(1f))
                 } }
-                if(overtime>0)Text("Inclusi ${hourLabel(overtime)} di straordinario",Modifier.padding(top=6.dp),fontSize=10.sp,color=detailInk)
+                if(overtime>0||permission>0f) FlowRow(Modifier.padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp),verticalArrangement=Arrangement.spacedBy(2.dp)) {
+                    if(overtime>0) Text("Inclusi ${hourLabel(overtime)} di straordinario",fontSize=10.sp,color=detailInk)
+                    if(permission>0f) Text("Dedotti ${hourLabel(permission)} di permesso",fontSize=10.sp,color=detailInk)
+                }
             }
         }
     }

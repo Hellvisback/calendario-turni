@@ -113,6 +113,13 @@ object ShiftRepository {
     val minimumRestAlerts by androidx.compose.runtime.derivedStateOf {
         minimumRestWarnings(calendarShifts.values.flatMap{it.toList()},shiftDefinitions.toList(),workProfiles.toList())
     }
+    val consecutiveShiftAlerts by androidx.compose.runtime.derivedStateOf {
+        consecutiveShiftWarnings(
+            calendarShifts.values.flatMap { it.toList() },
+            shiftDefinitions.toList(),
+            workProfiles.toList(),
+        )
+    }
 
 
     // Extra informazioni giorno: ore straordinario, trasferta, override reperibilità, note, nascondi ex-turno
@@ -838,7 +845,8 @@ object ShiftRepository {
         actualEndTime: String?,
         overtimeHours: Float,
         notes: String,
-        isTrasferta: Boolean? = null
+        isTrasferta: Boolean? = null,
+        permissionHours: Float? = null,
     ) {
         saveSnapshot()
         val current = calendarShifts[date]?.toList() ?: return
@@ -846,13 +854,16 @@ object ShiftRepository {
         val clampedHours = overtimeHours.coerceAtLeast(0f)
         current.forEach { shift ->
             if (shift.id == assignedShiftId) {
+                val rawPermission = permissionHours ?: shift.permissionHours
+                val clampedPermission = if (rawPermission.isFinite()) rawPermission.coerceAtLeast(0f) else 0f
                 newList.add(
                     shift.copy(
                         actualEndTime = actualEndTime,
                         isOvertime = clampedHours > 0f,
                         overtimeHours = clampedHours,
                         notes = notes,
-                        isTrasferta = isTrasferta ?: shift.isTrasferta
+                        isTrasferta = isTrasferta ?: shift.isTrasferta,
+                        permissionHours = clampedPermission
                     )
                 )
             } else {
@@ -1388,6 +1399,7 @@ object ShiftRepository {
         var daysWithWork = 0
         var hoursSum = 0f
         var totalOvertimeSum = 0f
+        var totalPermissionSum = 0f
         var notti = 0
         var riposi = 0
         var smonti = 0
@@ -1425,8 +1437,13 @@ object ShiftRepository {
                     when (def.category) {
                         ShiftCategory.LAVORO -> {
                             workedToday = true
-                            hoursSum += def.copy(startTime=s.customStartTime?:def.startTime,
-                                endTime=s.customEndTime?:def.endTime).durationHoursFloat
+                            val baseHours = def.copy(
+                                startTime = s.customStartTime ?: def.startTime,
+                                endTime = s.customEndTime ?: def.endTime
+                            ).durationHoursFloat
+                            val perm = if (def.isAllDay) 0f else (if (s.permissionHours.isFinite()) s.permissionHours else 0f).coerceIn(0f, baseHours)
+                            hoursSum += (baseHours - perm)
+                            totalPermissionSum += perm
                             if (def.id=="notte" || def.name.contains("Notte",ignoreCase=true)) notti++
                         }
                         ShiftCategory.RIPOSO -> if(def.id=="smonto_notte") smonti++ else riposi++
@@ -1454,7 +1471,8 @@ object ShiftRepository {
             countFerie = ferie,
             countTrasferte = trasferte,
             countReperibilita = reperibilitaCount,
-            shiftCounts = counts
+            shiftCounts = counts,
+            totalPermissionHours = totalPermissionSum
         )
     }
 
@@ -1473,6 +1491,7 @@ data class ComprehensiveReportStats(
     val countFerie: Int,
     val countTrasferte: Int,
     val countReperibilita: Int,
-    val shiftCounts: Map<String, Int>
+    val shiftCounts: Map<String, Int>,
+    val totalPermissionHours: Float = 0f
 )
 

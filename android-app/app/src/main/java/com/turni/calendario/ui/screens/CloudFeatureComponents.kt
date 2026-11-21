@@ -1,10 +1,14 @@
 package com.turni.calendario.ui.screens
 
+import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.activity.compose.BackHandler
+import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.CubicBezierEasing
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateDpAsState
@@ -14,11 +18,16 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
 import androidx.compose.animation.shrinkVertically
+import androidx.compose.animation.slideInVertically
+import androidx.compose.animation.slideOutVertically
+import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -27,12 +36,16 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBars
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
@@ -46,11 +59,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.ButtonDefaults
+import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.material3.TimeInput
+import androidx.compose.material3.TimePicker
+import androidx.compose.material3.TimePickerDefaults
+import androidx.compose.material3.rememberTimePickerState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -58,27 +77,39 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.ExperimentalComposeUiApi
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import com.turni.calendario.R
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
@@ -89,13 +120,15 @@ import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.BrandInk
 import com.turni.calendario.ui.theme.ColorMalattia
 import com.turni.calendario.ui.theme.ColorMattina
+import com.turni.calendario.ui.theme.ColorNegative
 import com.turni.calendario.ui.theme.ColorNotte
+import com.turni.calendario.ui.theme.ColorPomeriggio
 import com.turni.calendario.ui.theme.ColorRiposo
 import com.turni.calendario.ui.theme.ColorSmontoNotte
-import com.turni.calendario.ui.theme.ColorPomeriggio
 import com.turni.calendario.ui.theme.ObsidianBackground
 import com.turni.calendario.ui.theme.ObsidianBorderSubtle
 import com.turni.calendario.ui.theme.ObsidianPrimary
+import com.turni.calendario.ui.theme.ObsidianPrimaryContainer
 import com.turni.calendario.ui.theme.ObsidianSurface
 import com.turni.calendario.ui.theme.ObsidianSurfaceContainer
 import com.turni.calendario.ui.theme.ObsidianSurfaceHighest
@@ -109,8 +142,12 @@ import com.turni.calendario.ui.theme.readableChartTint
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftChartColor
 import com.turni.calendario.ui.theme.shiftColorStyle
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import java.time.LocalTime
+import java.util.Locale
 
 /** Curated semantic pastel anchors mapped onto the app's ShiftTone palette. */
 internal enum class ExpressivePastel(val sourceColor: Color) {
@@ -187,6 +224,34 @@ internal fun PastelIconBadge(
             contentDescription = null,
             modifier = Modifier.size(iconSize),
             tint = ink,
+            progress = progress,
+        )
+    }
+}
+
+@Composable
+internal fun NeutralIconBadge(
+    icon: String,
+    modifier: Modifier = Modifier,
+    size: Dp = 40.dp,
+    cornerRadius: Dp = 12.dp,
+    iconSize: Dp = 20.dp,
+    fill: Color = ObsidianSurfaceContainer,
+    tint: Color = BrandInk,
+    progress: Float = 0f,
+) {
+    Box(
+        modifier = modifier
+            .size(size)
+            .clip(RoundedCornerShape(cornerRadius))
+            .background(fill),
+        contentAlignment = Alignment.Center,
+    ) {
+        SiteIcon(
+            name = icon,
+            contentDescription = null,
+            modifier = Modifier.size(iconSize),
+            tint = tint,
             progress = progress,
         )
     }
@@ -302,6 +367,67 @@ internal fun SectionLabel(
     }
 }
 
+private fun CoroutineScope.replayIconMotion(
+    phase: Animatable<Float, *>,
+    previous: Job?,
+    durationMillis: Int,
+): Job {
+    previous?.cancel()
+    return launch {
+        phase.snapTo(0f)
+        phase.animateTo(1f, tween(durationMillis = durationMillis, easing = FastOutSlowInEasing))
+        phase.snapTo(0f)
+    }
+}
+
+@Composable
+private fun Modifier.tactilePressClickable(
+    shape: Shape,
+    enabled: Boolean,
+    pressedScale: Float,
+    role: Role,
+    onClickLabel: String? = null,
+    extraScale: () -> Float = { 1f },
+    onClick: () -> Unit,
+): Modifier {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val animatedScale by animateFloatAsState(
+        targetValue = if (isPressed && enabled) pressedScale else 1f,
+        animationSpec = spring(dampingRatio = 0.72f, stiffness = 500f),
+        label = "tactilePressScale",
+    )
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (isPressed && enabled) 0.075f else 0f,
+        animationSpec = spring(dampingRatio = 0.9f, stiffness = 500f),
+        label = "tactilePressAlpha",
+    )
+    val haptic = LocalHapticFeedback.current
+    return this
+        .graphicsLayer {
+            val scale = minOf(animatedScale, extraScale())
+            scaleX = scale
+            scaleY = scale
+        }
+        .clip(shape)
+        .drawWithContent {
+            drawContent()
+            if (animatedAlpha > 0f) {
+                drawRect(ObsidianPrimary.copy(alpha = animatedAlpha))
+            }
+        }
+        .clickable(
+            interactionSource = interactionSource,
+            indication = null,
+            enabled = enabled,
+            role = role,
+            onClickLabel = onClickLabel,
+        ) {
+            runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+            onClick()
+        }
+}
+
 @Composable
 internal fun TonalIconButton(
     icon: String,
@@ -316,24 +442,35 @@ internal fun TonalIconButton(
     enabled: Boolean = true,
 ) {
     val phase = remember { Animatable(0f) }
+    val scaleBounce = remember { Animatable(1f) }
     val scope = rememberCoroutineScope()
     var replay by remember { mutableStateOf<Job?>(null) }
+    var bounceJob by remember { mutableStateOf<Job?>(null) }
     val shape = RoundedCornerShape(cornerRadius)
     Box(
         modifier = modifier
             .size(size)
-            .clip(shape)
-            .background(fill)
-            .semantics { role = Role.Button }
-            .bouncyClickable(enabled = enabled) {
-                replay?.cancel()
-                replay = scope.launch {
-                    phase.snapTo(0f)
-                    phase.animateTo(1f, tween(durationMillis = 520, easing = FastOutSlowInEasing))
-                    phase.snapTo(0f)
+            .tactilePressClickable(
+                shape = shape,
+                enabled = enabled,
+                pressedScale = 0.94f,
+                role = Role.Button,
+                onClickLabel = contentDescription,
+                extraScale = { scaleBounce.value },
+            ) {
+                replay = scope.replayIconMotion(phase, replay, durationMillis = 520)
+                bounceJob?.cancel()
+                bounceJob = scope.launch {
+                    scaleBounce.snapTo(1f)
+                    scaleBounce.animateTo(0.94f, tween(durationMillis = 70))
+                    scaleBounce.animateTo(
+                        targetValue = 1f,
+                        animationSpec = spring(dampingRatio = 0.65f, stiffness = 480f),
+                    )
                 }
                 onClick()
-            },
+            }
+            .background(fill),
         contentAlignment = Alignment.Center,
     ) {
         SiteIconMotion(
@@ -598,6 +735,18 @@ internal fun SlidingSegmentBar(
             items.forEachIndexed { index, (label, iconKey) ->
                 val isSelected = index == safeSelected
                 val interactionSource = remember(index) { MutableInteractionSource() }
+                val iconPhase = remember(index, iconKey) { Animatable(0f) }
+                var wasSelected by remember(index, iconKey) { mutableStateOf(isSelected) }
+                LaunchedEffect(isSelected, iconKey) {
+                    if (isSelected && !wasSelected) {
+                        iconPhase.snapTo(0f)
+                        iconPhase.animateTo(1f, tween(durationMillis = 480, easing = FastOutSlowInEasing))
+                        iconPhase.snapTo(0f)
+                    } else if (!isSelected && iconPhase.value != 0f) {
+                        iconPhase.snapTo(0f)
+                    }
+                    wasSelected = isSelected
+                }
                 val targetInk = (if (isSelected) pillInk else TextSecondary)
                     .copy(alpha = if (enabled) 1f else 0.5f)
                 val ink by animateColorAsState(
@@ -631,12 +780,14 @@ internal fun SlidingSegmentBar(
                     horizontalArrangement = Arrangement.Center,
                 ) {
                     if (showIcons && iconKey != null) {
-                        SiteIcon(
+                        SiteIconMotion(
                             name = iconKey,
-                            contentDescription = null,
+                            description = null,
                             modifier = Modifier.size(iconSize),
                             tint = ink,
-                        )
+                        ) {
+                            iconPhase.value
+                        }
                         Spacer(Modifier.width(iconGap))
                     }
                     Text(
@@ -683,6 +834,22 @@ internal fun TurniSwitch(
         animationSpec = tween(durationMillis = 200),
         label = "turniSwitchThumbColor",
     )
+    val thumbScale = remember { Animatable(1f) }
+    var lastChecked by remember { mutableStateOf(checked) }
+    LaunchedEffect(checked) {
+        if (checked != lastChecked) {
+            lastChecked = checked
+            thumbScale.snapTo(1f)
+            thumbScale.animateTo(
+                targetValue = 1.14f,
+                animationSpec = spring(dampingRatio = 0.6f, stiffness = 620f),
+            )
+            thumbScale.animateTo(
+                targetValue = 1f,
+                animationSpec = spring(dampingRatio = 0.72f, stiffness = 420f),
+            )
+        }
+    }
 
     Box(
         modifier = modifier
@@ -715,6 +882,10 @@ internal fun TurniSwitch(
                 modifier = Modifier
                     .offset(x = thumbOffset)
                     .size(21.dp)
+                    .graphicsLayer {
+                        scaleX = thumbScale.value
+                        scaleY = thumbScale.value
+                    }
                     .clip(CircleShape)
                     .background(thumbColor),
             )
@@ -741,8 +912,9 @@ internal fun CloudButton(
     modifier: Modifier = Modifier,
     secondary: Boolean = false,
 ) {
-    val iconMotion = remember { Animatable(0f) }
+    val iconPhase = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    var iconJob by remember { mutableStateOf<Job?>(null) }
     val palette = currentTurniPalette
     val buttonShape = RoundedCornerShape(15.dp)
     val targetFill = when {
@@ -772,12 +944,13 @@ internal fun CloudButton(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 46.dp)
-            .clip(buttonShape)
-            .bouncyClickable(enabled) {
-                scope.launch {
-                    iconMotion.snapTo(0f)
-                    iconMotion.animateTo(1f, tween(340))
-                }
+            .tactilePressClickable(
+                shape = buttonShape,
+                enabled = enabled,
+                pressedScale = 0.98f,
+                role = Role.Button,
+            ) {
+                iconJob = scope.replayIconMotion(iconPhase, iconJob, durationMillis = 420)
                 onClick()
             },
     ) {
@@ -787,7 +960,7 @@ internal fun CloudButton(
             horizontalArrangement = Arrangement.Center,
         ) {
             SiteIconMotion(icon, null, Modifier.size(18.dp), ink.copy(alpha = contentAlpha)) {
-                iconMotion.value
+                iconPhase.value
             }
             Spacer(Modifier.width(8.dp))
             Text(
@@ -987,6 +1160,293 @@ internal fun GoogleAccountCard(
                     lineHeight = 17.sp,
                 )
             }
+        }
+    }
+}
+
+private val safeBottomDialogEasing = CubicBezierEasing(0.3f, 0.08f, 0.3f, 1f)
+
+/** Edge-to-edge bottom dialog keeping bottom actions safely above system navigation bars. */
+@OptIn(ExperimentalComposeUiApi::class)
+@Composable
+internal fun TurniSafeBottomDialog(
+    onClose: () -> Unit,
+    scrollContent: Boolean = true,
+    maxHeightFraction: Float = 0.86f,
+    content: @Composable ColumnScope.(finish: (() -> Unit) -> Unit) -> Unit,
+) {
+    var visible by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val finish: (() -> Unit) -> Unit = { action ->
+        if (!closing) {
+            closing = true
+            scope.launch {
+                visible = false
+                delay(220)
+                action()
+            }
+        }
+    }
+    LaunchedEffect(Unit) { visible = true }
+
+    Dialog(
+        onDismissRequest = { finish(onClose) },
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val view = LocalView.current
+        val dark = TurniThemeState.dark
+        val dimAmount = if (dark) 0.56f else 0.36f
+        DisposableEffect(view, dark) {
+            val applyChrome = Runnable {
+                val window = (view as? DialogWindowProvider)?.window
+                    ?: (view.parent as? DialogWindowProvider)?.window
+                window?.let {
+                    it.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    it.setDimAmount(dimAmount)
+                    @Suppress("DEPRECATION")
+                    it.addFlags(
+                        WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
+                    )
+                    @Suppress("DEPRECATION")
+                    it.clearFlags(
+                        WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
+                            WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
+                    )
+                    WindowCompat.setDecorFitsSystemWindows(it, false)
+                    @Suppress("DEPRECATION")
+                    it.statusBarColor = Color.Transparent.toArgb()
+                    @Suppress("DEPRECATION")
+                    it.navigationBarColor = Color.Transparent.toArgb()
+                    WindowCompat.getInsetsController(it, it.decorView).apply {
+                        isAppearanceLightStatusBars = !dark
+                        isAppearanceLightNavigationBars = !dark
+                    }
+                }
+            }
+            applyChrome.run()
+            view.post(applyChrome)
+            onDispose { view.removeCallbacks(applyChrome) }
+        }
+
+        val navBottom = WindowInsets.navigationBars.asPaddingValues()
+            .calculateBottomPadding()
+            .coerceAtLeast(24.dp)
+        val maxHeight = (LocalConfiguration.current.screenHeightDp * maxHeightFraction)
+            .coerceAtLeast(280f)
+            .dp
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .statusBarsPadding()
+                .imePadding(),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !closing,
+                    ) { finish(onClose) },
+            )
+            AnimatedVisibility(
+                visible = visible,
+                enter = slideInVertically(
+                    animationSpec = tween(durationMillis = 360, easing = safeBottomDialogEasing),
+                ) { it / 3 } + fadeIn(tween(durationMillis = 260)),
+                exit = slideOutVertically(
+                    animationSpec = tween(durationMillis = 200, easing = safeBottomDialogEasing),
+                ) { it / 3 } + fadeOut(tween(durationMillis = 160)),
+                modifier = Modifier
+                    .padding(horizontal = 14.dp, vertical = 14.dp)
+                    .padding(bottom = navBottom),
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(26.dp),
+                    color = ObsidianSurface,
+                    shadowElevation = 16.dp,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(max = maxHeight)
+                        // Prevent uncaptured card taps from dismissing through the scrim sibling.
+                        .pointerInput(Unit) {
+                            awaitPointerEventScope {
+                                while (true) {
+                                    awaitPointerEvent()
+                                }
+                            }
+                        },
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .then(if (scrollContent) Modifier.verticalScroll(rememberScrollState()) else Modifier)
+                            .padding(18.dp),
+                        verticalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        content(finish)
+                    }
+                }
+            }
+        }
+    }
+}
+
+/** Grafite and Cobalto Material 3 time picker with smooth dial/keyboard switching. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+internal fun TurniTimePickerDialog(
+    title: String,
+    initialTime: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String) -> Unit,
+    is24Hour: Boolean = ShiftRepository.appPreferences.timeFormat24h,
+) {
+    val parsed = remember(initialTime) {
+        runCatching { LocalTime.parse(initialTime) }.getOrDefault(LocalTime.of(8, 0))
+    }
+    val state = rememberTimePickerState(
+        initialHour = parsed.hour,
+        initialMinute = parsed.minute,
+        is24Hour = is24Hour,
+    )
+    var dialMode by remember { mutableStateOf(true) }
+    val modeIconPhase = remember { Animatable(0f) }
+    var firstComposition by remember { mutableStateOf(true) }
+    LaunchedEffect(dialMode) {
+        if (firstComposition) {
+            firstComposition = false
+        } else {
+            modeIconPhase.snapTo(0f)
+            modeIconPhase.animateTo(1f, tween(durationMillis = 480, easing = FastOutSlowInEasing))
+            modeIconPhase.snapTo(0f)
+        }
+    }
+
+    val pickerColors = TimePickerDefaults.colors(
+        clockDialColor = ObsidianSurfaceContainer,
+        clockDialSelectedContentColor = OnBrand,
+        clockDialUnselectedContentColor = TextPrimary,
+        selectorColor = ObsidianPrimary,
+        containerColor = ObsidianSurface,
+        periodSelectorBorderColor = ObsidianBorderSubtle,
+        periodSelectorSelectedContainerColor = ObsidianPrimaryContainer,
+        periodSelectorUnselectedContainerColor = ObsidianSurfaceContainer,
+        periodSelectorSelectedContentColor = BrandInk,
+        periodSelectorUnselectedContentColor = TextSecondary,
+        timeSelectorSelectedContainerColor = ObsidianPrimaryContainer,
+        timeSelectorUnselectedContainerColor = ObsidianSurfaceContainer,
+        timeSelectorSelectedContentColor = BrandInk,
+        timeSelectorUnselectedContentColor = TextPrimary,
+    )
+    val palette = currentTurniPalette
+
+    TurniSafeBottomDialog(onClose = onDismiss, scrollContent = true) { finish ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            NeutralIconBadge(
+                icon = "clock",
+                fill = ObsidianPrimaryContainer,
+                tint = BrandInk,
+                progress = modeIconPhase.value,
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = title,
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 22.sp,
+                    fontWeight = FontWeight.Bold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Text(
+                    text = String.format(Locale.ROOT, "%02d:%02d", state.hour, state.minute),
+                    color = BrandInk,
+                    fontSize = 13.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    style = TextStyle(fontFeatureSettings = "tnum"),
+                )
+            }
+            TonalIconButton(
+                icon = if (dialMode) "edit" else "clock",
+                contentDescription = if (dialMode) "Inserimento numerico" else "Quadrante orologio",
+                onClick = { dialMode = !dialMode },
+                size = 36.dp,
+                cornerRadius = 12.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = BrandInk,
+                iconSize = 18.dp,
+            )
+            TonalIconButton(
+                icon = "x",
+                contentDescription = "Chiudi",
+                onClick = { finish(onDismiss) },
+                size = 36.dp,
+                cornerRadius = 12.dp,
+                fill = Color(palette.danger.fill),
+                tint = ColorNegative,
+                iconSize = 18.dp,
+            )
+        }
+
+        AnimatedContent(
+            targetState = dialMode,
+            transitionSpec = {
+                (fadeIn(tween(durationMillis = 220)) + scaleIn(tween(durationMillis = 220), initialScale = 0.96f)) togetherWith
+                    fadeOut(tween(durationMillis = 150))
+            },
+            label = "turniTimePickerMode",
+            modifier = Modifier.fillMaxWidth(),
+        ) { isDial ->
+            Box(
+                modifier = Modifier.fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (isDial) {
+                    TimePicker(state = state, colors = pickerColors)
+                } else {
+                    TimeInput(state = state, colors = pickerColors)
+                }
+            }
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            CloudButton(
+                label = "Annulla",
+                icon = "x",
+                onClick = { finish(onDismiss) },
+                secondary = true,
+                modifier = Modifier.weight(1f),
+            )
+            CloudButton(
+                label = "Conferma",
+                icon = "check",
+                onClick = {
+                    finish {
+                        onConfirm(String.format(Locale.ROOT, "%02d:%02d", state.hour, state.minute))
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }

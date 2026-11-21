@@ -150,6 +150,12 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val restDates=previewData?.restDates ?: ShiftRepository.minimumRestAlerts.filter { warning->
         ShiftRepository.getShiftsForDate(warning.date).any{it.id==warning.nextId&&defs[it.shiftDefId]?.workProfileId==profile}
     }.map{it.date}.toSet()
+    val consecutiveAlertDates = if (previewData != null) emptySet()
+    else ShiftRepository.consecutiveShiftAlerts
+        .filter { it.workProfileId == profile }
+        .map { it.date }
+        .toSet()
+    val alertDates = restDates + consecutiveAlertDates
     val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs,previewData,showExShifts){derivedStateOf{days.map{day->
         val actual=if(previewData!=null)previewData.assignments.filter{it.date==day.date}
             else ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
@@ -338,7 +344,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             }
             fun paintDestination(item:PaintedDay,index:Int,mark:CalendarCellPaint):Rect {
                 val x=index%7*cellWidth;val y=index/7*cellHeight
-                val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in restDates)12f else 0f)
+                val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in alertDates)12f else 0f)
                 var cursor=y+dp(27f-2f*editReveal)
                 val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (bottom-cursor)/px)
@@ -397,7 +403,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             }
             data.forEachIndexed{index,item->
                 val x=index%7*cellWidth;val y=index/7*cellHeight;val center=x+cellWidth/2
-                val restAlert=item.info.date in restDates
+                val cellAlert=item.info.date in alertDates
                 val hasAnnotation=item.hasNotes||item.hasTags
                 val date=item.info.date;val today=date==todayDate;val chosen=date==selection||date==anchor
                 val cycle=if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,date,rotation?.daySequence?.size?:0)else null
@@ -497,7 +503,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 }
                 val subdued=item.preview||!item.info.isCurrentMonth
                 var cursor=y+dp(27f-2f*editReveal);var shown=0
-                val assignmentBottom=contentBottom-dp(if(restAlert)12f else 0f)
+                val assignmentBottom=contentBottom-dp(if(cellAlert)12f else 0f)
                 val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (assignmentBottom-cursor)/px)
                 item.shifts.take(layout.visibleCount).forEach{(shift,def)->
@@ -558,7 +564,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         drawCircle(line,radius,marker,style=Stroke(minOf(dp(.35f),radius*.2f)))
                     }
                 }
-                if(restAlert){
+                if(cellAlert){
                     // Dedicated status lane, inset from selection and separate from date metadata.
                     val warningCenter=Offset(center,contentBottom-dp(5f))
                     val warningPath=Path().apply {
@@ -579,7 +585,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date
-                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(shift,def)->append(", ");append(calendarShiftAccessibility(def.name,def.timeRangeFormatted,shift.overtimeHours,shift.isTrasferta))};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
+                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");if(day.info.date in consecutiveAlertDates)append(", turni consecutivi superati");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(shift,def)->append(", ");append(calendarShiftAccessibility(def.name,def.timeRangeFormatted,shift.overtimeHours,shift.isTrasferta))};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
                 }.pointerInput(day.info.date){
                     awaitEachGesture{
                         val down=awaitFirstDown(requireUnconsumed=false)

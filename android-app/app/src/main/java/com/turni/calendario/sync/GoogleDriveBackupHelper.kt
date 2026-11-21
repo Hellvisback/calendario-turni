@@ -97,6 +97,7 @@ object GoogleDriveBackupHelper {
                     put("notes", s.notes)
                     put("isOvertime", s.isOvertime)
                     put("overtimeHours", s.overtimeHours.toDouble())
+                    put("permissionHours", s.permissionHours.toDouble())
                     put("isTrasferta", s.isTrasferta)
                     put("hideExShift", s.hideExShift)
                     put("tags", JSONArray(s.tags))
@@ -147,6 +148,7 @@ object GoogleDriveBackupHelper {
                 put("ccnlName", p.ccnlName)
                 put("ccnlDocumentName", p.ccnlDocumentName ?: "")
                 put("ccnlDocumentUri", p.ccnlDocumentUri ?: "")
+                put("maxConsecutiveWorkDays", p.maxConsecutiveWorkDays)
             }
             profilesArray.put(pObj)
         }

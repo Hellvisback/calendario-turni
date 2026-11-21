@@ -90,7 +90,8 @@ data class AssignedShift(
     val overtimeHours: Float = 0f,
     val isTrasferta: Boolean = false,
     val isOnCallManual: Boolean? = null,
-    val hideExShift: Boolean = false
+    val hideExShift: Boolean = false,
+    val permissionHours: Float = 0f
 )
 
 /**
@@ -336,7 +337,8 @@ data class WorkProfile(
     val isDefault: Boolean = true,
     val enableAdvancedCalc: Boolean = false,
     val ccnlDocumentName: String? = null,
-    val ccnlDocumentUri: String? = null
+    val ccnlDocumentUri: String? = null,
+    val maxConsecutiveWorkDays: Int = 6
 ) {
     val linkedCcnl: CcnlDefinition
         get() = CcnlCatalog.findByCode(ccnlCode)

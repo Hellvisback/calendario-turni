@@ -15,7 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -24,6 +26,7 @@ import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.*
 import com.turni.calendario.ui.theme.*
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.UUID
@@ -175,6 +178,7 @@ fun TurniModelsScreen(
                                         CloudCard(
                                             title = "Nessun modello di turno",
                                             accent = ExpressivePastel.SKY,
+                                            modifier = Modifier.animateItem(),
                                         ) {
                                             Text(
                                                 text = "Crea il primo turno dal pulsante qui sotto per iniziare a compilare il calendario.",
@@ -189,6 +193,7 @@ fun TurniModelsScreen(
                                     ShiftCatalogCard(
                                         definition = definition,
                                         onEdit = { shift = definition },
+                                        modifier = Modifier.animateItem(),
                                     )
                                 }
                             }
@@ -201,6 +206,7 @@ fun TurniModelsScreen(
                                         ShiftRepository.setActiveWorkProfile(profile.id)
                                         onDismiss()
                                     },
+                                    modifier = Modifier.animateItem(),
                                 )
                             }
                             2 -> {
@@ -209,6 +215,7 @@ fun TurniModelsScreen(
                                         CloudCard(
                                             title = "Nessuna rotazione",
                                             accent = ExpressivePastel.LAVENDER,
+                                            modifier = Modifier.animateItem(),
                                         ) {
                                             Text(
                                                 text = "Crea una sequenza di turni ricorrente dal pulsante qui sotto per applicarla rapidamente al calendario.",
@@ -227,6 +234,7 @@ fun TurniModelsScreen(
                                             ShiftRepository.toggleDefaultRotation(rotation.id)
                                         },
                                         onEdit = { cycle = rotation },
+                                        modifier = Modifier.animateItem(),
                                     )
                                 }
                             }
@@ -357,13 +365,19 @@ fun TurniModelsScreen(
 private fun ShiftCatalogCard(
     definition: ShiftDefinition,
     onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cardShape = RoundedCornerShape(21.dp)
     val badgeCode = definition.shortCode.ifBlank { definition.name.take(3).uppercase() }.take(4)
+    val clockPhase = remember { Animatable(0f) }
+    val badgeScale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    var tapJob by remember { mutableStateOf<Job?>(null) }
+
     Surface(
         color = ObsidianSurface,
         shape = cardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
@@ -376,7 +390,19 @@ private fun ShiftCatalogCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
-                .bouncyClickable(onClick = onEdit)
+                .bouncyClickable {
+                    tapJob?.cancel()
+                    tapJob = scope.launch {
+                        launch {
+                            badgeScale.snapTo(0.94f)
+                            badgeScale.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 460f))
+                        }
+                        clockPhase.snapTo(0f)
+                        clockPhase.animateTo(1f, tween(durationMillis = 380, easing = FastOutSlowInEasing))
+                        clockPhase.snapTo(0f)
+                    }
+                    onEdit()
+                }
                 .padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -386,6 +412,10 @@ private fun ShiftCatalogCard(
                 size = 48.dp,
                 cornerRadius = 14.dp,
                 definitionId = definition.id,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = badgeScale.value
+                    scaleY = badgeScale.value
+                },
             ) { codeInk ->
                 Text(
                     text = badgeCode,
@@ -419,6 +449,7 @@ private fun ShiftCatalogCard(
                         TonalMetaChip(
                             text = "${definition.startTime} – ${definition.endTime}",
                             icon = "clock",
+                            iconProgress = clockPhase.value,
                         )
                         PastelPill(
                             text = definition.durationFormatted,
@@ -450,17 +481,25 @@ private fun WorkProfileCatalogCard(
     isActive: Boolean,
     onEdit: () -> Unit,
     onOpenCalendar: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
+    val context = LocalContext.current
     val cardShape = RoundedCornerShape(22.dp)
     val dark = TurniThemeState.dark
     val mintTone = ExpressivePastel.MINT.style(dark, ObsidianSurface)
     val activeFill = lerp(ObsidianSurfaceContainer, mintTone.codeFill, if (dark) 0.22f else 0.36f)
     val activeInk = readableInk(activeFill, if (dark) mintTone.codeFill else mintTone.codeInk)
+    val hasPdf = !profile.ccnlDocumentUri.isNullOrBlank()
+    val clockPhase = remember { Animatable(0f) }
+    val badgeScale = remember { Animatable(1f) }
+    val activeScale = remember { Animatable(1f) }
+    val scope = rememberCoroutineScope()
+    var tapJob by remember { mutableStateOf<Job?>(null) }
 
     Surface(
         color = ObsidianSurface,
         shape = cardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
@@ -473,7 +512,19 @@ private fun WorkProfileCatalogCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
-                .bouncyClickable(onClick = onEdit)
+                .bouncyClickable {
+                    tapJob?.cancel()
+                    tapJob = scope.launch {
+                        launch {
+                            badgeScale.snapTo(0.94f)
+                            badgeScale.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 460f))
+                        }
+                        clockPhase.snapTo(0f)
+                        clockPhase.animateTo(1f, tween(durationMillis = 380, easing = FastOutSlowInEasing))
+                        clockPhase.snapTo(0f)
+                    }
+                    onEdit()
+                }
                 .padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -486,6 +537,10 @@ private fun WorkProfileCatalogCard(
                     color = Color(profile.colorHex),
                     size = 48.dp,
                     cornerRadius = 14.dp,
+                    modifier = Modifier.graphicsLayer {
+                        scaleX = badgeScale.value
+                        scaleY = badgeScale.value
+                    },
                 ) { ink ->
                     CatalogWorkIcon(
                         key = profile.iconKey,
@@ -497,69 +552,74 @@ private fun WorkProfileCatalogCard(
                     modifier = Modifier.weight(1f),
                     verticalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Row(
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        Text(
-                            text = profile.name.ifBlank { "Profilo di lavoro" },
-                            color = TextPrimary,
-                            fontSize = 15.sp,
-                            lineHeight = 20.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                            modifier = Modifier.weight(1f, fill = false),
-                        )
-                        if (isActive) {
-                            PastelPill(
-                                text = "Attivo",
-                                color = ExpressivePastel.MINT.sourceColor,
-                                solid = true,
-                                icon = "check",
-                            )
-                        }
-                    }
                     Text(
-                        text = profile.linkedCcnl.shortLabel,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = TextSecondary,
+                        text = profile.name.ifBlank { "Profilo di lavoro" },
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
+                    Text(
+                        text = profile.companyOrDepartment.ifBlank { "Calendario di lavoro" },
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = TextSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
-                TonalIconButton(
-                    icon = "edit",
-                    contentDescription = "Modifica ${profile.name}",
-                    onClick = onEdit,
-                    size = 38.dp,
-                    cornerRadius = 12.dp,
-                    fill = ObsidianSurfaceContainer,
-                    tint = BrandInk,
-                    iconSize = 18.dp,
-                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    if (hasPdf) {
+                        TonalIconButton(
+                            icon = "book-open",
+                            contentDescription = "Apri CCNL",
+                            onClick = { openWorkProfilePdf(context, profile) },
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                            fill = ObsidianSurfaceContainer,
+                            tint = BrandInk,
+                            iconSize = 18.dp,
+                        )
+                    }
+                    TonalIconButton(
+                        icon = "edit",
+                        contentDescription = "Modifica ${profile.name}",
+                        onClick = onEdit,
+                        size = 38.dp,
+                        cornerRadius = 12.dp,
+                        fill = ObsidianSurfaceContainer,
+                        tint = BrandInk,
+                        iconSize = 18.dp,
+                    )
+                }
             }
 
             FlowRow(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                if (profile.companyOrDepartment.isNotBlank()) {
-                    TonalMetaChip(
-                        text = profile.companyOrDepartment,
-                        icon = "building",
-                    )
-                }
                 TonalMetaChip(
                     text = "${profile.weeklyHours}h/sett",
                     icon = "clock",
+                    iconProgress = clockPhase.value,
                 )
                 TonalMetaChip(text = "Riposo ${profile.minRestHoursBetweenShifts}h")
-                if (profile.enableAdvancedCalc) {
+                if (profile.maxConsecutiveWorkDays > 0) {
+                    TonalMetaChip(text = "Max ${profile.maxConsecutiveWorkDays} di fila")
+                }
+                if (hasPdf) {
                     PastelPill(
-                        text = "CCNL",
-                        color = Color(profile.colorHex),
+                        text = "PDF CCNL",
+                        color = ExpressivePastel.CORAL.sourceColor,
+                        icon = "file-text",
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(10.dp))
+                            .bouncyClickable { openWorkProfilePdf(context, profile) },
                     )
                 }
             }
@@ -571,7 +631,13 @@ private fun WorkProfileCatalogCard(
                         .heightIn(min = 44.dp)
                         .clip(RoundedCornerShape(14.dp))
                         .background(activeFill)
-                        .bouncyClickable(onClick = onOpenCalendar)
+                        .bouncyClickable {
+                            scope.launch {
+                                activeScale.snapTo(0.92f)
+                                activeScale.animateTo(1f, spring(dampingRatio = 0.65f, stiffness = 460f))
+                            }
+                            onOpenCalendar()
+                        }
                         .padding(horizontal = 14.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.Center,
@@ -579,12 +645,17 @@ private fun WorkProfileCatalogCard(
                     SiteIcon(
                         name = "check",
                         contentDescription = null,
-                        modifier = Modifier.size(16.dp),
+                        modifier = Modifier
+                            .size(16.dp)
+                            .graphicsLayer {
+                                scaleX = activeScale.value
+                                scaleY = activeScale.value
+                            },
                         tint = activeInk,
                     )
                     Spacer(Modifier.width(8.dp))
                     Text(
-                        text = "Calendario in uso · Apri",
+                        text = "Calendario in uso",
                         color = activeInk,
                         fontSize = 13.sp,
                         lineHeight = 18.sp,
@@ -611,10 +682,15 @@ private fun RotationCatalogCard(
     preferred: Boolean,
     onToggleDefault: () -> Unit,
     onEdit: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     val cardShape = RoundedCornerShape(22.dp)
     val phase = remember { Animatable(0f) }
+    val starScale = remember { Animatable(1f) }
+    val badgePhase = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    var starJob by remember { mutableStateOf<Job?>(null) }
+    var badgeJob by remember { mutableStateOf<Job?>(null) }
     val starShape = RoundedCornerShape(12.dp)
     val starFill by animateColorAsState(
         targetValue = if (preferred) Color(currentTurniPalette.warning.fill) else ObsidianSurfaceContainer,
@@ -626,7 +702,7 @@ private fun RotationCatalogCard(
     Surface(
         color = ObsidianSurface,
         shape = cardShape,
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .animateContentSize(
                 animationSpec = spring(
@@ -639,7 +715,15 @@ private fun RotationCatalogCard(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(cardShape)
-                .bouncyClickable(onClick = onEdit)
+                .bouncyClickable {
+                    badgeJob?.cancel()
+                    badgeJob = scope.launch {
+                        badgePhase.snapTo(0f)
+                        badgePhase.animateTo(1f, tween(durationMillis = 420, easing = FastOutSlowInEasing))
+                        badgePhase.snapTo(0f)
+                    }
+                    onEdit()
+                }
                 .padding(14.dp),
         ) {
             Row(
@@ -651,6 +735,7 @@ private fun RotationCatalogCard(
                     icon = "rotation",
                     size = 44.dp,
                     iconSize = 21.dp,
+                    progress = badgePhase.value,
                 )
                 Column(
                     modifier = Modifier.weight(1f),
@@ -683,11 +768,21 @@ private fun RotationCatalogCard(
                 Box(
                     modifier = Modifier
                         .size(38.dp)
+                        .graphicsLayer {
+                            scaleX = starScale.value
+                            scaleY = starScale.value
+                        }
                         .clip(starShape)
                         .background(starFill)
                         .bouncyClickable {
                             onToggleDefault()
-                            scope.launch {
+                            starJob?.cancel()
+                            starJob = scope.launch {
+                                launch {
+                                    starScale.snapTo(0.88f)
+                                    starScale.animateTo(1.08f, spring(dampingRatio = 0.6f, stiffness = 480f))
+                                    starScale.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 420f))
+                                }
                                 phase.snapTo(0f)
                                 phase.animateTo(1f, tween(720))
                                 phase.snapTo(0f)
@@ -722,6 +817,7 @@ private fun RotationCatalogCard(
 private fun TonalMetaChip(
     text: String,
     icon: String? = null,
+    iconProgress: Float = 0f,
 ) {
     Row(
         modifier = Modifier
@@ -737,6 +833,7 @@ private fun TonalMetaChip(
                 contentDescription = null,
                 modifier = Modifier.size(11.dp),
                 tint = TextSecondary,
+                progress = iconProgress,
             )
         }
         Text(

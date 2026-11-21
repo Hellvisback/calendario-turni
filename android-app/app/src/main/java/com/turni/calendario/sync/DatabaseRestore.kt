@@ -65,7 +65,8 @@ object DatabaseRestore {
             actualEndTime = o.optional("actualEndTime"), notes = o.optString("notes"), tags = o.strings("tags"),
             isOvertime = o.optBoolean("isOvertime"), overtimeHours = o.optDouble("overtimeHours", 0.0).toFloat(),
             isTrasferta = o.optBoolean("isTrasferta"), isOnCallManual = o.tristate("isOnCallManual"),
-            hideExShift = o.optBoolean("hideExShift")
+            hideExShift = o.optBoolean("hideExShift"),
+            permissionHours = o.optDouble("permissionHours", 0.0).toFloat()
         ) }
         val extras = root.items("dayExtraInfo", previous.extras.values.toList()) { o -> DayExtraInfo(
             date = LocalDate.parse(o.getString("date")), overtimeHours = o.optDouble("overtimeHours", 0.0).toFloat(),
@@ -82,10 +83,12 @@ object DatabaseRestore {
             overtimeDaySurchargePercent = o.optInt("overtimeDaySurchargePercent", 25), overtimeNightSurchargePercent = o.optInt("overtimeNightSurchargePercent", 40),
             colorHex = o.optLong("colorHex", 0xFF0284C7), iconKey = o.optString("iconKey", "work"),
             isDefault = o.optBoolean("isDefault"), enableAdvancedCalc = o.optBoolean("enableAdvancedCalc"),
-            ccnlDocumentName = o.optional("ccnlDocumentName"), ccnlDocumentUri = o.optional("ccnlDocumentUri")
+            ccnlDocumentName = o.optional("ccnlDocumentName"), ccnlDocumentUri = o.optional("ccnlDocumentUri"),
+            maxConsecutiveWorkDays = o.optInt("maxConsecutiveWorkDays", 6).coerceIn(0, 31)
         ) }
         validateReferences(definitions, profiles, shifts, rotations)
         require(shifts.all { it.overtimeHours.isFinite() && it.overtimeHours >= 0f }) { "Straordinario non valido" }
+        require(shifts.all { it.permissionHours.isFinite() && it.permissionHours >= 0f }) { "Ore di permesso non valide" }
         require(extras.all { it.overtimeHours.isFinite() && it.overtimeHours >= 0f }) { "Straordinario non valido" }
         val pref = root.optJSONObject("appPreferences")
         val preferences = if (pref == null) previous.preferences else AppPreferences(

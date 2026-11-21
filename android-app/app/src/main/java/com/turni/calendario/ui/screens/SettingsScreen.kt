@@ -8,6 +8,7 @@ import androidx.compose.animation.animateContentSize
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
@@ -19,7 +20,9 @@ import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -39,7 +42,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Surface
@@ -57,15 +59,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -73,8 +74,6 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.BuildConfig
 import com.turni.calendario.alarm.ShiftAlarmScheduler
 import com.turni.calendario.model.ReperibilitaMode
@@ -85,6 +84,7 @@ import com.turni.calendario.ui.components.PopupType
 import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
+import com.turni.calendario.ui.theme.BrandInk
 import com.turni.calendario.ui.theme.CalendarSurface
 import com.turni.calendario.ui.theme.CalendarToday
 import com.turni.calendario.ui.theme.CalendarWeekend
@@ -109,6 +109,7 @@ import com.turni.calendario.ui.theme.TurniThemeState
 import com.turni.calendario.ui.theme.currentTurniPalette
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftColorStyle
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 private enum class SettingsSubScreen {
@@ -205,7 +206,6 @@ fun SettingsScreen(
 
                         SectionLabel(
                             text = "Calendario e statistiche",
-                            accent = ExpressivePastel.SKY,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                         PreferenceGroup {
@@ -215,11 +215,11 @@ fun SettingsScreen(
                                 ThemeMode.DARK -> "Scuro"
                             }
                             PreferenceRow(
-                                pastel = ExpressivePastel.SKY,
+                                pastel = null,
                                 icon = "palette",
                                 title = "Aspetto e calendario",
                                 subtitle = "Tema, inizio settimana, orari ed ex turni",
-                                statusPill = themeBadge,
+                                trailingText = themeBadge,
                             ) {
                                 screen = SettingsSubScreen.APPEARANCE
                             }
@@ -229,13 +229,13 @@ fun SettingsScreen(
                                 icon = "calendar-heart",
                                 title = "Festività",
                                 subtitle = "Ricorrenze valide per il tuo lavoro",
-                                statusPill = "${ShiftRepository.enabledHolidayIds.size} attive",
+                                trailingText = "${ShiftRepository.enabledHolidayIds.size} attive",
                             ) {
                                 screen = SettingsSubScreen.HOLIDAYS
                             }
                             SettingsDivider(Modifier.padding(horizontal = 4.dp))
                             PreferenceRow(
-                                pastel = ExpressivePastel.MINT,
+                                pastel = null,
                                 icon = "report",
                                 title = "Conteggio statistiche",
                                 subtitle = "Turni sostituiti e ferie nei festivi",
@@ -246,7 +246,6 @@ fun SettingsScreen(
 
                         SectionLabel(
                             text = "Reperibilità e sveglie",
-                            accent = ExpressivePastel.AMBER,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                         PreferenceGroup {
@@ -256,18 +255,13 @@ fun SettingsScreen(
                                 ReperibilitaMode.ALTERNATA_STAGIONALE -> "Stagionale"
                                 ReperibilitaMode.MANUALE -> "Disattiva"
                             }
-                            val onCallPastel = if (onCallMode == ReperibilitaMode.MANUALE) {
-                                ExpressivePastel.PEARL
-                            } else {
-                                ExpressivePastel.AMBER
-                            }
                             PreferenceRow(
                                 pastel = ExpressivePastel.AMBER,
                                 icon = "bell",
                                 title = "Reperibilità",
                                 subtitle = "Mostra la campanella sui giorni in cui sei reperibile",
-                                statusPill = onCallStatus,
-                                statusPastel = onCallPastel,
+                                trailingText = onCallStatus,
+                                trailingPill = onCallMode != ReperibilitaMode.MANUALE,
                             ) {
                                 screen = SettingsSubScreen.REPERIBILITA
                             }
@@ -279,7 +273,7 @@ fun SettingsScreen(
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
                                 PreferenceRow(
-                                    pastel = ExpressivePastel.MAUVE,
+                                    pastel = ExpressivePastel.AMBER,
                                     icon = "alarm-clock",
                                     title = "Regole e prossime sveglie",
                                     subtitle = "Configura gli avvisi sonori legati ai turni",
@@ -317,12 +311,11 @@ fun SettingsScreen(
 
                         SectionLabel(
                             text = "Importazione e condivisione",
-                            accent = ExpressivePastel.SAGE,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                         PreferenceGroup {
                             PreferenceRow(
-                                pastel = ExpressivePastel.SKY,
+                                pastel = null,
                                 icon = "scan-text",
                                 title = "Importa turni con AI",
                                 subtitle = "Crea modelli e rotazioni da un prospetto",
@@ -331,7 +324,7 @@ fun SettingsScreen(
                             }
                             SettingsDivider(Modifier.padding(horizontal = 4.dp))
                             PreferenceRow(
-                                pastel = ExpressivePastel.CORAL,
+                                pastel = null,
                                 icon = "file-text",
                                 title = "Esporta e stampa PDF",
                                 subtitle = "Calendario o elenco dei turni",
@@ -340,7 +333,7 @@ fun SettingsScreen(
                             }
                             SettingsDivider(Modifier.padding(horizontal = 4.dp))
                             PreferenceRow(
-                                pastel = ExpressivePastel.SAGE,
+                                pastel = null,
                                 icon = "calendar-sync",
                                 title = "Google Calendar",
                                 subtitle = "Sincronizza i turni come eventi",
@@ -351,12 +344,11 @@ fun SettingsScreen(
 
                         SectionLabel(
                             text = "Dati dell’app",
-                            accent = ExpressivePastel.LAVENDER,
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                         PreferenceGroup {
                             PreferenceRow(
-                                pastel = ExpressivePastel.LAVENDER,
+                                pastel = null,
                                 icon = "database-backup",
                                 title = "Backup e ripristino",
                                 subtitle = "Salva o recupera tutti i dati dell’app",
@@ -414,6 +406,11 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
     val activeWork = ShiftRepository.activeWorkProfile
     val hasMultipleProfiles = ShiftRepository.workProfiles.size > 1
     var workMenuOpen by remember { mutableStateOf(false) }
+    val chevronAngle by animateFloatAsState(
+        targetValue = if (workMenuOpen) 180f else 0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f),
+        label = "workMenuChevron",
+    )
 
     Row(
         modifier = Modifier
@@ -444,7 +441,7 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )
-        Box(modifier = Modifier.widthIn(max = 136.dp)) {
+        Box(modifier = Modifier.widthIn(max = 142.dp)) {
             val pillShape = RoundedCornerShape(14.dp)
             val workIcon = activeWork.iconKey.takeIf { it.isNotBlank() } ?: "briefcase"
             val pillModifier = if (hasMultipleProfiles) {
@@ -464,11 +461,13 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    PastelIconBadge(
-                        pastel = ExpressivePastel.SKY,
+                    NeutralIconBadge(
                         icon = workIcon,
                         size = 24.dp,
+                        cornerRadius = 8.dp,
                         iconSize = 13.dp,
+                        fill = ObsidianSurfaceContainer,
+                        tint = BrandInk,
                     )
                     Text(
                         text = activeWork.name,
@@ -484,7 +483,9 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
                         SiteIcon(
                             name = "chevron-down",
                             contentDescription = "Cambia calendario di lavoro",
-                            modifier = Modifier.size(12.dp),
+                            modifier = Modifier
+                                .size(12.dp)
+                                .rotate(chevronAngle),
                             tint = TextSecondary,
                         )
                     }
@@ -534,8 +535,8 @@ private fun PreferenceRow(
     title: String,
     subtitle: String,
     danger: Boolean = false,
-    statusPill: String? = null,
-    statusPastel: ExpressivePastel? = pastel,
+    trailingText: String? = null,
+    trailingPill: Boolean = false,
     externalProgress: Float = 0f,
     showChevron: Boolean = true,
     modifier: Modifier = Modifier,
@@ -543,26 +544,52 @@ private fun PreferenceRow(
 ) {
     val palette = currentTurniPalette
     val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+    val pressAlpha by animateFloatAsState(
+        targetValue = if (isPressed) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 500f),
+        label = "preferenceRowPress",
+    )
+    val tapHighlight = remember { Animatable(0f) }
     val motion = remember { Animatable(0f) }
+    var motionJob by remember { mutableStateOf<Job?>(null) }
+    var highlightJob by remember { mutableStateOf<Job?>(null) }
     val iconPhase = maxOf(motion.value, externalProgress)
+    val highlightBase = if (danger) Color(palette.danger.fill) else ObsidianSurfaceContainer
+    val highlightAlpha = (if (danger) 0.42f else 0.72f) * maxOf(pressAlpha, tapHighlight.value)
+    val rowShape = RoundedCornerShape(14.dp)
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .heightIn(min = 60.dp)
-            .clip(RoundedCornerShape(14.dp))
-            .bouncyClickable {
-                scope.launch {
+            .clip(rowShape)
+            .background(highlightBase.copy(alpha = highlightAlpha))
+            .clickable(
+                interactionSource = interactionSource,
+                indication = null,
+                role = Role.Button,
+            ) {
+                runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                motionJob?.cancel()
+                motionJob = scope.launch {
                     motion.snapTo(0f)
-                    motion.animateTo(1f, tween(520))
+                    motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
                     motion.snapTo(0f)
+                }
+                highlightJob?.cancel()
+                highlightJob = scope.launch {
+                    tapHighlight.snapTo(0.9f)
+                    tapHighlight.animateTo(0f, tween(340, easing = FastOutSlowInEasing))
                 }
                 onClick()
             }
             .padding(horizontal = 4.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (danger || pastel == null) {
+        if (danger) {
             val tileFill = Color(palette.danger.fill)
             val tint = Color(palette.danger.ink)
             Box(
@@ -574,12 +601,22 @@ private fun PreferenceRow(
             ) {
                 SiteIconMotion(icon, null, Modifier.size(19.dp), tint = tint) { iconPhase }
             }
-        } else {
+        } else if (pastel != null) {
             PastelIconBadge(
                 pastel = pastel,
                 icon = icon,
                 size = 38.dp,
                 iconSize = 19.dp,
+                progress = iconPhase,
+            )
+        } else {
+            NeutralIconBadge(
+                icon = icon,
+                size = 38.dp,
+                cornerRadius = 12.dp,
+                iconSize = 19.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = BrandInk,
                 progress = iconPhase,
             )
         }
@@ -604,21 +641,47 @@ private fun PreferenceRow(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        if (!statusPill.isNullOrBlank() && statusPastel != null) {
+        if (!trailingText.isNullOrBlank()) {
             Spacer(Modifier.width(8.dp))
-            PastelPill(
-                text = statusPill,
-                color = statusPastel.sourceColor,
-            )
+            if (trailingPill) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(ObsidianSurfaceContainer)
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
+                ) {
+                    Text(
+                        text = trailingText,
+                        color = BrandInk,
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                Text(
+                    text = trailingText,
+                    color = TextSecondary,
+                    fontSize = 11.5.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (showChevron) {
             Spacer(Modifier.width(6.dp))
-            SiteIcon(
+            SiteIconMotion(
                 name = "chevron-right",
-                contentDescription = null,
+                description = null,
                 modifier = Modifier.size(16.dp),
                 tint = if (danger) Color(palette.danger.ink).copy(alpha = 0.72f) else TextSecondary,
-            )
+            ) {
+                iconPhase
+            }
         }
     }
 }
@@ -670,8 +733,7 @@ private fun PreferenceDeleteDialog(
     onDelete: () -> Unit,
 ) {
     var acknowledged by remember { mutableStateOf(false) }
-    val progress = remember { Animatable(0f) }
-    val scope = rememberCoroutineScope()
+    val trashMotion = remember { Animatable(0f) }
     val haptic = LocalHapticFeedback.current
     val palette = currentTurniPalette
     val canContinue = step == 1 || acknowledged
@@ -680,197 +742,192 @@ private fun PreferenceDeleteDialog(
     val actionFill by animateColorAsState(targetActionFill, tween(180), label = "deleteActionFill")
     val actionInk by animateColorAsState(targetActionInk, tween(180), label = "deleteActionInk")
 
-    LaunchedEffect(Unit) { progress.animateTo(1f, spring(dampingRatio = .88f, stiffness = 170f)) }
-    fun dismiss() {
-        scope.launch {
-            progress.animateTo(0f, tween(260))
-            onClose()
-        }
+    LaunchedEffect(step) {
+        if (step == 1) acknowledged = false
+        trashMotion.snapTo(0f)
+        trashMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+        trashMotion.snapTo(0f)
     }
 
-    Dialog(onDismissRequest = { dismiss() }, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Box(Modifier.fillMaxSize().padding(horizontal = 16.dp), contentAlignment = Alignment.BottomCenter) {
-            Surface(
-                shape = RoundedCornerShape(26.dp),
-                color = ObsidianSurface,
-                shadowElevation = 18.dp,
+    TurniSafeBottomDialog(
+        onClose = onClose,
+        scrollContent = true,
+    ) { finish ->
+        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+            Box(
                 modifier = Modifier
-                    .padding(bottom = 112.dp)
-                    .fillMaxWidth()
-                    .graphicsLayer {
-                        alpha = progress.value
-                        translationY = (1 - progress.value) * 130
-                        scaleX = .96f + .04f * progress.value
-                        scaleY = scaleX
-                    },
+                    .size(46.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(Color(palette.danger.fill)),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(Modifier.verticalScroll(rememberScrollState()).padding(22.dp)) {
-                    Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                SiteIconMotion("trash-2", null, Modifier.size(24.dp), tint = Color(palette.danger.ink)) {
+                    trashMotion.value
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            Box(
+                modifier = Modifier
+                    .padding(end = 10.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .padding(horizontal = 9.dp, vertical = 4.dp),
+            ) {
+                Text(
+                    text = "Passaggio $step di 2",
+                    fontSize = 11.sp,
+                    fontWeight = FontWeight.Medium,
+                    color = TextSecondary,
+                )
+            }
+            TonalIconButton(
+                icon = "x",
+                contentDescription = "Chiudi",
+                onClick = { finish(onClose) },
+                size = 36.dp,
+                cornerRadius = 12.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = ColorNegative,
+                iconSize = 18.dp,
+            )
+        }
+        AnimatedContent(
+            targetState = step,
+            transitionSpec = {
+                fadeIn(tween(200)) togetherWith fadeOut(tween(150))
+            },
+            label = "deleteDialogStep",
+        ) { currentStep ->
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text(
+                    text = if (currentStep == 1) "Eliminare tutti i turni?" else "Conferma eliminazione",
+                    fontSize = 22.sp,
+                    lineHeight = 26.sp,
+                    letterSpacing = (-0.5).sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                Text(
+                    text = "Sei sicuro di voler eliminare definitivamente tutti i turni? Questa azione è irreversibile.",
+                    fontSize = 13.sp,
+                    lineHeight = 20.sp,
+                    color = TextPrimary,
+                )
+                Surface(
+                    shape = RoundedCornerShape(16.dp),
+                    color = ObsidianSurfaceContainer,
+                    modifier = Modifier.fillMaxWidth(),
+                ) {
+                    Text(
+                        text = "Tutti i calendari\nI modelli di turno e i lavori restano disponibili.",
+                        modifier = Modifier.padding(14.dp),
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = TextSecondary,
+                    )
+                }
+                if (currentStep == 2) {
+                    val targetAckFill = if (acknowledged) Color(palette.danger.fill) else ObsidianSurfaceContainer
+                    val ackFill by animateColorAsState(targetAckFill, tween(180), label = "ackTileFill")
+                    val boxFill by animateColorAsState(
+                        targetValue = if (acknowledged) Color(palette.destructive) else ObsidianSurfaceHighest,
+                        animationSpec = tween(180),
+                        label = "ackBoxFill",
+                    )
+                    val ackInk = if (acknowledged) {
+                        readableInk(targetAckFill, Color(palette.danger.ink))
+                    } else {
+                        TextPrimary
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(ackFill)
+                            .toggleable(
+                                value = acknowledged,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Checkbox,
+                                onValueChange = { next ->
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {
+                                    }
+                                    acknowledged = next
+                                },
+                            )
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
                         Box(
                             modifier = Modifier
-                                .size(46.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(Color(palette.danger.fill)),
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(boxFill),
                             contentAlignment = Alignment.Center,
                         ) {
-                            SiteIcon("trash-2", null, Modifier.size(24.dp), tint = Color(palette.danger.ink))
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = acknowledged,
+                                enter = fadeIn(tween(150)) + scaleIn(tween(180), initialScale = 0.6f),
+                                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.6f),
+                            ) {
+                                SiteIcon(
+                                    name = "check",
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(palette.onDestructive),
+                                )
+                            }
                         }
-                        Spacer(Modifier.weight(1f))
-                        Box(
-                            modifier = Modifier
-                                .padding(end = 10.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(ObsidianSurfaceContainer)
-                                .padding(horizontal = 9.dp, vertical = 4.dp),
-                        ) {
-                            Text(
-                                text = "Passaggio $step di 2",
-                                fontSize = 11.sp,
-                                fontWeight = FontWeight.Medium,
-                                color = TextSecondary,
-                            )
-                        }
-                        TonalIconButton(
-                            icon = "x",
-                            contentDescription = "Chiudi",
-                            onClick = { dismiss() },
-                            size = 36.dp,
-                            cornerRadius = 12.dp,
-                            fill = ObsidianSurfaceContainer,
-                            tint = ColorNegative,
-                            iconSize = 18.dp,
-                        )
-                    }
-                    Text(
-                        text = if (step == 1) "Eliminare tutti i turni?" else "Conferma eliminazione",
-                        modifier = Modifier.padding(top = 12.dp, bottom = 10.dp),
-                        fontSize = 22.sp,
-                        lineHeight = 26.sp,
-                        letterSpacing = (-0.5).sp,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                    )
-                    Text(
-                        text = "Sei sicuro di voler eliminare definitivamente tutti i turni? Questa azione è irreversibile.",
-                        fontSize = 13.sp,
-                        lineHeight = 20.sp,
-                        color = TextPrimary,
-                    )
-                    Surface(
-                        shape = RoundedCornerShape(16.dp),
-                        color = ObsidianSurfaceContainer,
-                        modifier = Modifier.fillMaxWidth().padding(top = 16.dp),
-                    ) {
                         Text(
-                            text = "Tutti i calendari\nI modelli di turno e i lavori restano disponibili.",
-                            modifier = Modifier.padding(14.dp),
+                            text = "Ho capito che i turni e i relativi dettagli verranno eliminati.",
                             fontSize = 12.sp,
                             lineHeight = 18.sp,
-                            color = TextSecondary,
+                            fontWeight = if (acknowledged) FontWeight.SemiBold else FontWeight.Medium,
+                            color = ackInk,
+                            modifier = Modifier.weight(1f),
                         )
-                    }
-                    if (step == 2) {
-                        val targetAckFill = if (acknowledged) Color(palette.danger.fill) else ObsidianSurfaceContainer
-                        val ackFill by animateColorAsState(targetAckFill, tween(180), label = "ackTileFill")
-                        val boxFill by animateColorAsState(
-                            targetValue = if (acknowledged) Color(palette.destructive) else ObsidianSurfaceHighest,
-                            animationSpec = tween(180),
-                            label = "ackBoxFill",
-                        )
-                        val ackInk = if (acknowledged) {
-                            readableInk(targetAckFill, Color(palette.danger.ink))
-                        } else {
-                            TextPrimary
-                        }
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(top = 16.dp)
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(ackFill)
-                                .toggleable(
-                                    value = acknowledged,
-                                    interactionSource = remember { MutableInteractionSource() },
-                                    indication = null,
-                                    role = Role.Checkbox,
-                                    onValueChange = { next ->
-                                        try {
-                                            haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                        } catch (_: Exception) {
-                                        }
-                                        acknowledged = next
-                                    },
-                                )
-                                .padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Box(
-                                modifier = Modifier
-                                    .size(22.dp)
-                                    .clip(RoundedCornerShape(7.dp))
-                                    .background(boxFill),
-                                contentAlignment = Alignment.Center,
-                            ) {
-                                androidx.compose.animation.AnimatedVisibility(
-                                    visible = acknowledged,
-                                    enter = fadeIn(tween(150)) + scaleIn(tween(180), initialScale = 0.6f),
-                                    exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.6f),
-                                ) {
-                                    SiteIcon(
-                                        name = "check",
-                                        contentDescription = null,
-                                        modifier = Modifier.size(14.dp),
-                                        tint = Color(palette.onDestructive),
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "Ho capito che i turni e i relativi dettagli verranno eliminati.",
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                                fontWeight = if (acknowledged) FontWeight.SemiBold else FontWeight.Medium,
-                                color = ackInk,
-                                modifier = Modifier.weight(1f),
-                            )
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 20.dp)
-                            .height(48.dp)
-                            .clip(RoundedCornerShape(15.dp))
-                            .background(actionFill)
-                            .bouncyClickable(enabled = canContinue) {
-                                if (step == 1) onContinue()
-                                else scope.launch {
-                                    progress.animateTo(0f, tween(260))
-                                    onDelete()
-                                }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text(
-                            text = if (step == 1) "Continua" else "Conferma eliminazione",
-                            fontSize = 13.sp,
-                            fontWeight = FontWeight.SemiBold,
-                            color = actionInk,
-                        )
-                    }
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .padding(top = 8.dp)
-                            .height(46.dp)
-                            .clip(RoundedCornerShape(15.dp))
-                            .background(ObsidianSurfaceContainer)
-                            .bouncyClickable { dismiss() },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Text("Annulla", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
                     }
                 }
+            }
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(top = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(actionFill)
+                    .bouncyClickable(enabled = canContinue) {
+                        if (step == 1) onContinue()
+                        else finish(onDelete)
+                    },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = if (step == 1) "Continua" else "Conferma eliminazione",
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = actionInk,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(46.dp)
+                    .clip(RoundedCornerShape(15.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .bouncyClickable { finish(onClose) },
+                contentAlignment = Alignment.Center,
+            ) {
+                Text("Annulla", fontSize = 13.sp, fontWeight = FontWeight.Medium, color = TextPrimary)
             }
         }
     }
@@ -885,7 +942,6 @@ private fun AppearanceSettingsContent() {
     CloudCard(
         title = "Tema",
         subtitle = "Adatta superfici e contrasto al tuo dispositivo.",
-        accent = ExpressivePastel.SKY,
     ) {
         PreferenceThemeSelector()
         SettingsDivider()
@@ -895,7 +951,6 @@ private fun AppearanceSettingsContent() {
     CloudCard(
         title = "Layout e formato",
         subtitle = "Inizio settimana, formato orario ed ex turni.",
-        accent = ExpressivePastel.MINT,
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
@@ -910,9 +965,8 @@ private fun AppearanceSettingsContent() {
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
                 )
-                PastelPill(
+                AppearanceStatusChip(
                     text = if (prefs.weekStartMonday) "Lun – Dom" else "Dom – Sab",
-                    color = ExpressivePastel.MINT.sourceColor,
                 )
             }
             SlidingSegmentBar(
@@ -954,9 +1008,8 @@ private fun AppearanceSettingsContent() {
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
                 )
-                PastelPill(
+                AppearanceStatusChip(
                     text = if (prefs.timeFormat24h) "14:00" else "2:00 PM",
-                    color = ExpressivePastel.SKY.sourceColor,
                 )
             }
             SlidingSegmentBar(
@@ -1055,9 +1108,8 @@ private fun AppearanceLivePreviewCard() {
                     lineHeight = 16.sp,
                 )
             }
-            PastelPill(
+            AppearanceStatusChip(
                 text = "${if (prefs.weekStartMonday) "Lun–Dom" else "Dom–Sab"} · ${if (prefs.timeFormat24h) "24h" else "12h"}",
-                color = ExpressivePastel.SKY.sourceColor,
             )
         }
 
@@ -1358,19 +1410,31 @@ internal fun PreferenceThemeSelector() {
 }
 
 @Composable
+private fun AppearanceStatusChip(text: String) {
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(ObsidianSurfaceContainer)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+    ) {
+        Text(
+            text = text,
+            color = BrandInk,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
+}
+
+@Composable
 private fun PreferencePaletteSelector() {
     val palette = currentTurniPalette
     val dark = TurniThemeState.dark
     val fontScale = LocalDensity.current.fontScale
-    val ribbonPastels = remember {
-        listOf(
-            ExpressivePastel.AMBER,
-            ExpressivePastel.CORAL,
-            ExpressivePastel.LAVENDER,
-            ExpressivePastel.MINT,
-            ExpressivePastel.SKY,
-        )
-    }
+    val shiftSwatches = remember { listOf(ColorMattina, ColorPomeriggio, ColorNotte) }
 
     Column(Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Surface(
@@ -1383,12 +1447,20 @@ private fun PreferencePaletteSelector() {
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp),
                 ) {
-                    PaletteIdentityLabel(
-                        graphiteColor = Color(palette.calendar),
-                        graphiteOutline = Color(palette.outline).copy(alpha = 0.55f),
-                        cobaltColor = Color(palette.dockSelected),
+                    Text(
+                        text = "Grafite · Cobalto · Pastelli turni",
+                        color = TextPrimary,
+                        fontSize = 12.5.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
                     )
-                    PastelPaletteRibbon(ribbonPastels, Color(palette.dockSelected), dark)
+                    CalmPaletteSwatchSample(
+                        graphiteColor = Color(palette.calendar),
+                        graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
+                        cobaltColor = Color(palette.dockSelected),
+                        shiftColors = shiftSwatches,
+                        dark = dark,
+                    )
                 }
             } else {
                 Row(
@@ -1398,17 +1470,28 @@ private fun PreferencePaletteSelector() {
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    PaletteIdentityLabel(
-                        graphiteColor = Color(palette.calendar),
-                        graphiteOutline = Color(palette.outline).copy(alpha = 0.55f),
-                        cobaltColor = Color(palette.dockSelected),
+                    Text(
+                        text = "Grafite e cobalto",
+                        color = TextPrimary,
+                        fontSize = 12.5.sp,
+                        lineHeight = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        modifier = Modifier.weight(1f).padding(end = 8.dp),
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
-                    PastelPaletteRibbon(ribbonPastels, Color(palette.dockSelected), dark)
+                    CalmPaletteSwatchSample(
+                        graphiteColor = Color(palette.calendar),
+                        graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
+                        cobaltColor = Color(palette.dockSelected),
+                        shiftColors = shiftSwatches,
+                        dark = dark,
+                    )
                 }
             }
         }
         Text(
-            text = "La stessa palette si adatta al tema chiaro o scuro. I colori personalizzati dei tuoi turni restano disponibili.",
+            text = "Superfici Grafite, accento Cobalto e pastelli calibrati per chiaro e scuro. I colori personalizzati dei tuoi turni restano disponibili.",
             color = TextSecondary,
             fontSize = 12.sp,
             lineHeight = 18.sp,
@@ -1417,66 +1500,46 @@ private fun PreferencePaletteSelector() {
 }
 
 @Composable
-private fun PaletteIdentityLabel(
+private fun CalmPaletteSwatchSample(
     graphiteColor: Color,
     graphiteOutline: Color,
     cobaltColor: Color,
-) {
-    Row(
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(7.dp),
-    ) {
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(graphiteColor)
-                .border(1.dp, graphiteOutline, CircleShape),
-        )
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .clip(CircleShape)
-                .background(cobaltColor),
-        )
-        Text(
-            text = "Grafite e cobalto",
-            color = TextPrimary,
-            fontSize = 12.5.sp,
-            lineHeight = 16.sp,
-            fontWeight = FontWeight.SemiBold,
-        )
-    }
-}
-
-@Composable
-private fun PastelPaletteRibbon(
-    pastels: List<ExpressivePastel>,
-    cobaltColor: Color,
+    shiftColors: List<Color>,
     dark: Boolean,
 ) {
     Row(
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        pastels.forEach { pastel ->
-            val style = remember(pastel, dark) { pastel.style(dark = dark, backdrop = ObsidianSurfaceContainer) }
-            val brush = remember(style.codeFill, style.codeInk) {
-                pastelSheenBrush(style.codeFill, style.codeInk)
-            }
-            Box(
-                modifier = Modifier
-                    .size(16.dp)
-                    .clip(RoundedCornerShape(5.dp))
-                    .background(brush),
-            )
-        }
         Box(
             modifier = Modifier
-                .padding(start = 2.dp)
-                .size(16.dp)
-                .clip(CircleShape)
+                .size(width = 18.dp, height = 14.dp)
+                .clip(RoundedCornerShape(5.dp))
+                .background(graphiteColor)
+                .border(1.dp, graphiteOutline, RoundedCornerShape(5.dp)),
+        )
+        Box(
+            modifier = Modifier
+                .size(width = 18.dp, height = 14.dp)
+                .clip(RoundedCornerShape(5.dp))
                 .background(cobaltColor),
         )
+        Row(
+            modifier = Modifier
+                .size(width = 36.dp, height = 14.dp)
+                .clip(RoundedCornerShape(5.dp)),
+        ) {
+            shiftColors.forEach { source ->
+                val tone = remember(source, dark) {
+                    shiftColorStyle(source, dark = dark, backdrop = ObsidianSurfaceContainer)
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxHeight()
+                        .background(tone.codeFill),
+                )
+            }
+        }
     }
 }

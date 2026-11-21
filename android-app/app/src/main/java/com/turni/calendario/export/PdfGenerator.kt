@@ -54,6 +54,8 @@ object PdfGenerator {
                     }
                     if (options.includeBreak && def.breakMinutes > 0) add("Pausa: ${def.breakMinutes} min${def.breakStartTime?.let { " dalle $it" } ?: ""}")
                     if (overtime > 0) add("Straordinario: ${formatMinutes((overtime * 60).roundToInt())}")
+                    val permMinutes = if (shift.permissionHours.isFinite() && shift.permissionHours > 0f) (shift.permissionHours * 60).roundToInt() else 0
+                    if (permMinutes > 0) add("Permesso: −${formatMinutes(permMinutes)}")
                     if (options.includeLocation && (shift.isTrasferta || (legacyPrimary && extra.isTrasferta))) add("Trasferta")
                     if (options.includeNotes && shift.notes.isNotBlank()) add(shift.notes)
                     if (options.includeNotes && shift.tags.isNotEmpty()) add(shift.tags.joinToString(" · "))
@@ -407,9 +409,9 @@ object PdfGenerator {
                             row.shifts.forEach { shift ->
                                 val titleLine=if(compact||shift.name.isBlank())shift.code else shift.name
                                 lines(titleLine,cellW-6f,font,true).forEach{add(it to shift)}
-                                shift.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                                shift.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Permesso:","Perm:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                             }
-                            row.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
+                            row.details.forEach{detail->lines(if(compact)compactCalendarDetail(detail).replace("Durata prevista:","Dur:").replace(" - ","-").replace("Stacco effettivo:","Stacco:").replace("Straordinario:","Extra:").replace("Permesso:","Perm:").replace("Durata:","Dur:").replace("Pausa:","P:").replace("Tutto il giorno","TG").replace("Reperibilità","REP")else detail,cellW-6f,font).forEach{add(it to null)}}
                         }
                         if(content.size*(font+2f)<=cellH-if(compact)16f else 21f){selected=content;break}
                         font-=.5f

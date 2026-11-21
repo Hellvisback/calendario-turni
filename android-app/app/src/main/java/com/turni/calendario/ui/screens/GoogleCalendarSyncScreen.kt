@@ -3,6 +3,7 @@ package com.turni.calendario.ui.screens
 
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
@@ -19,7 +20,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.material3.*
+import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -32,8 +33,6 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.window.Dialog
-import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.CalendarCooldownPolicy
@@ -42,9 +41,13 @@ import com.turni.calendario.sync.GoogleCalendarRemote
 import com.turni.calendario.sync.RemoteCalendarInfo
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
+import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -173,8 +176,36 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     }
 
     val dark = TurniThemeState.dark
-    val sageStyle = remember(dark) { ExpressivePastel.SAGE.style(dark, ObsidianSurface) }
-    val sageAccent = remember(dark) { shiftChartColor(ExpressivePastel.SAGE.sourceColor, dark) }
+    val palette = currentTurniPalette
+    val headerSyncMotion = remember { Animatable(0f) }
+    var wasApiBusy by remember { mutableStateOf(false) }
+    LaunchedEffect(apiBusy) {
+        if (apiBusy) {
+            wasApiBusy = true
+            while (true) {
+                headerSyncMotion.snapTo(0f)
+                headerSyncMotion.animateTo(1f, tween(580, easing = FastOutSlowInEasing))
+                headerSyncMotion.snapTo(0f)
+                delay(420L)
+            }
+        } else if (wasApiBusy) {
+            wasApiBusy = false
+            headerSyncMotion.snapTo(0f)
+        }
+    }
+    val calendarRowMotion = remember { Animatable(0f) }
+    var calendarRowJob by remember { mutableStateOf<Job?>(null) }
+    val periodMotion = remember { Animatable(0f) }
+    var periodFirst by remember { mutableStateOf(true) }
+    LaunchedEffect(range) {
+        if (periodFirst) {
+            periodFirst = false
+        } else {
+            periodMotion.snapTo(0f)
+            periodMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+            periodMotion.snapTo(0f)
+        }
+    }
 
     CloudFeatureScaffold(
         title = "Google Calendar",
@@ -183,11 +214,14 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         feedback = feedback,
         onDismissFeedback = { feedback = null },
         headerAction = {
-            PastelIconBadge(
-                pastel = ExpressivePastel.SAGE,
+            NeutralIconBadge(
                 icon = "calendar-sync",
                 size = 38.dp,
+                cornerRadius = 12.dp,
                 iconSize = 19.dp,
+                fill = if (selectedCalendar != null) ObsidianPrimaryContainer else ObsidianSurface,
+                tint = BrandInk,
+                progress = headerSyncMotion.value,
             )
         },
     ) {
@@ -195,7 +229,6 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         CloudCard(
             title = "Calendario di destinazione",
             subtitle = "Scegli dove sincronizzare i turni di ${work.name}.",
-            accent = ExpressivePastel.SAGE,
         ) {
             val calShape = RoundedCornerShape(16.dp)
             Row(
@@ -203,20 +236,22 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                     .fillMaxWidth()
                     .clip(calShape)
                     .background(ObsidianSurfaceContainer)
-                    .clickable(
-                        interactionSource = remember { MutableInteractionSource() },
-                        indication = null,
-                        enabled = !busy,
-                    ) { chooseCalendar() }
+                    .bouncyClickable(enabled = !busy) {
+                        calendarRowJob = scope.triggerSyncMotion(calendarRowMotion, calendarRowJob)
+                        chooseCalendar()
+                    }
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PastelIconBadge(
-                    pastel = ExpressivePastel.SAGE,
+                NeutralIconBadge(
                     icon = "calendar-sync",
                     size = 40.dp,
+                    cornerRadius = 12.dp,
                     iconSize = 20.dp,
+                    fill = if (selectedCalendar != null) ObsidianPrimaryContainer else ObsidianSurface,
+                    tint = BrandInk,
+                    progress = calendarRowMotion.value,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -241,9 +276,10 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
-                PastelPill(
+                CalendarStatusPill(
                     text = if (selectedCalendar == null) "Scegli" else "Cambia",
-                    color = ExpressivePastel.SAGE.sourceColor,
+                    fill = ObsidianPrimarySubtle,
+                    ink = BrandInk,
                 )
                 SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
             }
@@ -251,22 +287,23 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         CloudCard(
             title = "Periodo",
             subtitle = "${start.format(formatter)} – ${end.format(formatter)}",
-            accent = ExpressivePastel.SAGE,
         ) {
-            CalendarOptionTabs(
-                options = listOf(
+            SlidingSegmentBar(
+                items = listOf(
                     "Mese" to "calendar",
                     "3 mesi" to "layers",
                     "Anno" to "clock",
                 ),
-                selected = range,
-                enabled = !busy,
+                selectedIndex = range,
                 onSelect = { range = it },
+                enabled = !busy,
             )
-            PastelPill(
+            CalendarStatusPill(
                 text = "$shiftCount ${if (shiftCount == 1) "turno" else "turni"} · ${work.name}",
-                color = ExpressivePastel.SAGE.sourceColor,
+                fill = ObsidianSurfaceContainer,
+                ink = BrandInk,
                 icon = "calendar",
+                progress = periodMotion.value,
             )
         }
         CloudCard("Opzioni degli eventi") {
@@ -302,8 +339,8 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SettingsDivider()
                     Text("Anticipo avviso", fontSize = 12.sp, color = TextSecondary)
-                    val activeBg = remember(sageStyle, dark) {
-                        lerp(ObsidianSurfaceContainer, sageStyle.codeFill, if (dark) 0.26f else 0.44f)
+                    val activeBg = remember(dark) {
+                        lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.22f else 0.12f)
                     }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
@@ -313,11 +350,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                             val selected = reminderMinutes == minutes
                             val pillShape = RoundedCornerShape(14.dp)
                             val targetBg = if (selected) activeBg else ObsidianSurfaceContainer
-                            val targetInk = if (selected) {
-                                readableInk(activeBg, if (dark) sageStyle.codeFill else sageStyle.codeInk)
-                            } else {
-                                TextSecondary
-                            }
+                            val targetInk = if (selected) BrandInk else TextSecondary
                             val bg by animateColorAsState(
                                 targetValue = targetBg,
                                 animationSpec = tween(180),
@@ -329,7 +362,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                                 label = "reminderPillInk",
                             )
                             val ring by animateColorAsState(
-                                targetValue = if (selected) sageAccent else Color.Transparent,
+                                targetValue = if (selected) ObsidianPrimary else Color.Transparent,
                                 animationSpec = tween(180),
                                 label = "reminderPillRing",
                             )
@@ -391,7 +424,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                             .fillMaxWidth(animatedProgress)
                             .fillMaxHeight()
                             .clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(sageAccent, ObsidianPrimary))),
+                            .background(Brush.horizontalGradient(listOf(BrandInk, ObsidianPrimary))),
                     )
                 }
                 Text(
@@ -422,180 +455,275 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         }
     }
     if (picker) {
-        val palette = currentTurniPalette
-        Dialog(
-            onDismissRequest = { picker = false },
-            properties = DialogProperties(usePlatformDefaultWidth = false),
-        ) {
-            Box(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(horizontal = 16.dp, vertical = 20.dp)
-                    .navigationBarsPadding(),
-                contentAlignment = Alignment.Center,
+        TurniSafeBottomDialog(onClose = { picker = false }, scrollContent = false) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Surface(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .widthIn(max = 420.dp),
-                    shape = RoundedCornerShape(26.dp),
-                    color = ObsidianSurface,
-                    tonalElevation = 0.dp,
-                ) {
-                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(12.dp),
-                        ) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                Text("Scegli calendario", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
-                                Text(calendarOwner.orEmpty(), fontSize = 12.sp, lineHeight = 16.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                            }
-                            TonalIconButton(
-                                icon = "x",
-                                contentDescription = "Chiudi",
-                                onClick = { picker = false },
-                                size = 36.dp,
-                                cornerRadius = 12.dp,
-                                fill = Color(palette.danger.fill),
-                                tint = Color(palette.danger.ink),
-                            )
-                        }
-                        val pickerSelectedBg = remember(sageStyle, dark) {
-                            lerp(ObsidianSurfaceContainer, sageStyle.codeFill, if (dark) 0.20f else 0.34f)
-                        }
-                        Column(
-                            modifier = Modifier.heightIn(max = 330.dp).verticalScroll(rememberScrollState()),
-                            verticalArrangement = Arrangement.spacedBy(8.dp),
-                        ) {
-                            calendars.forEach { calendar ->
-                                val selected = selectedCalendar?.id == calendar.id
-                                val itemShape = RoundedCornerShape(15.dp)
-                                val rowBg by animateColorAsState(
-                                    targetValue = if (selected) pickerSelectedBg else ObsidianSurfaceContainer,
-                                    animationSpec = tween(180),
-                                    label = "calendarRowBg",
-                                )
-                                val rowRing by animateColorAsState(
-                                    targetValue = if (selected) sageAccent else Color.Transparent,
-                                    animationSpec = tween(180),
-                                    label = "calendarRowRing",
-                                )
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(itemShape)
-                                        .background(rowBg)
-                                        .then(if (selected) Modifier.border(2.dp, rowRing, itemShape) else Modifier)
-                                        .clickable(
-                                            interactionSource = remember(calendar.id) { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
-                                            selectedCalendar = calendar
-                                            picker = false
-                                        }
-                                        .padding(12.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                                ) {
-                                    PastelIconBadge(
-                                        pastel = ExpressivePastel.SAGE,
-                                        icon = "calendar",
-                                        size = 38.dp,
-                                        iconSize = 18.dp,
-                                    )
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text(calendar.name, color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
-                                        if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, lineHeight = 15.sp, color = TextSecondary)
-                                    }
-                                    if (selected) SiteIcon("check", tint = sageAccent, modifier = Modifier.size(18.dp))
+                NeutralIconBadge(
+                    icon = "calendar-sync",
+                    size = 38.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 18.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Scegli calendario", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                    Text(
+                        text = calendarOwner.orEmpty(),
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = TextSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { picker = false } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            val pickerSelectedBg = remember(dark) {
+                lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.20f else 0.10f)
+            }
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f, fill = false)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                calendars.forEach { calendar ->
+                    val selected = selectedCalendar?.id == calendar.id
+                    val itemShape = RoundedCornerShape(15.dp)
+                    val rowBg by animateColorAsState(
+                        targetValue = if (selected) pickerSelectedBg else ObsidianSurfaceContainer,
+                        animationSpec = tween(180),
+                        label = "calendarRowBg",
+                    )
+                    val rowRing by animateColorAsState(
+                        targetValue = if (selected) ObsidianPrimary else Color.Transparent,
+                        animationSpec = tween(180),
+                        label = "calendarRowRing",
+                    )
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(itemShape)
+                            .background(rowBg)
+                            .then(if (selected) Modifier.border(2.dp, rowRing, itemShape) else Modifier)
+                            .clickable(
+                                interactionSource = remember(calendar.id) { MutableInteractionSource() },
+                                indication = null,
+                            ) {
+                                finish {
+                                    selectedCalendar = calendar
+                                    picker = false
                                 }
                             }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        NeutralIconBadge(
+                            icon = "calendar",
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                            iconSize = 18.dp,
+                            fill = if (selected) ObsidianPrimaryContainer else ObsidianSurface,
+                            tint = BrandInk,
+                        )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            Text(calendar.name, color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
+                            if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, lineHeight = 15.sp, color = TextSecondary)
                         }
-                        CloudButton("Annulla", "x", { picker = false }, secondary = true)
+                        if (selected) SiteIcon("check", tint = BrandInk, modifier = Modifier.size(18.dp))
                     }
                 }
             }
+            CloudButton("Annulla", "x", { finish { picker = false } }, secondary = true)
         }
     }
     if (confirmDelete) {
-        AlertDialog(
-            onDismissRequest = { confirmDelete = false },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Rimuovere gli eventi TurniSync?", color = TextPrimary) },
-            text = {
-                Text(
-                    text = "Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.",
-                    color = TextSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
+        TurniSafeBottomDialog(onClose = { confirmDelete = false }) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "trash",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
                 )
-            },
-            confirmButton = {
-                TextButton(
+                Text(
+                    text = "Rimuovere gli eventi TurniSync?",
+                    modifier = Modifier.weight(1f),
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { confirmDelete = false } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = ObsidianSurfaceContainer,
+                    tint = TextSecondary,
+                )
+            }
+            Text(
+                text = "Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CloudButton(
+                    label = "Annulla",
+                    icon = "x",
+                    onClick = { finish { confirmDelete = false } },
+                    modifier = Modifier.weight(1f),
+                    secondary = true,
+                )
+                CloudButton(
+                    label = "Rimuovi eventi",
+                    icon = "trash",
                     onClick = {
-                        confirmDelete = false
-                        deleteEvents()
+                        finish {
+                            confirmDelete = false
+                            deleteEvents()
+                        }
                     },
                     enabled = canChange,
-                    colors = ButtonDefaults.textButtonColors(contentColor = ColorNegative),
-                ) {
-                    Text("Rimuovi eventi", color = ColorNegative, fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { confirmDelete = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                ) {
-                    Text("Annulla", color = TextSecondary)
-                }
-            },
-        )
+                    destructive = true,
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
     }
     if (confirmEmpty) {
-        AlertDialog(
-            onDismissRequest = { confirmEmpty = false },
-            containerColor = ObsidianSurface,
-            tonalElevation = 0.dp,
-            shape = RoundedCornerShape(26.dp),
-            titleContentColor = TextPrimary,
-            textContentColor = TextSecondary,
-            title = { Text("Nessun turno nel periodo", color = TextPrimary) },
-            text = {
-                Text(
-                    text = "La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?",
-                    color = TextSecondary,
-                    fontSize = 13.sp,
-                    lineHeight = 19.sp,
+        TurniSafeBottomDialog(onClose = { confirmEmpty = false }) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "calendar",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
                 )
-            },
-            confirmButton = {
-                Button(
+                Text(
+                    text = "Nessun turno nel periodo",
+                    modifier = Modifier.weight(1f),
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = TextPrimary,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { confirmEmpty = false } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+            }
+            Text(
+                text = "La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                CloudButton(
+                    label = "Annulla",
+                    icon = "x",
+                    onClick = { finish { confirmEmpty = false } },
+                    modifier = Modifier.weight(1f),
+                    secondary = true,
+                )
+                CloudButton(
+                    label = "Aggiorna calendario",
+                    icon = "upload",
                     onClick = {
-                        confirmEmpty = false
-                        synchronize()
+                        finish {
+                            confirmEmpty = false
+                            synchronize()
+                        }
                     },
                     enabled = canChange,
-                    shape = RoundedCornerShape(14.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
-                ) {
-                    Text("Aggiorna calendario", fontWeight = FontWeight.SemiBold)
-                }
-            },
-            dismissButton = {
-                TextButton(
-                    onClick = { confirmEmpty = false },
-                    colors = ButtonDefaults.textButtonColors(contentColor = TextSecondary),
-                ) {
-                    Text("Annulla", color = TextSecondary)
-                }
-            },
+                    modifier = Modifier.weight(1f),
+                )
+            }
+        }
+    }
+}
+
+private fun CoroutineScope.triggerSyncMotion(
+    motion: Animatable<Float, *>,
+    previous: Job?,
+    durationMillis: Int = 520,
+): Job {
+    previous?.cancel()
+    return launch {
+        motion.snapTo(0f)
+        motion.animateTo(1f, tween(durationMillis = durationMillis, easing = FastOutSlowInEasing))
+        motion.snapTo(0f)
+    }
+}
+
+@Composable
+private fun CalendarStatusPill(
+    text: String,
+    fill: Color,
+    ink: Color,
+    icon: String? = null,
+    progress: Float = 0f,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (icon != null) {
+            SiteIconMotion(
+                name = icon,
+                description = null,
+                modifier = Modifier.size(12.dp),
+                tint = ink,
+            ) { progress }
+        }
+        Text(
+            text = text,
+            color = ink,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -619,75 +747,5 @@ private fun CalendarOptionSwitch(title: String, subtitle: String, value: Boolean
             Text(subtitle, fontSize = 12.sp, lineHeight = 17.sp, color = TextSecondary)
         }
         TurniSwitch(checked = value, onCheckedChange = onChange, enabled = enabled)
-    }
-}
-
-@Composable
-private fun CalendarOptionTabs(
-    options: List<Pair<String, String?>>,
-    selected: Int,
-    enabled: Boolean,
-    onSelect: (Int) -> Unit,
-) {
-    if (options.size <= 4) {
-        SlidingSegmentBar(
-            items = options,
-            selectedIndex = selected,
-            onSelect = onSelect,
-            enabled = enabled,
-        )
-    } else {
-        val trackShape = RoundedCornerShape(16.dp)
-        val pillShape = RoundedCornerShape(12.dp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(trackShape)
-                .background(ObsidianSurfaceContainer)
-                .padding(4.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            options.forEachIndexed { index, (label, iconKey) ->
-                val isSelected = selected == index
-                val bgColor by animateColorAsState(
-                    targetValue = if (isSelected) ObsidianPrimary else ObsidianSurfaceContainer,
-                    animationSpec = tween(180),
-                    label = "calendarOptionBg",
-                )
-                val inkColor by animateColorAsState(
-                    targetValue = (if (isSelected) OnBrand else TextSecondary).copy(alpha = if (enabled) 1f else 0.5f),
-                    animationSpec = tween(180),
-                    label = "calendarOptionInk",
-                )
-                Row(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 38.dp)
-                        .clip(pillShape)
-                        .background(bgColor)
-                        .clickable(
-                            interactionSource = remember(index) { MutableInteractionSource() },
-                            indication = null,
-                            enabled = enabled,
-                        ) { onSelect(index) }
-                        .padding(horizontal = 6.dp, vertical = 8.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.Center,
-                ) {
-                    if (iconKey != null) {
-                        SiteIcon(iconKey, null, Modifier.size(14.dp), inkColor)
-                        Spacer(Modifier.width(4.dp))
-                    }
-                    Text(
-                        text = label,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = inkColor,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
     }
 }

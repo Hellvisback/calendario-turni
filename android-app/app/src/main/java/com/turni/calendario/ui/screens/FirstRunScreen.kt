@@ -150,7 +150,8 @@ fun FirstRunScreen() {
                                                 SiteIcon(activeWork.iconKey,null,Modifier.size(20.dp),BrandInk)
                                                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                                                     Text("Dettagli del lavoro (facoltativo)",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
-                                                    Text("${activeWork.weeklyHours} h/sett · riposo ${activeWork.minRestHoursBetweenShifts} h · ${activeWork.ccnlName}",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                                    val maxConsecutiveSummary=if(activeWork.maxConsecutiveWorkDays>0)" · max ${activeWork.maxConsecutiveWorkDays} di fila" else ""
+                                                    Text("${activeWork.weeklyHours} h/sett · riposo ${activeWork.minRestHoursBetweenShifts} h$maxConsecutiveSummary",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
                                                 }
                                                 SiteIcon("chevron-right",null,Modifier.size(16.dp),TextSecondary)
                                             }

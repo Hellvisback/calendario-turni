@@ -12,6 +12,7 @@ import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
@@ -42,6 +43,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
@@ -55,8 +57,8 @@ import com.turni.calendario.data.*
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
-import com.turni.calendario.ui.components.AppConfirmationDialog
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.*
@@ -88,12 +90,24 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     var discard by remember{mutableStateOf(false)}
     var nameError by remember{mutableStateOf(false)}
     var pastedError by remember{mutableStateOf(false)}
+    val step1Motion = remember { Animatable(0f) }
+    var step1Job by remember { mutableStateOf<Job?>(null) }
+    val docPickMotion = remember { Animatable(0f) }
+    var docPickJob by remember { mutableStateOf<Job?>(null) }
+    val copyMotion = remember { Animatable(0f) }
+    var copyJob by remember { mutableStateOf<Job?>(null) }
+    val pasteMotion = remember { Animatable(0f) }
+    var pasteJob by remember { mutableStateOf<Job?>(null) }
+    val warningsMotion = remember { Animatable(0f) }
+    var warningsJob by remember { mutableStateOf<Job?>(null) }
+    val savedMotion = remember { Animatable(0f) }
     fun confirmName(){
         val normalized=name.trim().replace(Regex("\\s+")," ")
         if(normalized.isNotBlank()){
             name=normalized;confirmedName=normalized;nameError=false
             SecurePreferencesManager.saveUserName(context,normalized)
             focusManager.clearFocus();keyboard?.hide()
+            step1Job = scope.triggerImportMotion(step1Motion, step1Job)
             message=ActionFeedback("Nome confermato · pronto per le istruzioni")
         } else {
             nameError=true
@@ -153,6 +167,14 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
     }
     val current = draft
     val step = if (saved != null) 2 else if (current != null) 1 else 0
+    val palette = currentTurniPalette
+    LaunchedEffect(step) {
+        if (step == 2) {
+            savedMotion.snapTo(0f)
+            savedMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+            savedMotion.snapTo(0f)
+        }
+    }
 
     Box(Modifier.fillMaxSize()) {
         CloudFeatureScaffold(
@@ -193,11 +215,11 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 transitionSpec = {
                     val forward = targetState >= initialState
-                    (fadeIn(tween(240)) + slideInHorizontally(spring(1f, 440f)) {
-                        if (forward) it / 10 else -it / 10
+                    (fadeIn(tween(240)) + slideInHorizontally(spring(dampingRatio = 0.92f, stiffness = 380f)) {
+                        if (forward) it / 8 else -it / 8
                     }) togetherWith
-                        (fadeOut(tween(160)) + slideOutHorizontally(tween(220)) {
-                            if (forward) -it / 12 else it / 12
+                        (fadeOut(tween(160)) + slideOutHorizontally(tween(220, easing = FastOutSlowInEasing)) {
+                            if (forward) -it / 10 else it / 10
                         })
                 },
                 label = "importStepTransition",
@@ -216,11 +238,14 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.SKY,
+                                NeutralIconBadge(
                                     icon = "scan-text",
                                     size = 40.dp,
+                                    cornerRadius = 12.dp,
                                     iconSize = 20.dp,
+                                    fill = if (nameConfirmed) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+                                    tint = BrandInk,
+                                    progress = step1Motion.value,
                                 )
                                 Text(
                                     text = "1 · Il tuo prospetto",
@@ -231,9 +256,10 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     fontWeight = FontWeight.SemiBold,
                                 )
                                 if (nameConfirmed) {
-                                    PastelPill(
+                                    ImportStatusPill(
                                         text = "Pronto",
-                                        color = ExpressivePastel.MINT.sourceColor,
+                                        fill = Color(palette.success.fill),
+                                        ink = Color(palette.success.ink),
                                         icon = "check",
                                     )
                                 }
@@ -271,17 +297,21 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     .clip(docPickerShape)
                                     .background(ObsidianSurfaceContainer)
                                     .bouncyClickable(enabled = !busy) {
+                                        docPickJob = scope.triggerImportMotion(docPickMotion, docPickJob)
                                         picker.launch(arrayOf("application/pdf", "image/*"))
                                     }
                                     .padding(12.dp),
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.SKY,
+                                NeutralIconBadge(
                                     icon = if (document == null) "upload" else "file-text",
                                     size = 38.dp,
+                                    cornerRadius = 12.dp,
                                     iconSize = 18.dp,
+                                    fill = ObsidianSurface,
+                                    tint = BrandInk,
+                                    progress = docPickMotion.value,
                                 )
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
@@ -304,9 +334,10 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                         color = TextSecondary,
                                     )
                                 }
-                                PastelPill(
+                                ImportStatusPill(
                                     text = if (document == null) "Allega" else "Cambia",
-                                    color = ExpressivePastel.SKY.sourceColor,
+                                    fill = ObsidianPrimarySubtle,
+                                    ink = BrandInk,
                                 )
                             }
                         }
@@ -315,11 +346,12 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.MAUVE,
+                                NeutralIconBadge(
                                     icon = "copy",
                                     size = 40.dp,
+                                    cornerRadius = 12.dp,
                                     iconSize = 20.dp,
+                                    progress = copyMotion.value,
                                 )
                                 Text(
                                     text = "2 · Copia e invia alla tua AI",
@@ -340,6 +372,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 label = "Copia istruzioni",
                                 icon = "copy",
                                 onClick = {
+                                    copyJob = scope.triggerImportMotion(copyMotion, copyJob)
                                     SecurePreferencesManager.saveUserName(context, name.trim())
                                     (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                                         .setPrimaryClip(ClipData.newPlainText("Istruzioni TurniSync", prompt))
@@ -388,11 +421,12 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.MINT,
+                                NeutralIconBadge(
                                     icon = "file-text",
                                     size = 40.dp,
+                                    cornerRadius = 12.dp,
                                     iconSize = 20.dp,
+                                    progress = pasteMotion.value,
                                 )
                                 Text(
                                     text = "3 · Riporta il risultato",
@@ -426,6 +460,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                         .clip(pasteShape)
                                         .background(ObsidianSurfaceContainer)
                                         .bouncyClickable(enabled = !busy) {
+                                            pasteJob = scope.triggerImportMotion(pasteMotion, pasteJob)
                                             val value = (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
                                                 .primaryClip?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
                                             if (value.length > 2_000_000) {
@@ -440,12 +475,12 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
-                                    SiteIcon(
+                                    SiteIconMotion(
                                         name = "copy",
-                                        contentDescription = null,
+                                        description = null,
                                         modifier = Modifier.size(14.dp),
                                         tint = TextPrimary.copy(alpha = if (!busy) 1f else 0.45f),
-                                    )
+                                    ) { pasteMotion.value }
                                     Text(
                                         text = "Incolla",
                                         color = TextPrimary.copy(alpha = if (!busy) 1f else 0.45f),
@@ -470,7 +505,10 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                             CloudButton(
                                 label = "Controlla risultato",
                                 icon = "check",
-                                onClick = { parsePasted() },
+                                onClick = {
+                                    pasteJob = scope.triggerImportMotion(pasteMotion, pasteJob)
+                                    parsePasted()
+                                },
                                 enabled = !busy && pasted.isNotBlank() && name.isNotBlank(),
                             )
                         }
@@ -480,11 +518,13 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                PastelIconBadge(
-                                    pastel = ExpressivePastel.MINT,
+                                NeutralIconBadge(
                                     icon = "check",
                                     size = 40.dp,
+                                    cornerRadius = 12.dp,
                                     iconSize = 20.dp,
+                                    fill = ObsidianPrimaryContainer,
+                                    tint = BrandInk,
                                 )
                                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                     Text(
@@ -502,9 +542,10 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     )
                                 }
                                 if (current.period.isNotBlank()) {
-                                    PastelPill(
+                                    ImportStatusPill(
                                         text = current.period,
-                                        color = ExpressivePastel.SKY.sourceColor,
+                                        fill = ObsidianSurfaceContainer,
+                                        ink = BrandInk,
                                     )
                                 }
                             }
@@ -527,16 +568,22 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                         .fillMaxWidth()
                                         .clip(warningShape)
                                         .background(ObsidianSurfaceContainer)
-                                        .bouncyClickable { showSource = !showSource }
+                                        .bouncyClickable {
+                                            showSource = !showSource
+                                            warningsJob = scope.triggerImportMotion(warningsMotion, warningsJob)
+                                        }
                                         .padding(horizontal = 12.dp, vertical = 10.dp),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    PastelIconBadge(
-                                        pastel = ExpressivePastel.AMBER,
+                                    NeutralIconBadge(
                                         icon = "message",
                                         size = 32.dp,
+                                        cornerRadius = 10.dp,
                                         iconSize = 16.dp,
+                                        fill = Color(palette.warning.fill),
+                                        tint = Color(palette.warning.ink),
+                                        progress = warningsMotion.value,
                                     )
                                     Text(
                                         text = if (showSource) "Nascondi ${current.warnings.size} osservazioni" else "Leggi ${current.warnings.size} osservazioni",
@@ -568,8 +615,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 }
                             }
                         }
-                        CloudCard("Modelli dei turni", accent = ExpressivePastel.MINT) {
-                            val palette = currentTurniPalette
+                        CloudCard("Modelli dei turni") {
                             current.shifts.forEachIndexed { index, row ->
                                 if (index > 0) SettingsDivider()
                                 Row(
@@ -595,9 +641,10 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                     Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                                         Text(row.definition.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 19.sp, color = TextPrimary)
                                         if (row.needsReview) {
-                                            PastelPill(
+                                            ImportStatusPill(
                                                 text = "Da completare: apri e verifica",
-                                                color = ExpressivePastel.AMBER.sourceColor,
+                                                fill = Color(palette.warning.fill),
+                                                ink = Color(palette.warning.ink),
                                             )
                                         } else {
                                             Text(
@@ -647,7 +694,7 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                                 secondary = true,
                             )
                         }
-                        CloudCard("La tua rotazione", accent = ExpressivePastel.LAVENDER) {
+                        CloudCard("La tua rotazione") {
                             Text(
                                 text = "Scegli una sequenza. Se il nome non è stato trovato con certezza, nessuna viene selezionata automaticamente.",
                                 fontSize = 12.sp,
@@ -884,12 +931,15 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
                             )
                         }
                     } else if (targetStep == 2) {
-                        CloudCard("Salvataggio completato", accent = ExpressivePastel.MINT) {
-                            PastelIconBadge(
-                                pastel = ExpressivePastel.MINT,
+                        CloudCard("Salvataggio completato") {
+                            NeutralIconBadge(
                                 icon = "check",
                                 size = 46.dp,
+                                cornerRadius = 14.dp,
                                 iconSize = 24.dp,
+                                fill = Color(palette.success.fill),
+                                tint = Color(palette.success.ink),
+                                progress = savedMotion.value,
                             )
                             Text(
                                 text = "${saved?.shifts ?: 0} nuovi modelli · ${saved?.cycles ?: 0} rotazioni salvate",
@@ -978,17 +1028,112 @@ fun GeminiShiftImportScreen(onDismiss:()->Unit,onNavigateToTurni:((ShiftRotation
         }
     }
     if (discard) {
-        AppConfirmationDialog(
-            title = "Scartare la revisione?",
-            message = "Le modifiche sono ancora in bozza. Se torni al documento, perderai questa revisione. I turni già salvati nel catalogo restano invariati.",
-            confirmLabel = "Scarta e torna al documento",
-            dismissLabel = "Continua revisione",
-            onDismiss = { discard = false },
-            onConfirm = {
-                discard = false
-                draft = null
-                confirmed = false
-            },
+        TurniSafeBottomDialog(onClose = { discard = false }) { finish ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "alert-triangle",
+                    size = 40.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 19.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = Color(palette.danger.ink),
+                )
+                Text(
+                    text = "Scartare la revisione?",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 18.sp,
+                    lineHeight = 23.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Continua revisione",
+                    onClick = { finish { discard = false } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = ObsidianSurfaceContainer,
+                    tint = TextSecondary,
+                )
+            }
+            Text(
+                text = "Le modifiche sono ancora in bozza. Se torni al documento, perderai questa revisione. I turni già salvati nel catalogo restano invariati.",
+                color = TextSecondary,
+                fontSize = 13.sp,
+                lineHeight = 19.sp,
+            )
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                CloudButton(
+                    label = "Continua revisione",
+                    icon = "check",
+                    onClick = { finish { discard = false } },
+                )
+                CloudButton(
+                    label = "Scarta e torna al documento",
+                    icon = "trash",
+                    onClick = {
+                        finish {
+                            discard = false
+                            draft = null
+                            confirmed = false
+                        }
+                    },
+                    destructive = true,
+                )
+            }
+        }
+    }
+}
+
+private fun CoroutineScope.triggerImportMotion(
+    motion: Animatable<Float, *>,
+    previous: Job?,
+    durationMillis: Int = 520,
+): Job {
+    previous?.cancel()
+    return launch {
+        motion.snapTo(0f)
+        motion.animateTo(1f, tween(durationMillis = durationMillis, easing = FastOutSlowInEasing))
+        motion.snapTo(0f)
+    }
+}
+
+@Composable
+private fun ImportStatusPill(
+    text: String,
+    fill: Color,
+    ink: Color,
+    icon: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (icon != null) {
+            SiteIcon(
+                name = icon,
+                contentDescription = null,
+                modifier = Modifier.size(12.dp),
+                tint = ink,
+            )
+        }
+        Text(
+            text = text,
+            color = ink,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
@@ -1010,7 +1155,6 @@ private fun ImportStepperStrip(
             ImportStepChip(
                 number = "1",
                 label = "Prospetto",
-                pastel = ExpressivePastel.SKY,
                 active = step == 0 && !prospettoReady,
                 done = step > 0 || prospettoReady,
                 modifier = Modifier.weight(1f),
@@ -1018,7 +1162,6 @@ private fun ImportStepperStrip(
             ImportStepChip(
                 number = "2",
                 label = "Prompt AI",
-                pastel = ExpressivePastel.MAUVE,
                 active = step == 0 && prospettoReady,
                 done = step > 0,
                 modifier = Modifier.weight(1f),
@@ -1026,7 +1169,6 @@ private fun ImportStepperStrip(
             ImportStepChip(
                 number = "3",
                 label = "Revisione",
-                pastel = ExpressivePastel.MINT,
                 active = step == 1,
                 done = step == 2,
                 modifier = Modifier.weight(1f),
@@ -1039,24 +1181,18 @@ private fun ImportStepperStrip(
 private fun ImportStepChip(
     number: String,
     label: String,
-    pastel: ExpressivePastel,
     active: Boolean,
     done: Boolean,
     modifier: Modifier = Modifier,
 ) {
-    val dark = TurniThemeState.dark
-    val tone = remember(pastel, dark) { pastel.style(dark, ObsidianSurface) }
-    val doneFill = remember(tone, dark) {
-        lerp(ObsidianSurfaceContainer, tone.codeFill, if (dark) 0.24f else 0.40f)
-    }
     val targetFill = when {
-        active -> tone.codeFill
-        done -> doneFill
+        active -> ObsidianPrimary
+        done -> ObsidianPrimarySubtle
         else -> ObsidianSurfaceContainer
     }
     val targetInk = when {
-        active -> tone.codeInk
-        done -> readableInk(doneFill, if (dark) tone.codeFill else tone.codeInk)
+        active -> OnBrand
+        done -> BrandInk
         else -> TextSecondary
     }
     val fill by animateColorAsState(
@@ -1071,8 +1207,8 @@ private fun ImportStepChip(
     )
     val badgeBg by animateColorAsState(
         targetValue = when {
-            active -> tone.codeInk.copy(alpha = 0.16f)
-            done -> tone.codeFill
+            active -> OnBrand.copy(alpha = 0.2f)
+            done -> ObsidianPrimary
             else -> ObsidianSurface
         },
         animationSpec = tween(220),
@@ -1080,26 +1216,28 @@ private fun ImportStepChip(
     )
     val badgeInk by animateColorAsState(
         targetValue = when {
-            active -> tone.codeInk
-            done -> tone.codeInk
+            active -> OnBrand
+            done -> OnBrand
             else -> TextSecondary
         },
         animationSpec = tween(220),
         label = "importStepBadgeInk",
     )
-    val sheenBrush = remember(tone) { pastelSheenBrush(tone.codeFill, tone.codeInk) }
-    val sheenAlpha by animateFloatAsState(
-        targetValue = if (active) 1f else 0f,
-        animationSpec = tween(220),
-        label = "importStepSheenAlpha",
+    val chipScale by animateFloatAsState(
+        targetValue = if (active) 1f else 0.985f,
+        animationSpec = spring(dampingRatio = 0.78f, stiffness = 420f),
+        label = "importStepScale",
     )
 
     Row(
         modifier = modifier
+            .graphicsLayer {
+                scaleX = chipScale
+                scaleY = chipScale
+            }
             .heightIn(min = 36.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(fill)
-            .then(if (sheenAlpha > 0f) Modifier.background(sheenBrush, alpha = sheenAlpha) else Modifier)
             .padding(horizontal = 7.dp, vertical = 6.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.Center,

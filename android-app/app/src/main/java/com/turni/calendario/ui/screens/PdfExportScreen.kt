@@ -4,13 +4,13 @@ package com.turni.calendario.ui.screens
 import android.graphics.Bitmap
 import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
+import android.view.ViewGroup
+import android.view.WindowManager
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
-import androidx.compose.animation.core.Spring
-import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -40,9 +40,10 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -50,6 +51,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
+import androidx.core.view.WindowCompat
 import com.turni.calendario.export.PdfExportPlan
 import com.turni.calendario.export.PdfGenerator
 import com.turni.calendario.export.PdfPresentation
@@ -58,9 +61,11 @@ import com.turni.calendario.model.PdfExportOptions
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
+import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -156,6 +161,21 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             }
         }
     }
+    val palette = currentTurniPalette
+    val formatIconMotion = remember { Animatable(0f) }
+    var formatFirst by remember { mutableStateOf(true) }
+    LaunchedEffect(options.mode) {
+        if (formatFirst) {
+            formatFirst = false
+        } else {
+            formatIconMotion.snapTo(0f)
+            formatIconMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+            formatIconMotion.snapTo(0f)
+        }
+    }
+    val previewIconMotion = remember { Animatable(0f) }
+    val previewScope = rememberCoroutineScope()
+    var previewIconJob by remember { mutableStateOf<Job?>(null) }
 
     CloudFeatureScaffold(
         title = "Esporta e stampa PDF",
@@ -181,11 +201,12 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                PastelIconBadge(
-                    pastel = ExpressivePastel.CORAL,
+                NeutralIconBadge(
                     icon = "file-text",
                     size = 42.dp,
+                    cornerRadius = 13.dp,
                     iconSize = 20.dp,
+                    progress = formatIconMotion.value,
                 )
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
@@ -233,7 +254,6 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             title = "Anteprima",
             subtitle = preview?.orientationSubtitle?.takeUnless { previewLoading || previewError != null }
                 ?: "Lo stesso foglio che verrà condiviso",
-            accent = ExpressivePastel.CORAL,
         ) {
             val stageShape = RoundedCornerShape(18.dp)
             when {
@@ -269,7 +289,14 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
-                        PastelIconBadge(ExpressivePastel.CORAL, "alert-triangle", size = 38.dp, iconSize = 18.dp)
+                        NeutralIconBadge(
+                            icon = "alert-triangle",
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                            iconSize = 18.dp,
+                            fill = Color(palette.danger.fill),
+                            tint = Color(palette.danger.ink),
+                        )
                         Text(previewError.orEmpty(), color = TextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
                     }
                 }
@@ -279,7 +306,15 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                         .height(308.dp)
                         .clip(stageShape)
                         .background(ObsidianSurfaceContainer)
-                        .bouncyClickable { zoom = true },
+                        .bouncyClickable {
+                            previewIconJob?.cancel()
+                            previewIconJob = previewScope.launch {
+                                previewIconMotion.snapTo(0f)
+                                previewIconMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+                                previewIconMotion.snapTo(0f)
+                            }
+                            zoom = true
+                        },
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
@@ -290,17 +325,20 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                             .padding(top = 42.dp, bottom = 14.dp, start = 16.dp, end = 16.dp),
                         contentScale = ContentScale.Fit,
                     )
-                    PastelPill(
+                    PdfStatusPill(
                         text = preview!!.pageBadgeLabel,
-                        color = ExpressivePastel.CORAL.sourceColor,
+                        fill = ObsidianPrimaryContainer,
+                        ink = BrandInk,
                         icon = "file-text",
+                        progress = previewIconMotion.value,
                         modifier = Modifier
                             .align(Alignment.TopEnd)
                             .padding(10.dp),
                     )
-                    PastelPill(
+                    PdfStatusPill(
                         text = preview!!.orientationWord,
-                        color = ExpressivePastel.PEARL.sourceColor,
+                        fill = ObsidianSurface.copy(alpha = 0.92f),
+                        ink = TextSecondary,
                         modifier = Modifier
                             .align(Alignment.TopStart)
                             .padding(10.dp),
@@ -326,17 +364,19 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
         }
 
         val filteredModel = options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it) }
-        CloudCard("Periodo e turni", accent = ExpressivePastel.CORAL) {
+        CloudCard("Periodo e turni") {
             PdfAction(
                 title = "${range.first.format(formatter)} – ${range.second.format(formatter)}",
                 subtitle = "Cambia periodo",
                 onClick = { dateDialog = true },
                 badge = { progress ->
-                    PastelIconBadge(
-                        pastel = ExpressivePastel.CORAL,
+                    NeutralIconBadge(
                         icon = "calendar",
                         size = 38.dp,
+                        cornerRadius = 12.dp,
                         iconSize = 18.dp,
+                        fill = ObsidianSurface,
+                        tint = BrandInk,
                         progress = progress,
                     )
                 },
@@ -347,11 +387,13 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 onClick = { filterDialog = true },
                 badge = { progress ->
                     if (filteredModel == null) {
-                        PastelIconBadge(
-                            pastel = ExpressivePastel.PEARL,
+                        NeutralIconBadge(
                             icon = "layers",
                             size = 38.dp,
+                            cornerRadius = 12.dp,
                             iconSize = 18.dp,
+                            fill = ObsidianSurface,
+                            tint = BrandInk,
                             progress = progress,
                         )
                     } else {
@@ -373,7 +415,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             )
         }
 
-        CloudCard("Contenuti", "Anteprima aggiornata automaticamente", accent = ExpressivePastel.PEARL) {
+        CloudCard("Contenuti", "Anteprima aggiornata automaticamente") {
             PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
             SettingsDivider()
             PdfToggle("Orario di inizio e fine", options.includeTime) { update(options.copy(includeTime = it)) }
@@ -446,8 +488,39 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
         }
     }
     if (filterDialog) {
-        PdfGrafiteDialog(title = "Turni da includere", onDismiss = { filterDialog = false }) { close ->
+        val dialogPalette = currentTurniPalette
+        TurniSafeBottomDialog(onClose = { filterDialog = false }, scrollContent = false) { finish ->
             val dark = TurniThemeState.dark
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                NeutralIconBadge(
+                    icon = "layers",
+                    size = 38.dp,
+                    cornerRadius = 12.dp,
+                    iconSize = 18.dp,
+                    fill = ObsidianPrimaryContainer,
+                    tint = BrandInk,
+                )
+                Text(
+                    text = "Turni da includere",
+                    modifier = Modifier.weight(1f),
+                    color = TextPrimary,
+                    fontSize = 19.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish { filterDialog = false } },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(dialogPalette.danger.fill),
+                    tint = Color(dialogPalette.danger.ink),
+                )
+            }
             Text(
                 text = "Scegli un modello oppure includi tutti i turni del lavoro attivo.",
                 color = TextSecondary,
@@ -459,7 +532,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .heightIn(max = 340.dp)
+                    .weight(1f, fill = false)
                     .verticalScroll(rememberScrollState()),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -487,8 +560,10 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                                 interactionSource = remember(id) { MutableInteractionSource() },
                                 indication = null,
                             ) {
-                                update(options.copy(filterShiftId = id))
-                                close()
+                                finish {
+                                    update(options.copy(filterShiftId = id))
+                                    filterDialog = false
+                                }
                             }
                             .padding(12.dp),
                         verticalAlignment = Alignment.CenterVertically,
@@ -496,11 +571,13 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     ) {
                         val model = models.firstOrNull { it.id == id }
                         if (model == null) {
-                            PastelIconBadge(
-                                pastel = ExpressivePastel.PEARL,
+                            NeutralIconBadge(
                                 icon = "layers",
                                 size = 38.dp,
+                                cornerRadius = 11.dp,
                                 iconSize = 18.dp,
+                                fill = ObsidianSurface,
+                                tint = BrandInk,
                             )
                         } else {
                             PastelBadge(
@@ -522,7 +599,50 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     }
                 }
             }
+            CloudButton(
+                label = "Chiudi",
+                icon = "x",
+                onClick = { finish { filterDialog = false } },
+                secondary = true,
+            )
         }
+    }
+}
+
+@Composable
+private fun PdfStatusPill(
+    text: String,
+    fill: Color,
+    ink: Color,
+    icon: String? = null,
+    progress: Float = 0f,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(fill)
+            .padding(horizontal = 9.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(5.dp),
+    ) {
+        if (icon != null) {
+            SiteIconMotion(
+                name = icon,
+                description = null,
+                modifier = Modifier.size(12.dp),
+                tint = ink,
+            ) { progress }
+        }
+        Text(
+            text = text,
+            color = ink,
+            fontSize = 11.sp,
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.SemiBold,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 
@@ -595,69 +715,6 @@ private fun PdfToggle(label: String, checked: Boolean, onChange: (Boolean) -> Un
 }
 
 @Composable
-private fun PdfGrafiteDialog(
-    title: String,
-    onDismiss: () -> Unit,
-    content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
-) {
-    val palette = currentTurniPalette
-    val maxHeight = (LocalConfiguration.current.screenHeightDp - 72).coerceAtLeast(240).dp
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(usePlatformDefaultWidth = false),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 16.dp, vertical = 20.dp)
-                .navigationBarsPadding(),
-            contentAlignment = Alignment.Center,
-        ) {
-            Surface(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .widthIn(max = 420.dp)
-                    .heightIn(max = maxHeight),
-                shape = RoundedCornerShape(26.dp),
-                color = ObsidianSurface,
-                tonalElevation = 0.dp,
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(18.dp),
-                    verticalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    Row(
-                        modifier = Modifier.fillMaxWidth(),
-                        verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    ) {
-                        Text(
-                            text = title,
-                            modifier = Modifier.weight(1f),
-                            color = TextPrimary,
-                            fontSize = 19.sp,
-                            fontWeight = FontWeight.Bold,
-                        )
-                        TonalIconButton(
-                            icon = "x",
-                            contentDescription = "Chiudi",
-                            onClick = onDismiss,
-                            size = 36.dp,
-                            cornerRadius = 12.dp,
-                            fill = Color(palette.danger.fill),
-                            tint = Color(palette.danger.ink),
-                        )
-                    }
-                    content(onDismiss)
-                }
-            }
-        }
-    }
-}
-
-@Composable
 private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save: (PdfExportOptions) -> Unit) {
     var month by remember { mutableStateOf(YearMonth.from(options.startDate)) }
     var year by remember { mutableStateOf(options.selectedYear) }
@@ -667,14 +724,43 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
     var selectingEnd by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
     val dark = TurniThemeState.dark
-    PdfGrafiteDialog(
-        title = when (options.mode) {
-            PdfExportMode.MESE -> "Scegli il mese"
-            PdfExportMode.ANNO -> "Scegli l’anno"
-            else -> "Periodo da esportare"
-        },
-        onDismiss = dismiss,
-    ) { close ->
+    val palette = currentTurniPalette
+    val title = when (options.mode) {
+        PdfExportMode.MESE -> "Scegli il mese"
+        PdfExportMode.ANNO -> "Scegli l’anno"
+        else -> "Periodo da esportare"
+    }
+    TurniSafeBottomDialog(onClose = dismiss, scrollContent = false) { finish ->
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            NeutralIconBadge(
+                icon = "calendar",
+                size = 38.dp,
+                cornerRadius = 12.dp,
+                iconSize = 18.dp,
+                fill = ObsidianPrimaryContainer,
+                tint = BrandInk,
+            )
+            Text(
+                text = title,
+                modifier = Modifier.weight(1f),
+                color = TextPrimary,
+                fontSize = 19.sp,
+                fontWeight = FontWeight.Bold,
+            )
+            TonalIconButton(
+                icon = "x",
+                contentDescription = "Chiudi",
+                onClick = { finish(dismiss) },
+                size = 36.dp,
+                cornerRadius = 12.dp,
+                fill = Color(palette.danger.fill),
+                tint = Color(palette.danger.ink),
+            )
+        }
         Column(
             modifier = Modifier
                 .fillMaxWidth()
@@ -827,7 +913,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
             error?.let { Text(it, color = ColorNegative, fontSize = 12.sp, lineHeight = 17.sp) }
         }
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            CloudButton("Annulla", "x", close, modifier = Modifier.weight(1f), secondary = true)
+            CloudButton("Annulla", "x", { finish(dismiss) }, modifier = Modifier.weight(1f), secondary = true)
             CloudButton(
                 label = "Conferma",
                 icon = "check",
@@ -839,7 +925,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                             else -> options.copy(startDate = from, endDate = to)
                         }
                         PdfExportPlan.dates(changed)
-                        save(changed)
+                        finish { save(changed) }
                     } catch (exception: IllegalArgumentException) {
                         error = exception.message
                     }
@@ -875,77 +961,131 @@ private fun PdfPreviewDialog(
         scale = (scale * zoom).coerceIn(1f, 4f)
         offset = if (scale == 1f) Offset.Zero else offset + pan
     }
-    Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
-        Surface(
+    Dialog(
+        onDismissRequest = onClose,
+        properties = DialogProperties(usePlatformDefaultWidth = false, decorFitsSystemWindows = false),
+    ) {
+        val view = LocalView.current
+        val dark = TurniThemeState.dark
+        val dimAmount = if (dark) 0.56f else 0.36f
+        DisposableEffect(view, dark) {
+            val applyChrome = Runnable {
+                val window = (view as? DialogWindowProvider)?.window
+                    ?: (view.parent as? DialogWindowProvider)?.window
+                window?.let {
+                    it.setLayout(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT)
+                    it.setDimAmount(dimAmount)
+                    @Suppress("DEPRECATION")
+                    it.addFlags(
+                        WindowManager.LayoutParams.FLAG_DRAWS_SYSTEM_BAR_BACKGROUNDS or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_IN_SCREEN or
+                            WindowManager.LayoutParams.FLAG_LAYOUT_INSET_DECOR,
+                    )
+                    @Suppress("DEPRECATION")
+                    it.clearFlags(
+                        WindowManager.LayoutParams.FLAG_TRANSLUCENT_STATUS or
+                            WindowManager.LayoutParams.FLAG_TRANSLUCENT_NAVIGATION,
+                    )
+                    WindowCompat.setDecorFitsSystemWindows(it, false)
+                    @Suppress("DEPRECATION")
+                    it.statusBarColor = Color.Transparent.toArgb()
+                    @Suppress("DEPRECATION")
+                    it.navigationBarColor = Color.Transparent.toArgb()
+                    WindowCompat.getInsetsController(it, it.decorView).apply {
+                        isAppearanceLightStatusBars = !dark
+                        isAppearanceLightNavigationBars = !dark
+                    }
+                }
+            }
+            applyChrome.run()
+            view.post(applyChrome)
+            onDispose { view.removeCallbacks(applyChrome) }
+        }
+
+        val navBottom = WindowInsets.navigationBars.asPaddingValues()
+            .calculateBottomPadding()
+            .coerceAtLeast(24.dp)
+
+        Box(
             modifier = Modifier
-                .fillMaxWidth(0.94f)
-                .fillMaxHeight(0.88f)
-                .navigationBarsPadding(),
-            shape = RoundedCornerShape(26.dp),
-            color = ObsidianSurface,
-            tonalElevation = 0.dp,
+                .fillMaxSize()
+                .statusBarsPadding()
+                .imePadding()
+                .padding(horizontal = 14.dp, vertical = 14.dp)
+                .padding(bottom = navBottom),
+            contentAlignment = Alignment.Center,
         ) {
-            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    PastelPill(
-                        text = preview.pageBadgeLabel,
-                        color = ExpressivePastel.CORAL.sourceColor,
-                        icon = "file-text",
-                    )
-                    Text(
-                        text = preview.orientationWord,
-                        modifier = Modifier.weight(1f),
-                        color = TextSecondary,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 13.sp,
-                    )
-                    TonalIconButton(
-                        icon = "x",
-                        contentDescription = "Chiudi anteprima",
-                        onClick = onClose,
-                        size = 36.dp,
-                        cornerRadius = 12.dp,
-                        fill = Color(palette.danger.fill),
-                        tint = Color(palette.danger.ink),
-                    )
-                }
-                Box(
-                    modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth()
-                        .clip(RoundedCornerShape(18.dp))
-                        .background(ObsidianSurfaceContainer),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        bitmap = preview.bitmap.asImageBitmap(),
-                        contentDescription = "Documento PDF",
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .fillMaxHeight(0.92f),
+                shape = RoundedCornerShape(26.dp),
+                color = ObsidianSurface,
+                tonalElevation = 0.dp,
+            ) {
+                Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        PdfStatusPill(
+                            text = preview.pageBadgeLabel,
+                            fill = ObsidianPrimaryContainer,
+                            ink = BrandInk,
+                            icon = "file-text",
+                        )
+                        Text(
+                            text = preview.orientationWord,
+                            modifier = Modifier.weight(1f),
+                            color = TextSecondary,
+                            fontWeight = FontWeight.Medium,
+                            fontSize = 13.sp,
+                        )
+                        TonalIconButton(
+                            icon = "x",
+                            contentDescription = "Chiudi anteprima",
+                            onClick = onClose,
+                            size = 36.dp,
+                            cornerRadius = 12.dp,
+                            fill = Color(palette.danger.fill),
+                            tint = Color(palette.danger.ink),
+                        )
+                    }
+                    Box(
                         modifier = Modifier
-                            .fillMaxSize()
-                            .padding(12.dp)
-                            .transformable(gestures)
-                            .graphicsLayer {
-                                scaleX = scale
-                                scaleY = scale
-                                translationX = offset.x
-                                translationY = offset.y
-                            },
-                        contentScale = ContentScale.Fit,
-                    )
-                }
-                Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    CloudButton("Chiudi", "x", onClose, modifier = Modifier.weight(1f), secondary = true)
-                    CloudButton(
-                        label = if (busy) "Condivisione…" else "Condividi PDF",
-                        icon = "download",
-                        onClick = onShare,
-                        enabled = !busy,
-                        modifier = Modifier.weight(1f),
-                    )
+                            .weight(1f)
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(18.dp))
+                            .background(ObsidianSurfaceContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            bitmap = preview.bitmap.asImageBitmap(),
+                            contentDescription = "Documento PDF",
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(12.dp)
+                                .transformable(gestures)
+                                .graphicsLayer {
+                                    scaleX = scale
+                                    scaleY = scale
+                                    translationX = offset.x
+                                    translationY = offset.y
+                                },
+                            contentScale = ContentScale.Fit,
+                        )
+                    }
+                    Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
+                    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        CloudButton("Chiudi", "x", onClose, modifier = Modifier.weight(1f), secondary = true)
+                        CloudButton(
+                            label = if (busy) "Condivisione…" else "Condividi PDF",
+                            icon = "download",
+                            onClick = onShare,
+                            enabled = !busy,
+                            modifier = Modifier.weight(1f),
+                        )
+                    }
                 }
             }
         }
