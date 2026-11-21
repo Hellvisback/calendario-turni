@@ -1,39 +1,51 @@
 package com.turni.calendario.ui.screens
 
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.animateContentSize
-import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
 import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.LocalTextStyle
+import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
-import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
-import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -43,10 +55,16 @@ import com.turni.calendario.model.HolidaysCatalog
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
-import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
-import com.turni.calendario.ui.theme.*
-import kotlinx.coroutines.launch
+import com.turni.calendario.ui.theme.BrandInk
+import com.turni.calendario.ui.theme.ObsidianSurface
+import com.turni.calendario.ui.theme.ObsidianSurfaceContainer
+import com.turni.calendario.ui.theme.TextMuted
+import com.turni.calendario.ui.theme.TextPrimary
+import com.turni.calendario.ui.theme.TextSecondary
+import com.turni.calendario.ui.theme.TurniThemeState
+import com.turni.calendario.ui.theme.readableInk
+import com.turni.calendario.ui.theme.shiftChartColor
 import java.time.LocalDate
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle
@@ -71,12 +89,15 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
     val activeCount = HolidaysCatalog.allHolidays.count { it.id in enabledIds }
     val defaultIds = remember { HolidaysCatalog.allHolidays.filter { it.isDefaultEnabled }.map { it.id }.toSet() }
     val canReset = enabledIds != defaultIds
-    val scope = rememberCoroutineScope()
-    val resetMotion = remember { Animatable(0f) }
     val subtitle = if (activeCount == 1) {
         "Calendario $year · 1 ricorrenza attiva"
     } else {
         "Calendario $year · $activeCount ricorrenze attive"
+    }
+
+    fun restoreDefaults() {
+        ShiftRepository.resetHolidaysToDefault()
+        feedback = ActionFeedback("Festività predefinite ripristinate")
     }
 
     CloudFeatureScaffold(
@@ -87,7 +108,6 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
         onDismissFeedback = { feedback = null },
         scrollResetKey = sectionIndex,
         headerAction = {
-            val actionShape = RoundedCornerShape(14.dp)
             val actionBg by animateColorAsState(
                 targetValue = if (canReset) ObsidianSurface else ObsidianSurfaceContainer,
                 animationSpec = tween(180),
@@ -98,51 +118,21 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
                 animationSpec = tween(180),
                 label = "holidayResetTint",
             )
-            Box(
-                modifier = Modifier
-                    .size(40.dp)
-                    .alpha(if (canReset) 1f else 0.5f)
-                    .clip(actionShape)
-                    .background(actionBg)
-                    .border(1.dp, ObsidianBorderSubtle, actionShape)
-                    .semantics {
-                        role = Role.Button
-                        contentDescription = "Ripristina predefinite"
-                    }
-                    .bouncyClickable(enabled = canReset) {
-                        ShiftRepository.resetHolidaysToDefault()
-                        feedback = ActionFeedback("Festività predefinite ripristinate")
-                        scope.launch {
-                            resetMotion.snapTo(0f)
-                            resetMotion.animateTo(1f, tween(520))
-                            resetMotion.snapTo(0f)
-                        }
-                    },
-                contentAlignment = Alignment.Center,
-            ) {
-                SiteIconMotion(
-                    name = "rotation",
-                    description = null,
-                    modifier = Modifier.size(19.dp),
-                    tint = actionTint,
-                ) { resetMotion.value }
-            }
+            TonalIconButton(
+                icon = "rotation",
+                contentDescription = "Ripristina predefinite",
+                onClick = ::restoreDefaults,
+                size = 40.dp,
+                cornerRadius = 14.dp,
+                fill = actionBg,
+                tint = actionTint,
+                iconSize = 19.dp,
+                enabled = canReset,
+                modifier = Modifier.alpha(if (canReset) 1f else 0.5f),
+            )
         },
     ) {
-        val statusBadgeFill by animateColorAsState(
-            targetValue = if (canReset) ObsidianPrimarySubtle else ObsidianSurfaceContainer,
-            animationSpec = tween(200),
-            label = "holidaySummaryBadgeFill",
-        )
-        val statusBadgeInk by animateColorAsState(
-            targetValue = if (canReset) BrandInk else TextSecondary,
-            animationSpec = tween(200),
-            label = "holidaySummaryBadgeInk",
-        )
-        CloudCard(
-            title = "Calendario $year",
-            subtitle = "Scegli le ricorrenze da evidenziare sul calendario.",
-        ) {
+        CloudCard {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -153,50 +143,81 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
                         ),
                     ),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(38.dp)
-                        .clip(RoundedCornerShape(12.dp))
-                        .background(ObsidianPrimaryContainer),
-                    contentAlignment = Alignment.Center,
+                PastelIconBadge(
+                    pastel = ExpressivePastel.CORAL,
+                    icon = "calendar-heart",
+                    size = 46.dp,
+                    iconSize = 22.dp,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    SiteIcon(
-                        name = "calendar",
-                        contentDescription = null,
-                        modifier = Modifier.size(20.dp),
-                        tint = BrandInk,
-                    )
-                }
-                Column(modifier = Modifier.weight(1f)) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = "$activeCount",
+                            style = LocalTextStyle.current.copy(fontFeatureSettings = "tnum"),
+                            fontSize = 28.sp,
+                            lineHeight = 32.sp,
+                            fontWeight = FontWeight.Bold,
+                            letterSpacing = (-0.8).sp,
+                            color = TextPrimary,
+                        )
+                        PastelPill(
+                            text = if (activeCount == 1) "attiva" else "attive",
+                            color = ExpressivePastel.CORAL.sourceColor,
+                            solid = true,
+                        )
+                    }
                     Text(
-                        text = if (activeCount == 1) "1 festività selezionata" else "$activeCount festività selezionate",
-                        style = MaterialTheme.typography.titleSmall,
-                        fontWeight = FontWeight.Bold,
-                        color = TextPrimary,
-                    )
-                    Text(
-                        text = if (canReset) "Selezione personalizzata" else "Impostazione predefinita",
-                        fontSize = 11.sp,
+                        text = if (canReset) "Selezione personalizzata · $year" else "Impostazione predefinita · $year",
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
                         color = TextSecondary,
                     )
                 }
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(10.dp))
-                        .background(statusBadgeFill)
-                        .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(10.dp))
-                        .padding(horizontal = 9.dp, vertical = 5.dp),
+                AnimatedVisibility(
+                    visible = canReset,
+                    enter = fadeIn(tween(180)) + scaleIn(tween(180)),
+                    exit = fadeOut(tween(140)) + scaleOut(tween(140)),
                 ) {
-                    Text(
-                        text = if (canReset) "Modificate" else "Predefinite",
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        color = statusBadgeInk,
-                    )
+                    Row(
+                        modifier = Modifier
+                            .clip(RoundedCornerShape(12.dp))
+                            .background(ObsidianSurfaceContainer)
+                            .bouncyClickable(onClick = ::restoreDefaults)
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        SiteIcon(
+                            name = "rotation",
+                            contentDescription = null,
+                            modifier = Modifier.size(13.dp),
+                            tint = BrandInk,
+                        )
+                        Text(
+                            text = "Ripristina",
+                            fontSize = 11.sp,
+                            lineHeight = 15.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            color = BrandInk,
+                        )
+                    }
                 }
             }
+            SettingsDivider()
+            Text(
+                text = "Scegli le ricorrenze da evidenziare sul calendario e nei conteggi.",
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+                color = TextSecondary,
+            )
         }
 
         SlidingSegmentBar(
@@ -236,11 +257,23 @@ private fun HolidaySection(
 ) {
     val activeInSection = holidays.count { it.id in enabledIds }
     val haptic = LocalHapticFeedback.current
-    val palette = currentTurniPalette
+    val dark = TurniThemeState.dark
+    val themeStyle = TurniThemeState.style
+    val surface = ObsidianSurface
+    val coralStyle = remember(dark, themeStyle, surface) {
+        ExpressivePastel.CORAL.style(dark, surface)
+    }
+    val coralSheen = remember(coralStyle.codeFill, coralStyle.codeInk) {
+        pastelSheenBrush(coralStyle.codeFill, coralStyle.codeInk)
+    }
+    val activeSubtitleInk = remember(dark, themeStyle, surface) {
+        readableInk(surface, shiftChartColor(ExpressivePastel.CORAL.sourceColor, dark))
+    }
 
     CloudCard(
         title = title,
         subtitle = "$activeInSection di ${holidays.size} attive nel $year",
+        accent = ExpressivePastel.CORAL,
         modifier = Modifier.semantics { heading() },
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -251,18 +284,18 @@ private fun HolidaySection(
                     date.dayOfWeek.getDisplayName(TextStyle.FULL, Locale.ITALIAN)
                         .replaceFirstChar { it.titlecase(Locale.ITALIAN) }
                 }
-                val fill by animateColorAsState(
-                    targetValue = if (selected) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+                val tileFill by animateColorAsState(
+                    targetValue = if (selected) coralStyle.codeFill else ObsidianSurfaceContainer,
                     animationSpec = tween(180),
                     label = "holidayDateFill",
                 )
-                val badgeBorder by animateColorAsState(
-                    targetValue = if (selected) ObsidianPrimary.copy(alpha = 0.5f) else ObsidianBorderSubtle,
+                val sheenAlpha by animateFloatAsState(
+                    targetValue = if (selected) 1f else 0f,
                     animationSpec = tween(180),
-                    label = "holidayDateBorder",
+                    label = "holidayDateSheenAlpha",
                 )
                 val ink by animateColorAsState(
-                    targetValue = if (selected) Color(palette.onPrimaryContainer) else TextSecondary,
+                    targetValue = if (selected) coralStyle.codeInk else TextSecondary,
                     animationSpec = tween(180),
                     label = "holidayDateInk",
                 )
@@ -298,24 +331,33 @@ private fun HolidaySection(
                 ) {
                     Box(
                         modifier = Modifier
-                            .widthIn(min = 50.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(fill)
-                            .border(1.dp, badgeBorder, RoundedCornerShape(12.dp))
-                            .clearAndSetSemantics { contentDescription = date.format(fullDate) }
-                            .padding(horizontal = 8.dp, vertical = 6.dp),
+                            .size(46.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(tileFill)
+                            .clearAndSetSemantics { contentDescription = date.format(fullDate) },
                         contentAlignment = Alignment.Center,
                     ) {
+                        if (sheenAlpha > 0.01f) {
+                            Box(
+                                modifier = Modifier
+                                    .matchParentSize()
+                                    .alpha(sheenAlpha)
+                                    .background(coralSheen),
+                            )
+                        }
                         Column(horizontalAlignment = Alignment.CenterHorizontally) {
                             Text(
                                 text = date.dayOfMonth.toString(),
-                                style = MaterialTheme.typography.titleMedium,
+                                fontSize = 16.sp,
+                                lineHeight = 18.sp,
                                 fontWeight = FontWeight.Bold,
                                 color = ink,
                             )
                             Text(
                                 text = date.month.getDisplayName(TextStyle.SHORT, Locale.ITALIAN),
-                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 10.sp,
+                                lineHeight = 12.sp,
+                                fontWeight = FontWeight.SemiBold,
                                 color = ink,
                             )
                         }
@@ -334,13 +376,15 @@ private fun HolidaySection(
                         Text(
                             text = holiday.name,
                             style = MaterialTheme.typography.bodyMedium,
+                            lineHeight = 20.sp,
                             fontWeight = FontWeight.SemiBold,
                             color = titleColor,
                         )
                         Text(
                             text = if (selected) "$weekday · attiva sul calendario" else weekday,
                             fontSize = 11.sp,
-                            color = if (selected) BrandInk else TextSecondary,
+                            lineHeight = 15.sp,
+                            color = if (selected) activeSubtitleInk else TextSecondary,
                         )
                     }
                     TurniSwitch(

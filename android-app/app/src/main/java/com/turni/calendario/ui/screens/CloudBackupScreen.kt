@@ -14,7 +14,6 @@ import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
@@ -29,6 +28,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.repository.*
@@ -184,7 +184,55 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 }
             },
         )
-        CloudCard(if (restoreOnly) "Recupera il tuo calendario" else "Backup su Google Drive") {
+        CloudCard {
+            val last = remoteInfo ?: automatic.lastSuccessAt.takeIf { it > 0L }?.let { formatBackupInstant(it) }
+            val driveHealthy = last != null && !automatic.running && (restoreOnly || !automatic.needsConsent)
+            val statusLabel = when {
+                automatic.running -> "In corso"
+                !restoreOnly && automatic.needsConsent -> "Consenso"
+                last != null -> if (restoreOnly) "Disponibile" else "Protetto"
+                else -> "In attesa"
+            }
+            val statusColor = if (driveHealthy) ExpressivePastel.MINT.sourceColor else ExpressivePastel.AMBER.sourceColor
+            val statusIcon = if (driveHealthy) "check" else "cloud"
+
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PastelIconBadge(
+                    pastel = ExpressivePastel.LAVENDER,
+                    icon = "database-backup",
+                    size = 42.dp,
+                    iconSize = 20.dp,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = if (restoreOnly) "Recupera il tuo calendario" else "Backup su Google Drive",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        lineHeight = 21.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = if (restoreOnly) "Copie salvate su Drive" else "Spazio privato TurniSync su Drive",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                PastelPill(
+                    text = statusLabel,
+                    color = statusColor,
+                    icon = statusIcon,
+                )
+            }
+
             if (restoreOnly) {
                 Text(
                     text = "Scegli una copia e controllane il contenuto. Il collegamento non crea backup e non modifica quelli esistenti.",
@@ -214,8 +262,8 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text("Salvataggio automatico", color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text("Salvataggio automatico", color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
                         Text(
                             text = if (automatic.running) {
                                 "Salvataggio in corso…"
@@ -253,9 +301,21 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 }
                 SettingsDivider()
             }
-            val last = remoteInfo ?: automatic.lastSuccessAt.takeIf { it > 0L }?.let { formatBackupInstant(it) }
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                SiteIcon(if (last == null) "cloud" else "check", null, Modifier.size(16.dp), if (last == null) TextSecondary else BrandInk)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                val statusIconTint = if (driveHealthy) {
+                    shiftChartColor(ExpressivePastel.MINT.sourceColor, TurniThemeState.dark)
+                } else {
+                    TextSecondary
+                }
+                SiteIcon(if (last == null) "cloud" else "check", null, Modifier.size(16.dp), statusIconTint)
                 Text(
                     text = last?.let { "Ultimo backup · $it" } ?: "Nessun salvataggio Drive confermato",
                     color = TextSecondary,
@@ -310,7 +370,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                     },
                     enabled = enabled,
                     modifier = Modifier.weight(1f),
-                    secondary = true,
+                    secondary = !restoreOnly,
                 )
             }
             Text(
@@ -324,7 +384,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 lineHeight = 17.sp,
             )
         }
-        CloudCard("Altre copie") {
+        CloudCard {
             val rotation by animateFloatAsState(
                 targetValue = if (otherCopies) 180f else 0f,
                 animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
@@ -333,16 +393,27 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(12.dp))
+                    .clip(RoundedCornerShape(14.dp))
                     .bouncyClickable { otherCopies = !otherCopies }
-                    .padding(vertical = 4.dp),
+                    .padding(vertical = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                SiteIcon("folder-open", null, Modifier.size(20.dp), BrandInk)
-                Column(Modifier.weight(1f)) {
-                    Text("Dispositivo e file", fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-                    Text("Copia locale, importa ed esporta", fontSize = 11.sp, color = TextSecondary)
+                PastelIconBadge(
+                    pastel = ExpressivePastel.PEARL,
+                    icon = "folder-open",
+                    size = 42.dp,
+                    iconSize = 20.dp,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text("Dispositivo e file", fontSize = 15.sp, lineHeight = 20.sp, color = TextPrimary, fontWeight = FontWeight.SemiBold)
+                    Text("Copia locale, importa ed esporta", fontSize = 12.sp, lineHeight = 16.sp, maxLines = 2, overflow = TextOverflow.Ellipsis, color = TextSecondary)
+                }
+                if (localInfo != null && !otherCopies) {
+                    PastelPill(
+                        text = "Locale",
+                        color = ExpressivePastel.PEARL.sourceColor,
+                    )
                 }
                 SiteIcon("chevron-down", null, Modifier.size(20.dp).rotate(rotation), TextSecondary)
             }
@@ -369,8 +440,8 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(12.dp),
                         ) {
-                            Column(Modifier.weight(1f)) {
-                                Text("Copia locale automatica", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Copia locale automatica", color = TextPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
                                 Text("All’apertura dell’app · resta su questo telefono", color = TextSecondary, fontSize = 11.sp, lineHeight = 16.sp)
                             }
                             TurniSwitch(
@@ -386,6 +457,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                             text = "Prima dell’ultima importazione · ${formatBackupInstant(recovery.lastModified())}",
                             color = TextSecondary,
                             fontSize = 11.sp,
+                            lineHeight = 15.sp,
                         )
                         CloudButton(
                             label = "Ripristina prima dell’importazione",
@@ -402,7 +474,18 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                         SettingsDivider()
                     }
                     localInfo?.let {
-                        Text("Ultima copia locale · $it", color = TextSecondary, fontSize = 11.sp)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(13.dp))
+                                .background(ObsidianSurfaceContainer)
+                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            SiteIcon("database-backup", null, Modifier.size(16.dp), TextSecondary)
+                            Text("Ultima copia locale · $it", color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
+                        }
                     }
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         if (!restoreOnly) {
@@ -460,7 +543,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                         )
                     }
                     SettingsDivider()
-                    Text("Hai i turni nell’altra app?", color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                    Text("Hai i turni nell’altra app?", color = TextPrimary, fontSize = 13.sp, lineHeight = 18.sp, fontWeight = FontWeight.Medium)
                     Text(
                         text = "Nella vecchia app apri Backup e ripristino ed esporta un file JSON. Importalo qui e controlla l’anteprima prima di confermare. Le copie locali restano separate tra le due app; per trasferire il file non serve accedere a Google.",
                         color = TextSecondary,
@@ -501,7 +584,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             onDismissRequest = { review = null },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Backup già presente", color = TextPrimary) },
@@ -511,6 +594,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                         text = "Su Drive c’è una copia del ${formatBackupTime(request.latest.modifiedTime)}. Nessun dato è stato inviato.",
                         color = TextPrimary,
                         fontSize = 14.sp,
+                        lineHeight = 20.sp,
                     )
                     Text(
                         text = "Controlla la copia prima di ripristinarla, oppure scegli esplicitamente di proseguire con i dati di questo dispositivo. Le copie precedenti verranno conservate.",
@@ -537,7 +621,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                             GoogleDriveRemote.download(request.token, request.latest.id)
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
                 ) {
                     Text("Controlla il backup", fontWeight = FontWeight.SemiBold)
@@ -561,7 +645,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Copie su Google Drive", color = TextPrimary) },
@@ -615,7 +699,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             onDismissRequest = { localHistory = emptyList() },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Copie sul dispositivo", color = TextPrimary) },
@@ -656,17 +740,18 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             onDismissRequest = { preview = null },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Ripristinare il backup?", color = TextPrimary) },
             text = {
                 Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(candidate.source, color = TextSecondary, fontSize = 12.sp)
+                    Text(candidate.source, color = TextSecondary, fontSize = 12.sp, lineHeight = 16.sp)
                     Text(
                         text = "${candidate.data.shifts.values.sumOf { it.size }} turni · ${candidate.data.definitions.size} modelli · ${candidate.data.profiles.size} ${if (candidate.data.profiles.size == 1) "lavoro" else "lavori"}",
                         color = TextPrimary,
                         fontSize = 14.sp,
+                        lineHeight = 20.sp,
                     )
                     Text(
                         text = "${candidate.data.rotations.size} rotazioni · note, turni originali e configurazioni incluse",
@@ -702,7 +787,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                             failed(e)
                         }
                     },
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
                 ) {
                     Text("Conferma ripristino", fontWeight = FontWeight.SemiBold)

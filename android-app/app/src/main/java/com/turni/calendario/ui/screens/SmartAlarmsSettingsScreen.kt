@@ -27,30 +27,53 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.text.KeyboardActions
 import androidx.compose.foundation.text.KeyboardOptions
-import androidx.compose.material3.*
-import androidx.compose.runtime.*
+import androidx.compose.material3.Surface
+import androidx.compose.material3.Text
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.SolidColor
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalLifecycleOwner
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
@@ -63,12 +86,26 @@ import com.turni.calendario.alarm.ShiftAlarmScheduler
 import com.turni.calendario.alarm.ShiftAlarmService
 import com.turni.calendario.model.ShiftAlarmRule
 import com.turni.calendario.model.ShiftCategory
+import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
 import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.components.bouncyClickable
-import com.turni.calendario.ui.theme.*
+import com.turni.calendario.ui.theme.BrandInk
+import com.turni.calendario.ui.theme.ColorNegative
+import com.turni.calendario.ui.theme.ObsidianPrimary
+import com.turni.calendario.ui.theme.ObsidianPrimarySubtle
+import com.turni.calendario.ui.theme.ObsidianSurface
+import com.turni.calendario.ui.theme.ObsidianSurfaceContainer
+import com.turni.calendario.ui.theme.ObsidianSurfaceHigh
+import com.turni.calendario.ui.theme.OnBrand
+import com.turni.calendario.ui.theme.TextMuted
+import com.turni.calendario.ui.theme.TextPrimary
+import com.turni.calendario.ui.theme.TextSecondary
+import com.turni.calendario.ui.theme.TurniThemeState
+import com.turni.calendario.ui.theme.currentTurniPalette
+import com.turni.calendario.ui.theme.readableInk
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.time.LocalTime
@@ -184,42 +221,26 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
             onDismiss = onDismiss,
             scrollable = false,
         ) {
-            val bellBadgeFill by animateColorAsState(
-                targetValue = if (config.isGlobalEnabled) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+            val heroBadgeAlpha by animateFloatAsState(
+                targetValue = if (config.isGlobalEnabled) 1f else 0.58f,
                 animationSpec = tween(180),
-                label = "alarmsSummaryBellFill",
-            )
-            val bellTint by animateColorAsState(
-                targetValue = if (config.isGlobalEnabled) BrandInk else TextSecondary,
-                animationSpec = tween(180),
-                label = "alarmsSummaryBellTint",
-            )
-            val summaryBorder by animateColorAsState(
-                targetValue = if (config.isGlobalEnabled) ObsidianBorder else ObsidianBorderSubtle,
-                animationSpec = tween(180),
-                label = "alarmsSummaryBorder",
+                label = "alarmsHeroBadgeAlpha",
             )
 
-            AlarmSettingsCard(borderColor = summaryBorder) {
+            AlarmSettingsCard {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                 ) {
-                    Box(
-                        modifier = Modifier
-                            .size(38.dp)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(bellBadgeFill),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        SiteIcon(
-                            name = "bell",
-                            tint = bellTint,
-                            modifier = Modifier.size(20.dp),
-                            progress = bellMotion.value,
-                        )
-                    }
+                    PastelIconBadge(
+                        pastel = ExpressivePastel.MAUVE,
+                        icon = "alarm-clock",
+                        size = 46.dp,
+                        iconSize = 22.dp,
+                        progress = bellMotion.value,
+                        modifier = Modifier.alpha(heroBadgeAlpha),
+                    )
                     Column(
                         modifier = Modifier
                             .weight(1f)
@@ -233,12 +254,14 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                         Text(
                             text = "Sveglie automatiche",
                             fontWeight = FontWeight.SemiBold,
-                            fontSize = 15.sp,
+                            fontSize = 16.sp,
+                            lineHeight = 21.sp,
                             color = TextPrimary,
                         )
                         Text(
                             text = if (config.isGlobalEnabled) "$activeRules regole attive" else "In pausa · regole conservate",
                             fontSize = 12.sp,
+                            lineHeight = 17.sp,
                             color = TextSecondary,
                         )
                     }
@@ -270,34 +293,24 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                         DateTimeFormatter.ofPattern("EEE d MMM · HH:mm", Locale.ITALIAN),
                     )
                 }
-                val nextAlarmTint = when {
-                    scheduled != null -> BrandInk
-                    config.isGlobalEnabled && (!exact || !notifications) -> Color(palette.warning.ink)
-                    else -> TextSecondary
+                val pillColor = when {
+                    scheduled != null -> ExpressivePastel.MAUVE.sourceColor
+                    config.isGlobalEnabled && (!exact || !notifications) -> ExpressivePastel.CORAL.sourceColor
+                    else -> ExpressivePastel.PEARL.sourceColor
                 }
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    SiteIcon(
-                        name = if (config.isGlobalEnabled && (!exact || !notifications)) "shield-alert" else "alarm-clock",
-                        contentDescription = null,
-                        modifier = Modifier.size(15.dp),
-                        tint = nextAlarmTint,
-                    )
-                    Text(
-                        text = nextAlarmText,
-                        fontWeight = FontWeight.Medium,
-                        fontSize = 12.sp,
-                        color = nextAlarmTint,
-                    )
-                }
+                val pillIcon = if (config.isGlobalEnabled && (!exact || !notifications)) "shield-alert" else "alarm-clock"
+                PastelPill(
+                    text = nextAlarmText,
+                    color = pillColor,
+                    solid = scheduled != null,
+                    icon = pillIcon,
+                )
             }
 
             SlidingSegmentBar(
                 items = listOf(
                     "Regole" to "settings",
-                    "Prossime sveglie" to "alarm-clock",
+                    "Prossime sveglie" to "clock",
                 ),
                 selectedIndex = tab,
                 onSelect = { tab = it },
@@ -325,20 +338,19 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                 ) {
                     if (selectedTab == 0) {
                         item {
+                            val coralStyle = ExpressivePastel.CORAL.style()
+                            val dark = TurniThemeState.dark
+                            val coralSoftFill = lerp(ObsidianSurfaceContainer, coralStyle.codeFill, if (dark) 0.22f else 0.34f)
+                            val coralSoftInk = readableInk(coralSoftFill, coralStyle.codeInk)
                             val toggleAllFill by animateColorAsState(
-                                targetValue = if (activeRules > 0) Color(palette.danger.fill) else ObsidianPrimarySubtle,
+                                targetValue = if (activeRules > 0) coralSoftFill else ObsidianPrimarySubtle,
                                 animationSpec = tween(180),
                                 label = "toggleAllAlarmsFill",
                             )
                             val toggleAllInk by animateColorAsState(
-                                targetValue = if (activeRules > 0) Color(palette.danger.ink) else BrandInk,
+                                targetValue = if (activeRules > 0) coralSoftInk else BrandInk,
                                 animationSpec = tween(180),
                                 label = "toggleAllAlarmsInk",
-                            )
-                            val toggleAllBorder by animateColorAsState(
-                                targetValue = if (activeRules > 0) Color(palette.danger.edge).copy(alpha = 0.4f) else ObsidianPrimary.copy(alpha = 0.4f),
-                                animationSpec = tween(180),
-                                label = "toggleAllAlarmsBorder",
                             )
                             Row(
                                 modifier = Modifier
@@ -349,14 +361,14 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 Text(
                                     text = "Scegli quando suonare",
                                     fontSize = 12.sp,
+                                    lineHeight = 17.sp,
                                     color = TextSecondary,
                                     modifier = Modifier.weight(1f),
                                 )
                                 Box(
                                     modifier = Modifier
-                                        .clip(RoundedCornerShape(10.dp))
+                                        .clip(RoundedCornerShape(12.dp))
                                         .background(toggleAllFill)
-                                        .border(1.dp, toggleAllBorder, RoundedCornerShape(10.dp))
                                         .bouncyClickable {
                                             val enable = activeRules == 0
                                             val current = ShiftRepository.smartAlarmsConfig
@@ -386,6 +398,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                     Text(
                                         text = if (activeRules > 0) "Disattiva tutte" else "Riattiva tutte",
                                         fontSize = 12.sp,
+                                        lineHeight = 16.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = toggleAllInk,
                                     )
@@ -397,7 +410,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 ?: ShiftAlarmRule(definition.id, isEnabled = false)
                             NativeAlarmRule(
                                 title = definition.name,
-                                color = Color(definition.colorHex),
+                                definition = definition,
                                 rule = rule,
                                 onCall = false,
                                 onChange = { updateRule(definition.id, it) },
@@ -409,7 +422,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 ?: ShiftAlarmRule("reperibilita", isEnabled = false, customTime = "20:00")
                             NativeAlarmRule(
                                 title = "Reperibilità",
-                                color = ObsidianTertiary,
+                                definition = null,
                                 rule = rule,
                                 onCall = true,
                                 onChange = { updateRule("reperibilita", it) },
@@ -422,6 +435,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 text = "Prossimi 30 giorni",
                                 modifier = Modifier.padding(vertical = 4.dp),
                                 fontSize = 12.sp,
+                                lineHeight = 17.sp,
                                 color = TextSecondary,
                             )
                         }
@@ -430,6 +444,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 CloudCard(
                                     title = "Sveglie in pausa",
                                     subtitle = "Riattiva lo switch in alto per programmare le sveglie. Le tue regole restano salvate.",
+                                    accent = ExpressivePastel.PEARL,
                                 ) {}
                             }
                         }
@@ -438,6 +453,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 CloudCard(
                                     title = "Nessuna sveglia da mostrare",
                                     subtitle = "Le sveglie compaiono quando un turno ha una regola attiva.",
+                                    accent = ExpressivePastel.MAUVE,
                                 ) {
                                     CloudButton(
                                         label = "Scegli le regole",
@@ -449,37 +465,56 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                             }
                         }
                         items(upcoming, key = { it.id }) { alarm ->
-                            val shiftColor = Color(alarm.shiftColorHex)
                             val alarmActive = alarm.isEnabled && config.isGlobalEnabled
-                            val alarmBorder by animateColorAsState(
-                                targetValue = if (alarmActive) ObsidianBorder else ObsidianBorderSubtle,
+                            val matchedDef = if (alarm.isReperibilita) {
+                                null
+                            } else {
+                                ShiftRepository.shiftDefinitions.firstOrNull { alarm.id == "${alarm.date}_${it.id}" }
+                            }
+                            val badgeAlpha by animateFloatAsState(
+                                targetValue = if (alarmActive) 1f else 0.55f,
                                 animationSpec = tween(180),
-                                label = "upcomingAlarmBorder",
+                                label = "upcomingAlarmBadgeAlpha",
                             )
-                            val alarmTint by animateColorAsState(
-                                targetValue = if (alarmActive) BrandInk else TextSecondary,
-                                animationSpec = tween(180),
-                                label = "upcomingAlarmTint",
-                            )
-                            AlarmSettingsCard(borderColor = alarmBorder) {
+                            AlarmSettingsCard {
                                 Row(
                                     modifier = Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
                                     horizontalArrangement = Arrangement.spacedBy(12.dp),
                                 ) {
-                                    Box(
-                                        modifier = Modifier
-                                            .size(40.dp)
-                                            .clip(RoundedCornerShape(12.dp))
-                                            .background(shiftColor.copy(alpha = 0.2f))
-                                            .border(1.dp, shiftColor.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                                        contentAlignment = Alignment.Center,
-                                    ) {
-                                        SiteIcon(
-                                            name = if (alarm.isReperibilita) "bell" else "alarm-clock",
-                                            tint = alarmTint,
-                                            modifier = Modifier.size(20.dp),
+                                    if (alarm.isReperibilita) {
+                                        PastelIconBadge(
+                                            pastel = ExpressivePastel.AMBER,
+                                            icon = "bell",
+                                            size = 42.dp,
+                                            iconSize = 20.dp,
+                                            modifier = Modifier.alpha(badgeAlpha),
                                         )
+                                    } else {
+                                        PastelBadge(
+                                            color = Color(alarm.shiftColorHex),
+                                            size = 42.dp,
+                                            cornerRadius = 13.dp,
+                                            definitionId = matchedDef?.id,
+                                            modifier = Modifier.alpha(badgeAlpha),
+                                        ) { ink ->
+                                            if (matchedDef != null) {
+                                                Text(
+                                                    text = matchedDef.shortCode.ifBlank { matchedDef.name.take(3) }.take(4),
+                                                    color = ink,
+                                                    fontSize = 11.sp,
+                                                    fontWeight = FontWeight.Bold,
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                )
+                                            } else {
+                                                SiteIcon(
+                                                    name = "alarm-clock",
+                                                    tint = ink,
+                                                    modifier = Modifier.size(20.dp),
+                                                )
+                                            }
+                                        }
                                     }
                                     Column(modifier = Modifier.weight(1f)) {
                                         Text(
@@ -488,6 +523,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                             ),
                                             fontWeight = FontWeight.Bold,
                                             fontSize = 22.sp,
+                                            lineHeight = 26.sp,
                                             color = if (alarmActive) TextPrimary else TextSecondary,
                                         )
                                         Text(
@@ -495,12 +531,14 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                                 DateTimeFormatter.ofPattern("EEE d MMM", Locale.ITALIAN),
                                             ),
                                             fontSize = 12.sp,
+                                            lineHeight = 17.sp,
                                             color = TextSecondary,
                                         )
                                         Text(
                                             text = alarm.shiftName,
                                             color = TextSecondary,
                                             fontSize = 13.sp,
+                                            lineHeight = 18.sp,
                                         )
                                     }
                                     TurniSwitch(
@@ -519,8 +557,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
 
                     item {
                         val permissionsOk = exact && notifications
-                        val shieldFill = if (permissionsOk) ObsidianPrimaryContainer else Color(palette.danger.fill)
-                        val shieldTint = if (permissionsOk) BrandInk else Color(palette.danger.ink)
+                        val allHealthy = permissionsOk && alarmVolume > 0
                         val toolsChevron by animateFloatAsState(
                             targetValue = if (toolsExpanded) 180f else 0f,
                             animationSpec = spring(stiffness = Spring.StiffnessMediumLow),
@@ -530,32 +567,43 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                             Row(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .clip(RoundedCornerShape(12.dp))
+                                    .clip(RoundedCornerShape(14.dp))
                                     .bouncyClickable { toolsExpanded = !toolsExpanded }
-                                    .padding(vertical = 4.dp),
+                                    .padding(vertical = 2.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Box(
-                                    modifier = Modifier
-                                        .size(38.dp)
-                                        .clip(RoundedCornerShape(12.dp))
-                                        .background(shieldFill),
-                                    contentAlignment = Alignment.Center,
+                                PastelIconBadge(
+                                    pastel = if (allHealthy) ExpressivePastel.MINT else ExpressivePastel.CORAL,
+                                    icon = if (allHealthy) "check" else "shield-alert",
+                                    size = 42.dp,
+                                    iconSize = 20.dp,
+                                )
+                                Column(
+                                    modifier = Modifier.weight(1f),
+                                    verticalArrangement = Arrangement.spacedBy(3.dp),
                                 ) {
-                                    SiteIcon(
-                                        name = "shield-alert",
-                                        tint = shieldTint,
-                                        modifier = Modifier.size(20.dp),
-                                    )
-                                }
-                                Column(modifier = Modifier.weight(1f)) {
-                                    Text(
-                                        text = "Verifica e prova",
-                                        fontSize = 14.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary,
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        Text(
+                                            text = "Verifica e prova",
+                                            fontSize = 15.sp,
+                                            lineHeight = 20.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary,
+                                        )
+                                        PastelPill(
+                                            text = if (allHealthy) "Pronte" else "Verifica",
+                                            color = if (allHealthy) {
+                                                ExpressivePastel.MINT.sourceColor
+                                            } else {
+                                                ExpressivePastel.CORAL.sourceColor
+                                            },
+                                            solid = !allHealthy,
+                                        )
+                                    }
                                     Text(
                                         text = if (!permissionsOk) {
                                             "Autorizzazioni da completare"
@@ -565,6 +613,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                             "Audio, autorizzazioni e prova sonora"
                                         },
                                         fontSize = 11.sp,
+                                        lineHeight = 15.sp,
                                         color = if (!permissionsOk || alarmVolume == 0) Color(palette.warning.ink) else TextSecondary,
                                     )
                                 }
@@ -616,6 +665,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                         text = "Volume sveglie: $alarmVolume/${audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)}",
                                         color = if (alarmVolume == 0) Color(palette.danger.ink) else TextSecondary,
                                         fontSize = 12.sp,
+                                        lineHeight = 17.sp,
                                         fontWeight = FontWeight.Medium,
                                     )
                                     Row(
@@ -696,13 +746,11 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
 
 @Composable
 private fun AlarmSettingsCard(
-    borderColor: Color = ObsidianBorderSubtle,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     Surface(
         color = ObsidianSurface,
-        shape = RoundedCornerShape(20.dp),
-        border = BorderStroke(1.dp, borderColor),
+        shape = RoundedCornerShape(23.dp),
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
@@ -713,8 +761,8 @@ private fun AlarmSettingsCard(
             ),
     ) {
         Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
             content = content,
         )
     }
@@ -726,47 +774,53 @@ private fun AlarmPermissionRow(
     allowed: Boolean,
     onClick: () -> Unit,
 ) {
-    val palette = currentTurniPalette
-    val rowShape = RoundedCornerShape(12.dp)
-    val badgeFill = if (allowed) Color(palette.success.fill) else ObsidianPrimarySubtle
-    val badgeInk = if (allowed) Color(palette.success.ink) else BrandInk
-    val iconTint = if (allowed) Color(palette.success.ink) else Color(palette.danger.ink)
+    val rowShape = RoundedCornerShape(14.dp)
 
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clip(rowShape)
             .background(ObsidianSurfaceContainer)
-            .border(1.dp, ObsidianBorderSubtle, rowShape)
             .bouncyClickable(onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        SiteIcon(
-            name = if (allowed) "check" else "settings",
-            tint = iconTint,
-            modifier = Modifier.size(18.dp),
+        PastelIconBadge(
+            pastel = if (allowed) ExpressivePastel.MINT else ExpressivePastel.CORAL,
+            icon = if (allowed) "check" else "settings",
+            size = 30.dp,
+            iconSize = 15.dp,
         )
         Text(
             text = label,
             modifier = Modifier.weight(1f),
             fontSize = 13.sp,
+            lineHeight = 18.sp,
             fontWeight = FontWeight.Medium,
             color = TextPrimary,
         )
-        Box(
-            modifier = Modifier
-                .clip(RoundedCornerShape(8.dp))
-                .background(badgeFill)
-                .padding(horizontal = 8.dp, vertical = 4.dp),
-        ) {
-            Text(
-                text = if (allowed) "Consentite" else "Consenti",
-                fontSize = 11.sp,
-                fontWeight = FontWeight.SemiBold,
-                color = badgeInk,
+        if (allowed) {
+            PastelPill(
+                text = "Consentite",
+                color = ExpressivePastel.MINT.sourceColor,
+                solid = false,
             )
+        } else {
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ObsidianSurface)
+                    .padding(horizontal = 10.dp, vertical = 5.dp),
+            ) {
+                Text(
+                    text = "Consenti",
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    color = BrandInk,
+                )
+            }
         }
     }
 }
@@ -774,7 +828,7 @@ private fun AlarmPermissionRow(
 @Composable
 private fun NativeAlarmRule(
     title: String,
-    color: Color,
+    definition: ShiftDefinition?,
     rule: ShiftAlarmRule,
     onCall: Boolean,
     onChange: ((ShiftAlarmRule) -> ShiftAlarmRule) -> Unit,
@@ -807,19 +861,10 @@ private fun NativeAlarmRule(
         onTimeSaved(normalized)
     }
 
-    val cardBorder by animateColorAsState(
-        targetValue = when {
-            rule.isEnabled && expanded -> ObsidianPrimary
-            rule.isEnabled -> ObsidianBorder
-            else -> ObsidianBorderSubtle
-        },
-        animationSpec = tween(200),
-        label = "alarmRuleCardBorder",
-    )
-    val badgeIconTint by animateColorAsState(
-        targetValue = if (rule.isEnabled) BrandInk else TextSecondary,
+    val badgeAlpha by animateFloatAsState(
+        targetValue = if (rule.isEnabled) 1f else 0.56f,
         animationSpec = tween(180),
-        label = "alarmRuleIconTint",
+        label = "alarmRuleBadgeAlpha",
     )
     val titleTint by animateColorAsState(
         targetValue = if (rule.isEnabled) TextPrimary else TextSecondary,
@@ -832,32 +877,44 @@ private fun NativeAlarmRule(
         label = "alarmRuleChevron",
     )
 
-    AlarmSettingsCard(borderColor = cardBorder) {
+    AlarmSettingsCard {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .clip(RoundedCornerShape(12.dp))
+                .clip(RoundedCornerShape(14.dp))
                 .bouncyClickable(enabled = rule.isEnabled) {
                     expanded = !expanded
                     animateIcon()
                 },
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(color.copy(alpha = 0.2f))
-                    .border(1.dp, color.copy(alpha = 0.35f), RoundedCornerShape(12.dp)),
-                contentAlignment = Alignment.Center,
-            ) {
-                SiteIcon(
-                    name = if (onCall) "bell" else "alarm-clock",
-                    tint = badgeIconTint,
-                    modifier = Modifier.size(20.dp),
+            if (onCall || definition == null) {
+                PastelIconBadge(
+                    pastel = ExpressivePastel.AMBER,
+                    icon = "bell",
+                    size = 42.dp,
+                    iconSize = 20.dp,
                     progress = iconMotion.value,
+                    modifier = Modifier.alpha(badgeAlpha),
                 )
+            } else {
+                PastelBadge(
+                    color = Color(definition.colorHex),
+                    size = 42.dp,
+                    cornerRadius = 13.dp,
+                    definitionId = definition.id,
+                    modifier = Modifier.alpha(badgeAlpha),
+                ) { ink ->
+                    Text(
+                        text = definition.shortCode.ifBlank { definition.name.take(3) }.take(4),
+                        color = ink,
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
             }
             Column(
                 modifier = Modifier
@@ -868,11 +925,13 @@ private fun NativeAlarmRule(
                             stiffness = Spring.StiffnessMediumLow,
                         ),
                     ),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
                     text = title,
                     fontWeight = FontWeight.SemiBold,
                     fontSize = 14.sp,
+                    lineHeight = 19.sp,
                     color = titleTint,
                 )
                 Text(
@@ -884,6 +943,7 @@ private fun NativeAlarmRule(
                         "Alle ${rule.customTime}"
                     },
                     fontSize = 12.sp,
+                    lineHeight = 17.sp,
                     color = TextSecondary,
                 )
             }
@@ -953,11 +1013,6 @@ private fun NativeAlarmRule(
                                 animationSpec = tween(180),
                                 label = "alarmMinutesFill",
                             )
-                            val chipBorder by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimary else ObsidianBorderSubtle,
-                                animationSpec = tween(180),
-                                label = "alarmMinutesBorder",
-                            )
                             val chipInk by animateColorAsState(
                                 targetValue = if (selected) OnBrand else TextSecondary,
                                 animationSpec = tween(180),
@@ -969,7 +1024,6 @@ private fun NativeAlarmRule(
                                     .weight(1f)
                                     .clip(chipShape)
                                     .background(chipFill)
-                                    .border(1.dp, chipBorder, chipShape)
                                     .clickable(
                                         interactionSource = interactionSource,
                                         indication = null,
@@ -986,6 +1040,7 @@ private fun NativeAlarmRule(
                                 Text(
                                     text = "$minutes'",
                                     fontSize = 12.sp,
+                                    lineHeight = 16.sp,
                                     fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
                                     color = chipInk,
                                 )
@@ -998,31 +1053,42 @@ private fun NativeAlarmRule(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
-                        OutlinedTextField(
-                            value = customText,
-                            onValueChange = { if (it.length <= 5) customText = it },
-                            label = { Text("Orario HH:mm") },
-                            singleLine = true,
-                            keyboardOptions = KeyboardOptions(
-                                keyboardType = KeyboardType.Ascii,
-                                imeAction = ImeAction.Done,
-                            ),
-                            keyboardActions = KeyboardActions(onDone = { saveTime() }),
-                            isError = !validTime,
-                            modifier = Modifier.weight(1f),
-                            shape = RoundedCornerShape(14.dp),
-                            colors = OutlinedTextFieldDefaults.colors(
-                                focusedBorderColor = ObsidianPrimary,
-                                unfocusedBorderColor = ObsidianBorder,
-                                focusedLabelColor = BrandInk,
-                                unfocusedLabelColor = TextSecondary,
-                                focusedTextColor = TextPrimary,
-                                unfocusedTextColor = TextPrimary,
-                                cursorColor = ObsidianPrimary,
-                                errorBorderColor = ColorNegative,
-                                errorLabelColor = ColorNegative,
-                            ),
-                        )
+                        val fieldShape = RoundedCornerShape(14.dp)
+                        Column(
+                            modifier = Modifier
+                                .weight(1f)
+                                .heightIn(min = 50.dp)
+                                .clip(fieldShape)
+                                .background(ObsidianSurfaceContainer)
+                                .then(if (!validTime) Modifier.border(1.5.dp, ColorNegative, fieldShape) else Modifier)
+                                .padding(horizontal = 14.dp, vertical = 8.dp),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = if (validTime) "Orario HH:mm" else "Formato HH:mm non valido",
+                                fontSize = 10.sp,
+                                lineHeight = 14.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (validTime) TextSecondary else ColorNegative,
+                            )
+                            BasicTextField(
+                                value = customText,
+                                onValueChange = { if (it.length <= 5) customText = it },
+                                singleLine = true,
+                                textStyle = TextStyle(
+                                    color = TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                ),
+                                cursorBrush = SolidColor(ObsidianPrimary),
+                                keyboardOptions = KeyboardOptions(
+                                    keyboardType = KeyboardType.Ascii,
+                                    imeAction = ImeAction.Done,
+                                ),
+                                keyboardActions = KeyboardActions(onDone = { saveTime() }),
+                                modifier = Modifier.fillMaxWidth(),
+                            )
+                        }
                         val saveShape = RoundedCornerShape(14.dp)
                         val saveFill by animateColorAsState(
                             targetValue = if (validTime) ObsidianPrimary else ObsidianSurfaceHigh,
@@ -1036,7 +1102,7 @@ private fun NativeAlarmRule(
                         )
                         Box(
                             modifier = Modifier
-                                .heightIn(min = 48.dp)
+                                .heightIn(min = 50.dp)
                                 .alpha(if (validTime) 1f else 0.6f)
                                 .clip(saveShape)
                                 .background(saveFill)
@@ -1047,6 +1113,7 @@ private fun NativeAlarmRule(
                             Text(
                                 text = "Imposta",
                                 fontSize = 13.sp,
+                                lineHeight = 17.sp,
                                 fontWeight = FontWeight.SemiBold,
                                 color = saveInk,
                             )

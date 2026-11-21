@@ -10,7 +10,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -25,12 +24,16 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.CalendarCooldownPolicy
@@ -169,42 +172,87 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         }
     }
 
+    val dark = TurniThemeState.dark
+    val sageStyle = remember(dark) { ExpressivePastel.SAGE.style(dark, ObsidianSurface) }
+    val sageAccent = remember(dark) { shiftChartColor(ExpressivePastel.SAGE.sourceColor, dark) }
+
     CloudFeatureScaffold(
         title = "Google Calendar",
         subtitle = "Sincronizza i turni di ${work.name} sul tuo calendario",
         onDismiss = onDismiss,
         feedback = feedback,
         onDismissFeedback = { feedback = null },
+        headerAction = {
+            PastelIconBadge(
+                pastel = ExpressivePastel.SAGE,
+                icon = "calendar-sync",
+                size = 38.dp,
+                iconSize = 19.dp,
+            )
+        },
     ) {
         GoogleAccountCard(access, { feedback = it }, enabled = !apiBusy)
-        CloudCard("Calendario di destinazione", "Scegli dove sincronizzare i turni di ${work.name}.") {
-            selectedCalendar?.let { selected ->
-                val calShape = RoundedCornerShape(14.dp)
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .clip(calShape)
-                        .background(ObsidianSurfaceContainer)
-                        .border(1.dp, ObsidianBorderSubtle, calShape)
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                ) {
-                    SiteIcon("calendar", modifier = Modifier.size(22.dp), tint = BrandInk)
-                    Column(Modifier.weight(1f)) {
-                        Text(selected.name, color = TextPrimary, fontWeight = FontWeight.SemiBold, fontSize = 14.sp)
-                        Text(calendarOwner.orEmpty(), color = TextSecondary, fontSize = 12.sp, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    }
+        CloudCard(
+            title = "Calendario di destinazione",
+            subtitle = "Scegli dove sincronizzare i turni di ${work.name}.",
+            accent = ExpressivePastel.SAGE,
+        ) {
+            val calShape = RoundedCornerShape(16.dp)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(calShape)
+                    .background(ObsidianSurfaceContainer)
+                    .clickable(
+                        interactionSource = remember { MutableInteractionSource() },
+                        indication = null,
+                        enabled = !busy,
+                    ) { chooseCalendar() }
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PastelIconBadge(
+                    pastel = ExpressivePastel.SAGE,
+                    icon = "calendar-sync",
+                    size = 40.dp,
+                    iconSize = 20.dp,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = selectedCalendar?.name ?: "Scegli calendario",
+                        color = TextPrimary.copy(alpha = if (!busy) 1f else 0.5f),
+                        fontWeight = FontWeight.SemiBold,
+                        fontSize = 14.sp,
+                        lineHeight = 19.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = if (selectedCalendar != null) {
+                            calendarOwner.orEmpty()
+                        } else {
+                            "Seleziona un calendario Google scrivibile"
+                        },
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis,
+                    )
                 }
+                PastelPill(
+                    text = if (selectedCalendar == null) "Scegli" else "Cambia",
+                    color = ExpressivePastel.SAGE.sourceColor,
+                )
+                SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
             }
-            CloudButton(
-                label = if (selectedCalendar == null) "Scegli calendario" else "Cambia calendario",
-                icon = "calendar",
-                onClick = ::chooseCalendar,
-                enabled = !busy,
-            )
         }
-        CloudCard("Periodo", "${start.format(formatter)} – ${end.format(formatter)}") {
+        CloudCard(
+            title = "Periodo",
+            subtitle = "${start.format(formatter)} – ${end.format(formatter)}",
+            accent = ExpressivePastel.SAGE,
+        ) {
             CalendarOptionTabs(
                 options = listOf(
                     "Mese" to "calendar",
@@ -215,10 +263,10 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 enabled = !busy,
                 onSelect = { range = it },
             )
-            Text(
+            PastelPill(
                 text = "$shiftCount ${if (shiftCount == 1) "turno" else "turni"} · ${work.name}",
-                fontSize = 13.sp,
-                color = TextSecondary,
+                color = ExpressivePastel.SAGE.sourceColor,
+                icon = "calendar",
             )
         }
         CloudCard("Opzioni degli eventi") {
@@ -246,9 +294,6 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 onChange = { reminderEnabled = it },
             )
             val reminderDurations = remember { listOf(15, 30, 60) }
-            val reminderItems = remember(reminderDurations) {
-                reminderDurations.map { minutes -> (if (minutes == 60) "1 ora" else "$minutes min") to null }
-            }
             AnimatedVisibility(
                 visible = reminderEnabled,
                 enter = expandVertically(tween(260)) + fadeIn(tween(220)),
@@ -257,18 +302,67 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     SettingsDivider()
                     Text("Anticipo avviso", fontSize = 12.sp, color = TextSecondary)
-                    SlidingSegmentBar(
-                        items = reminderItems,
-                        selectedIndex = reminderDurations.indexOf(reminderMinutes).coerceAtLeast(0),
-                        onSelect = { index -> reminderMinutes = reminderDurations[index] },
-                        enabled = !busy,
-                        height = 42.dp,
-                    )
+                    val activeBg = remember(sageStyle, dark) {
+                        lerp(ObsidianSurfaceContainer, sageStyle.codeFill, if (dark) 0.26f else 0.44f)
+                    }
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        reminderDurations.forEach { minutes ->
+                            val selected = reminderMinutes == minutes
+                            val pillShape = RoundedCornerShape(14.dp)
+                            val targetBg = if (selected) activeBg else ObsidianSurfaceContainer
+                            val targetInk = if (selected) {
+                                readableInk(activeBg, if (dark) sageStyle.codeFill else sageStyle.codeInk)
+                            } else {
+                                TextSecondary
+                            }
+                            val bg by animateColorAsState(
+                                targetValue = targetBg,
+                                animationSpec = tween(180),
+                                label = "reminderPillBg",
+                            )
+                            val ink by animateColorAsState(
+                                targetValue = targetInk.copy(alpha = if (!busy) 1f else 0.5f),
+                                animationSpec = tween(180),
+                                label = "reminderPillInk",
+                            )
+                            val ring by animateColorAsState(
+                                targetValue = if (selected) sageAccent else Color.Transparent,
+                                animationSpec = tween(180),
+                                label = "reminderPillRing",
+                            )
+                            Box(
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .clip(pillShape)
+                                    .background(bg)
+                                    .then(if (selected) Modifier.border(2.dp, ring, pillShape) else Modifier)
+                                    .clickable(
+                                        interactionSource = remember(minutes) { MutableInteractionSource() },
+                                        indication = null,
+                                        enabled = !busy,
+                                    ) { reminderMinutes = minutes },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = if (minutes == 60) "1 ora" else "$minutes min",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = ink,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
         CloudButton(
-            label = if (apiBusy) operation else if (cooldown > 0) "Attendi ${CalendarCooldownPolicy.label(cooldown)}" else "Sincronizza i turni",
+            label = if (apiBusy) operation else if (cooldown > 0) "Attendi ${CalendarCooldownPolicy.label(cooldown)}" else "Sincronizza ora",
             icon = "upload",
             onClick = { if (shiftCount == 0) confirmEmpty = true else synchronize() },
             enabled = canChange && selectedCalendar != null,
@@ -288,22 +382,22 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(6.dp)
+                        .height(8.dp)
                         .clip(CircleShape)
-                        .background(ObsidianSurfaceHigh)
-                        .border(1.dp, ObsidianBorderSubtle, CircleShape),
+                        .background(ObsidianSurfaceHigh),
                 ) {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth(animatedProgress)
                             .fillMaxHeight()
                             .clip(CircleShape)
-                            .background(ObsidianPrimary),
+                            .background(Brush.horizontalGradient(listOf(sageAccent, ObsidianPrimary))),
                     )
                 }
                 Text(
                     text = "Google può impiegare qualche minuto ad aggiornare gli eventi. Dopo ogni sincronizzazione o rimozione attendi 3 minuti prima della prossima operazione.",
                     fontSize = 12.sp,
+                    lineHeight = 17.sp,
                     color = TextSecondary,
                 )
             }
@@ -311,6 +405,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         Text(
             text = "La sincronizzazione aggiorna gli eventi TurniSync del lavoro e del periodo scelti. Gli eventi personali restano invariati.",
             fontSize = 12.sp,
+            lineHeight = 17.sp,
             color = TextSecondary,
         )
         CloudCard(
@@ -327,59 +422,99 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         }
     }
     if (picker) {
-        Dialog(onDismissRequest = { picker = false }) {
-            Surface(
-                shape = RoundedCornerShape(24.dp),
-                color = ObsidianSurface,
-                border = BorderStroke(1.dp, ObsidianBorderSubtle),
+        val palette = currentTurniPalette
+        Dialog(
+            onDismissRequest = { picker = false },
+            properties = DialogProperties(usePlatformDefaultWidth = false),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 16.dp, vertical = 20.dp)
+                    .navigationBarsPadding(),
+                contentAlignment = Alignment.Center,
             ) {
-                Column(Modifier.fillMaxWidth().padding(20.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    Text("Scegli calendario", fontSize = 20.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text(calendarOwner.orEmpty(), fontSize = 12.sp, color = TextSecondary, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Column(
-                        modifier = Modifier.heightIn(max = 330.dp).verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        calendars.forEach { calendar ->
-                            val selected = selectedCalendar?.id == calendar.id
-                            val itemShape = RoundedCornerShape(14.dp)
-                            val rowBg by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimarySubtle else ObsidianSurfaceContainer,
-                                animationSpec = tween(180),
-                                label = "calendarRowBg",
+                Surface(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .widthIn(max = 420.dp),
+                    shape = RoundedCornerShape(26.dp),
+                    color = ObsidianSurface,
+                    tonalElevation = 0.dp,
+                ) {
+                    Column(Modifier.fillMaxWidth().padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                Text("Scegli calendario", fontSize = 19.sp, fontWeight = FontWeight.Bold, color = TextPrimary)
+                                Text(calendarOwner.orEmpty(), fontSize = 12.sp, lineHeight = 16.sp, color = TextSecondary, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                            }
+                            TonalIconButton(
+                                icon = "x",
+                                contentDescription = "Chiudi",
+                                onClick = { picker = false },
+                                size = 36.dp,
+                                cornerRadius = 12.dp,
+                                fill = Color(palette.danger.fill),
+                                tint = Color(palette.danger.ink),
                             )
-                            val rowBorder by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimary else ObsidianBorderSubtle,
-                                animationSpec = tween(180),
-                                label = "calendarRowBorder",
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(itemShape)
-                                    .background(rowBg)
-                                    .border(1.dp, rowBorder, itemShape)
-                                    .clickable(
-                                        interactionSource = remember(calendar.id) { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
-                                        selectedCalendar = calendar
-                                        picker = false
+                        }
+                        val pickerSelectedBg = remember(sageStyle, dark) {
+                            lerp(ObsidianSurfaceContainer, sageStyle.codeFill, if (dark) 0.20f else 0.34f)
+                        }
+                        Column(
+                            modifier = Modifier.heightIn(max = 330.dp).verticalScroll(rememberScrollState()),
+                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                        ) {
+                            calendars.forEach { calendar ->
+                                val selected = selectedCalendar?.id == calendar.id
+                                val itemShape = RoundedCornerShape(15.dp)
+                                val rowBg by animateColorAsState(
+                                    targetValue = if (selected) pickerSelectedBg else ObsidianSurfaceContainer,
+                                    animationSpec = tween(180),
+                                    label = "calendarRowBg",
+                                )
+                                val rowRing by animateColorAsState(
+                                    targetValue = if (selected) sageAccent else Color.Transparent,
+                                    animationSpec = tween(180),
+                                    label = "calendarRowRing",
+                                )
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clip(itemShape)
+                                        .background(rowBg)
+                                        .then(if (selected) Modifier.border(2.dp, rowRing, itemShape) else Modifier)
+                                        .clickable(
+                                            interactionSource = remember(calendar.id) { MutableInteractionSource() },
+                                            indication = null,
+                                        ) {
+                                            selectedCalendar = calendar
+                                            picker = false
+                                        }
+                                        .padding(12.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                ) {
+                                    PastelIconBadge(
+                                        pastel = ExpressivePastel.SAGE,
+                                        icon = "calendar",
+                                        size = 38.dp,
+                                        iconSize = 18.dp,
+                                    )
+                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                                        Text(calendar.name, color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
+                                        if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, lineHeight = 15.sp, color = TextSecondary)
                                     }
-                                    .padding(14.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                SiteIcon("calendar", tint = BrandInk, modifier = Modifier.size(22.dp))
-                                Column(Modifier.weight(1f)) {
-                                    Text(calendar.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.Medium)
-                                    if (calendar.primary) Text("Calendario principale", fontSize = 11.sp, color = TextSecondary)
+                                    if (selected) SiteIcon("check", tint = sageAccent, modifier = Modifier.size(18.dp))
                                 }
-                                if (selected) SiteIcon("check", tint = BrandInk, modifier = Modifier.size(18.dp))
                             }
                         }
+                        CloudButton("Annulla", "x", { picker = false }, secondary = true)
                     }
-                    CloudButton("Annulla", "x", { picker = false }, secondary = true)
                 }
             }
         }
@@ -389,7 +524,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             onDismissRequest = { confirmDelete = false },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Rimuovere gli eventi TurniSync?", color = TextPrimary) },
@@ -397,6 +532,8 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 Text(
                     text = "Verranno rimossi dal calendario «${selectedCalendar?.name.orEmpty()}» tutti gli eventi creati da TurniSync. Gli eventi personali e i turni salvati nell'app non saranno eliminati.",
                     color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
                 )
             },
             confirmButton = {
@@ -426,7 +563,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             onDismissRequest = { confirmEmpty = false },
             containerColor = ObsidianSurface,
             tonalElevation = 0.dp,
-            shape = RoundedCornerShape(24.dp),
+            shape = RoundedCornerShape(26.dp),
             titleContentColor = TextPrimary,
             textContentColor = TextSecondary,
             title = { Text("Nessun turno nel periodo", color = TextPrimary) },
@@ -434,6 +571,8 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 Text(
                     text = "La sincronizzazione rimuoverà eventuali eventi TurniSync di questo lavoro nel periodo selezionato. Vuoi continuare?",
                     color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
                 )
             },
             confirmButton = {
@@ -443,7 +582,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                         synchronize()
                     },
                     enabled = canChange,
-                    shape = RoundedCornerShape(12.dp),
+                    shape = RoundedCornerShape(14.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = ObsidianPrimary, contentColor = OnBrand),
                 ) {
                     Text("Aggiorna calendario", fontWeight = FontWeight.SemiBold)
@@ -475,9 +614,9 @@ private fun CalendarOptionSwitch(title: String, subtitle: String, value: Boolean
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Column(Modifier.weight(1f)) {
-            Text(title, fontSize = 14.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-            Text(subtitle, fontSize = 12.sp, color = TextSecondary)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+            Text(title, fontSize = 14.sp, lineHeight = 19.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+            Text(subtitle, fontSize = 12.sp, lineHeight = 17.sp, color = TextSecondary)
         }
         TurniSwitch(checked = value, onCheckedChange = onChange, enabled = enabled)
     }
@@ -505,7 +644,6 @@ private fun CalendarOptionTabs(
                 .fillMaxWidth()
                 .clip(trackShape)
                 .background(ObsidianSurfaceContainer)
-                .border(1.dp, ObsidianBorderSubtle, trackShape)
                 .padding(4.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {

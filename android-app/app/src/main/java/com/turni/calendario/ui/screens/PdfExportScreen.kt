@@ -19,7 +19,6 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -28,18 +27,25 @@ import androidx.compose.foundation.gestures.rememberTransformableState
 import androidx.compose.foundation.gestures.transformable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalConfiguration
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
@@ -52,7 +58,6 @@ import com.turni.calendario.model.PdfExportOptions
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
-import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.Dispatchers
@@ -171,7 +176,32 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             )
         },
     ) {
-        CloudCard("Formato", "Scegli come organizzare il documento") {
+        CloudCard {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PastelIconBadge(
+                    pastel = ExpressivePastel.CORAL,
+                    icon = "file-text",
+                    size = 42.dp,
+                    iconSize = 20.dp,
+                )
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = "Formato",
+                        color = TextPrimary,
+                        fontSize = 16.sp,
+                        fontWeight = FontWeight.SemiBold,
+                    )
+                    Text(
+                        text = "Scegli come organizzare il documento",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                    )
+                }
+            }
             SlidingSegmentBar(
                 items = modeItems,
                 selectedIndex = modes.indexOf(options.mode).coerceAtLeast(0),
@@ -201,46 +231,79 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
 
         CloudCard(
             title = "Anteprima",
-            subtitle = preview?.paperLabel?.takeUnless { previewLoading || previewError != null }
+            subtitle = preview?.orientationSubtitle?.takeUnless { previewLoading || previewError != null }
                 ?: "Lo stesso foglio che verrà condiviso",
+            accent = ExpressivePastel.CORAL,
         ) {
+            val stageShape = RoundedCornerShape(18.dp)
             when {
                 previewLoading -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(ObsidianSurfaceContainer)
-                        .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp)),
+                        .height(308.dp)
+                        .clip(stageShape)
+                        .background(ObsidianSurfaceContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     preview?.let {
                         Image(
                             bitmap = it.bitmap.asImageBitmap(),
                             contentDescription = null,
-                            modifier = Modifier.fillMaxSize().padding(10.dp),
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(top = 42.dp, bottom = 14.dp, start = 16.dp, end = 16.dp),
                             contentScale = ContentScale.Fit,
-                            alpha = 0.25f,
+                            alpha = 0.22f,
                         )
                     }
                     CircularProgressIndicator(Modifier.size(26.dp), color = BrandInk, strokeWidth = 2.dp)
                 }
-                previewError != null -> Text(previewError.orEmpty(), color = TextSecondary, fontSize = 12.sp)
+                previewError != null -> Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(stageShape)
+                        .background(ObsidianSurfaceContainer)
+                        .padding(16.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        PastelIconBadge(ExpressivePastel.CORAL, "alert-triangle", size = 38.dp, iconSize = 18.dp)
+                        Text(previewError.orEmpty(), color = TextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
+                    }
+                }
                 preview != null -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(300.dp)
-                        .clip(RoundedCornerShape(14.dp))
+                        .height(308.dp)
+                        .clip(stageShape)
                         .background(ObsidianSurfaceContainer)
-                        .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp))
                         .bouncyClickable { zoom = true },
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
                         bitmap = preview!!.bitmap.asImageBitmap(),
                         contentDescription = "Anteprima PDF, tocca per ingrandire",
-                        modifier = Modifier.fillMaxSize().padding(10.dp),
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .padding(top = 42.dp, bottom = 14.dp, start = 16.dp, end = 16.dp),
                         contentScale = ContentScale.Fit,
+                    )
+                    PastelPill(
+                        text = preview!!.pageBadgeLabel,
+                        color = ExpressivePastel.CORAL.sourceColor,
+                        icon = "file-text",
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .padding(10.dp),
+                    )
+                    PastelPill(
+                        text = preview!!.orientationWord,
+                        color = ExpressivePastel.PEARL.sourceColor,
+                        modifier = Modifier
+                            .align(Alignment.TopStart)
+                            .padding(10.dp),
                     )
                 }
                 else -> Text("Nessuna anteprima disponibile", color = TextSecondary, fontSize = 12.sp)
@@ -251,7 +314,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
             ) {
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Tocca l’anteprima per ingrandire", fontSize = 11.sp, color = TextMuted)
+                    Text("Tocca l’anteprima per ingrandire", fontSize = 11.sp, lineHeight = 15.sp, color = TextMuted)
                     CloudButton(
                         label = "Ingrandisci anteprima",
                         icon = "search",
@@ -262,21 +325,55 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             }
         }
 
-        CloudCard("Periodo e turni") {
+        val filteredModel = options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it) }
+        CloudCard("Periodo e turni", accent = ExpressivePastel.CORAL) {
             PdfAction(
-                icon = "calendar",
-                title = "${range.first.format(formatter)} - ${range.second.format(formatter)}",
+                title = "${range.first.format(formatter)} – ${range.second.format(formatter)}",
                 subtitle = "Cambia periodo",
-            ) { dateDialog = true }
-            SettingsDivider()
+                onClick = { dateDialog = true },
+                badge = { progress ->
+                    PastelIconBadge(
+                        pastel = ExpressivePastel.CORAL,
+                        icon = "calendar",
+                        size = 38.dp,
+                        iconSize = 18.dp,
+                        progress = progress,
+                    )
+                },
+            )
             PdfAction(
-                icon = "layers",
-                title = options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it)?.name } ?: "Tutti i turni",
+                title = filteredModel?.name ?: "Tutti i turni",
                 subtitle = "Filtra modelli",
-            ) { filterDialog = true }
+                onClick = { filterDialog = true },
+                badge = { progress ->
+                    if (filteredModel == null) {
+                        PastelIconBadge(
+                            pastel = ExpressivePastel.PEARL,
+                            icon = "layers",
+                            size = 38.dp,
+                            iconSize = 18.dp,
+                            progress = progress,
+                        )
+                    } else {
+                        PastelBadge(
+                            color = Color(filteredModel.colorHex),
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                            definitionId = filteredModel.id,
+                        ) { ink ->
+                            Text(
+                                text = filteredModel.shortCode.take(4),
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                                color = ink,
+                            )
+                        }
+                    }
+                },
+            )
         }
 
-        CloudCard("Contenuti", "Anteprima aggiornata automaticamente") {
+        CloudCard("Contenuti", "Anteprima aggiornata automaticamente", accent = ExpressivePastel.PEARL) {
             PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
             SettingsDivider()
             PdfToggle("Orario di inizio e fine", options.includeTime) { update(options.copy(includeTime = it)) }
@@ -320,17 +417,20 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     unfocusedTextColor = TextPrimary,
                     focusedContainerColor = ObsidianSurfaceContainer,
                     unfocusedContainerColor = ObsidianSurfaceContainer,
-                    focusedBorderColor = ObsidianPrimary,
-                    unfocusedBorderColor = ObsidianBorderSubtle,
+                    focusedBorderColor = Color.Transparent,
+                    unfocusedBorderColor = Color.Transparent,
+                    disabledBorderColor = Color.Transparent,
+                    errorBorderColor = ColorNegative,
                     focusedPlaceholderColor = TextSecondary,
                     unfocusedPlaceholderColor = TextSecondary,
                     cursorColor = ObsidianPrimary,
                 ),
-                shape = RoundedCornerShape(14.dp),
+                shape = RoundedCornerShape(15.dp),
             )
             Text(
                 text = "Il PDF usa fondo bianco e testo scuro per la lettura e la stampa.",
                 fontSize = 11.sp,
+                lineHeight = 16.sp,
                 color = TextMuted,
             )
         }
@@ -346,64 +446,80 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
         }
     }
     if (filterDialog) {
-        SelectorSheet("Turni da includere", { filterDialog = false }) { close ->
+        PdfGrafiteDialog(title = "Turni da includere", onDismiss = { filterDialog = false }) { close ->
+            val dark = TurniThemeState.dark
             Text(
                 text = "Scegli un modello oppure includi tutti i turni del lavoro attivo.",
                 color = TextSecondary,
                 fontSize = 12.sp,
-                modifier = Modifier.padding(bottom = 12.dp),
+                lineHeight = 18.sp,
             )
             val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }
             val entries = listOf(null to "Tutti i turni") + models.map { it.id to it.name }
-            entries.forEach { (id, label) ->
-                val selected = options.filterShiftId == id
-                val shape = RoundedCornerShape(14.dp)
-                val rowBg by animateColorAsState(
-                    targetValue = if (selected) ObsidianPrimarySubtle else ObsidianSurfaceContainer,
-                    animationSpec = tween(180),
-                    label = "pdfFilterBg",
-                )
-                val rowBorder by animateColorAsState(
-                    targetValue = if (selected) ObsidianPrimary else ObsidianBorderSubtle,
-                    animationSpec = tween(180),
-                    label = "pdfFilterBorder",
-                )
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(bottom = 8.dp)
-                        .clip(shape)
-                        .background(rowBg)
-                        .border(1.dp, rowBorder, shape)
-                        .bouncyClickable {
-                            update(options.copy(filterShiftId = id))
-                            close()
-                        }
-                        .padding(12.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                ) {
-                    val model = models.firstOrNull { it.id == id }
-                    Box(
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .heightIn(max = 340.dp)
+                    .verticalScroll(rememberScrollState()),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                entries.forEach { (id, label) ->
+                    val selected = options.filterShiftId == id
+                    val shape = RoundedCornerShape(15.dp)
+                    val selectedBg = lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.22f else 0.12f)
+                    val rowBg by animateColorAsState(
+                        targetValue = if (selected) selectedBg else ObsidianSurfaceContainer,
+                        animationSpec = tween(180),
+                        label = "pdfFilterBg",
+                    )
+                    val rowRing by animateColorAsState(
+                        targetValue = if (selected) ObsidianPrimary else Color.Transparent,
+                        animationSpec = tween(180),
+                        label = "pdfFilterRing",
+                    )
+                    Row(
                         modifier = Modifier
-                            .size(36.dp)
-                            .clip(RoundedCornerShape(10.dp))
-                            .background(model?.color ?: ObsidianSurfaceHigh),
-                        contentAlignment = Alignment.Center,
+                            .fillMaxWidth()
+                            .clip(shape)
+                            .background(rowBg)
+                            .then(if (selected) Modifier.border(2.dp, rowRing, shape) else Modifier)
+                            .clickable(
+                                interactionSource = remember(id) { MutableInteractionSource() },
+                                indication = null,
+                            ) {
+                                update(options.copy(filterShiftId = id))
+                                close()
+                            }
+                            .padding(12.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
+                        val model = models.firstOrNull { it.id == id }
                         if (model == null) {
-                            SiteIcon("layers", null, Modifier.size(19.dp), BrandInk)
-                        } else {
-                            Text(
-                                text = model.shortCode.take(4),
-                                fontSize = 10.sp,
-                                fontWeight = FontWeight.Bold,
-                                color = catalogInk(model.color),
+                            PastelIconBadge(
+                                pastel = ExpressivePastel.PEARL,
+                                icon = "layers",
+                                size = 38.dp,
+                                iconSize = 18.dp,
                             )
+                        } else {
+                            PastelBadge(
+                                color = Color(model.colorHex),
+                                size = 38.dp,
+                                cornerRadius = 11.dp,
+                                definitionId = model.id,
+                            ) { ink ->
+                                Text(
+                                    text = model.shortCode.take(4),
+                                    fontSize = 10.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = ink,
+                                )
+                            }
                         }
+                        Text(label, Modifier.weight(1f), color = TextPrimary, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.Medium)
+                        if (selected) SiteIcon("check", null, Modifier.size(20.dp), BrandInk)
                     }
-                    Text(label, Modifier.weight(1f), color = TextPrimary, fontSize = 14.sp)
-                    if (selected) SiteIcon("check", null, Modifier.size(20.dp), BrandInk)
                 }
             }
         }
@@ -411,14 +527,21 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun PdfAction(icon: String, title: String, subtitle: String, onClick: () -> Unit) {
+private fun PdfAction(
+    title: String,
+    subtitle: String,
+    onClick: () -> Unit,
+    badge: @Composable (Float) -> Unit,
+) {
     val progress = remember { Animatable(0f) }
     val scope = rememberCoroutineScope()
+    val shape = RoundedCornerShape(15.dp)
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 52.dp)
-            .clip(RoundedCornerShape(12.dp))
+            .heightIn(min = 58.dp)
+            .clip(shape)
+            .background(ObsidianSurfaceContainer)
             .bouncyClickable {
                 scope.launch {
                     progress.snapTo(0f)
@@ -427,15 +550,30 @@ private fun PdfAction(icon: String, title: String, subtitle: String, onClick: ()
                 }
                 onClick()
             }
-            .padding(vertical = 4.dp),
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SiteIconMotion(icon, null, tint = BrandInk) { progress.value }
+        badge(progress.value)
         Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(title, color = TextPrimary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
-            Text(subtitle, color = TextMuted, fontSize = 11.sp)
+            Text(
+                text = title,
+                color = TextPrimary,
+                fontSize = 13.sp,
+                lineHeight = 18.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(
+                text = subtitle,
+                color = TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 15.sp,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
         }
-        SiteIcon("chevron-right", null, Modifier.size(18.dp), TextMuted)
+        SiteIcon("chevron-right", null, Modifier.size(18.dp), TextSecondary)
     }
 }
 
@@ -451,8 +589,71 @@ private fun PdfToggle(label: String, checked: Boolean, onChange: (Boolean) -> Un
             ) { onChange(!checked) },
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(label, Modifier.weight(1f).padding(end = 12.dp), color = TextPrimary, fontSize = 13.sp)
+        Text(label, Modifier.weight(1f).padding(end = 12.dp), color = TextPrimary, fontSize = 13.sp, lineHeight = 18.sp)
         TurniSwitch(checked = checked, onCheckedChange = onChange)
+    }
+}
+
+@Composable
+private fun PdfGrafiteDialog(
+    title: String,
+    onDismiss: () -> Unit,
+    content: @Composable ColumnScope.(close: () -> Unit) -> Unit,
+) {
+    val palette = currentTurniPalette
+    val maxHeight = (LocalConfiguration.current.screenHeightDp - 72).coerceAtLeast(240).dp
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp, vertical = 20.dp)
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.Center,
+        ) {
+            Surface(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .widthIn(max = 420.dp)
+                    .heightIn(max = maxHeight),
+                shape = RoundedCornerShape(26.dp),
+                color = ObsidianSurface,
+                tonalElevation = 0.dp,
+            ) {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(18.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Text(
+                            text = title,
+                            modifier = Modifier.weight(1f),
+                            color = TextPrimary,
+                            fontSize = 19.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                        TonalIconButton(
+                            icon = "x",
+                            contentDescription = "Chiudi",
+                            onClick = onDismiss,
+                            size = 36.dp,
+                            cornerRadius = 12.dp,
+                            fill = Color(palette.danger.fill),
+                            tint = Color(palette.danger.ink),
+                        )
+                    }
+                    content(onDismiss)
+                }
+            }
+        }
     }
 }
 
@@ -465,63 +666,59 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
     var to by remember { mutableStateOf(options.endDate) }
     var selectingEnd by remember { mutableStateOf(false) }
     var error by remember { mutableStateOf<String?>(null) }
-    // Keep the draft until the exit animation finishes, then commit once.
-    var pending by remember { mutableStateOf<PdfExportOptions?>(null) }
-    SelectorSheet(
+    val dark = TurniThemeState.dark
+    PdfGrafiteDialog(
         title = when (options.mode) {
             PdfExportMode.MESE -> "Scegli il mese"
             PdfExportMode.ANNO -> "Scegli l’anno"
             else -> "Periodo da esportare"
         },
-        onDismiss = { pending?.let(save) ?: dismiss() },
+        onDismiss = dismiss,
     ) { close ->
-        Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .weight(1f, fill = false)
+                .verticalScroll(rememberScrollState()),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
             when (options.mode) {
                 PdfExportMode.MESE, PdfExportMode.ANNO -> {
                     val monthly = options.mode == PdfExportMode.MESE
                     Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                        val navShape = RoundedCornerShape(12.dp)
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(navShape)
-                                .background(ObsidianSurfaceContainer)
-                                .border(1.dp, ObsidianBorderSubtle, navShape)
-                                .bouncyClickable {
-                                    if (monthly && month.year > 1900) {
-                                        month = month.minusYears(1)
-                                    } else if (!monthly) {
-                                        yearPage = (yearPage - 12).coerceAtLeast(1900)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SiteIcon("chevron-left", "Periodo precedente", Modifier.size(18.dp), TextPrimary)
-                        }
+                        TonalIconButton(
+                            icon = "chevron-left",
+                            contentDescription = "Periodo precedente",
+                            onClick = {
+                                if (monthly && month.year > 1900) {
+                                    month = month.minusYears(1)
+                                } else if (!monthly) {
+                                    yearPage = (yearPage - 12).coerceAtLeast(1900)
+                                }
+                            },
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                        )
                         Text(
                             text = if (monthly) month.year.toString() else "$yearPage – ${minOf(2200, yearPage + 11)}",
                             modifier = Modifier.weight(1f),
                             color = TextPrimary,
                             fontWeight = FontWeight.Bold,
-                            textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                            textAlign = TextAlign.Center,
                         )
-                        Box(
-                            modifier = Modifier
-                                .size(38.dp)
-                                .clip(navShape)
-                                .background(ObsidianSurfaceContainer)
-                                .border(1.dp, ObsidianBorderSubtle, navShape)
-                                .bouncyClickable {
-                                    if (monthly && month.year < 2200) {
-                                        month = month.plusYears(1)
-                                    } else if (!monthly) {
-                                        yearPage = (yearPage + 12).coerceAtMost(2196)
-                                    }
-                                },
-                            contentAlignment = Alignment.Center,
-                        ) {
-                            SiteIcon("chevron-right", "Periodo successivo", Modifier.size(18.dp), TextPrimary)
-                        }
+                        TonalIconButton(
+                            icon = "chevron-right",
+                            contentDescription = "Periodo successivo",
+                            onClick = {
+                                if (monthly && month.year < 2200) {
+                                    month = month.plusYears(1)
+                                } else if (!monthly) {
+                                    yearPage = (yearPage + 12).coerceAtMost(2196)
+                                }
+                            },
+                            size = 38.dp,
+                            cornerRadius = 12.dp,
+                        )
                     }
                     (0 until 12).chunked(3).forEach { group ->
                         Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -534,10 +731,10 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                                     animationSpec = tween(180),
                                     label = "pdfPeriodCellBg",
                                 )
-                                val borderTone by animateColorAsState(
-                                    targetValue = if (chosen) ObsidianPrimary else ObsidianBorderSubtle,
+                                val inkTone by animateColorAsState(
+                                    targetValue = if (chosen) OnBrand else TextPrimary,
                                     animationSpec = tween(180),
-                                    label = "pdfPeriodCellBorder",
+                                    label = "pdfPeriodCellInk",
                                 )
                                 Box(
                                     modifier = Modifier
@@ -545,9 +742,8 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                                         .height(48.dp)
                                         .clip(cellShape)
                                         .background(tone)
-                                        .border(1.dp, borderTone, cellShape)
                                         .clickable(
-                                            interactionSource = remember { MutableInteractionSource() },
+                                            interactionSource = remember(value) { MutableInteractionSource() },
                                             indication = null,
                                             enabled = value in (if (monthly) 1..12 else 1900..2200),
                                         ) {
@@ -565,7 +761,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                                         },
                                         fontSize = 13.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        color = if (chosen) OnBrand else TextPrimary,
+                                        color = inkTone,
                                     )
                                 }
                             }
@@ -576,25 +772,26 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         listOf(false, true).forEach { end ->
                             val selected = selectingEnd == end
-                            val chipShape = RoundedCornerShape(13.dp)
+                            val chipShape = RoundedCornerShape(14.dp)
+                            val activeBg = lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.22f else 0.12f)
                             val chipBg by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimarySubtle else ObsidianSurfaceContainer,
+                                targetValue = if (selected) activeBg else ObsidianSurfaceContainer,
                                 animationSpec = tween(180),
                                 label = "pdfRangeChipBg",
                             )
-                            val chipBorder by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimary else ObsidianBorderSubtle,
+                            val chipRing by animateColorAsState(
+                                targetValue = if (selected) ObsidianPrimary else Color.Transparent,
                                 animationSpec = tween(180),
-                                label = "pdfRangeChipBorder",
+                                label = "pdfRangeChipRing",
                             )
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .clip(chipShape)
                                     .background(chipBg)
-                                    .border(1.dp, chipBorder, chipShape)
+                                    .then(if (selected) Modifier.border(2.dp, chipRing, chipShape) else Modifier)
                                     .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
+                                        interactionSource = remember(end) { MutableInteractionSource() },
                                         indication = null,
                                     ) {
                                         selectingEnd = end
@@ -627,36 +824,41 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                     }
                 }
             }
-            error?.let { Text(it, color = ColorNegative, fontSize = 12.sp) }
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                CloudButton("Annulla", "x", close, modifier = Modifier.weight(1f), secondary = true)
-                CloudButton(
-                    label = "Conferma",
-                    icon = "check",
-                    onClick = {
-                        try {
-                            val changed = when (options.mode) {
-                                PdfExportMode.MESE -> options.copy(startDate = month.atDay(1), endDate = month.atEndOfMonth())
-                                PdfExportMode.ANNO -> options.copy(selectedYear = year)
-                                else -> options.copy(startDate = from, endDate = to)
-                            }
-                            PdfExportPlan.dates(changed)
-                            pending = changed
-                            close()
-                        } catch (exception: IllegalArgumentException) {
-                            error = exception.message
+            error?.let { Text(it, color = ColorNegative, fontSize = 12.sp, lineHeight = 17.sp) }
+        }
+        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            CloudButton("Annulla", "x", close, modifier = Modifier.weight(1f), secondary = true)
+            CloudButton(
+                label = "Conferma",
+                icon = "check",
+                onClick = {
+                    try {
+                        val changed = when (options.mode) {
+                            PdfExportMode.MESE -> options.copy(startDate = month.atDay(1), endDate = month.atEndOfMonth())
+                            PdfExportMode.ANNO -> options.copy(selectedYear = year)
+                            else -> options.copy(startDate = from, endDate = to)
                         }
-                    },
-                    modifier = Modifier.weight(1f),
-                )
-            }
+                        PdfExportPlan.dates(changed)
+                        save(changed)
+                    } catch (exception: IllegalArgumentException) {
+                        error = exception.message
+                    }
+                },
+                modifier = Modifier.weight(1f),
+            )
         }
     }
 }
 
 private data class PdfPreview(val file: File, val bitmap: Bitmap, val width: Int, val height: Int) {
-    val paperLabel: String
-        get() = "${when (minOf(width, height)) { 595 -> "A4"; 842 -> "A3"; 1191 -> "A2"; 1684 -> "A1"; else -> "Foglio" }} · ${if (height >= width) "verticale" else "orizzontale"} · 1 pagina"
+    val paperSize: String
+        get() = when (minOf(width, height)) { 595 -> "A4"; 842 -> "A3"; 1191 -> "A2"; 1684 -> "A1"; else -> "Foglio" }
+    val orientationWord: String
+        get() = if (height >= width) "Verticale" else "Orizzontale"
+    val pageBadgeLabel: String
+        get() = "$paperSize · 1 pagina"
+    val orientationSubtitle: String
+        get() = "$orientationWord · lo stesso foglio che verrà condiviso"
 }
 
 @Composable
@@ -666,6 +868,7 @@ private fun PdfPreviewDialog(
     onShare: () -> Unit = {},
     onClose: () -> Unit,
 ) {
+    val palette = currentTurniPalette
     var scale by remember(preview) { mutableStateOf(1f) }
     var offset by remember(preview) { mutableStateOf(Offset.Zero) }
     val gestures = rememberTransformableState { zoom, pan, _ ->
@@ -674,40 +877,47 @@ private fun PdfPreviewDialog(
     }
     Dialog(onDismissRequest = onClose, properties = DialogProperties(usePlatformDefaultWidth = false)) {
         Surface(
-            modifier = Modifier.fillMaxWidth(0.94f).fillMaxHeight(0.88f),
-            shape = RoundedCornerShape(24.dp),
+            modifier = Modifier
+                .fillMaxWidth(0.94f)
+                .fillMaxHeight(0.88f)
+                .navigationBarsPadding(),
+            shape = RoundedCornerShape(26.dp),
             color = ObsidianSurface,
-            border = BorderStroke(1.dp, ObsidianBorderSubtle),
+            tonalElevation = 0.dp,
         ) {
-            Column(Modifier.padding(14.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    Text(
-                        text = preview.paperLabel,
-                        modifier = Modifier.weight(1f),
-                        color = TextPrimary,
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 15.sp,
+            Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    PastelPill(
+                        text = preview.pageBadgeLabel,
+                        color = ExpressivePastel.CORAL.sourceColor,
+                        icon = "file-text",
                     )
-                    val closeShape = RoundedCornerShape(12.dp)
-                    Box(
-                        modifier = Modifier
-                            .size(36.dp)
-                            .clip(closeShape)
-                            .background(ObsidianSurfaceContainer)
-                            .border(1.dp, ObsidianBorderSubtle, closeShape)
-                            .bouncyClickable(onClick = onClose),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        SiteIcon("x", "Chiudi anteprima", Modifier.size(18.dp), ColorNegative)
-                    }
+                    Text(
+                        text = preview.orientationWord,
+                        modifier = Modifier.weight(1f),
+                        color = TextSecondary,
+                        fontWeight = FontWeight.Medium,
+                        fontSize = 13.sp,
+                    )
+                    TonalIconButton(
+                        icon = "x",
+                        contentDescription = "Chiudi anteprima",
+                        onClick = onClose,
+                        size = 36.dp,
+                        cornerRadius = 12.dp,
+                        fill = Color(palette.danger.fill),
+                        tint = Color(palette.danger.ink),
+                    )
                 }
                 Box(
                     modifier = Modifier
                         .weight(1f)
                         .fillMaxWidth()
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(ObsidianSurfaceContainer)
-                        .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp)),
+                        .clip(RoundedCornerShape(18.dp))
+                        .background(ObsidianSurfaceContainer),
                     contentAlignment = Alignment.Center,
                 ) {
                     Image(
@@ -715,6 +925,7 @@ private fun PdfPreviewDialog(
                         contentDescription = "Documento PDF",
                         modifier = Modifier
                             .fillMaxSize()
+                            .padding(12.dp)
                             .transformable(gestures)
                             .graphicsLayer {
                                 scaleX = scale
@@ -725,7 +936,7 @@ private fun PdfPreviewDialog(
                         contentScale = ContentScale.Fit,
                     )
                 }
-                Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, color = TextSecondary)
+                Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
                 Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     CloudButton("Chiudi", "x", onClose, modifier = Modifier.weight(1f), secondary = true)
                     CloudButton(

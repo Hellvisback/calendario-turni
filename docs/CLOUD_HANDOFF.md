@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Restyling espressivo pastello beta.28
+
+La beta.28 personale (73) rinnova l'intera estetica grafica di catalogo (`Modelli e turni`), tutti e quattro gli editor di creazione/modifica, `Impostazioni`, `Aspetto e calendario` e le relative sottoschermate allineandoli a `Calendario`, `Statistiche` e `Modifica`: superfici tonali Grafite senza bordi `1.dp`, palette pastello calibrata da `TurniPalette` con riflesso luminoso e contrasto netto (`ExpressivePastel`, `PastelBadge`, `PastelPill`), mini-celle pastello in `SiteCyclePreview`, anteprima mini-calendario live interattiva in `Aspetto e layout`, righe turno a colonna intera e striscia cicli in `Reperibilità`, tessere Corallo in `Festività` e stepper pastello a 3 passi in `Importazione con AI`. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.28.md).
+
 ## Catalogo etichette, reperibilità e UI impostazioni beta.27
 
 La beta.27 personale (72) sposta le Etichette dei giorni nel catalogo `Modelli e turni` come 4° tab (rimuovendole da Impostazioni ma preservando il primo avvio), corregge il flash/click nella barra segmentata animata (`SlidingSegmentBar`), riorganizza la Reperibilità rimuovendo dalla UI la modalità Manuale e la scheda Prossimi 7 giorni (mantenendo compatibilità dati/backup e stepper dei cicli) e uniforma stile Grafite/Cobalto e animazioni in tutte le sottoschermate delle Impostazioni. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.27.md).

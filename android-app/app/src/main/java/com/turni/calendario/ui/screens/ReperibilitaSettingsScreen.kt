@@ -14,11 +14,12 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -37,12 +38,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -59,6 +58,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -73,14 +73,11 @@ import androidx.compose.ui.unit.sp
 import com.turni.calendario.model.ReperibilitaConfig
 import com.turni.calendario.model.ReperibilitaMode
 import com.turni.calendario.model.ShiftDefinition
+import com.turni.calendario.model.WorkProfile
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.SiteIcon
-import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.theme.BrandInk
-import com.turni.calendario.ui.theme.ObsidianBorder
-import com.turni.calendario.ui.theme.ObsidianBorderSubtle
 import com.turni.calendario.ui.theme.ObsidianPrimary
-import com.turni.calendario.ui.theme.ObsidianPrimarySubtle
 import com.turni.calendario.ui.theme.ObsidianSurface
 import com.turni.calendario.ui.theme.ObsidianSurfaceContainer
 import com.turni.calendario.ui.theme.ObsidianSurfaceHigh
@@ -88,7 +85,8 @@ import com.turni.calendario.ui.theme.OnBrand
 import com.turni.calendario.ui.theme.TextPrimary
 import com.turni.calendario.ui.theme.TextSecondary
 import com.turni.calendario.ui.theme.TurniThemeState
-import com.turni.calendario.ui.theme.currentTurniPalette
+import com.turni.calendario.ui.theme.readableInk
+import com.turni.calendario.ui.theme.shiftChartColor
 import com.turni.calendario.ui.theme.shiftColorStyle
 import java.time.LocalDate
 import java.time.Month
@@ -98,9 +96,9 @@ import java.time.format.TextStyle
 import java.util.Locale
 import kotlinx.coroutines.launch
 
-internal fun annualDayInMonth(month:Int,day:Int):Int=day.coerceIn(1,Month.of(month).maxLength())
-internal fun manualOnCallDates(dates:Set<LocalDate>,overrides:Map<LocalDate,Boolean?>):Set<LocalDate> =
-    (dates+overrides.filterValues{it==true}.keys).filterTo(mutableSetOf()){overrides[it]!=false}
+internal fun annualDayInMonth(month: Int, day: Int): Int = day.coerceIn(1, Month.of(month).maxLength())
+internal fun manualOnCallDates(dates: Set<LocalDate>, overrides: Map<LocalDate, Boolean?>): Set<LocalDate> =
+    (dates + overrides.filterValues { it == true }.keys).filterTo(mutableSetOf()) { overrides[it] != false }
 
 internal fun visibleOnCallMode(mode: ReperibilitaMode): ReperibilitaMode = when (mode) {
     ReperibilitaMode.MANUALE -> ReperibilitaMode.TURNO_SPECIFICO
@@ -226,17 +224,12 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                     Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         when (activeMode) {
                             ReperibilitaMode.TURNO_SPECIFICO -> {
-                                CloudCard(
-                                    title = "Modelli di turno",
-                                    subtitle = "La campanella si accende automaticamente nei giorni con almeno uno dei turni selezionati.",
-                                ) {
-                                    OnCallModelChoices(
-                                        selected = config.shiftSpecificIds,
-                                        onChange = { ids ->
-                                            updateConfig { it.copy(shiftSpecificIds = ids) }
-                                        },
-                                    )
-                                }
+                                OnCallWorkGroupedCards(
+                                    selected = config.shiftSpecificIds,
+                                    onChange = { ids ->
+                                        updateConfig { it.copy(shiftSpecificIds = ids) }
+                                    },
+                                )
                             }
 
                             ReperibilitaMode.ALTERNATA_STAGIONALE -> {
@@ -244,6 +237,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                 CloudCard(
                                     title = "Periodo annuale su turno",
                                     subtitle = "Tra queste due date (comprese, anche oltre Capodanno) sei reperibile solo nei modelli scelti.",
+                                    accent = ExpressivePastel.AMBER,
                                 ) {
                                     AnnualOnCallDate(
                                         label = "Dal",
@@ -260,7 +254,6 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                             }
                                         },
                                     )
-                                    SettingsDivider()
                                     AnnualOnCallDate(
                                         label = "Al",
                                         month = seasonal.winterEndMonth,
@@ -280,6 +273,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                     Text(
                                         text = "Modelli attivi nel periodo",
                                         fontSize = 13.sp,
+                                        lineHeight = 18.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         color = TextPrimary,
                                     )
@@ -296,6 +290,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                 CloudCard(
                                     title = "Ciclo nel resto dell'anno",
                                     subtitle = "Fuori dal periodo sopra, i giorni seguono blocchi da 7 dalla data iniziale, anche senza turno.",
+                                    accent = ExpressivePastel.AMBER,
                                 ) {
                                     OnCallReferenceDate(
                                         value = seasonal.summerCycleReferenceDate,
@@ -329,6 +324,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                         label = "Settimane con reperibilità",
                                         value = seasonal.summerCycleOnCallWeeks,
                                         minValue = 1,
+                                        accent = ExpressivePastel.AMBER,
                                         onChange = { value ->
                                             updateConfig {
                                                 it.copy(
@@ -343,6 +339,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                         label = "Settimane senza reperibilità",
                                         value = seasonal.summerCycleWorkWeeks,
                                         minValue = 0,
+                                        accent = ExpressivePastel.PEARL,
                                         onChange = { value ->
                                             updateConfig {
                                                 it.copy(
@@ -368,7 +365,10 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
             }
         }
 
-        CloudCard(title = "Precedenza sul calendario") {
+        CloudCard(
+            title = "Precedenza sul calendario",
+            accent = ExpressivePastel.PEARL,
+        ) {
             Text(
                 text = "La campanella impostata su un singolo giorno dal calendario ha sempre la precedenza sulle regole automatiche.",
                 color = TextPrimary,
@@ -391,159 +391,216 @@ private fun OnCallHeroCard(
     statusSummary: String,
     onToggle: (Boolean) -> Unit,
 ) {
-    val palette = currentTurniPalette
     val scope = rememberCoroutineScope()
     val bellMotion = remember { Animatable(0f) }
-    val heroShape = RoundedCornerShape(20.dp)
-    val heroBorder by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.edge).copy(alpha = 0.42f) else ObsidianBorderSubtle,
-        animationSpec = tween(220),
-        label = "onCallHeroBorder",
-    )
-    val badgeFill by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.fill) else ObsidianSurfaceHigh,
-        animationSpec = tween(220),
-        label = "onCallHeroBadgeFill",
-    )
-    val badgeInk by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.ink) else TextSecondary,
-        animationSpec = tween(220),
-        label = "onCallHeroBadgeInk",
-    )
-    val pillFill by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.fill) else ObsidianSurfaceHigh,
-        animationSpec = tween(220),
-        label = "onCallHeroPillFill",
-    )
-    val pillInk by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.ink) else TextSecondary,
-        animationSpec = tween(220),
-        label = "onCallHeroPillInk",
-    )
-    val pillBorder by animateColorAsState(
-        targetValue = if (enabled) Color(palette.onCall.edge).copy(alpha = 0.48f) else ObsidianBorderSubtle,
-        animationSpec = tween(220),
-        label = "onCallHeroPillBorder",
+    val badgeAlpha by animateFloatAsState(
+        targetValue = if (enabled) 1f else 0.58f,
+        animationSpec = tween(200),
+        label = "onCallHeroBadgeAlpha",
     )
 
-    Surface(
-        shape = heroShape,
-        color = ObsidianSurface,
-        border = BorderStroke(1.dp, heroBorder),
-        modifier = Modifier
-            .fillMaxWidth()
-            .animateContentSize(
-                animationSpec = spring(
-                    dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow,
-                ),
-            ),
-    ) {
-        Column(
-            modifier = Modifier.padding(14.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    CloudCard {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            PastelIconBadge(
+                pastel = ExpressivePastel.AMBER,
+                icon = "bell",
+                size = 46.dp,
+                iconSize = 22.dp,
+                progress = bellMotion.value,
+                modifier = Modifier.alpha(badgeAlpha),
+            )
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Box(
-                    modifier = Modifier
-                        .size(42.dp)
-                        .clip(RoundedCornerShape(14.dp))
-                        .background(badgeFill),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    SiteIconMotion(
-                        name = "bell",
-                        description = null,
-                        modifier = Modifier.size(21.dp),
-                        tint = badgeInk,
-                    ) { bellMotion.value }
-                }
-                Column(
-                    modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "Reperibilità automatica",
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        lineHeight = 21.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = statusSummary,
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 17.sp,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                TurniSwitch(
-                    checked = enabled,
-                    onCheckedChange = { next ->
-                        if (next) {
-                            scope.launch {
-                                bellMotion.snapTo(0f)
-                                bellMotion.animateTo(1f, tween(560))
-                                bellMotion.snapTo(0f)
-                            }
-                        }
-                        onToggle(next)
-                    },
-                    modifier = Modifier.semantics {
-                        contentDescription = "Reperibilità automatica"
-                    },
-                )
-            }
-
-            SettingsDivider()
-
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
-            ) {
-                Row(
-                    modifier = Modifier
-                        .clip(CircleShape)
-                        .background(pillFill)
-                        .border(1.dp, pillBorder, CircleShape)
-                        .padding(horizontal = 10.dp, vertical = 4.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(pillInk),
-                    )
-                    Text(
-                        text = if (enabled) "Attiva" else "Disattiva",
-                        color = pillInk,
-                        fontSize = 11.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        softWrap = false,
-                    )
-                }
                 Text(
-                    text = if (enabled) {
-                        "La campanella segue la regola automatica configurata."
-                    } else {
-                        "Attivala per collegare la campanella a turni o periodi."
-                    },
+                    text = "Reperibilità automatica",
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    lineHeight = 21.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                Text(
+                    text = statusSummary,
                     color = TextSecondary,
                     fontSize = 12.sp,
                     lineHeight = 17.sp,
-                    modifier = Modifier.weight(1f),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            TurniSwitch(
+                checked = enabled,
+                onCheckedChange = { next ->
+                    if (next) {
+                        scope.launch {
+                            bellMotion.snapTo(0f)
+                            bellMotion.animateTo(1f, tween(560))
+                            bellMotion.snapTo(0f)
+                        }
+                    }
+                    onToggle(next)
+                },
+                modifier = Modifier.semantics {
+                    contentDescription = "Reperibilità automatica"
+                },
+            )
         }
+
+        SettingsDivider()
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            PastelPill(
+                text = if (enabled) "Attiva" else "Disattiva",
+                color = if (enabled) ExpressivePastel.AMBER.sourceColor else ExpressivePastel.PEARL.sourceColor,
+                solid = enabled,
+                icon = if (enabled) "bell" else null,
+            )
+            Text(
+                text = if (enabled) {
+                    "La campanella segue la regola automatica configurata."
+                } else {
+                    "Attivala per collegare la campanella a turni o periodi."
+                },
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+@Composable
+private fun OnCallWorkGroupedCards(
+    selected: List<String>,
+    onChange: (List<String>) -> Unit,
+) {
+    val all = ShiftRepository.shiftDefinitions.toList()
+    val profiles = ShiftRepository.workProfiles.toList()
+
+    if (all.isEmpty()) {
+        CloudCard(
+            title = "Modelli di turno",
+            subtitle = "La campanella si accende automaticamente nei giorni con almeno uno dei turni selezionati.",
+            accent = ExpressivePastel.AMBER,
+        ) {
+            OnCallEmptyModelsNotice()
+        }
+        return
+    }
+
+    val grouped = all.groupBy { it.workProfileId }.entries.toList()
+    if (profiles.size <= 1 || grouped.size <= 1) {
+        CloudCard(
+            title = "Modelli di turno",
+            subtitle = "La campanella si accende automaticamente nei giorni con almeno uno dei turni selezionati.",
+            accent = ExpressivePastel.AMBER,
+        ) {
+            OnCallModelGrid(models = all, selected = selected, onChange = onChange)
+        }
+        return
+    }
+
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        SectionLabel(
+            text = "Modelli per lavoro",
+            trailing = "${selected.count { id -> all.any { it.id == id } }} scelti",
+            accent = ExpressivePastel.AMBER,
+        )
+        grouped.forEachIndexed { groupIndex, (workId, models) ->
+            val profile = profiles.firstOrNull { it.id == workId }
+            val chosenInGroup = models.count { it.id in selected }
+            CloudCard(
+                subtitle = if (groupIndex == 0) {
+                    "La campanella si accende nei giorni con almeno uno dei turni selezionati."
+                } else {
+                    null
+                },
+            ) {
+                OnCallWorkGroupHeader(
+                    profile = profile,
+                    chosenCount = chosenInGroup,
+                )
+                OnCallModelGrid(models = models, selected = selected, onChange = onChange)
+            }
+        }
+    }
+}
+
+@Composable
+private fun OnCallWorkGroupHeader(
+    profile: WorkProfile?,
+    chosenCount: Int,
+) {
+    val dark = TurniThemeState.dark
+    val dotColor = remember(profile?.colorHex, dark) {
+        if (profile != null) {
+            shiftChartColor(Color(profile.colorHex), dark)
+        } else {
+            shiftChartColor(ExpressivePastel.PEARL.sourceColor, dark)
+        }
+    }
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Box(
+            modifier = Modifier
+                .size(9.dp)
+                .clip(CircleShape)
+                .background(dotColor),
+        )
+        Text(
+            text = profile?.name ?: "Altro lavoro",
+            color = TextPrimary,
+            fontSize = 15.sp,
+            lineHeight = 20.sp,
+            fontWeight = FontWeight.SemiBold,
+            modifier = Modifier.weight(1f),
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        PastelPill(
+            text = if (chosenCount == 1) "1 attivo" else "$chosenCount attivi",
+            color = if (chosenCount > 0) ExpressivePastel.AMBER.sourceColor else ExpressivePastel.PEARL.sourceColor,
+            solid = chosenCount > 0,
+        )
+    }
+}
+
+@Composable
+private fun OnCallEmptyModelsNotice() {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(15.dp))
+            .background(ObsidianSurfaceContainer)
+            .padding(14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
+        SiteIcon(
+            name = "clock",
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+            tint = TextSecondary,
+        )
+        Text(
+            text = "Non hai ancora modelli di turno. Creali in Modelli e rotazioni, poi torna qui per sceglierli.",
+            fontSize = 12.sp,
+            lineHeight = 18.sp,
+            color = TextSecondary,
+        )
     }
 }
 
@@ -554,32 +611,9 @@ private fun OnCallModelChoices(
 ) {
     val all = ShiftRepository.shiftDefinitions.toList()
     val profiles = ShiftRepository.workProfiles.toList()
-    val haptic = LocalHapticFeedback.current
 
     if (all.isEmpty()) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(14.dp))
-                .background(ObsidianSurfaceContainer)
-                .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp))
-                .padding(14.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            SiteIcon(
-                name = "clock",
-                contentDescription = null,
-                modifier = Modifier.size(18.dp),
-                tint = TextSecondary,
-            )
-            Text(
-                text = "Non hai ancora modelli di turno. Creali in Modelli e rotazioni, poi torna qui per sceglierli.",
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                color = TextSecondary,
-            )
-        }
+        OnCallEmptyModelsNotice()
         return
     }
 
@@ -590,60 +624,74 @@ private fun OnCallModelChoices(
         }
         if (profiles.size > 1) {
             val profile = profiles.firstOrNull { it.id == workId }
+            val dotColor = if (profile != null) {
+                shiftChartColor(Color(profile.colorHex), TurniThemeState.dark)
+            } else {
+                TextSecondary
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                if (profile != null) {
-                    Box(
-                        modifier = Modifier
-                            .size(8.dp)
-                            .clip(CircleShape)
-                            .background(Color(profile.colorHex)),
-                    )
-                }
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(CircleShape)
+                        .background(dotColor),
+                )
                 Text(
                     text = profile?.name ?: "Altro lavoro",
                     fontSize = 12.sp,
+                    lineHeight = 17.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextSecondary,
                 )
             }
         }
-        BoxWithConstraints(Modifier.fillMaxWidth()) {
-            val columns = if (maxWidth < 250.dp || LocalDensity.current.fontScale > 1.3f) 1 else 2
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                models.chunked(columns).forEach { row ->
-                    Row(
-                        modifier = Modifier
-                            .fillMaxWidth()
-                            .height(IntrinsicSize.Max),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    ) {
-                        row.forEach { model ->
-                            OnCallModelTile(
-                                model = model,
-                                chosen = model.id in selected,
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .fillMaxHeight(),
-                                onToggle = { checked ->
-                                    try {
-                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
-                                    } catch (_: Exception) {
-                                    }
-                                    val updated = if (checked) {
-                                        (selected + model.id).distinct()
-                                    } else {
-                                        selected.filterNot { it == model.id }
-                                    }
-                                    onChange(updated)
-                                },
-                            )
-                        }
-                        repeat(columns - row.size) {
-                            Spacer(Modifier.weight(1f))
-                        }
+        OnCallModelGrid(models = models, selected = selected, onChange = onChange)
+    }
+}
+
+@Composable
+private fun OnCallModelGrid(
+    models: List<ShiftDefinition>,
+    selected: List<String>,
+    onChange: (List<String>) -> Unit,
+) {
+    val haptic = LocalHapticFeedback.current
+    BoxWithConstraints(Modifier.fillMaxWidth()) {
+        val columns = if (maxWidth >= 460.dp && LocalDensity.current.fontScale <= 1.3f) 2 else 1
+        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            models.chunked(columns).forEach { row ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(IntrinsicSize.Max),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    row.forEach { model ->
+                        OnCallModelTile(
+                            model = model,
+                            chosen = model.id in selected,
+                            modifier = Modifier
+                                .weight(1f)
+                                .fillMaxHeight(),
+                            onToggle = { checked ->
+                                try {
+                                    haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                } catch (_: Exception) {
+                                }
+                                val updated = if (checked) {
+                                    (selected + model.id).distinct()
+                                } else {
+                                    selected.filterNot { it == model.id }
+                                }
+                                onChange(updated)
+                            },
+                        )
+                    }
+                    repeat(columns - row.size) {
+                        Spacer(Modifier.weight(1f))
                     }
                 }
             }
@@ -658,41 +706,46 @@ private fun OnCallModelTile(
     modifier: Modifier = Modifier,
     onToggle: (Boolean) -> Unit,
 ) {
-    val shiftStyle = shiftColorStyle(
-        source = Color(model.colorHex),
-        dark = TurniThemeState.dark,
-        backdrop = ObsidianSurface,
-        definitionId = model.id,
-    )
+    val dark = TurniThemeState.dark
+    val themeStyle = TurniThemeState.style
+    val surface = ObsidianSurface
+    val container = ObsidianSurfaceContainer
+    val tone = remember(model.colorHex, model.id, dark, themeStyle, surface) {
+        shiftColorStyle(
+            source = Color(model.colorHex),
+            dark = dark,
+            backdrop = surface,
+            definitionId = model.id,
+        )
+    }
     val tileFill by animateColorAsState(
-        targetValue = if (chosen) ObsidianPrimarySubtle else ObsidianSurfaceContainer,
+        targetValue = if (chosen) {
+            lerp(container, tone.codeFill, if (dark) 0.20f else 0.28f)
+        } else {
+            container
+        },
         animationSpec = tween(180),
         label = "onCallModelTileFill",
     )
-    val tileBorder by animateColorAsState(
-        targetValue = if (chosen) ObsidianPrimary else ObsidianBorderSubtle,
+    val ringColor by animateColorAsState(
+        targetValue = tone.codeFill.copy(alpha = if (chosen) 0.92f else 0f),
         animationSpec = tween(180),
-        label = "onCallModelTileBorder",
+        label = "onCallModelRingColor",
     )
     val indicatorFill by animateColorAsState(
-        targetValue = if (chosen) ObsidianPrimary else Color.Transparent,
+        targetValue = if (chosen) tone.codeFill else surface,
         animationSpec = tween(180),
         label = "onCallModelIndicatorFill",
     )
-    val indicatorBorder by animateColorAsState(
-        targetValue = if (chosen) ObsidianPrimary else ObsidianBorder,
-        animationSpec = tween(180),
-        label = "onCallModelIndicatorBorder",
-    )
     val interactionSource = remember(model.id) { MutableInteractionSource() }
-    val shape = RoundedCornerShape(14.dp)
+    val shape = RoundedCornerShape(15.dp)
 
     Row(
         modifier = modifier
-            .heightIn(min = 56.dp)
+            .heightIn(min = 58.dp)
             .clip(shape)
             .background(tileFill)
-            .border(1.dp, tileBorder, shape)
+            .then(if (chosen || ringColor.alpha > 0.01f) Modifier.border(2.dp, ringColor, shape) else Modifier)
             .toggleable(
                 value = chosen,
                 interactionSource = interactionSource,
@@ -702,19 +755,17 @@ private fun OnCallModelTile(
             )
             .padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(9.dp),
     ) {
-        Box(
-            modifier = Modifier
-                .defaultMinSize(minWidth = 36.dp, minHeight = 36.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(shiftStyle.codeFill)
-                .padding(horizontal = 4.dp),
-            contentAlignment = Alignment.Center,
-        ) {
+        PastelBadge(
+            color = Color(model.colorHex),
+            size = 38.dp,
+            cornerRadius = 11.dp,
+            definitionId = model.id,
+        ) { ink ->
             Text(
                 text = model.shortCode.ifBlank { model.name.take(3) }.take(4),
-                color = shiftStyle.codeInk,
+                color = ink,
                 fontSize = 10.sp,
                 fontWeight = FontWeight.Bold,
                 maxLines = 1,
@@ -724,22 +775,22 @@ private fun OnCallModelTile(
         }
         Column(
             modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(1.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Text(
                 text = model.name,
                 color = TextPrimary,
-                fontSize = 13.sp,
-                lineHeight = 17.sp,
+                fontSize = 14.sp,
+                lineHeight = 18.sp,
                 fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
+                maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
             Text(
                 text = if (model.isAllDay) "Tutto il giorno" else model.timeRangeFormatted,
                 color = TextSecondary,
-                fontSize = 11.sp,
-                lineHeight = 14.sp,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
             )
@@ -748,16 +799,19 @@ private fun OnCallModelTile(
             modifier = Modifier
                 .size(20.dp)
                 .clip(CircleShape)
-                .background(indicatorFill)
-                .border(1.5.dp, indicatorBorder, CircleShape),
+                .background(indicatorFill),
             contentAlignment = Alignment.Center,
         ) {
-            if (chosen) {
+            androidx.compose.animation.AnimatedVisibility(
+                visible = chosen,
+                enter = fadeIn(tween(150)) + scaleIn(tween(150)),
+                exit = fadeOut(tween(120)) + scaleOut(tween(120)),
+            ) {
                 SiteIcon(
                     name = "check",
                     contentDescription = null,
                     modifier = Modifier.size(12.dp),
-                    tint = OnBrand,
+                    tint = tone.codeInk,
                 )
             }
         }
@@ -781,12 +835,14 @@ private fun AnnualOnCallDate(
         animationSpec = tween(220),
         label = "annualDateChevron",
     )
-    val rowBorder by animateColorAsState(
-        targetValue = if (open) ObsidianPrimary else ObsidianBorderSubtle,
+    val dark = TurniThemeState.dark
+    val amberFill = ExpressivePastel.AMBER.style().codeFill
+    val pillFill by animateColorAsState(
+        targetValue = if (open) lerp(ObsidianSurfaceContainer, amberFill, if (dark) 0.16f else 0.24f) else ObsidianSurfaceContainer,
         animationSpec = tween(180),
-        label = "annualDateBorder",
+        label = "annualDatePillFill",
     )
-    val rowShape = RoundedCornerShape(14.dp)
+    val rowShape = RoundedCornerShape(15.dp)
     val headerInteraction = remember { MutableInteractionSource() }
     val haptic = LocalHapticFeedback.current
 
@@ -802,8 +858,7 @@ private fun AnnualOnCallDate(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(rowShape)
-                .background(ObsidianSurfaceContainer)
-                .border(1.dp, rowBorder, rowShape)
+                .background(pillFill)
                 .clickable(
                     interactionSource = headerInteraction,
                     indication = null,
@@ -812,7 +867,7 @@ private fun AnnualOnCallDate(
                     if (!open) shown = month
                     open = !open
                 }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
+                .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -820,11 +875,13 @@ private fun AnnualOnCallDate(
                 Text(
                     text = "$label · ogni anno",
                     fontSize = 11.sp,
+                    lineHeight = 15.sp,
                     color = TextSecondary,
                 )
                 Text(
                     text = value,
                     fontSize = 15.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
                 )
@@ -857,9 +914,8 @@ private fun AnnualOnCallDate(
             Column(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(ObsidianSurfaceContainer)
-                    .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp))
                     .padding(10.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
@@ -870,6 +926,7 @@ private fun AnnualOnCallDate(
                     CompactIconButton(
                         icon = "chevron-left",
                         contentDescription = "Mese precedente",
+                        fill = ObsidianSurface,
                         onClick = { shown = if (shown == 1) 12 else shown - 1 },
                     )
                     Text(
@@ -878,11 +935,13 @@ private fun AnnualOnCallDate(
                         textAlign = TextAlign.Center,
                         color = TextPrimary,
                         fontSize = 14.sp,
+                        lineHeight = 19.sp,
                         fontWeight = FontWeight.SemiBold,
                     )
                     CompactIconButton(
                         icon = "chevron-right",
                         contentDescription = "Mese successivo",
+                        fill = ObsidianSurface,
                         onClick = { shown = if (shown == 12) 1 else shown + 1 },
                     )
                 }
@@ -957,12 +1016,14 @@ private fun OnCallReferenceDate(
         animationSpec = tween(220),
         label = "referenceDateChevron",
     )
-    val rowBorder by animateColorAsState(
-        targetValue = if (open) ObsidianPrimary else ObsidianBorderSubtle,
+    val dark = TurniThemeState.dark
+    val amberFill = ExpressivePastel.AMBER.style().codeFill
+    val pillFill by animateColorAsState(
+        targetValue = if (open) lerp(ObsidianSurfaceContainer, amberFill, if (dark) 0.16f else 0.24f) else ObsidianSurfaceContainer,
         animationSpec = tween(180),
-        label = "referenceDateBorder",
+        label = "referenceDateFill",
     )
-    val rowShape = RoundedCornerShape(14.dp)
+    val rowShape = RoundedCornerShape(15.dp)
     val interactionSource = remember { MutableInteractionSource() }
 
     Column(
@@ -977,8 +1038,7 @@ private fun OnCallReferenceDate(
             modifier = Modifier
                 .fillMaxWidth()
                 .clip(rowShape)
-                .background(ObsidianSurfaceContainer)
-                .border(1.dp, rowBorder, rowShape)
+                .background(pillFill)
                 .clickable(
                     interactionSource = interactionSource,
                     indication = null,
@@ -987,7 +1047,7 @@ private fun OnCallReferenceDate(
                     if (!open) month = YearMonth.from(value)
                     open = !open
                 }
-                .padding(horizontal = 12.dp, vertical = 11.dp),
+                .padding(horizontal = 13.dp, vertical = 11.dp),
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
@@ -995,11 +1055,13 @@ private fun OnCallReferenceDate(
                 Text(
                     text = "Inizio della prima settimana reperibile",
                     fontSize = 11.sp,
+                    lineHeight = 15.sp,
                     color = TextSecondary,
                 )
                 Text(
                     text = value.format(DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ITALIAN)),
                     fontSize = 15.sp,
+                    lineHeight = 20.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = TextPrimary,
                 )
@@ -1028,9 +1090,8 @@ private fun OnCallReferenceDate(
             Box(
                 modifier = Modifier
                     .padding(top = 8.dp)
-                    .clip(RoundedCornerShape(14.dp))
+                    .clip(RoundedCornerShape(16.dp))
                     .background(ObsidianSurfaceContainer)
-                    .border(1.dp, ObsidianBorderSubtle, RoundedCornerShape(14.dp))
                     .padding(10.dp),
             ) {
                 AppDateGrid(
@@ -1065,6 +1126,7 @@ private fun OnCallCadencePresets(
         Text(
             text = "Cadenza rapida",
             fontSize = 12.sp,
+            lineHeight = 17.sp,
             fontWeight = FontWeight.Medium,
             color = TextSecondary,
         )
@@ -1124,25 +1186,19 @@ private fun OnCallPresetPill(
         animationSpec = tween(180),
         label = "onCallPresetFill",
     )
-    val border by animateColorAsState(
-        targetValue = if (selected) ObsidianPrimary else ObsidianBorderSubtle,
-        animationSpec = tween(180),
-        label = "onCallPresetBorder",
-    )
     val ink by animateColorAsState(
         targetValue = if (selected) OnBrand else TextPrimary,
         animationSpec = tween(180),
         label = "onCallPresetInk",
     )
     val interactionSource = remember { MutableInteractionSource() }
-    val shape = RoundedCornerShape(12.dp)
+    val shape = RoundedCornerShape(13.dp)
 
     Box(
         modifier = modifier
             .heightIn(min = 40.dp)
             .clip(shape)
             .background(fill)
-            .border(1.dp, border, shape)
             .clickable(
                 interactionSource = interactionSource,
                 indication = null,
@@ -1156,6 +1212,7 @@ private fun OnCallPresetPill(
             text = label,
             color = ink,
             fontSize = 12.sp,
+            lineHeight = 16.sp,
             fontWeight = FontWeight.SemiBold,
             maxLines = 1,
             softWrap = false,
@@ -1169,10 +1226,20 @@ private fun OnCallWeekCount(
     label: String,
     value: Int,
     minValue: Int,
+    accent: ExpressivePastel,
     onChange: (Int) -> Unit,
 ) {
     val canDecrease = value > minValue
     val canIncrease = value < Int.MAX_VALUE
+    val dark = TurniThemeState.dark
+    val tone = accent.style()
+    val countFill = remember(tone.codeFill, dark) {
+        lerp(ObsidianSurfaceContainer, tone.codeFill, if (dark) 0.28f else 0.48f)
+    }
+    val countInk = remember(countFill, tone.codeInk) {
+        readableInk(countFill, tone.codeInk)
+    }
+
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -1195,17 +1262,17 @@ private fun OnCallWeekCount(
         )
         Box(
             modifier = Modifier
-                .widthIn(min = 38.dp)
-                .heightIn(min = 38.dp)
-                .clip(RoundedCornerShape(10.dp))
-                .background(ObsidianPrimarySubtle)
+                .widthIn(min = 40.dp)
+                .heightIn(min = 40.dp)
+                .clip(RoundedCornerShape(11.dp))
+                .background(countFill)
                 .padding(horizontal = 8.dp),
             contentAlignment = Alignment.Center,
         ) {
             Text(
                 text = "$value",
                 fontSize = 15.sp,
-                color = BrandInk,
+                color = countInk,
                 fontWeight = FontWeight.Bold,
                 textAlign = TextAlign.Center,
             )
@@ -1224,6 +1291,7 @@ private fun CompactIconButton(
     icon: String,
     contentDescription: String,
     enabled: Boolean = true,
+    fill: Color = ObsidianSurfaceContainer,
     onClick: () -> Unit,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -1234,8 +1302,7 @@ private fun CompactIconButton(
             .defaultMinSize(minWidth = 42.dp, minHeight = 42.dp)
             .alpha(if (enabled) 1f else 0.4f)
             .clip(shape)
-            .background(ObsidianSurfaceContainer)
-            .border(1.dp, ObsidianBorderSubtle, shape)
+            .background(fill)
             .semantics(mergeDescendants = true) {
                 this.contentDescription = contentDescription
             }
@@ -1270,21 +1337,156 @@ private fun OnCallCycleSummary(
     referenceDate: LocalDate,
 ) {
     val formattedDate = referenceDate.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN))
+    val totalLong = onCallWeeks.toLong() + workWeeks.toLong()
     val summary = if (workWeeks == 0) {
         "Reperibilità attiva tutte le settimane fuori dal periodo annuale, con inizio dal $formattedDate."
     } else {
-        val total = onCallWeeks + workWeeks
         val onLabel = if (onCallWeeks == 1) "1 settimana" else "$onCallWeeks settimane"
         val offLabel = if (workWeeks == 1) "1 senza" else "$workWeeks senza"
-        "Ciclo da $total settimane: $onLabel con reperibilità, poi $offLabel, a partire dal $formattedDate."
+        "Ciclo da $totalLong settimane: $onLabel con reperibilità, poi $offLabel, a partire dal $formattedDate."
     }
-    Box(
+
+    val amberStyle = ExpressivePastel.AMBER.style()
+    val pearlStyle = ExpressivePastel.PEARL.style()
+    val amberBrush = remember(amberStyle.codeFill, amberStyle.codeInk) {
+        pastelSheenBrush(amberStyle.codeFill, amberStyle.codeInk)
+    }
+    val pearlBrush = remember(pearlStyle.codeFill, pearlStyle.codeInk) {
+        pastelSheenBrush(pearlStyle.codeFill, pearlStyle.codeInk)
+    }
+
+    val maxSlots = 10
+    val shownOn = when {
+        workWeeks == 0 -> onCallWeeks.coerceAtMost(maxSlots)
+        totalLong <= maxSlots -> onCallWeeks
+        else -> ((onCallWeeks.toDouble() / totalLong.toDouble()) * maxSlots).toInt().coerceIn(1, maxSlots - 1)
+    }
+    val shownWork = when {
+        workWeeks == 0 -> 0
+        totalLong <= maxSlots -> workWeeks
+        else -> (maxSlots - shownOn).coerceAtLeast(1)
+    }
+    val hiddenOn = onCallWeeks - shownOn
+    val hiddenWork = workWeeks - shownWork
+
+    Column(
         modifier = Modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(12.dp))
+            .clip(RoundedCornerShape(16.dp))
             .background(ObsidianSurfaceContainer)
-            .padding(horizontal = 12.dp, vertical = 10.dp),
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            )
+            .padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(8.dp)
+                        .clip(RoundedCornerShape(3.dp))
+                        .background(amberStyle.codeFill),
+                )
+                Text(
+                    text = "Reperibile · ${onCallWeeks}s",
+                    color = TextPrimary,
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+            }
+            if (workWeeks > 0) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(RoundedCornerShape(3.dp))
+                            .background(pearlStyle.codeFill),
+                    )
+                    Text(
+                        text = "Ordinaria · ${workWeeks}s",
+                        color = TextSecondary,
+                        fontSize = 11.sp,
+                        lineHeight = 15.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
+                }
+            }
+            Spacer(Modifier.weight(1f))
+            PastelPill(
+                text = if (workWeeks == 0) "Ogni sett." else "$totalLong sett.",
+                color = ExpressivePastel.AMBER.sourceColor,
+                solid = false,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            repeat(shownOn) { index ->
+                val isOverflowCap = hiddenOn > 0 && index == shownOn - 1
+                val label = when {
+                    workWeeks == 0 && onCallWeeks == 1 -> "R1 · continua"
+                    isOverflowCap -> "+${hiddenOn + 1}"
+                    else -> "R${index + 1}"
+                }
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(amberBrush),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        color = amberStyle.codeInk,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+            repeat(shownWork) { index ->
+                val isOverflowCap = hiddenWork > 0 && index == shownWork - 1
+                val label = if (isOverflowCap) "+${hiddenWork + 1}" else "O${index + 1}"
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(26.dp)
+                        .clip(RoundedCornerShape(7.dp))
+                        .background(pearlBrush),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = label,
+                        color = pearlStyle.codeInk,
+                        fontSize = 10.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        softWrap = false,
+                    )
+                }
+            }
+        }
+
         Text(
             text = summary,
             fontSize = 12.sp,
@@ -1293,4 +1495,3 @@ private fun OnCallCycleSummary(
         )
     }
 }
-

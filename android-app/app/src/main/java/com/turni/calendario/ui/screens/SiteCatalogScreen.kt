@@ -1,11 +1,10 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package com.turni.calendario.ui.screens
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
@@ -16,8 +15,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -47,6 +46,17 @@ fun TurniModelsScreen(
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val editing = shift != null || cycle != null || work != null || creatingTag || editingTag != null
 
+    val definitions = ShiftRepository.shiftDefinitions.toList()
+    val profiles = ShiftRepository.workProfiles.toList()
+    val rotations = ShiftRepository.rotations.toList()
+    val dayTags = ShiftRepository.dayTags.toList()
+    val (headerPastel, headerCountLabel) = when (tab) {
+        0 -> ExpressivePastel.SKY to "${definitions.size} ${if (definitions.size == 1) "modello" else "modelli"}"
+        1 -> ExpressivePastel.LAVENDER to "${profiles.size} ${if (profiles.size == 1) "lavoro" else "lavori"}"
+        2 -> ExpressivePastel.AMBER to "${rotations.size} ${if (rotations.size == 1) "rotazione" else "rotazioni"}"
+        else -> ExpressivePastel.MINT to "${dayTags.size} ${if (dayTags.size == 1) "etichetta" else "etichette"}"
+    }
+
     LaunchedEffect(editing) { onEditorActiveChanged?.invoke(editing) }
     DisposableEffect(Unit) { onDispose { onEditorActiveChanged?.invoke(false) } }
     LaunchedEffect(initialEditingRotation) {
@@ -75,44 +85,48 @@ fun TurniModelsScreen(
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(top = 8.dp, bottom = 10.dp),
+                    .padding(top = 8.dp, bottom = 12.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                val backShape = RoundedCornerShape(14.dp)
-                Box(
-                    modifier = Modifier
-                        .size(40.dp)
-                        .clip(backShape)
-                        .background(ObsidianSurface)
-                        .border(1.dp, ObsidianBorderSubtle, backShape)
-                        .bouncyClickable(onClick = onDismiss),
-                    contentAlignment = Alignment.Center,
+                TonalIconButton(
+                    icon = "arrow-left",
+                    contentDescription = "Torna al calendario",
+                    onClick = onDismiss,
+                    size = 40.dp,
+                    cornerRadius = 14.dp,
+                    fill = ObsidianSurface,
+                    tint = TextPrimary,
+                    iconSize = 20.dp,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
                 ) {
-                    SiteIcon(
-                        name = "arrow-left",
-                        contentDescription = "Torna al calendario",
-                        modifier = Modifier.size(20.dp),
-                        tint = TextPrimary,
-                    )
-                }
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                     Text(
                         text = "Modelli e turni",
                         color = TextPrimary,
-                        fontSize = 22.sp,
-                        lineHeight = 26.sp,
+                        fontSize = 23.sp,
+                        lineHeight = 27.sp,
                         fontWeight = FontWeight.Bold,
+                        letterSpacing = (-0.6).sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                     Text(
                         text = "Il tuo catalogo, in un unico posto",
                         fontSize = 12.sp,
+                        lineHeight = 16.sp,
                         color = TextSecondary,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                     )
                 }
+                PastelPill(
+                    text = headerCountLabel,
+                    color = headerPastel.sourceColor,
+                )
             }
-
-            Spacer(Modifier.height(4.dp))
 
             SlidingSegmentBar(
                 items = listOf(
@@ -156,10 +170,12 @@ fun TurniModelsScreen(
                     ) {
                         when (current) {
                             0 -> {
-                                val definitions = ShiftRepository.shiftDefinitions.toList()
                                 if (definitions.isEmpty()) {
                                     item(key = "shifts-empty") {
-                                        CloudCard("Nessun modello di turno") {
+                                        CloudCard(
+                                            title = "Nessun modello di turno",
+                                            accent = ExpressivePastel.SKY,
+                                        ) {
                                             Text(
                                                 text = "Crea il primo turno dal pulsante qui sotto per iniziare a compilare il calendario.",
                                                 color = TextSecondary,
@@ -170,113 +186,30 @@ fun TurniModelsScreen(
                                     }
                                 }
                                 items(definitions, key = { it.id }) { definition ->
-                                    SiteCollectionCard {
-                                        Row(
-                                            modifier = Modifier.fillMaxWidth(),
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                        ) {
-                                            SiteCodeBadge(definition.shortCode, definition.color)
-                                            Column(Modifier.weight(1f)) {
-                                                Text(
-                                                    text = definition.name,
-                                                    color = TextPrimary,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                Text(
-                                                    text = definition.timeRangeFormatted +
-                                                        if (definition.isAllDay) "" else " · ${definition.durationFormatted}",
-                                                    fontSize = 11.sp,
-                                                    color = TextSecondary,
-                                                    modifier = Modifier.padding(top = 3.dp),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                            CatalogEditButton("Modifica ${definition.name}") {
-                                                shift = definition
-                                            }
-                                        }
-                                    }
+                                    ShiftCatalogCard(
+                                        definition = definition,
+                                        onEdit = { shift = definition },
+                                    )
                                 }
                             }
-                            1 -> items(ShiftRepository.workProfiles.toList(), key = { it.id }) { profile ->
-                                SiteCollectionCard {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                    ) {
-                                        Box(
-                                            modifier = Modifier
-                                                .size(38.dp)
-                                                .clip(RoundedCornerShape(11.dp))
-                                                .background(Color(profile.colorHex)),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            CatalogWorkIcon(
-                                                key = profile.iconKey,
-                                                modifier = Modifier.size(21.dp),
-                                                tint = catalogInk(Color(profile.colorHex)),
-                                            )
-                                        }
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                text = profile.name,
-                                                color = TextPrimary,
-                                                fontSize = 14.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            Text(
-                                                text = "${profile.companyOrDepartment.ifBlank { "Profilo di lavoro" }} · ${profile.weeklyHours} h/settimana",
-                                                fontSize = 11.sp,
-                                                color = TextSecondary,
-                                                modifier = Modifier.padding(top = 3.dp),
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            Text(
-                                                text = (if (profile.id == ShiftRepository.activeWorkProfileId) "Calendario attivo" else "Calendario separato") +
-                                                    if (profile.enableAdvancedCalc) " · Parametri CCNL attivi" else "",
-                                                fontSize = 11.sp,
-                                                color = TextSecondary,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                        }
-                                    }
-                                    Row(
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                        modifier = Modifier.padding(top = 10.dp),
-                                    ) {
-                                        CloudButton(
-                                            label = "Modifica",
-                                            icon = "edit",
-                                            onClick = { work = profile to false },
-                                            modifier = Modifier.weight(1f),
-                                            secondary = true,
-                                        )
-                                        CloudButton(
-                                            label = "Apri calendario",
-                                            icon = "calendar",
-                                            onClick = {
-                                                ShiftRepository.setActiveWorkProfile(profile.id)
-                                                onDismiss()
-                                            },
-                                            modifier = Modifier.weight(1.3f),
-                                        )
-                                    }
-                                }
+                            1 -> items(profiles, key = { it.id }) { profile ->
+                                WorkProfileCatalogCard(
+                                    profile = profile,
+                                    isActive = profile.id == ShiftRepository.activeWorkProfileId,
+                                    onEdit = { work = profile to false },
+                                    onOpenCalendar = {
+                                        ShiftRepository.setActiveWorkProfile(profile.id)
+                                        onDismiss()
+                                    },
+                                )
                             }
                             2 -> {
-                                val rotations = ShiftRepository.rotations.toList()
                                 if (rotations.isEmpty()) {
                                     item(key = "rotations-empty") {
-                                        CloudCard("Nessuna rotazione") {
+                                        CloudCard(
+                                            title = "Nessuna rotazione",
+                                            accent = ExpressivePastel.LAVENDER,
+                                        ) {
                                             Text(
                                                 text = "Crea una sequenza di turni ricorrente dal pulsante qui sotto per applicarla rapidamente al calendario.",
                                                 color = TextSecondary,
@@ -287,72 +220,14 @@ fun TurniModelsScreen(
                                     }
                                 }
                                 items(rotations, key = { it.id }) { rotation ->
-                                    SiteCollectionCard {
-                                        val preferred = rotation.id == ShiftRepository.defaultRotationId
-                                        val phase = remember { Animatable(0f) }
-                                        val scope = rememberCoroutineScope()
-                                        val starShape = RoundedCornerShape(11.dp)
-                                        Row(
-                                            verticalAlignment = Alignment.CenterVertically,
-                                            horizontalArrangement = Arrangement.spacedBy(9.dp),
-                                        ) {
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(38.dp)
-                                                    .clip(RoundedCornerShape(11.dp))
-                                                    .background(ObsidianPrimaryContainer),
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                SiteIcon("rotation", null, Modifier.size(21.dp), BrandInk)
-                                            }
-                                            Column(Modifier.weight(1f)) {
-                                                Text(
-                                                    text = rotation.name,
-                                                    color = TextPrimary,
-                                                    fontSize = 14.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                                Text(
-                                                    text = "${rotation.daySequence.size} giorni · ${(rotation.daySequence.size + 6) / 7} settimane" +
-                                                        if (preferred) " · Predefinita" else "",
-                                                    fontSize = 11.sp,
-                                                    color = TextSecondary,
-                                                    modifier = Modifier.padding(top = 3.dp),
-                                                    maxLines = 1,
-                                                    overflow = TextOverflow.Ellipsis,
-                                                )
-                                            }
-                                            Box(
-                                                modifier = Modifier
-                                                    .size(36.dp)
-                                                    .clip(starShape)
-                                                    .background(ObsidianSurfaceContainer)
-                                                    .border(1.dp, ObsidianBorderSubtle, starShape)
-                                                    .bouncyClickable {
-                                                        ShiftRepository.toggleDefaultRotation(rotation.id)
-                                                        scope.launch {
-                                                            phase.snapTo(0f)
-                                                            phase.animateTo(1f, tween(720))
-                                                            phase.snapTo(0f)
-                                                        }
-                                                    },
-                                                contentAlignment = Alignment.Center,
-                                            ) {
-                                                CatalogDefaultStar(
-                                                    selected = preferred,
-                                                    description = if (preferred) "Rimuovi predefinita" else "Imposta predefinita",
-                                                    modifier = Modifier.size(20.dp),
-                                                    progress = phase.value,
-                                                )
-                                            }
-                                            CatalogEditButton("Modifica ${rotation.name}") {
-                                                cycle = rotation
-                                            }
-                                        }
-                                        SiteCyclePreview(rotation)
-                                    }
+                                    RotationCatalogCard(
+                                        rotation = rotation,
+                                        preferred = rotation.id == ShiftRepository.defaultRotationId,
+                                        onToggleDefault = {
+                                            ShiftRepository.toggleDefaultRotation(rotation.id)
+                                        },
+                                        onEdit = { cycle = rotation },
+                                    )
                                 }
                             }
                         }
@@ -360,43 +235,49 @@ fun TurniModelsScreen(
                 }
             }
 
-            CloudButton(
-                label = when (tab) {
-                    0 -> "Nuovo modello"
-                    1 -> "Nuovo lavoro"
-                    2 -> "Nuova rotazione"
-                    else -> "Nuova etichetta"
-                },
-                icon = "plus",
-                onClick = {
-                    when (tab) {
-                        0 -> if (ShiftRepository.shiftDefinitions.size < 150) {
-                            shift = ShiftDefinition(
-                                id = UUID.randomUUID().toString(),
-                                name = "",
-                                shortCode = "TUR",
-                                colorHex = catalogPastelColors[4],
-                                workProfileId = ShiftRepository.activeWorkProfileId,
-                            )
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(ObsidianBackground)
+                    .padding(top = 4.dp, bottom = 10.dp),
+            ) {
+                CloudButton(
+                    label = when (tab) {
+                        0 -> "Nuovo modello"
+                        1 -> "Nuovo lavoro"
+                        2 -> "Nuova rotazione"
+                        else -> "Nuova etichetta"
+                    },
+                    icon = "plus",
+                    onClick = {
+                        when (tab) {
+                            0 -> if (ShiftRepository.shiftDefinitions.size < 150) {
+                                shift = ShiftDefinition(
+                                    id = UUID.randomUUID().toString(),
+                                    name = "",
+                                    shortCode = "TUR",
+                                    colorHex = catalogPastelColors[4],
+                                    workProfileId = ShiftRepository.activeWorkProfileId,
+                                )
+                            }
+                            1 -> if (ShiftRepository.workProfiles.size < 20) {
+                                work = WorkProfile(
+                                    id = UUID.randomUUID().toString(),
+                                    name = "",
+                                    colorHex = catalogPastelColors[2],
+                                    isDefault = false,
+                                ) to true
+                            }
+                            2 -> if (ShiftRepository.rotations.size < 50) {
+                                cycle = ShiftRotation(UUID.randomUUID().toString(), "", 7, List(7) { "" })
+                            }
+                            3 -> if (ShiftRepository.dayTags.size < 500) {
+                                creatingTag = true
+                            }
                         }
-                        1 -> if (ShiftRepository.workProfiles.size < 20) {
-                            work = WorkProfile(
-                                id = UUID.randomUUID().toString(),
-                                name = "",
-                                colorHex = catalogPastelColors[2],
-                                isDefault = false,
-                            ) to true
-                        }
-                        2 -> if (ShiftRepository.rotations.size < 50) {
-                            cycle = ShiftRotation(UUID.randomUUID().toString(), "", 7, List(7) { "" })
-                        }
-                        3 -> if (ShiftRepository.dayTags.size < 500) {
-                            creatingTag = true
-                        }
-                    }
-                },
-                modifier = Modifier.padding(vertical = 10.dp),
-            )
+                    },
+                )
+            }
         }
 
         shift?.let { draft ->
@@ -473,27 +354,15 @@ fun TurniModelsScreen(
 }
 
 @Composable
-private fun CatalogEditButton(description: String, onClick: () -> Unit) {
-    val shape = RoundedCornerShape(11.dp)
-    Box(
-        modifier = Modifier
-            .size(36.dp)
-            .clip(shape)
-            .background(ObsidianSurfaceContainer)
-            .border(1.dp, ObsidianBorderSubtle, shape)
-            .bouncyClickable(onClick = onClick),
-        contentAlignment = Alignment.Center,
-    ) {
-        SiteIcon("edit", description, Modifier.size(18.dp), BrandInk)
-    }
-}
-
-@Composable
-private fun SiteCollectionCard(content: @Composable ColumnScope.() -> Unit) {
+private fun ShiftCatalogCard(
+    definition: ShiftDefinition,
+    onEdit: () -> Unit,
+) {
+    val cardShape = RoundedCornerShape(21.dp)
+    val badgeCode = definition.shortCode.ifBlank { definition.name.take(3).uppercase() }.take(4)
     Surface(
         color = ObsidianSurface,
-        shape = RoundedCornerShape(17.dp),
-        border = BorderStroke(1.dp, ObsidianBorderSubtle),
+        shape = cardShape,
         modifier = Modifier
             .fillMaxWidth()
             .animateContentSize(
@@ -503,75 +372,476 @@ private fun SiteCollectionCard(content: @Composable ColumnScope.() -> Unit) {
                 ),
             ),
     ) {
-        Column(Modifier.padding(12.dp), content = content)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardShape)
+                .bouncyClickable(onClick = onEdit)
+                .padding(horizontal = 14.dp, vertical = 12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            PastelBadge(
+                color = Color(definition.colorHex),
+                size = 48.dp,
+                cornerRadius = 14.dp,
+                definitionId = definition.id,
+            ) { codeInk ->
+                Text(
+                    text = badgeCode,
+                    fontSize = 13.sp,
+                    fontWeight = FontWeight.Bold,
+                    color = codeInk,
+                    maxLines = 1,
+                    softWrap = false,
+                )
+            }
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = definition.name,
+                    color = TextPrimary,
+                    fontSize = 15.sp,
+                    lineHeight = 20.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(4.dp),
+                ) {
+                    if (definition.isAllDay) {
+                        TonalMetaChip(text = "Tutto il giorno")
+                    } else {
+                        TonalMetaChip(
+                            text = "${definition.startTime} – ${definition.endTime}",
+                            icon = "clock",
+                        )
+                        PastelPill(
+                            text = definition.durationFormatted,
+                            color = Color(definition.colorHex),
+                        )
+                        if (definition.breakMinutes > 0) {
+                            TonalMetaChip(text = "Pausa ${definition.breakMinutes}m")
+                        }
+                    }
+                }
+            }
+            TonalIconButton(
+                icon = "edit",
+                contentDescription = "Modifica ${definition.name}",
+                onClick = onEdit,
+                size = 38.dp,
+                cornerRadius = 12.dp,
+                fill = ObsidianSurfaceContainer,
+                tint = BrandInk,
+                iconSize = 18.dp,
+            )
+        }
     }
 }
 
 @Composable
-private fun SiteCodeBadge(code: String, color: Color) {
-    Box(
+private fun WorkProfileCatalogCard(
+    profile: WorkProfile,
+    isActive: Boolean,
+    onEdit: () -> Unit,
+    onOpenCalendar: () -> Unit,
+) {
+    val cardShape = RoundedCornerShape(22.dp)
+    val dark = TurniThemeState.dark
+    val mintTone = ExpressivePastel.MINT.style(dark, ObsidianSurface)
+    val activeFill = lerp(ObsidianSurfaceContainer, mintTone.codeFill, if (dark) 0.22f else 0.36f)
+    val activeInk = readableInk(activeFill, if (dark) mintTone.codeFill else mintTone.codeInk)
+
+    Surface(
+        color = ObsidianSurface,
+        shape = cardShape,
         modifier = Modifier
-            .size(38.dp)
-            .clip(RoundedCornerShape(10.dp))
-            .background(color),
-        contentAlignment = Alignment.Center,
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
     ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardShape)
+                .bouncyClickable(onClick = onEdit)
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PastelBadge(
+                    color = Color(profile.colorHex),
+                    size = 48.dp,
+                    cornerRadius = 14.dp,
+                ) { ink ->
+                    CatalogWorkIcon(
+                        key = profile.iconKey,
+                        modifier = Modifier.size(22.dp),
+                        tint = ink,
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(3.dp),
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        Text(
+                            text = profile.name.ifBlank { "Profilo di lavoro" },
+                            color = TextPrimary,
+                            fontSize = 15.sp,
+                            lineHeight = 20.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            modifier = Modifier.weight(1f, fill = false),
+                        )
+                        if (isActive) {
+                            PastelPill(
+                                text = "Attivo",
+                                color = ExpressivePastel.MINT.sourceColor,
+                                solid = true,
+                                icon = "check",
+                            )
+                        }
+                    }
+                    Text(
+                        text = profile.linkedCcnl.shortLabel,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        color = TextSecondary,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TonalIconButton(
+                    icon = "edit",
+                    contentDescription = "Modifica ${profile.name}",
+                    onClick = onEdit,
+                    size = 38.dp,
+                    cornerRadius = 12.dp,
+                    fill = ObsidianSurfaceContainer,
+                    tint = BrandInk,
+                    iconSize = 18.dp,
+                )
+            }
+
+            FlowRow(
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                if (profile.companyOrDepartment.isNotBlank()) {
+                    TonalMetaChip(
+                        text = profile.companyOrDepartment,
+                        icon = "building",
+                    )
+                }
+                TonalMetaChip(
+                    text = "${profile.weeklyHours}h/sett",
+                    icon = "clock",
+                )
+                TonalMetaChip(text = "Riposo ${profile.minRestHoursBetweenShifts}h")
+                if (profile.enableAdvancedCalc) {
+                    PastelPill(
+                        text = "CCNL",
+                        color = Color(profile.colorHex),
+                    )
+                }
+            }
+
+            if (isActive) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .heightIn(min = 44.dp)
+                        .clip(RoundedCornerShape(14.dp))
+                        .background(activeFill)
+                        .bouncyClickable(onClick = onOpenCalendar)
+                        .padding(horizontal = 14.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.Center,
+                ) {
+                    SiteIcon(
+                        name = "check",
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        tint = activeInk,
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Calendario in uso · Apri",
+                        color = activeInk,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            } else {
+                CloudButton(
+                    label = "Apri calendario",
+                    icon = "calendar",
+                    onClick = onOpenCalendar,
+                    secondary = true,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RotationCatalogCard(
+    rotation: ShiftRotation,
+    preferred: Boolean,
+    onToggleDefault: () -> Unit,
+    onEdit: () -> Unit,
+) {
+    val cardShape = RoundedCornerShape(22.dp)
+    val phase = remember { Animatable(0f) }
+    val scope = rememberCoroutineScope()
+    val starShape = RoundedCornerShape(12.dp)
+    val starFill by animateColorAsState(
+        targetValue = if (preferred) Color(currentTurniPalette.warning.fill) else ObsidianSurfaceContainer,
+        animationSpec = tween(durationMillis = 180),
+        label = "rotationStarFill",
+    )
+    val weeks = (rotation.daySequence.size + 6) / 7
+
+    Surface(
+        color = ObsidianSurface,
+        shape = cardShape,
+        modifier = Modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(cardShape)
+                .bouncyClickable(onClick = onEdit)
+                .padding(14.dp),
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                PastelIconBadge(
+                    pastel = ExpressivePastel.LAVENDER,
+                    icon = "rotation",
+                    size = 44.dp,
+                    iconSize = 21.dp,
+                )
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                ) {
+                    Text(
+                        text = rotation.name,
+                        color = TextPrimary,
+                        fontSize = 15.sp,
+                        lineHeight = 20.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                    ) {
+                        TonalMetaChip(text = "${rotation.daySequence.size} g · $weeks sett")
+                        if (preferred) {
+                            PastelPill(
+                                text = "Predefinita",
+                                color = ExpressivePastel.AMBER.sourceColor,
+                                solid = true,
+                                icon = "star",
+                            )
+                        }
+                    }
+                }
+                Box(
+                    modifier = Modifier
+                        .size(38.dp)
+                        .clip(starShape)
+                        .background(starFill)
+                        .bouncyClickable {
+                            onToggleDefault()
+                            scope.launch {
+                                phase.snapTo(0f)
+                                phase.animateTo(1f, tween(720))
+                                phase.snapTo(0f)
+                            }
+                        },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CatalogDefaultStar(
+                        selected = preferred,
+                        description = if (preferred) "Rimuovi predefinita" else "Imposta predefinita",
+                        modifier = Modifier.size(19.dp),
+                        progress = phase.value,
+                    )
+                }
+                TonalIconButton(
+                    icon = "edit",
+                    contentDescription = "Modifica ${rotation.name}",
+                    onClick = onEdit,
+                    size = 38.dp,
+                    cornerRadius = 12.dp,
+                    fill = ObsidianSurfaceContainer,
+                    tint = BrandInk,
+                    iconSize = 18.dp,
+                )
+            }
+            SiteCyclePreview(rotation)
+        }
+    }
+}
+
+@Composable
+private fun TonalMetaChip(
+    text: String,
+    icon: String? = null,
+) {
+    Row(
+        modifier = Modifier
+            .clip(RoundedCornerShape(10.dp))
+            .background(ObsidianSurfaceContainer)
+            .padding(horizontal = 8.dp, vertical = 4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (icon != null) {
+            SiteIcon(
+                name = icon,
+                contentDescription = null,
+                modifier = Modifier.size(11.dp),
+                tint = TextSecondary,
+            )
+        }
         Text(
-            text = code.take(4),
+            text = text,
+            color = TextSecondary,
             fontSize = 11.sp,
-            fontWeight = FontWeight.Bold,
-            color = catalogInk(color),
+            lineHeight = 14.sp,
+            fontWeight = FontWeight.Medium,
             maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
         )
     }
 }
 
 @Composable
 private fun SiteCyclePreview(rotation: ShiftRotation) {
+    if (rotation.daySequence.isEmpty()) return
+    val dark = TurniThemeState.dark
+    val previewDays = rotation.daySequence.take(14)
+    val overflow = (rotation.daySequence.size - previewDays.size).coerceAtLeast(0)
+
     Column(
-        modifier = Modifier.fillMaxWidth().padding(top = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp)
+            .clip(RoundedCornerShape(14.dp))
+            .background(ObsidianSurfaceContainer)
+            .padding(10.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(3.dp)) {
-            Spacer(Modifier.width(17.dp))
-            listOf("L", "M", "M", "G", "V", "S", "D").forEach {
-                Text(
-                    text = it,
-                    modifier = Modifier.weight(1f),
-                    fontSize = 9.sp,
-                    color = TextSecondary,
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-        rotation.daySequence.chunked(7).forEachIndexed { week, row ->
+        previewDays.chunked(7).forEach { weekDays ->
             Row(
-                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(3.dp),
             ) {
-                Text("S${week + 1}", Modifier.width(17.dp), fontSize = 8.sp, color = TextSecondary)
-                for (day in 0..6) {
-                    val definition = row.getOrNull(day)?.let { ShiftRepository.getShiftDefinition(it) }
-                    val fill = definition?.color ?: ObsidianSurfaceContainer
-                    Box(
-                        modifier = Modifier
-                            .weight(1f)
-                            .height(26.dp)
-                            .clip(RoundedCornerShape(6.dp))
-                            .background(if (day < row.size) fill else Color.Transparent),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        if (day < row.size) {
+                weekDays.forEach { definitionId ->
+                    val definition = definitionId.takeIf { it.isNotBlank() }?.let {
+                        ShiftRepository.getShiftDefinition(it)
+                    }
+                    if (definition != null) {
+                        val tone = remember(definition.colorHex, dark, definition.id) {
+                            shiftColorStyle(
+                                source = definition.color,
+                                dark = dark,
+                                backdrop = ObsidianSurfaceContainer,
+                                definitionId = definition.id,
+                            )
+                        }
+                        val sheen = remember(tone.codeFill, tone.codeInk) {
+                            pastelSheenBrush(tone.codeFill, tone.codeInk)
+                        }
+                        Box(
+                            modifier = Modifier
+                                .size(width = 30.dp, height = 28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(sheen),
+                            contentAlignment = Alignment.Center,
+                        ) {
                             Text(
-                                text = definition?.shortCode?.take(4) ?: "—",
-                                fontSize = 9.sp,
-                                fontWeight = FontWeight.SemiBold,
-                                color = if (definition != null) catalogInk(fill) else TextSecondary,
+                                text = definition.shortCode.take(4).ifBlank { "—" },
+                                fontSize = 9.5.sp,
+                                fontWeight = FontWeight.Bold,
+                                letterSpacing = (-0.2).sp,
+                                color = tone.codeInk,
+                                maxLines = 1,
+                                softWrap = false,
+                            )
+                        }
+                    } else {
+                        Box(
+                            modifier = Modifier
+                                .size(width = 30.dp, height = 28.dp)
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(ObsidianSurface),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Text(
+                                text = "—",
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = TextSecondary,
+                                maxLines = 1,
                             )
                         }
                     }
                 }
+            }
+        }
+        if (overflow > 0) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                PastelPill(
+                    text = "+$overflow",
+                    color = ExpressivePastel.LAVENDER.sourceColor,
+                )
+                Text(
+                    text = "altri giorni nel ciclo",
+                    fontSize = 11.sp,
+                    lineHeight = 15.sp,
+                    color = TextSecondary,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
             }
         }
     }
