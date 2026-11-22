@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 22 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Guida interattiva passo-passo per le funzioni di modifica al primo avvio beta.34
+
+La beta.34 personale (79) trasforma la schermata `3 / 4 · Prova le funzioni di modifica` del primo avvio (`CalendarPractice.kt`, `OnboardingPracticeState.kt`, `NativeCalendarPanels.kt`) in un percorso interattivo guidato mano per la mano: evidenzia con lampeggio fluido il singolo pulsante della barra (*Pomeriggio*, *Più turni*, campanella *Reperibilità*, *Rotazione*, *Gomma*, *Annulla*) e poi la cella del giorno da toccare o tenere premuta (`PracticeGridTargetOverlay` con onde concentriche e badge `TIENI PREMUTO`), intensifica l'indicazione se l'utente attende oltre `2,6 s`, resta ferma finché l'azione corretta non viene eseguita e conferma ogni passo avanzando automaticamente alla lezione successiva. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.34.md).
+
 ## Loghi Impostazioni solo al tocco, permesso con Stacco senza «perm.» e bande calendario a proseguo piatto beta.33
 
 La beta.33 personale (78) rimuove l'animazione automatica all'ingresso e il loop continuo dei loghi a sinistra in *Impostazioni* lasciandoli animare esclusivamente alla pressione della singola voce, uniforma la visualizzazione del permesso a quella dello straordinario nella card giorno (`−1h30` senza `"perm."` + badge `"Stacco HH:mm"` calcolato dinamicamente tramite `resolvedShiftDisplayExitTime`) e salda le bande di straordinario, permesso e trasferta nella griglia del calendario mensile (`NativeMonthCanvas`) come proseguo piatto diretto sotto la tessera del turno (angoli di contatto piatti, stessa larghezza, soli angoli esterni arrotondati). [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.33.md).

@@ -193,7 +193,14 @@ fun FirstRunScreen() {
                                         SetupLink("ai","scan-text","Hai già un prospetto turni?","Importa gratis con la tua AI (nessuna API key): copi il prompt, incolli la risposta e controlli prima di salvare."){persistWorkName();page=it}
                                     }
                                     3 -> {
-                                        SetupTitle("Prova le funzioni di modifica","Tocca, tieni premuto o scorri le funzioni.")
+                                        Text(
+                                            text = "Prova le funzioni di modifica",
+                                            color = TextPrimary,
+                                            fontSize = 21.sp,
+                                            lineHeight = 25.sp,
+                                            fontWeight = FontWeight.Bold,
+                                            letterSpacing = (-.4).sp
+                                        )
                                         GesturePractice()
                                     }
                                     else -> {

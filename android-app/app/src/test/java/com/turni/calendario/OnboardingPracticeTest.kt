@@ -87,4 +87,67 @@ class OnboardingPracticeTest {
             alarmsSetupSummary(SmartAlarmsConfig(isGlobalEnabled = true, rules = listOf(ShiftAlarmRule("m", true), ShiftAlarmRule("p", false))))
         )
     }
+
+    @Test fun interactiveCoachGuidesStepByStepAcrossAllLessons() {
+        val dates = calendarPracticeDates(LocalDate.of(2026, 11, 22), true)
+        val ids = listOf("starter-morning", "starter-afternoon", "starter-night", "starter-rest")
+        val names = mapOf(
+            "starter-morning" to "Mattina",
+            "starter-afternoon" to "Pomeriggio",
+            "starter-night" to "Notte",
+            "starter-rest" to "Riposo"
+        )
+
+        assertEquals("starter-afternoon", recommendedPracticeBrushId(ids))
+
+        // Lesson 0: Step 0 highlights Pomeriggio brush, Step 1 highlights day 1 with TAP
+        val l0s0 = evaluatePracticeCoach(0, 0, CalendarEditMode.REPLACE, null, "starter-morning", null, ids, names, dates)
+        assertEquals(0, l0s0.subStepIndex)
+        assertEquals("starter-afternoon", l0s0.target.brushId)
+        assertNull(l0s0.target.dayIndex)
+
+        val l0s1 = evaluatePracticeCoach(0, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(1, l0s1.subStepIndex)
+        assertEquals(1, l0s1.target.dayIndex)
+        assertEquals(PracticeTargetAction.TAP, l0s1.target.action)
+
+        // Lesson 1: Step 0 highlights day 3 with LONG_PRESS, Step 1 highlights day 6 with TAP
+        val l1s0 = evaluatePracticeCoach(1, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(0, l1s0.subStepIndex)
+        assertEquals(3, l1s0.target.dayIndex)
+        assertEquals(PracticeTargetAction.LONG_PRESS, l1s0.target.action)
+
+        val l1s1 = evaluatePracticeCoach(1, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", 3, ids, names, dates)
+        assertEquals(1, l1s1.subStepIndex)
+        assertEquals(6, l1s1.target.dayIndex)
+        assertEquals(PracticeTargetAction.TAP, l1s1.target.action)
+
+        // Lesson 2: Step 0 highlights mode ADD, Step 1 highlights day 4
+        val l2s0 = evaluatePracticeCoach(2, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(CalendarEditMode.ADD, l2s0.target.mode)
+        val l2s1 = evaluatePracticeCoach(2, 1, CalendarEditMode.ADD, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(4, l2s1.target.dayIndex)
+
+        // Lesson 3: Step 0 highlights bell tool, Step 1 highlights day 5
+        val l3s0 = evaluatePracticeCoach(3, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals("bell", l3s0.target.tool)
+        val l3s1 = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, "bell", "starter-afternoon", null, ids, names, dates)
+        assertEquals(5, l3s1.target.dayIndex)
+
+        // Lesson 4: Step 0 highlights mode ROTATION, Step 1 highlights start day 7, Step 2 highlights end day 13
+        val l4s0 = evaluatePracticeCoach(4, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(CalendarEditMode.ROTATION, l4s0.target.mode)
+        val l4s1 = evaluatePracticeCoach(4, 1, CalendarEditMode.ROTATION, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(7, l4s1.target.dayIndex)
+        val l4s2 = evaluatePracticeCoach(4, 2, CalendarEditMode.ROTATION, null, "starter-afternoon", 7, ids, names, dates)
+        assertEquals(13, l4s2.target.dayIndex)
+
+        // Lesson 5: Step 0 highlights eraser, Step 1 highlights day 2, Step 2 highlights undo
+        val l5s0 = evaluatePracticeCoach(5, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals("eraser", l5s0.target.tool)
+        val l5s1 = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates)
+        assertEquals(2, l5s1.target.dayIndex)
+        val l5s2 = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates)
+        assertEquals("undo", l5s2.target.tool)
+    }
 }

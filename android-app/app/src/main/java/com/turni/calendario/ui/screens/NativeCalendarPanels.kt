@@ -161,10 +161,12 @@ private fun PanelButton(label: String, glyph: String? = null, primary: Boolean =
 @Composable
 internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId: String, tool:String?, onTool:(String)->Unit,
     onMode: (CalendarEditMode) -> Unit, onBrush: (String) -> Unit, onRotation: (String) -> Unit,
-    onUndo: () -> Unit, onClose: () -> Unit, catalogOverride:List<ShiftDefinition>?=null, rotationsOverride:List<ShiftRotation>?=null, title:String="Modifica turni") {
+    onUndo: () -> Unit, onClose: () -> Unit, catalogOverride:List<ShiftDefinition>?=null, rotationsOverride:List<ShiftRotation>?=null, title:String="Modifica turni",
+    highlightTarget: PracticeHighlightTarget? = null, highlightPulse: Float = 0f) {
     val effectiveRotations=rotationsOverride?:ShiftRepository.getRotationsSortedByDefault()
     val rotationDefinitions=(catalogOverride?:ShiftRepository.shiftDefinitions).associateBy{it.id}
     val dark = TurniThemeState.dark
+    val pulseAmt = highlightPulse.coerceIn(0f, 1f)
     Column(Modifier.fillMaxWidth().height(178.dp).clip(RoundedCornerShape(24.dp))
         .background(ObsidianSurface)
         .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
@@ -172,20 +174,52 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
             Text(title, color = TextPrimary, fontSize = 14.sp, lineHeight = 18.sp,
                 fontWeight = FontWeight.Bold, maxLines = 1, overflow = TextOverflow.Ellipsis,
                 modifier = Modifier.weight(1f))
-            PanelIcon("undo", "Annulla modifica", onUndo, width = 36.dp, height = 36.dp,
-                glyphSize = 18.dp, background = ObsidianSurfaceContainer)
+            val undoGuided = highlightTarget?.tool == "undo"
+            val undoOutline = if (undoGuided) BrandInk.copy(alpha = 0.45f + 0.55f * pulseAmt) else Color.Transparent
+            val undoFill = if (undoGuided) lerp(ObsidianSurfaceContainer, ObsidianPrimary, 0.14f + 0.22f * pulseAmt) else ObsidianSurfaceContainer
+            PanelIcon("undo", "Annulla modifica", onUndo,
+                modifier = Modifier
+                    .graphicsLayer {
+                        val s = if (undoGuided) 1f + 0.08f * pulseAmt else 1f
+                        scaleX = s; scaleY = s
+                    }
+                    .border(2.dp, undoOutline, RoundedCornerShape(10.dp)),
+                width = 36.dp, height = 36.dp,
+                glyphSize = 18.dp, tint = if (undoGuided) BrandInk else TextPrimary, background = undoFill)
             Spacer(Modifier.width(4.dp))
             listOf("eraser" to "Gomma", "bell" to "Reperibilità").forEach{(glyph,label)->
                 val selected=tool==glyph
-                val outline by animateColorAsState(if(selected)BrandInk else Color.Transparent,tween(200))
+                val guided = highlightTarget?.tool == glyph
+                val baseOutline by animateColorAsState(if(selected)BrandInk else Color.Transparent,tween(200))
+                val effectiveOutline = if (guided) BrandInk.copy(alpha = 0.45f + 0.55f * pulseAmt) else baseOutline
+                val effectiveBg = when {
+                    guided -> lerp(ObsidianSurfaceContainer, ObsidianPrimary, 0.14f + 0.22f * pulseAmt)
+                    selected -> lerp(ObsidianSurfaceContainer, ObsidianPrimary, .18f)
+                    else -> ObsidianSurfaceContainer
+                }
                 PanelIcon(glyph,label,{onTool(glyph)},
-                    modifier=Modifier.border(2.dp,outline,RoundedCornerShape(10.dp)).semantics{this.selected=selected},
+                    modifier=Modifier
+                        .graphicsLayer {
+                            val s = if (guided) 1f + 0.08f * pulseAmt else 1f
+                            scaleX = s; scaleY = s
+                        }
+                        .border(2.dp,effectiveOutline,RoundedCornerShape(10.dp))
+                        .semantics{this.selected=selected},
                     width=36.dp,height=36.dp,glyphSize=19.dp,
-                    tint=if(selected)BrandInk else TextPrimary,
-                    background=if(selected)lerp(ObsidianSurfaceContainer,ObsidianPrimary,.18f)else ObsidianSurfaceContainer)
+                    tint=if(selected || guided)BrandInk else TextPrimary,
+                    background=effectiveBg)
                 Spacer(Modifier.width(4.dp))
             }
-            PanelIcon("x", "Chiudi modifica", onClose, width = 36.dp, height = 36.dp, glyphSize = 18.dp,
+            val closeGuided = highlightTarget?.tool == "x"
+            val closeOutline = if (closeGuided) ColorNegative.copy(alpha = 0.45f + 0.55f * pulseAmt) else Color.Transparent
+            PanelIcon("x", "Chiudi modifica", onClose,
+                modifier = Modifier
+                    .graphicsLayer {
+                        val s = if (closeGuided) 1f + 0.08f * pulseAmt else 1f
+                        scaleX = s; scaleY = s
+                    }
+                    .border(2.dp, closeOutline, RoundedCornerShape(10.dp)),
+                width = 36.dp, height = 36.dp, glyphSize = 18.dp,
                 tint = ColorNegative,
                 background = Color(currentTurniPalette.danger.fill))
         }
@@ -201,14 +235,29 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
                     val glyph = when (item) { CalendarEditMode.REPLACE -> "swap"; CalendarEditMode.RANGE -> "calendar"; CalendarEditMode.ADD -> "layers"; CalendarEditMode.ROTATION -> "rotation" }
                     val phase = remember { Animatable(0f) }; val scope = rememberCoroutineScope()
                     var replay by remember { mutableStateOf<Job?>(null) }
-                    val ink = if (mode == item) catalogInk(ObsidianPrimary) else TextPrimary
-                    Column(Modifier.weight(1f).fillMaxHeight().clickable(
+                    val modeGuided = highlightTarget?.mode == item && mode != item
+                    val ink = when {
+                        mode == item -> catalogInk(ObsidianPrimary)
+                        modeGuided -> BrandInk
+                        else -> TextPrimary
+                    }
+                    val guidedBorder = if (modeGuided) BrandInk.copy(alpha = 0.45f + 0.55f * pulseAmt) else Color.Transparent
+                    val guidedBg = if (modeGuided) ObsidianPrimary.copy(alpha = 0.10f + 0.16f * pulseAmt) else Color.Transparent
+                    Column(Modifier.weight(1f).fillMaxHeight().padding(3.dp)
+                        .graphicsLayer {
+                            val s = if (modeGuided) 1f + 0.04f * pulseAmt else 1f
+                            scaleX = s; scaleY = s
+                        }
+                        .clip(RoundedCornerShape(10.dp))
+                        .background(guidedBg)
+                        .border(if (modeGuided) 1.8.dp else 0.dp, guidedBorder, RoundedCornerShape(10.dp))
+                        .clickable(
                         interactionSource = remember { MutableInteractionSource() }, indication = null, role = Role.Tab) {
                         replay?.cancel(); replay = scope.launch { phase.snapTo(0f); phase.animateTo(1f, tween(620, easing = panelEasing)); phase.snapTo(0f) }; onMode(item)
                     }, horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
-                        SiteIconMotion(glyph, item.label, Modifier.size(14.dp), ink) { phase.value }
+                        SiteIconMotion(glyph, item.label, Modifier.size(14.dp), ink) { if (modeGuided) maxOf(phase.value, pulseAmt * 0.4f) else phase.value }
                         Spacer(Modifier.height(2.dp))
-                        Text(item.label, color = ink, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = FontWeight.Medium, maxLines = 1)
+                        Text(item.label, color = ink, fontSize = 10.sp, lineHeight = 12.sp, fontWeight = if (modeGuided) FontWeight.Bold else FontWeight.Medium, maxLines = 1)
                     }
                 }
             }
@@ -219,7 +268,9 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
             if (mode == CalendarEditMode.ROTATION) {
                 effectiveRotations.forEach { rotation ->
                     val selected = rotation.id == rotationId
+                    val rotGuided = highlightTarget?.rotationId == rotation.id
                     val outline by animateColorAsState(if (selected) BrandInk else ObsidianBorderSubtle, tween(220), label = "rotationCardOutline")
+                    val effectiveOutline = if (rotGuided) BrandInk.copy(alpha = 0.5f + 0.5f * pulseAmt) else outline
                     val cardFill by animateColorAsState(
                         if (selected) lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.16f else 0.10f)
                         else ObsidianSurfaceContainer,
@@ -228,12 +279,16 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
                     )
                     Column(
                         Modifier
+                            .graphicsLayer {
+                                val s = if (rotGuided) 1f + 0.03f * pulseAmt else 1f
+                                scaleX = s; scaleY = s
+                            }
                             .widthIn(min = 152.dp, max = 216.dp)
                             .width(IntrinsicSize.Max)
                             .height(58.dp)
                             .clip(RoundedCornerShape(13.dp))
                             .background(cardFill)
-                            .border(if (selected) 2.dp else 1.dp, outline, RoundedCornerShape(13.dp))
+                            .border(if (selected || rotGuided) 2.dp else 1.dp, effectiveOutline, RoundedCornerShape(13.dp))
                             .semantics { this.selected = selected }
                             .bouncyClickable { onRotation(rotation.id) }
                             .padding(horizontal = 9.dp, vertical = 6.dp),
@@ -368,16 +423,33 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
             } else {
                 (catalogOverride?:ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }).forEach { def ->
                     val selected = tool==null && brush == def.id
+                    val brushGuided = highlightTarget?.brushId == def.id
                     val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
                     var replay by remember{mutableStateOf<Job?>(null)}
                     val pulse=kotlin.math.sin(phase.value*Math.PI).toFloat()
-                    Box(Modifier.size(48.dp, 44.dp).clip(RoundedCornerShape(12.dp))
-                        .background(if (selected) lerp(ObsidianSurfaceContainer, def.color, .2f) else ObsidianSurfaceContainer)
-                        .then(if (selected) Modifier.border(2.dp, def.color, RoundedCornerShape(12.dp)) else Modifier)
+                    val effectivePulse = if (brushGuided) maxOf(pulse, pulseAmt) else pulse
+                    val boxFill = when {
+                        brushGuided -> lerp(ObsidianSurfaceContainer, def.color, 0.18f + 0.24f * pulseAmt)
+                        selected -> lerp(ObsidianSurfaceContainer, def.color, .2f)
+                        else -> ObsidianSurfaceContainer
+                    }
+                    val borderMod = when {
+                        brushGuided -> Modifier.border(2.2.dp, BrandInk.copy(alpha = 0.5f + 0.5f * pulseAmt), RoundedCornerShape(12.dp))
+                        selected -> Modifier.border(2.dp, def.color, RoundedCornerShape(12.dp))
+                        else -> Modifier
+                    }
+                    Box(Modifier
+                        .graphicsLayer {
+                            val s = if (brushGuided) 1f + 0.08f * pulseAmt else 1f
+                            scaleX = s; scaleY = s
+                        }
+                        .size(48.dp, 44.dp).clip(RoundedCornerShape(12.dp))
+                        .background(boxFill)
+                        .then(borderMod)
                         .clickable { replay?.cancel();replay=scope.launch{phase.snapTo(0f);phase.animateTo(1f,tween(660));phase.snapTo(0f)};onBrush(def.id) }, contentAlignment = Alignment.Center) {
                         Box(Modifier.size(38.dp, 32.dp).clip(RoundedCornerShape(9.dp)).background(def.color), contentAlignment = Alignment.Center) {
                             Text(def.shortCode.ifBlank { getCompactShiftCode(def.id, def.shortCode) }, color = catalogInk(def.color),
-                                fontSize = (12f+1.4f*pulse).sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
+                                fontSize = (12f+1.4f*effectivePulse).sp, fontWeight = FontWeight.Bold, maxLines = 1, textAlign = TextAlign.Center)
                         }
                     }
                 }
