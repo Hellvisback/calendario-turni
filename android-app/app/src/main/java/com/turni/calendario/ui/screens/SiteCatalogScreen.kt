@@ -274,6 +274,9 @@ fun TurniModelsScreen(
                                     name = "",
                                     colorHex = catalogPastelColors[2],
                                     isDefault = false,
+                                    weeklyHours = 0,
+                                    minRestHoursBetweenShifts = 0,
+                                    maxConsecutiveWorkDays = 0,
                                 ) to true
                             }
                             2 -> if (ShiftRepository.rotations.size < 50) {
@@ -599,28 +602,38 @@ private fun WorkProfileCatalogCard(
                 }
             }
 
-            FlowRow(
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                TonalMetaChip(
-                    text = "${profile.weeklyHours}h/sett",
-                    icon = "clock",
-                    iconProgress = clockPhase.value,
-                )
-                TonalMetaChip(text = "Riposo ${profile.minRestHoursBetweenShifts}h")
-                if (profile.maxConsecutiveWorkDays > 0) {
-                    TonalMetaChip(text = "Max ${profile.maxConsecutiveWorkDays} di fila")
-                }
-                if (hasPdf) {
-                    PastelPill(
-                        text = "PDF CCNL",
-                        color = ExpressivePastel.CORAL.sourceColor,
-                        icon = "file-text",
-                        modifier = Modifier
-                            .clip(RoundedCornerShape(10.dp))
-                            .bouncyClickable { openWorkProfilePdf(context, profile) },
-                    )
+            val hasMeta = profile.weeklyHours > 0 ||
+                profile.minRestHoursBetweenShifts > 0 ||
+                profile.maxConsecutiveWorkDays > 0 ||
+                hasPdf
+            if (hasMeta) {
+                FlowRow(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    if (profile.weeklyHours > 0) {
+                        TonalMetaChip(
+                            text = "${profile.weeklyHours}h/sett",
+                            icon = "clock",
+                            iconProgress = clockPhase.value,
+                        )
+                    }
+                    if (profile.minRestHoursBetweenShifts > 0) {
+                        TonalMetaChip(text = "Riposo ${profile.minRestHoursBetweenShifts}h")
+                    }
+                    if (profile.maxConsecutiveWorkDays > 0) {
+                        TonalMetaChip(text = "Max ${profile.maxConsecutiveWorkDays} di fila")
+                    }
+                    if (hasPdf) {
+                        PastelPill(
+                            text = "PDF CCNL",
+                            color = ExpressivePastel.CORAL.sourceColor,
+                            icon = "file-text",
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(10.dp))
+                                .bouncyClickable { openWorkProfilePdf(context, profile) },
+                        )
+                    }
                 }
             }
 

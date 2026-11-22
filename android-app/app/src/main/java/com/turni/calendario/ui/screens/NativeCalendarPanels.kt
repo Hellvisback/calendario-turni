@@ -20,11 +20,9 @@ import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalConfiguration
-import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
-import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
@@ -51,7 +49,6 @@ import java.time.LocalTime
 import java.time.format.DateTimeFormatter
 import java.time.format.TextStyle as DateTextStyle
 import java.util.Locale
-import kotlin.math.abs
 import kotlin.math.roundToInt
 
 private val panelEasing = CubicBezierEasing(.3f, .08f, .3f, 1f)
@@ -566,6 +563,53 @@ private fun breakStartOffsetMinutes(
     return explicit ?: ((totalSpanMin - breakMinutes.coerceAtLeast(0)) / 2L).coerceAtLeast(0L)
 }
 
+internal data class ActualExitEvaluation(
+    val overtimeHours: Float,
+    val permissionHours: Float,
+    val valid: Boolean,
+)
+
+internal fun evaluateActualExitTime(
+    startTime: String,
+    endTime: String,
+    breakMinutes: Int,
+    breakStartTime: String?,
+    chosenExitTime: String,
+    baseDurationMinutes: Long,
+    baseHours: Float,
+): ActualExitEvaluation {
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    val end = runCatching { LocalTime.parse(endTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    val chosen = runCatching { LocalTime.parse(chosenExitTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    if (chosen == end) return ActualExitEvaluation(0f, 0f, true)
+    val spanMin = shiftSpanMinutes(start, end)
+    val startMin = start.toSecondOfDay() / 60L
+    val endMin = end.toSecondOfDay() / 60L
+    val chosenMin = chosen.toSecondOfDay() / 60L
+    val fromStart = Math.floorMod(chosenMin - startMin, 1440L)
+    if (fromStart < spanMin) {
+        val perm = calculatePermissionFromExitTime(
+            startTime = startTime.trim(),
+            endTime = endTime.trim(),
+            breakMinutes = breakMinutes,
+            breakStartTime = breakStartTime,
+            chosenExitTime = chosenExitTime.trim(),
+            baseDurationMinutes = baseDurationMinutes,
+            baseHours = baseHours,
+        )
+        return ActualExitEvaluation(overtimeHours = 0f, permissionHours = perm, valid = true)
+    }
+    val afterEnd = Math.floorMod(chosenMin - endMin, 1440L)
+    return if (afterEnd in 1..960) {
+        ActualExitEvaluation(overtimeHours = afterEnd / 60f, permissionHours = 0f, valid = true)
+    } else {
+        ActualExitEvaluation(0f, 0f, false)
+    }
+}
+
 internal fun calculatePermissionFromExitTime(
     startTime: String,
     endTime: String,
@@ -576,9 +620,9 @@ internal fun calculatePermissionFromExitTime(
     baseHours: Float,
 ): Float {
     if (baseDurationMinutes <= 0L || baseHours <= 0f) return 0f
-    val start = runCatching { LocalTime.parse(startTime) }.getOrNull() ?: return 0f
-    val end = runCatching { LocalTime.parse(endTime) }.getOrNull() ?: return 0f
-    val chosen = runCatching { LocalTime.parse(chosenExitTime) }.getOrNull() ?: return 0f
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull() ?: return 0f
+    val end = runCatching { LocalTime.parse(endTime.trim()) }.getOrNull() ?: return 0f
+    val chosen = runCatching { LocalTime.parse(chosenExitTime.trim()) }.getOrNull() ?: return 0f
     val totalSpanMin = shiftSpanMinutes(start, end)
     val elapsed = Math.floorMod(chosen.toSecondOfDay() / 60L - start.toSecondOfDay() / 60L, 1440L)
     val breakTaken = if (breakMinutes > 0) {
@@ -598,8 +642,8 @@ private fun permissionExitTimeString(
     baseDurationMinutes: Long,
 ): String? {
     if (baseDurationMinutes <= 0L) return endTime
-    val start = runCatching { LocalTime.parse(startTime) }.getOrNull() ?: return null
-    val end = runCatching { LocalTime.parse(endTime) }.getOrNull() ?: return null
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull() ?: return null
+    val end = runCatching { LocalTime.parse(endTime.trim()) }.getOrNull() ?: return null
     val permMin = (permissionHours.coerceAtLeast(0f) * 60f).roundToInt().toLong()
     if (permMin <= 0L) return end.format(DateTimeFormatter.ofPattern("HH:mm"))
     val targetWorked = (baseDurationMinutes - permMin).coerceIn(0L, baseDurationMinutes)
@@ -609,97 +653,6 @@ private fun permissionExitTimeString(
         if (targetWorked <= breakStartOffset) targetWorked else targetWorked + breakMinutes
     } else targetWorked
     return start.plusMinutes(offset).format(DateTimeFormatter.ofPattern("HH:mm"))
-}
-
-@Composable
-private fun ShiftExtraModeSwitcher(selectedMode: Int, onSelect: (Int) -> Unit) {
-    val haptic = LocalHapticFeedback.current
-    val warning = currentTurniPalette.warning
-    val targetPillFill = if (selectedMode == 0) panelOvertimeSurface else Color(warning.fill)
-    val pillFill by animateColorAsState(targetPillFill, tween(180), label = "extraModeFill")
-    BoxWithConstraints(
-        Modifier
-            .fillMaxWidth()
-            .height(38.dp)
-            .clip(RoundedCornerShape(12.dp))
-            .background(ObsidianSurface)
-            .padding(3.dp),
-    ) {
-        val pillWidth = maxWidth / 2
-        val pillOffset by animateDpAsState(
-            targetValue = pillWidth * selectedMode.coerceIn(0, 1),
-            animationSpec = spring(dampingRatio = 0.86f, stiffness = 340f),
-            label = "extraModeOffset",
-        )
-        Box(
-            Modifier
-                .offset(x = pillOffset)
-                .width(pillWidth)
-                .fillMaxHeight()
-                .clip(RoundedCornerShape(9.dp))
-                .background(pillFill),
-        )
-        Row(Modifier.fillMaxSize()) {
-            listOf("+ Straordinario", "− Permesso").forEachIndexed { index, label ->
-                val isSelected = index == selectedMode
-                val targetInk = if (isSelected) {
-                    if (index == 0) panelOvertimeInk else Color(warning.ink)
-                } else TextSecondary
-                val ink by animateColorAsState(targetInk, tween(180), label = "extraModeInk")
-                Box(
-                    Modifier
-                        .weight(1f)
-                        .fillMaxHeight()
-                        .clip(RoundedCornerShape(9.dp))
-                        .semantics { selected = isSelected }
-                        .clickable(
-                            interactionSource = remember(index) { MutableInteractionSource() },
-                            indication = null,
-                            role = Role.Tab,
-                        ) {
-                            if (index != selectedMode) {
-                                runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
-                                onSelect(index)
-                            }
-                        }
-                        .padding(horizontal = 6.dp),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Text(
-                        text = label,
-                        color = ink,
-                        fontSize = 12.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        softWrap = false,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-            }
-        }
-    }
-}
-
-@Composable
-private fun PermissionStepChip(label: String, enabled: Boolean, onClick: () -> Unit) {
-    Box(
-        Modifier
-            .widthIn(min = 54.dp)
-            .height(42.dp)
-            .clip(RoundedCornerShape(11.dp))
-            .background(ObsidianSurface)
-            .bouncyClickable(enabled = enabled, onClick = onClick)
-            .padding(horizontal = 10.dp),
-        contentAlignment = Alignment.Center,
-    ) {
-        Text(
-            text = label,
-            color = if (enabled) TextPrimary else TextSecondary.copy(alpha = 0.45f),
-            fontSize = 12.sp,
-            fontWeight = FontWeight.SemiBold,
-            maxLines = 1,
-        )
-    }
 }
 
 @Composable
@@ -714,30 +667,180 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
     }
     val baseDurationMin = effectiveDef.durationMinutes
     val baseHours = effectiveDef.durationHoursFloat
-    var end by remember(shift.id) { mutableStateOf(shift.actualEndTime ?: baseEnd) }
+    val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT) }
+    val base = remember(baseEnd) { runCatching { LocalTime.parse(baseEnd.trim()) }.getOrNull() }
     var notes by remember(shift.id) { mutableStateOf(shift.notes) }
-    var hours by remember(shift.id) { mutableStateOf(shift.overtimeHours) }
+    var hours by remember(shift.id) {
+        mutableStateOf(if (def.isAllDay) 0f else shift.overtimeHours.coerceAtLeast(0f))
+    }
     var permHours by remember(shift.id) {
         val initial = if (shift.permissionHours.isFinite()) shift.permissionHours else 0f
         mutableStateOf(if (def.isAllDay) 0f else initial.coerceIn(0f, baseHours))
     }
-    var detailMode by remember(shift.id) {
-        mutableStateOf(if (shift.permissionHours > 0f && shift.overtimeHours == 0f) 1 else 0)
+    var end by remember(shift.id) {
+        val initialEnd = if (def.isAllDay) {
+            baseEnd
+        } else if (shift.permissionHours > 0f && shift.overtimeHours == 0f) {
+            shift.actualEndTime
+                ?: permissionExitTimeString(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, shift.permissionHours, baseDurationMin)
+                ?: baseEnd
+        } else {
+            shift.actualEndTime ?: baseEnd
+        }
+        mutableStateOf(initialEnd)
+    }
+    var deltaOffsetMin by remember(shift.id) {
+        val initialDelta = when {
+            def.isAllDay -> 0
+            shift.overtimeHours > 0f -> (shift.overtimeHours * 60f).roundToInt().coerceIn(0, 960)
+            shift.permissionHours > 0f -> -(shift.permissionHours * 60f).roundToInt().coerceIn(0, baseDurationMin.toInt().coerceAtLeast(0))
+            else -> 0
+        }
+        mutableStateOf(initialDelta)
+    }
+    var valid by remember(shift.id) {
+        mutableStateOf(
+            def.isAllDay || evaluateActualExitTime(
+                startTime = shiftStart,
+                endTime = baseEnd,
+                breakMinutes = def.breakMinutes,
+                breakStartTime = def.breakStartTime,
+                chosenExitTime = end,
+                baseDurationMinutes = baseDurationMin,
+                baseHours = baseHours,
+            ).valid
+        )
     }
     var noteTab by remember(shift.id) { mutableStateOf(false) }
-    var showOvertimePicker by remember(shift.id) { mutableStateOf(false) }
-    var showPermissionPicker by remember(shift.id) { mutableStateOf(false) }
-    val parsed = runCatching { LocalTime.parse(end) }.getOrNull()
-    val base = runCatching { LocalTime.parse(baseEnd) }.getOrNull()
-    val extraMinutes = if (parsed != null && base != null) (parsed.toSecondOfDay() / 60 - base.toSecondOfDay() / 60 + 1440) % 1440 else -1
-    val valid = def.isAllDay || (parsed != null && extraMinutes in 0..960)
-    val updateEnd: (String) -> Unit = { value -> end = value; hours = if (value.isBlank()) 0f else ShiftRepository.calculateOvertimeFromEndTime(baseEnd, value) }
+    var showTimePicker by remember(shift.id) { mutableStateOf(false) }
     val warning = currentTurniPalette.warning
     val permInk = Color(warning.ink)
     val permSurface = Color(warning.fill)
-    val exitTimePreview = remember(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, permHours, baseDurationMin) {
-        permissionExitTimeString(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, permHours, baseDurationMin)
+    val minDelta = -baseDurationMin.toInt().coerceAtLeast(0)
+    val maxDelta = 960
+
+    val resetTime: () -> Unit = {
+        end = baseEnd
+        hours = 0f
+        permHours = 0f
+        deltaOffsetMin = 0
+        valid = true
     }
+
+    val applyExitTime: (String) -> Unit = { raw ->
+        val filtered = raw.filter { char -> char.isDigit() || char == ':' }.take(5)
+        end = filtered
+        if (def.isAllDay) {
+            hours = 0f
+            permHours = 0f
+            deltaOffsetMin = 0
+            valid = true
+        } else {
+            val eval = evaluateActualExitTime(
+                startTime = shiftStart,
+                endTime = baseEnd,
+                breakMinutes = def.breakMinutes,
+                breakStartTime = def.breakStartTime,
+                chosenExitTime = filtered,
+                baseDurationMinutes = baseDurationMin,
+                baseHours = baseHours,
+            )
+            valid = eval.valid
+            if (eval.valid) {
+                hours = eval.overtimeHours
+                permHours = eval.permissionHours
+                deltaOffsetMin = when {
+                    eval.overtimeHours > 0f -> (eval.overtimeHours * 60f).roundToInt().coerceIn(1, maxDelta)
+                    eval.permissionHours > 0f -> -(eval.permissionHours * 60f).roundToInt().coerceIn(0, -minDelta)
+                    else -> 0
+                }
+            } else {
+                hours = 0f
+                permHours = 0f
+                if (filtered.isBlank()) deltaOffsetMin = 0
+            }
+        }
+    }
+
+    val applyStepMinutes: (Int) -> Unit = { stepMinutes ->
+        if (!def.isAllDay && base != null) {
+            val currentDelta = when {
+                !valid -> 0
+                hours > 0f -> deltaOffsetMin.coerceIn(1, maxDelta)
+                permHours > 0f -> deltaOffsetMin.coerceIn(minDelta, -1)
+                else -> 0
+            }
+            val clampedDelta = (currentDelta + stepMinutes).coerceIn(minDelta, maxDelta)
+            deltaOffsetMin = clampedDelta
+            valid = true
+            when {
+                clampedDelta == 0 -> {
+                    end = baseEnd
+                    hours = 0f
+                    permHours = 0f
+                }
+                clampedDelta > 0 -> {
+                    end = base.plusMinutes(clampedDelta.toLong()).format(timeFormatter)
+                    hours = clampedDelta / 60f
+                    permHours = 0f
+                }
+                else -> {
+                    val nextPerm = (-clampedDelta / 60f).coerceIn(0f, baseHours)
+                    permHours = nextPerm
+                    end = permissionExitTimeString(
+                        startTime = shiftStart,
+                        endTime = baseEnd,
+                        breakMinutes = def.breakMinutes,
+                        breakStartTime = def.breakStartTime,
+                        permissionHours = nextPerm,
+                        baseDurationMinutes = baseDurationMin,
+                    ) ?: baseEnd
+                    hours = 0f
+                }
+            }
+        }
+    }
+
+    val statusKind = when {
+        hours > 0f -> 1
+        permHours > 0f -> -1
+        else -> 0
+    }
+    val exitInk by animateColorAsState(
+        targetValue = when {
+            !valid -> panelDanger
+            hours > 0f -> panelOvertime
+            permHours > 0f -> permInk
+            else -> TextPrimary
+        },
+        animationSpec = tween(180),
+        label = "shiftExitInk",
+    )
+    val clockTint by animateColorAsState(
+        targetValue = when {
+            hours > 0f -> panelOvertime
+            permHours > 0f -> permInk
+            else -> BrandInk
+        },
+        animationSpec = tween(180),
+        label = "shiftClockTint",
+    )
+    val statusColor by animateColorAsState(
+        targetValue = when (statusKind) {
+            1 -> panelOvertime
+            -1 -> permInk
+            else -> TextSecondary
+        },
+        animationSpec = tween(180),
+        label = "shiftStatusColor",
+    )
+    val statusText = when {
+        hours > 0f -> "+${formatOvertime(hours)} · Straordinario"
+        permHours > 0f -> "−${formatOvertime(permHours)} · Permesso"
+        else -> "Orario regolare"
+    }
+    val canReset = hours > 0f || permHours > 0f || (!def.isAllDay && end != baseEnd)
+
     NativeBottomDialog(onClose, bottomInset = 86.dp) { close ->
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PanelIcon("arrow-left", "Torna al dettaglio giorno", close, width = 40.dp, height = 40.dp, glyphSize = 20.dp)
@@ -757,7 +860,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
         }
         Spacer(Modifier.height(14.dp))
         SlidingSegmentBar(
-            items = listOf("Extra" to "timer", "Note turno" to "notebook"),
+            items = listOf("Orario" to "timer", "Note turno" to "notebook"),
             selectedIndex = if (noteTab) 1 else 0,
             onSelect = { noteTab = it == 1 },
             height = 44.dp,
@@ -782,225 +885,145 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                     .border(1.dp, ObsidianBorder, RoundedCornerShape(18.dp))
                     .animateContentSize(tween(220, easing = panelEasing))
                     .padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                ShiftExtraModeSwitcher(detailMode) { detailMode = it }
-                AnimatedContent(
-                    targetState = detailMode,
-                    transitionSpec = {
-                        (fadeIn(tween(200)) + slideInVertically(tween(220, easing = panelEasing)) { 4 }) togetherWith fadeOut(tween(100))
-                    },
-                    label = "shiftExtraModeContent",
-                ) { activeMode ->
-                    if (activeMode == 0) {
-                        Column {
-                            if (def.isAllDay) Text("Per calcolare lo straordinario serve un turno con orario di fine.", color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                            else Row(Modifier.fillMaxWidth().padding(bottom = 8.dp), verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                                    Text("Fine prevista", color = TextSecondary, fontSize = 11.sp)
-                                    Text(baseEnd, color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                                }
-                                Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                                    Text("Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                                        BasicTextField(
-                                            value = end,
-                                            onValueChange = { updateEnd(it.filter { char -> char.isDigit() || char == ':' }.take(5)) },
-                                            singleLine = true,
-                                            textStyle = TextStyle(color = if (valid) panelOvertime else panelDanger, fontSize = 19.sp, fontWeight = FontWeight.SemiBold),
-                                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                                            cursorBrush = SolidColor(panelOvertime),
-                                            modifier = Modifier.weight(1f).heightIn(min = 44.dp).clip(RoundedCornerShape(10.dp)).background(ObsidianSurface).padding(horizontal = 9.dp, vertical = 7.dp),
-                                            decorationBox = { field -> Box(contentAlignment = Alignment.CenterStart) { field() } },
-                                        )
-                                        PanelIcon(
-                                            name = "clock",
-                                            label = "Scegli stacco effettivo",
-                                            onClick = { showOvertimePicker = true },
-                                            width = 44.dp,
-                                            height = 44.dp,
-                                            glyphSize = 18.dp,
-                                            tint = panelOvertime,
-                                            background = ObsidianSurface,
-                                        )
-                                    }
-                                }
-                            }
-                            Row(Modifier.fillMaxWidth().heightIn(min = 40.dp), verticalAlignment = Alignment.CenterVertically) {
-                                Text(if (hours > 0) "+${formatOvertime(hours)}" else "Nessuno straordinario", color = panelOvertime,
-                                    fontSize = 13.sp, fontWeight = FontWeight.Medium, modifier = Modifier.weight(1f))
-                                Text("Azzera", color = ColorNegative,
-                                    fontSize = 11.sp, fontWeight = FontWeight.SemiBold,
-                                    modifier = Modifier.clip(RoundedCornerShape(9.dp)).clickable { end = baseEnd; hours = 0f }.padding(horizontal = 8.dp, vertical = 10.dp))
-                            }
-                            if (!def.isAllDay) Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-                                listOf(15, 30, 45, 60, 90, 120).forEach { minutes ->
-                                    val label = if (minutes < 60) "+${minutes}m" else if (minutes == 90) "+1,5h" else "+${minutes / 60}h"
-                                    Box(Modifier.widthIn(min = 43.dp).height(44.dp).clip(RoundedCornerShape(11.dp)).background(ObsidianSurface)
-                                        .clickable { val current = runCatching { LocalTime.parse(end) }.getOrNull() ?: base
-                                            if (current != null) updateEnd(current.plusMinutes(minutes.toLong()).format(DateTimeFormatter.ofPattern("HH:mm"))) }
-                                        .padding(horizontal = 6.dp), contentAlignment = Alignment.Center) {
-                                        Text(label, color = TextPrimary, fontSize = 12.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-                                }
-                            }
-                            if (!valid) Text("Controlla l’orario di stacco: massimo 16 ore dopo la fine prevista", color = panelDanger,
-                                fontSize = 11.sp, modifier = Modifier.padding(top = 6.dp))
+                if (def.isAllDay) {
+                    Text(
+                        "Per registrare straordinario o permesso serve un turno con orario definito.",
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 17.sp,
+                    )
+                } else {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                            Text("Fine prevista", color = TextSecondary, fontSize = 11.sp)
+                            Text(
+                                text = baseEnd,
+                                color = TextPrimary,
+                                fontSize = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                style = TextStyle(fontFeatureSettings = "tnum"),
+                            )
                         }
-                    } else {
-                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            if (def.isAllDay) {
-                                Text("Serve un turno con orario definito", color = TextSecondary, fontSize = 12.sp, lineHeight = 17.sp)
-                            } else {
-                                val netWorked = (baseHours - permHours).coerceAtLeast(0f)
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text("Durata turno", color = TextSecondary, fontSize = 11.sp)
-                                        Text(formatOvertime(baseHours), color = TextPrimary, fontSize = 18.sp, fontWeight = FontWeight.SemiBold)
-                                    }
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                        Text("Ore lavorate nette", color = TextSecondary, fontSize = 11.sp)
-                                        Text(
-                                            formatOvertime(netWorked),
-                                            color = if (permHours > 0f) permInk else TextPrimary,
-                                            fontSize = 18.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                        )
-                                    }
-                                }
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    PermissionStepChip("−15m", enabled = permHours > 0f) {
-                                        val nextMin = ((permHours * 60f).roundToInt() - 15).coerceAtLeast(0)
-                                        permHours = (nextMin / 60f).coerceIn(0f, baseHours)
-                                    }
-                                    Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
-                                        Text("Permesso", color = TextSecondary, fontSize = 10.sp, lineHeight = 13.sp)
-                                        Text(
-                                            text = if (permHours > 0f) "−${formatOvertime(permHours)}" else "Nessun permesso",
-                                            color = if (permHours > 0f) permInk else TextSecondary,
-                                            fontSize = if (permHours > 0f) 15.sp else 12.sp,
-                                            lineHeight = 19.sp,
-                                            fontWeight = FontWeight.SemiBold,
-                                            maxLines = 1,
-                                        )
-                                    }
-                                    PermissionStepChip("+15m", enabled = permHours < baseHours - 0.001f) {
-                                        val nextMin = (permHours * 60f).roundToInt() + 15
-                                        permHours = (nextMin / 60f).coerceIn(0f, baseHours)
-                                    }
-                                }
-                                Row(
-                                    Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    val clockPhase = remember { Animatable(0f) }
-                                    val clockScope = rememberCoroutineScope()
-                                    var clockJob by remember { mutableStateOf<Job?>(null) }
-                                    Row(
-                                        Modifier
-                                            .weight(1f)
-                                            .heightIn(min = 44.dp)
-                                            .clip(RoundedCornerShape(11.dp))
-                                            .background(ObsidianSurface)
-                                            .clickable(
-                                                interactionSource = remember { MutableInteractionSource() },
-                                                indication = null,
-                                                role = Role.Button,
-                                            ) {
-                                                clockJob?.cancel()
-                                                clockJob = clockScope.launch {
-                                                    clockPhase.snapTo(0f)
-                                                    clockPhase.animateTo(1f, tween(520, easing = panelEasing))
-                                                    clockPhase.snapTo(0f)
-                                                }
-                                                showPermissionPicker = true
-                                            }
-                                            .padding(horizontal = 10.dp, vertical = 8.dp),
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                                    ) {
-                                        SiteIconMotion("clock", null, Modifier.size(16.dp), permInk) { clockPhase.value }
-                                        Column(Modifier.weight(1f)) {
-                                            Text(
-                                                "Ora uscita anticipata",
-                                                color = TextPrimary,
-                                                fontSize = 12.sp,
-                                                lineHeight = 15.sp,
-                                                fontWeight = FontWeight.Medium,
-                                                maxLines = 1,
-                                                overflow = TextOverflow.Ellipsis,
-                                            )
-                                            if (permHours > 0f && exitTimePreview != null) {
-                                                Text(
-                                                    "Uscita alle $exitTimePreview",
-                                                    color = permInk,
-                                                    fontSize = 11.sp,
-                                                    lineHeight = 14.sp,
-                                                    fontWeight = FontWeight.SemiBold,
-                                                )
-                                            }
-                                        }
-                                    }
-                                    Text(
-                                        "Azzera",
-                                        color = ColorNegative,
-                                        fontSize = 11.sp,
+                        Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                            Text("Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
+                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                BasicTextField(
+                                    value = end,
+                                    onValueChange = applyExitTime,
+                                    singleLine = true,
+                                    textStyle = TextStyle(
+                                        color = exitInk,
+                                        fontSize = 19.sp,
                                         fontWeight = FontWeight.SemiBold,
-                                        modifier = Modifier
-                                            .clip(RoundedCornerShape(9.dp))
-                                            .clickable(enabled = permHours > 0f) { permHours = 0f }
-                                            .padding(horizontal = 8.dp, vertical = 10.dp)
-                                            .graphicsLayer { alpha = if (permHours > 0f) 1f else 0.45f },
-                                    )
-                                }
-                                Row(
-                                    Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()),
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                ) {
-                                    listOf(15, 30, 60, 90, 120, 180, 240).forEach { minutes ->
-                                        val label = when {
-                                            minutes < 60 -> "${minutes}m"
-                                            minutes == 90 -> "1,5h"
-                                            else -> "${minutes / 60}h"
-                                        }
-                                        val chipHours = (minutes / 60f).coerceAtMost(baseHours)
-                                        val selectedChip = abs(permHours - (minutes / 60f)) < 0.01f && permHours > 0f
-                                        val allowed = minutes <= baseDurationMin
-                                        Box(
-                                            Modifier
-                                                .widthIn(min = 43.dp)
-                                                .height(42.dp)
-                                                .clip(RoundedCornerShape(11.dp))
-                                                .background(if (selectedChip) permSurface else ObsidianSurface)
-                                                .clickable(enabled = allowed) { permHours = chipHours }
-                                                .padding(horizontal = 8.dp),
-                                            contentAlignment = Alignment.Center,
-                                        ) {
-                                            Text(
-                                                text = label,
-                                                color = when {
-                                                    !allowed -> TextSecondary.copy(alpha = 0.45f)
-                                                    selectedChip -> permInk
-                                                    else -> TextPrimary
-                                                },
-                                                fontSize = 12.sp,
-                                                fontWeight = FontWeight.SemiBold,
-                                            )
-                                        }
-                                    }
-                                }
+                                        fontFeatureSettings = "tnum",
+                                    ),
+                                    keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
+                                    cursorBrush = SolidColor(exitInk),
+                                    modifier = Modifier
+                                        .weight(1f)
+                                        .heightIn(min = 44.dp)
+                                        .clip(RoundedCornerShape(10.dp))
+                                        .background(ObsidianSurface)
+                                        .padding(horizontal = 9.dp, vertical = 7.dp),
+                                    decorationBox = { field -> Box(contentAlignment = Alignment.CenterStart) { field() } },
+                                )
+                                PanelIcon(
+                                    name = "clock",
+                                    label = "Scegli stacco effettivo",
+                                    onClick = {
+                                        focus.clearFocus()
+                                        keyboard?.hide()
+                                        showTimePicker = true
+                                    },
+                                    width = 44.dp,
+                                    height = 44.dp,
+                                    glyphSize = 18.dp,
+                                    tint = clockTint,
+                                    background = ObsidianSurface,
+                                )
                             }
                         }
+                    }
+                    Row(Modifier.fillMaxWidth().heightIn(min = 38.dp), verticalAlignment = Alignment.CenterVertically) {
+                        AnimatedContent(
+                            targetState = statusText,
+                            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(90)) },
+                            label = "shiftTimeStatus",
+                            modifier = Modifier.weight(1f),
+                        ) { label ->
+                            Text(
+                                text = label,
+                                color = statusColor,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        Text(
+                            text = "Azzera",
+                            color = ColorNegative,
+                            fontSize = 11.sp,
+                            fontWeight = FontWeight.SemiBold,
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(9.dp))
+                                .clickable(enabled = canReset, onClick = resetTime)
+                                .padding(horizontal = 8.dp, vertical = 10.dp)
+                                .graphicsLayer { alpha = if (canReset) 1f else 0.45f },
+                        )
+                    }
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        val steps = listOf(
+                            -60 to "−1h",
+                            -30 to "−30m",
+                            -15 to "−15m",
+                            15 to "+15m",
+                            30 to "+30m",
+                            60 to "+1h",
+                        )
+                        steps.forEach { (stepMinutes, label) ->
+                            val isNegative = stepMinutes < 0
+                            val chipEnabled = if (isNegative) deltaOffsetMin > minDelta || !valid else deltaOffsetMin < maxDelta || !valid
+                            val baseTint = if (isNegative) permSurface else panelOvertimeSurface
+                            val chipFill = lerp(ObsidianSurface, baseTint, if (TurniThemeState.dark) 0.55f else 0.45f)
+                            val chipInk = readableInk(chipFill, if (isNegative) permInk else panelOvertimeInk)
+                            Box(
+                                Modifier
+                                    .weight(1f)
+                                    .height(42.dp)
+                                    .clip(RoundedCornerShape(11.dp))
+                                    .background(chipFill)
+                                    .bouncyClickable(enabled = chipEnabled) { applyStepMinutes(stepMinutes) }
+                                    .padding(horizontal = 2.dp)
+                                    .graphicsLayer { alpha = if (chipEnabled) 1f else 0.45f },
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = label,
+                                    color = chipInk,
+                                    fontSize = 11.5.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                        }
+                    }
+                    if (!valid) {
+                        Text(
+                            "Controlla l’orario di stacco (HH:mm, massimo 16 ore dopo la fine prevista)",
+                            color = panelDanger,
+                            fontSize = 11.sp,
+                        )
                     }
                 }
             }
@@ -1009,10 +1032,13 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
         PanelButton("Salva", "check", true, Modifier.fillMaxWidth(), 44.dp) {
             if (valid) {
                 focus.clearFocus(); keyboard?.hide()
+                val normalizedEnd = runCatching {
+                    LocalTime.parse(end.trim()).format(timeFormatter)
+                }.getOrDefault(end.trim())
                 ShiftRepository.setShiftExtraDetails(
                     date = date,
                     assignedShiftId = shift.id,
-                    actualEndTime = if (def.isAllDay || end == baseEnd) null else end,
+                    actualEndTime = if (def.isAllDay || hours <= 0f) null else normalizedEnd,
                     overtimeHours = if (def.isAllDay) 0f else hours,
                     notes = notes,
                     permissionHours = if (def.isAllDay) 0f else permHours,
@@ -1021,33 +1047,14 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
             } else onFeedback(ActionFeedback("Controlla l’orario di stacco", true))
         }
     }
-    if (showOvertimePicker) {
+    if (showTimePicker) {
         TurniTimePickerDialog(
             title = "Stacco effettivo",
-            initialTime = if (parsed != null) end else baseEnd,
-            onDismiss = { showOvertimePicker = false },
+            initialTime = runCatching { LocalTime.parse(end.trim()).format(timeFormatter) }.getOrDefault(baseEnd),
+            onDismiss = { showTimePicker = false },
             onConfirm = { chosen ->
-                showOvertimePicker = false
-                updateEnd(chosen)
-            },
-        )
-    }
-    if (showPermissionPicker) {
-        TurniTimePickerDialog(
-            title = "Uscita anticipata",
-            initialTime = exitTimePreview ?: baseEnd,
-            onDismiss = { showPermissionPicker = false },
-            onConfirm = { chosen ->
-                showPermissionPicker = false
-                permHours = calculatePermissionFromExitTime(
-                    startTime = shiftStart,
-                    endTime = baseEnd,
-                    breakMinutes = def.breakMinutes,
-                    breakStartTime = def.breakStartTime,
-                    chosenExitTime = chosen,
-                    baseDurationMinutes = baseDurationMin,
-                    baseHours = baseHours,
-                )
+                showTimePicker = false
+                applyExitTime(chosen)
             },
         )
     }

@@ -6,6 +6,7 @@ import android.app.Activity
 import android.content.Context
 import android.content.ContextWrapper
 import android.content.Intent
+import android.content.SharedPreferences
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.IntentSenderRequest
@@ -20,13 +21,16 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.common.api.ApiException
 import com.google.android.gms.common.api.Scope
+import com.turni.calendario.model.GoogleAccountProfile
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.sync.DriveAutomaticBackup
 import kotlinx.coroutines.*
+import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
 import java.net.URLEncoder
+import java.util.Locale
 
 internal enum class GoogleFeature(val dataScopes:List<String>){
     PROFILE(emptyList()),
@@ -38,22 +42,118 @@ internal enum class GoogleFeature(val dataScopes:List<String>){
 /** Only a verified Google userinfo response can create a remembered account. Never stores tokens. */
 internal object GoogleAccountSession {
     private const val PREFS="turnisync_google_identity_v1"
+    private const val PREF_REMEMBERED="remembered_accounts"
+
+    var rememberedAccounts by mutableStateOf<List<GoogleAccountProfile>>(emptyList())
+        private set
+
     fun initialize(context:Context){
         val p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
-        val email=p.getString("email",null);val subject=p.getString("subject",null)
-        if(p.getBoolean("verified",false)&&!email.isNullOrBlank()&&!subject.isNullOrBlank())
-            ShiftRepository.setVerifiedGoogleAccount(email,p.getString("name",null)?:email.substringBefore('@'))
+        val email=p.getString("email",null)?.trim()?.takeIf{it.isNotBlank()}
+        val subject=p.getString("subject",null)?.trim()?.takeIf{it.isNotBlank()}
+        val activeProfile=if(p.getBoolean("verified",false)&&email!=null&&subject!=null){
+            val resolvedName=p.getString("name",null)?.trim()?.takeIf{it.isNotBlank()}?:email.substringBefore('@')
+            ShiftRepository.setVerifiedGoogleAccount(email,resolvedName)
+            GoogleAccountProfile(email=email,displayName=resolvedName,isConnected=true)
+        }else{
+            null
+        }
+        val loaded=loadRemembered(p,activeProfile?.email)
+        val merged=if(activeProfile!=null)mergeRemembered(loaded,activeProfile,prepend=false)else loaded
+        rememberedAccounts=merged
+        if(activeProfile!=null&&merged!=loaded){
+            p.edit().putString(PREF_REMEMBERED,encodeRemembered(merged)).apply()
+        }
     }
+
     fun accept(context:Context,json:JSONObject,expectedEmail:String){
-        val email=json.optString("email");val sub=json.optString("sub")
+        val email=json.optString("email").trim();val sub=json.optString("sub").trim()
         require(email.isNotBlank()&&sub.isNotBlank()&&json.optBoolean("email_verified",false)&&email.equals(expectedEmail,true)){"L’account restituito da Google non corrisponde a quello selezionato."}
-        val name=json.optString("name").ifBlank{email.substringBefore('@')}
+        val name=json.optString("name").trim().ifBlank{email.substringBefore('@')}
         val previous=ShiftRepository.googleAccountProfile?.email
         if(previous!=null&&!previous.equals(email,true))DriveAutomaticBackup.disable(context)
-        context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().putBoolean("verified",true).putString("email",email).putString("subject",sub).putString("name",name).apply()
+        val p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+        val existing=loadRemembered(p,email)
+        val updated=mergeRemembered(existing,GoogleAccountProfile(email=email,displayName=name,isConnected=true),prepend=true)
+        p.edit()
+            .putBoolean("verified",true)
+            .putString("email",email)
+            .putString("subject",sub)
+            .putString("name",name)
+            .putString(PREF_REMEMBERED,encodeRemembered(updated))
+            .apply()
+        rememberedAccounts=updated
         ShiftRepository.setVerifiedGoogleAccount(email,name)
     }
-    fun clear(context:Context){DriveAutomaticBackup.disable(context);context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit().clear().apply();ShiftRepository.disconnectGoogleAccount()}
+
+    fun forgetRemembered(context:Context,email:String){
+        val target=email.trim()
+        if(target.isBlank())return
+        val p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+        val activeRepoEmail=ShiftRepository.googleAccountProfile?.email
+        val activePrefEmail=if(p.getBoolean("verified",false))p.getString("email",null) else null
+        if(target.equals(activeRepoEmail,true)||target.equals(activePrefEmail,true))return
+        val updated=loadRemembered(p,activeRepoEmail?:activePrefEmail).filterNot{it.email.equals(target,true)}
+        p.edit().putString(PREF_REMEMBERED,encodeRemembered(updated)).apply()
+        rememberedAccounts=updated
+    }
+
+    fun clear(context:Context){
+        DriveAutomaticBackup.disable(context)
+        val p=context.getSharedPreferences(PREFS,Context.MODE_PRIVATE)
+        p.edit()
+            .remove("verified")
+            .remove("email")
+            .remove("subject")
+            .remove("name")
+            .apply()
+        rememberedAccounts=loadRemembered(p,activeEmail=null)
+        ShiftRepository.disconnectGoogleAccount()
+    }
+
+    private fun loadRemembered(prefs:SharedPreferences,activeEmail:String?):List<GoogleAccountProfile>{
+        val raw=prefs.getString(PREF_REMEMBERED,null)?:return emptyList()
+        val array=runCatching{JSONArray(raw)}.getOrNull()?:return emptyList()
+        val seen=HashSet<String>()
+        val result=ArrayList<GoogleAccountProfile>(array.length())
+        for(i in 0 until array.length()){
+            val obj=array.optJSONObject(i)?:continue
+            val email=obj.optString("email").trim()
+            if(email.isBlank())continue
+            val key=email.lowercase(Locale.ROOT)
+            if(!seen.add(key))continue
+            val name=obj.optString("name").trim().ifBlank{email.substringBefore('@')}
+            result.add(GoogleAccountProfile(email=email,displayName=name,isConnected=!activeEmail.isNullOrBlank()&&email.equals(activeEmail,true)))
+        }
+        return result
+    }
+
+    private fun mergeRemembered(existing:List<GoogleAccountProfile>,target:GoogleAccountProfile,prepend:Boolean):List<GoogleAccountProfile>{
+        val key=target.email.lowercase(Locale.ROOT)
+        val activeEntry=target.copy(isConnected=true)
+        if(prepend){
+            return listOf(activeEntry)+existing.filterNot{it.email.lowercase(Locale.ROOT)==key}.map{it.copy(isConnected=false)}
+        }
+        var found=false
+        val mapped=existing.map{item->
+            if(item.email.lowercase(Locale.ROOT)==key){found=true;activeEntry}else item.copy(isConnected=false)
+        }
+        return if(found)mapped else listOf(activeEntry)+mapped
+    }
+
+    private fun encodeRemembered(accounts:List<GoogleAccountProfile>):String{
+        val array=JSONArray()
+        accounts.forEach{profile->
+            if(profile.email.isNotBlank()){
+                array.put(
+                    JSONObject()
+                        .put("email",profile.email)
+                        .put("name",profile.displayName.ifBlank{profile.email.substringBefore('@')})
+                )
+            }
+        }
+        return array.toString()
+    }
 }
 
 /** Account choice and Google consent are separate from the requested Drive/Calendar operation. */
@@ -76,6 +176,17 @@ internal class GoogleAccess(private val activity:ComponentActivity,private val s
                 .setAllowableAccountsTypes(listOf("com.google")).setAlwaysShowAccountPicker(true).build())
             try{this.chooseAccount?.invoke(intent)?:cancel()}catch(_:Exception){fail("Non è possibile aprire la scelta dell’account Google.")}
         }else{email=remembered;requestAuthorization()}
+    }
+    fun authorizeKnownAccount(accountEmail:String,feature:GoogleFeature,onToken:(String)->Unit){
+        if(busy)return
+        val knownEmail=accountEmail.trim()
+        if(knownEmail.isBlank()){authorize(feature,chooseAccount=true,onToken=onToken);return}
+        if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity)!=ConnectionResult.SUCCESS){onError("Aggiorna o attiva Google Play Services per collegare il tuo account.");return}
+        this.feature=feature
+        this.completion=onToken
+        this.email=knownEmail
+        this.busy=true
+        requestAuthorization()
     }
     fun accountResult(resultCode:Int,data:Intent?){
         if(resultCode!=Activity.RESULT_OK){cancel();return}
@@ -147,6 +258,7 @@ internal fun rememberGoogleAccess(onError:(String)->Unit):GoogleAccess{
 }
 
 private fun googleAccessError(error:Exception):String=when((error as? ApiException)?.statusCode){
+    5->"L’account selezionato non è più disponibile su questo dispositivo. Rimuovilo dalla lista o scegli un altro account."
     10->"Il collegamento Google non è configurato per questa versione dell’app. Occorre completare la configurazione Google di TurniSync."
     7->"Connessione assente. Controlla Internet e riprova."
     8,12500->"Google non ha completato l’accesso. Durante la beta l’account deve essere abilitato come utente di prova. Se lo è già, controlla Google Play Services e riprova."

@@ -19,6 +19,7 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -255,14 +256,16 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             subtitle = preview?.orientationSubtitle?.takeUnless { previewLoading || previewError != null }
                 ?: "Lo stesso foglio che verrà condiviso",
         ) {
+            val dark = TurniThemeState.dark
             val stageShape = RoundedCornerShape(18.dp)
             when {
                 previewLoading -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(308.dp)
+                        .height(320.dp)
                         .clip(stageShape)
-                        .background(ObsidianSurfaceContainer),
+                        .background(ObsidianSurfaceContainer)
+                        .border(1.dp, ObsidianBorder, stageShape),
                     contentAlignment = Alignment.Center,
                 ) {
                     preview?.let {
@@ -271,7 +274,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                             contentDescription = null,
                             modifier = Modifier
                                 .fillMaxSize()
-                                .padding(top = 42.dp, bottom = 14.dp, start = 16.dp, end = 16.dp),
+                                .padding(top = 44.dp, bottom = 36.dp, start = 20.dp, end = 20.dp),
                             contentScale = ContentScale.Fit,
                             alpha = 0.22f,
                         )
@@ -283,6 +286,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                         .fillMaxWidth()
                         .clip(stageShape)
                         .background(ObsidianSurfaceContainer)
+                        .border(1.dp, ObsidianBorder, stageShape)
                         .padding(16.dp),
                 ) {
                     Row(
@@ -303,9 +307,10 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 preview != null -> Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(308.dp)
+                        .height(320.dp)
                         .clip(stageShape)
                         .background(ObsidianSurfaceContainer)
+                        .border(1.dp, ObsidianBorder, stageShape)
                         .bouncyClickable {
                             previewIconJob?.cancel()
                             previewIconJob = previewScope.launch {
@@ -317,14 +322,34 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                         },
                     contentAlignment = Alignment.Center,
                 ) {
-                    Image(
-                        bitmap = preview!!.bitmap.asImageBitmap(),
-                        contentDescription = "Anteprima PDF, tocca per ingrandire",
+                    BoxWithConstraints(
                         modifier = Modifier
                             .fillMaxSize()
-                            .padding(top = 42.dp, bottom = 14.dp, start = 16.dp, end = 16.dp),
-                        contentScale = ContentScale.Fit,
-                    )
+                            .padding(top = 44.dp, bottom = 40.dp, start = 20.dp, end = 20.dp),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        val pageRatio = (preview!!.width.toFloat() / preview!!.height.toFloat()).coerceIn(0.4f, 2.5f)
+                        val containerRatio = if (maxHeight > 0.dp) maxWidth / maxHeight else 1f
+                        val sheetModifier = if (pageRatio >= containerRatio) {
+                            Modifier.fillMaxWidth().aspectRatio(pageRatio)
+                        } else {
+                            Modifier.fillMaxHeight().aspectRatio(pageRatio)
+                        }
+                        Surface(
+                            modifier = sheetModifier,
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White,
+                            shadowElevation = if (dark) 8.dp else 4.dp,
+                            border = BorderStroke(0.75.dp, Color(0xFFD5DCE6)),
+                        ) {
+                            Image(
+                                bitmap = preview!!.bitmap.asImageBitmap(),
+                                contentDescription = "Anteprima PDF, tocca per ingrandire",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
+                            )
+                        }
+                    }
                     PdfStatusPill(
                         text = preview!!.pageBadgeLabel,
                         fill = ObsidianPrimaryContainer,
@@ -337,11 +362,23 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     )
                     PdfStatusPill(
                         text = preview!!.orientationWord,
-                        fill = ObsidianSurface.copy(alpha = 0.92f),
+                        fill = ObsidianSurface.copy(alpha = 0.94f),
                         ink = TextSecondary,
                         modifier = Modifier
                             .align(Alignment.TopStart)
-                            .padding(10.dp),
+                            .padding(10.dp)
+                            .border(0.75.dp, ObsidianBorder, RoundedCornerShape(10.dp)),
+                    )
+                    PdfStatusPill(
+                        text = "Tocca per ingrandire",
+                        fill = ObsidianSurface.copy(alpha = 0.94f),
+                        ink = TextSecondary,
+                        icon = "search",
+                        progress = previewIconMotion.value,
+                        modifier = Modifier
+                            .align(Alignment.BottomCenter)
+                            .padding(bottom = 9.dp)
+                            .border(0.75.dp, ObsidianBorder, RoundedCornerShape(10.dp)),
                     )
                 }
                 else -> Text("Nessuna anteprima disponibile", color = TextSecondary, fontSize = 12.sp)
@@ -351,15 +388,12 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 enter = fadeIn(tween(180)) + expandVertically(tween(200)),
                 exit = fadeOut(tween(120)) + shrinkVertically(tween(160)),
             ) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text("Tocca l’anteprima per ingrandire", fontSize = 11.sp, lineHeight = 15.sp, color = TextMuted)
-                    CloudButton(
-                        label = "Ingrandisci anteprima",
-                        icon = "search",
-                        onClick = { zoom = true },
-                        secondary = true,
-                    )
-                }
+                CloudButton(
+                    label = "Ingrandisci anteprima",
+                    icon = "search",
+                    onClick = { zoom = true },
+                    secondary = true,
+                )
             }
         }
 
@@ -1051,29 +1085,43 @@ private fun PdfPreviewDialog(
                             tint = Color(palette.danger.ink),
                         )
                     }
-                    Box(
+                    BoxWithConstraints(
                         modifier = Modifier
                             .weight(1f)
                             .fillMaxWidth()
                             .clip(RoundedCornerShape(18.dp))
-                            .background(ObsidianSurfaceContainer),
+                            .background(ObsidianSurfaceContainer)
+                            .border(1.dp, ObsidianBorder, RoundedCornerShape(18.dp))
+                            .transformable(gestures)
+                            .padding(14.dp),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Image(
-                            bitmap = preview.bitmap.asImageBitmap(),
-                            contentDescription = "Documento PDF",
-                            modifier = Modifier
-                                .fillMaxSize()
-                                .padding(12.dp)
-                                .transformable(gestures)
-                                .graphicsLayer {
-                                    scaleX = scale
-                                    scaleY = scale
-                                    translationX = offset.x
-                                    translationY = offset.y
-                                },
-                            contentScale = ContentScale.Fit,
-                        )
+                        val pageRatio = (preview.width.toFloat() / preview.height.toFloat()).coerceIn(0.4f, 2.5f)
+                        val containerRatio = if (maxHeight > 0.dp) maxWidth / maxHeight else 1f
+                        val sheetModifier = if (pageRatio >= containerRatio) {
+                            Modifier.fillMaxWidth().aspectRatio(pageRatio)
+                        } else {
+                            Modifier.fillMaxHeight().aspectRatio(pageRatio)
+                        }
+                        Surface(
+                            modifier = sheetModifier.graphicsLayer {
+                                scaleX = scale
+                                scaleY = scale
+                                translationX = offset.x
+                                translationY = offset.y
+                            },
+                            shape = RoundedCornerShape(8.dp),
+                            color = Color.White,
+                            shadowElevation = if (dark) 8.dp else 4.dp,
+                            border = BorderStroke(0.75.dp, Color(0xFFD5DCE6)),
+                        ) {
+                            Image(
+                                bitmap = preview.bitmap.asImageBitmap(),
+                                contentDescription = "Documento PDF",
+                                modifier = Modifier.fillMaxSize(),
+                                contentScale = ContentScale.Fit,
+                            )
+                        }
                     }
                     Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {

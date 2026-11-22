@@ -55,7 +55,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -101,6 +100,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.stateDescription
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
@@ -2236,6 +2236,13 @@ private fun CatalogStep(number: Int, label: String) {
     }
 }
 
+private fun filterOptionalPositiveIntInput(raw: String, range: IntRange): String? {
+    if (raw.isEmpty()) return ""
+    if (!raw.all { it.isDigit() }) return null
+    val parsed = raw.toIntOrNull() ?: return null
+    return if (parsed in range) parsed.toString() else null
+}
+
 @Composable
 fun WorkProfileEditorScreen(
     profile: WorkProfile,
@@ -2250,14 +2257,37 @@ fun WorkProfileEditorScreen(
     var icon by remember(profile.id) { mutableStateOf(profile.iconKey) }
     var color by remember(profile.id) { mutableStateOf(profile.colorHex) }
     var active by remember(profile.id) { mutableStateOf(profile.isDefault) }
-    var hours by remember(profile.id) { mutableIntStateOf(profile.weeklyHours) }
-    var rest by remember(profile.id) { mutableIntStateOf(profile.minRestHoursBetweenShifts) }
-    var maxConsecutive by remember(profile.id) {
-        mutableIntStateOf(profile.maxConsecutiveWorkDays.coerceIn(0, 14))
+    var hoursText by remember(profile.id, isNew) {
+        mutableStateOf(if (isNew) "" else profile.weeklyHours.takeIf { it > 0 }?.toString().orEmpty())
     }
-    var lastNonZeroConsecutive by remember(profile.id) {
-        mutableIntStateOf(profile.maxConsecutiveWorkDays.takeIf { it in 1..14 } ?: 6)
+    var restText by remember(profile.id, isNew) {
+        mutableStateOf(if (isNew) "" else profile.minRestHoursBetweenShifts.takeIf { it > 0 }?.toString().orEmpty())
     }
+    var maxConsecutiveText by remember(profile.id, isNew) {
+        mutableStateOf(if (isNew) "" else profile.maxConsecutiveWorkDays.takeIf { it > 0 }?.toString().orEmpty())
+    }
+    var lastHoursText by remember(profile.id, isNew) { mutableStateOf(hoursText) }
+    var lastRestText by remember(profile.id, isNew) { mutableStateOf(restText) }
+    var lastMaxConsecutiveText by remember(profile.id, isNew) { mutableStateOf(maxConsecutiveText) }
+    var controlsEnabled by remember(profile.id, isNew) {
+        mutableStateOf(
+            !isNew && (
+                profile.weeklyHours > 0 ||
+                    profile.minRestHoursBetweenShifts > 0 ||
+                    profile.maxConsecutiveWorkDays > 0
+                ),
+        )
+    }
+    var controlsExpanded by remember(profile.id, isNew) { mutableStateOf(false) }
+    val parsedHours = if (controlsEnabled) (hoursText.toIntOrNull()?.coerceIn(1, 60) ?: 0) else 0
+    val parsedRest = if (controlsEnabled) (restText.toIntOrNull()?.coerceIn(1, 24) ?: 0) else 0
+    val parsedConsecutive = if (controlsEnabled) (maxConsecutiveText.toIntOrNull()?.coerceIn(1, 14) ?: 0) else 0
+    var displayHours by remember(profile.id, isNew) { mutableIntStateOf(parsedHours) }
+    if (parsedHours > 0) displayHours = parsedHours
+    var displayRest by remember(profile.id, isNew) { mutableIntStateOf(parsedRest) }
+    if (parsedRest > 0) displayRest = parsedRest
+    var displayConsecutive by remember(profile.id, isNew) { mutableIntStateOf(parsedConsecutive) }
+    if (parsedConsecutive > 0) displayConsecutive = parsedConsecutive
     var documentName by remember(profile.id) { mutableStateOf(profile.ccnlDocumentName) }
     var documentUri by remember(profile.id) { mutableStateOf(profile.ccnlDocumentUri) }
     var documentError by remember { mutableStateOf<String?>(null) }
@@ -2365,24 +2395,35 @@ fun WorkProfileEditorScreen(
                             )
                         }
                     }
+                    val hasAnyControl = parsedHours > 0 || parsedRest > 0 || parsedConsecutive > 0
                     FlowRow(
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                         verticalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        PastelPill(
-                            text = "${hours}h/sett",
-                            color = Color(color),
-                            icon = "clock",
-                        )
-                        PastelPill(
-                            text = "Riposo ${rest}h",
-                            color = ExpressivePastel.MINT.sourceColor,
-                        )
-                        AnimatedVisibility(visible = maxConsecutive > 0) {
+                        AnimatedVisibility(visible = parsedHours > 0) {
                             PastelPill(
-                                text = "Max $maxConsecutive di fila",
+                                text = "${displayHours}h/sett",
+                                color = Color(color),
+                                icon = "clock",
+                            )
+                        }
+                        AnimatedVisibility(visible = parsedRest > 0) {
+                            PastelPill(
+                                text = "Riposo ${displayRest}h",
+                                color = ExpressivePastel.MINT.sourceColor,
+                            )
+                        }
+                        AnimatedVisibility(visible = parsedConsecutive > 0) {
+                            PastelPill(
+                                text = "Max $displayConsecutive di fila",
                                 color = ExpressivePastel.AMBER.sourceColor,
                                 icon = "calendar",
+                            )
+                        }
+                        AnimatedVisibility(visible = !hasAnyControl) {
+                            PastelPill(
+                                text = "Nessun limite orario",
+                                color = ExpressivePastel.PEARL.sourceColor,
                             )
                         }
                     }
@@ -2517,179 +2558,206 @@ fun WorkProfileEditorScreen(
                 UniversalColorPickerRow(color, showNames = true) { color = it }
             }
 
-            CatalogGroup("Orario e riposo", outlined = true) {
-                Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                    CatalogField(
-                        label = "Ore settimanali",
-                        value = hours.toString(),
-                        change = { it.toIntOrNull()?.takeIf { n -> n in 1..60 }?.let { n -> hours = n } },
-                        modifier = Modifier.weight(1f),
-                        numeric = true,
-                        height = 44.dp,
-                        centered = true,
-                    )
-                    CatalogField(
-                        label = "Riposo minimo · ore",
-                        value = rest.toString(),
-                        change = { it.toIntOrNull()?.takeIf { n -> n in 1..24 }?.let { n -> rest = n } },
-                        modifier = Modifier.weight(1f),
-                        numeric = true,
-                        height = 44.dp,
-                        centered = true,
-                    )
+            val summaryParts = buildList {
+                if (parsedHours > 0) add("${parsedHours}h/sett")
+                if (parsedRest > 0) add("Riposo ${parsedRest}h")
+                if (parsedConsecutive > 0) add("Max $parsedConsecutive di fila")
+            }
+            val controlsSummary = if (summaryParts.isNotEmpty()) {
+                summaryParts.joinToString(" · ")
+            } else {
+                "Facoltativi · nessun conteggio"
+            }
+            val chevronAngle by animateFloatAsState(
+                targetValue = if (controlsEnabled && controlsExpanded) 180f else 0f,
+                animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f),
+                label = "workControlsChevron",
+            )
+            val toggleControlsGroup: (Boolean) -> Unit = { enabled ->
+                if (enabled) {
+                    hoursText = lastHoursText
+                    restText = lastRestText
+                    maxConsecutiveText = lastMaxConsecutiveText
+                    controlsEnabled = true
+                    controlsExpanded = true
+                } else {
+                    lastHoursText = hoursText
+                    lastRestText = restText
+                    lastMaxConsecutiveText = maxConsecutiveText
+                    hoursText = ""
+                    restText = ""
+                    maxConsecutiveText = ""
+                    controlsEnabled = false
+                    controlsExpanded = false
                 }
-                SettingsDivider()
-                val consecutiveEnabled = maxConsecutive > 0
-                val toggleConsecutive: (Boolean) -> Unit = { enabled ->
-                    if (enabled) {
-                        maxConsecutive = lastNonZeroConsecutive.coerceIn(1, 14)
-                    } else {
-                        if (maxConsecutive in 1..14) lastNonZeroConsecutive = maxConsecutive
-                        maxConsecutive = 0
-                    }
-                }
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(min = 48.dp)
-                        .tactileNoFlashClick { toggleConsecutive(!consecutiveEnabled) },
-                    verticalAlignment = Alignment.CenterVertically,
+            }
+
+            Surface(
+                shape = RoundedCornerShape(22.dp),
+                color = ObsidianSurface,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .animateContentSize(
+                        animationSpec = spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow,
+                        ),
+                    ),
+            ) {
+                Column(
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp),
                 ) {
-                    Column(
+                    Row(
                         modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 12.dp),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            text = "Controllo turni di fila",
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            lineHeight = 18.sp,
-                            fontWeight = FontWeight.Medium,
-                        )
-                        Text(
-                            text = if (consecutiveEnabled) {
-                                "Attivo · massimo $maxConsecutive ${if (maxConsecutive == 1) "turno" else "turni"}"
-                            } else {
-                                "Disattivato · nessun avviso di sequenza"
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .semantics {
+                                stateDescription = if (controlsEnabled && controlsExpanded) {
+                                    "Aperto"
+                                } else if (controlsEnabled) {
+                                    "Chiuso"
+                                } else {
+                                    "Disattivato"
+                                }
+                            }
+                            .tactileNoFlashClick {
+                                if (controlsEnabled) {
+                                    controlsExpanded = !controlsExpanded
+                                } else {
+                                    toggleControlsGroup(true)
+                                }
                             },
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = "Orario e controlli",
+                                color = TextPrimary,
+                                fontSize = 13.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = FontWeight.SemiBold,
+                            )
+                            Text(
+                                text = controlsSummary,
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                        SiteIcon(
+                            name = "chevron-down",
+                            contentDescription = if (controlsEnabled && controlsExpanded) {
+                                "Comprimi controlli orario"
+                            } else {
+                                "Espandi controlli orario"
+                            },
+                            modifier = Modifier
+                                .size(18.dp)
+                                .rotate(chevronAngle),
+                            tint = TextSecondary,
+                        )
+                        TurniSwitch(
+                            checked = controlsEnabled,
+                            onCheckedChange = toggleControlsGroup,
                         )
                     }
-                    TurniSwitch(checked = consecutiveEnabled, onCheckedChange = toggleConsecutive)
-                }
-                AnimatedVisibility(
-                    visible = consecutiveEnabled,
-                    enter = expandVertically(spring()) + fadeIn(),
-                    exit = shrinkVertically() + fadeOut(),
-                ) {
-                    val countScale = remember { Animatable(1f) }
-                    var previousCount by remember { mutableIntStateOf(maxConsecutive) }
-                    LaunchedEffect(maxConsecutive) {
-                        if (maxConsecutive > 0 && maxConsecutive != previousCount) {
-                            previousCount = maxConsecutive
-                            countScale.popSpring(peak = 1.09f, dip = 0.93f)
-                        } else if (maxConsecutive > 0) {
-                            previousCount = maxConsecutive
-                        }
-                    }
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clip(RoundedCornerShape(16.dp))
-                                .background(ObsidianSurfaceContainer)
-                                .padding(horizontal = 12.dp, vertical = 10.dp),
-                            verticalAlignment = Alignment.CenterVertically,
-                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+
+                    AnimatedVisibility(
+                        visible = controlsEnabled && controlsExpanded,
+                        enter = expandVertically(spring()) + fadeIn(),
+                        exit = shrinkVertically() + fadeOut(),
+                    ) {
+                        Column(
+                            modifier = Modifier.padding(top = 10.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
                         ) {
-                            Column(
-                                modifier = Modifier.weight(1f),
-                                verticalArrangement = Arrangement.spacedBy(2.dp),
-                            ) {
-                                Text(
-                                    text = "Turni consecutivi massimi",
-                                    color = TextPrimary,
-                                    fontSize = 13.sp,
-                                    lineHeight = 17.sp,
-                                    fontWeight = FontWeight.SemiBold,
+                            SettingsDivider()
+                            Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                                CatalogField(
+                                    label = "Ore settimanali",
+                                    value = hoursText,
+                                    change = { raw ->
+                                        filterOptionalPositiveIntInput(raw, 1..60)?.let { hoursText = it }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    numeric = true,
+                                    height = 44.dp,
+                                    centered = true,
+                                    placeholder = "—",
                                 )
-                                Text(
-                                    text = "Soglia tra 1 e 14 turni",
-                                    color = TextSecondary,
-                                    fontSize = 11.sp,
-                                    lineHeight = 15.sp,
+                                CatalogField(
+                                    label = "Riposo minimo · ore",
+                                    value = restText,
+                                    change = { raw ->
+                                        filterOptionalPositiveIntInput(raw, 1..24)?.let { restText = it }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    numeric = true,
+                                    height = 44.dp,
+                                    centered = true,
+                                    placeholder = "—",
                                 )
                             }
                             Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                modifier = Modifier.fillMaxWidth(),
+                                verticalAlignment = Alignment.Bottom,
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
+                                CatalogField(
+                                    label = "Turni consecutivi massimi",
+                                    value = maxConsecutiveText,
+                                    change = { raw ->
+                                        filterOptionalPositiveIntInput(raw, 1..14)?.let { maxConsecutiveText = it }
+                                    },
+                                    modifier = Modifier.weight(1f),
+                                    numeric = true,
+                                    height = 44.dp,
+                                    centered = true,
+                                    placeholder = "—",
+                                )
                                 TonalIconButton(
                                     icon = "minus",
                                     contentDescription = "Riduci turni consecutivi massimi",
                                     onClick = {
-                                        val next = (maxConsecutive - 1).coerceIn(1, 14)
-                                        maxConsecutive = next
-                                        lastNonZeroConsecutive = next
+                                        val current = maxConsecutiveText.toIntOrNull() ?: 0
+                                        maxConsecutiveText = if (current <= 1) "" else (current - 1).coerceIn(1, 14).toString()
                                     },
-                                    size = 36.dp,
-                                    cornerRadius = 11.dp,
-                                    fill = ObsidianSurface,
+                                    size = 44.dp,
+                                    cornerRadius = 14.dp,
+                                    fill = ObsidianSurfaceContainer,
                                     tint = TextPrimary,
                                     iconSize = 16.dp,
-                                    enabled = maxConsecutive > 1,
+                                    enabled = parsedConsecutive > 0,
                                 )
-                                Box(
-                                    modifier = Modifier
-                                        .widthIn(min = 72.dp)
-                                        .clip(RoundedCornerShape(11.dp))
-                                        .background(ObsidianPrimaryContainer)
-                                        .padding(horizontal = 10.dp, vertical = 7.dp),
-                                    contentAlignment = Alignment.Center,
-                                ) {
-                                    Text(
-                                        text = if (maxConsecutive == 1) "1 turno" else "$maxConsecutive turni",
-                                        color = BrandInk,
-                                        fontSize = 13.sp,
-                                        lineHeight = 17.sp,
-                                        fontWeight = FontWeight.Bold,
-                                        maxLines = 1,
-                                        style = TextStyle(fontFeatureSettings = "tnum"),
-                                        modifier = Modifier.graphicsLayer {
-                                            scaleX = countScale.value
-                                            scaleY = countScale.value
-                                        },
-                                    )
-                                }
                                 TonalIconButton(
                                     icon = "plus",
                                     contentDescription = "Aumenta turni consecutivi massimi",
                                     onClick = {
-                                        val next = (maxConsecutive + 1).coerceIn(1, 14)
-                                        maxConsecutive = next
-                                        lastNonZeroConsecutive = next
+                                        val current = maxConsecutiveText.toIntOrNull() ?: 0
+                                        val next = if (current <= 0) 1 else (current + 1).coerceIn(1, 14)
+                                        maxConsecutiveText = next.toString()
                                     },
-                                    size = 36.dp,
-                                    cornerRadius = 11.dp,
-                                    fill = ObsidianSurface,
+                                    size = 44.dp,
+                                    cornerRadius = 14.dp,
+                                    fill = ObsidianSurfaceContainer,
                                     tint = TextPrimary,
                                     iconSize = 16.dp,
-                                    enabled = maxConsecutive < 14,
+                                    enabled = parsedConsecutive < 14,
                                 )
                             }
+                            Text(
+                                text = "Compila solo ciò che vuoi monitorare; lascia vuoto per disattivare.",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                            )
                         }
-                        Text(
-                            text = "Avvisa sul calendario quando superi $maxConsecutive " +
-                                "${if (maxConsecutive == 1) "turno lavorativo consecutivo" else "turni lavorativi consecutivi"}. " +
-                                "Riposi, smonti e ferie azzerano il conteggio.",
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                        )
                     }
                 }
             }
@@ -2844,8 +2912,8 @@ fun WorkProfileEditorScreen(
                             isDefault = active,
                             ccnlCode = profile.ccnlCode,
                             ccnlName = profile.ccnlName,
-                            weeklyHours = hours,
-                            minRestHoursBetweenShifts = rest,
+                            weeklyHours = parsedHours,
+                            minRestHoursBetweenShifts = parsedRest,
                             nightSurchargePercent = profile.nightSurchargePercent,
                             holidaySurchargePercent = profile.holidaySurchargePercent,
                             nightHolidaySurchargePercent = profile.nightHolidaySurchargePercent,
@@ -2853,7 +2921,7 @@ fun WorkProfileEditorScreen(
                             overtimeNightSurchargePercent = profile.overtimeNightSurchargePercent,
                             ccnlDocumentName = documentName,
                             ccnlDocumentUri = savedUri,
-                            maxConsecutiveWorkDays = maxConsecutive,
+                            maxConsecutiveWorkDays = parsedConsecutive,
                         )
                         finish { onSave(saved) }
                     }.onFailure { documentError = "Impossibile salvare il documento. Riprova." }

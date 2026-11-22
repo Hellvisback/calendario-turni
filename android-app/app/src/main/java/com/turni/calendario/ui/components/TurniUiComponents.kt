@@ -496,7 +496,8 @@ fun DayInspectionCard(
     val prevShifts = ShiftRepository.getShiftsForDate(prevDate)
     val prevShiftDef = prevShifts.firstOrNull()?.let { ShiftRepository.getShiftDefinition(it.shiftDefId) }
 
-    val restInfo = remember(date, shifts, prevShifts) {
+    val activeMinRest = ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts
+    val restInfo = remember(date, shifts, prevShifts, activeMinRest) {
         calculateRestHours(prevDate, prevShiftDef, date, primaryDef)
     }
 
@@ -2072,6 +2073,9 @@ private fun calculateRestHours(
 ): RestEvaluation? {
     if (prev == null || current == null) return null
 
+    val minRequiredRest = ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts
+    if (minRequiredRest <= 0) return null
+
     if (prev.isAllDay) {
         return RestEvaluation(
             label = "Stacco dopo riposo / assenza",
@@ -2103,8 +2107,6 @@ private fun calculateRestHours(
         val hours = durationMinutes / 60
         val mins = durationMinutes % 60
         val formatted = "${hours}h ${if (mins > 0) "${mins}m" else ""}".trim()
-
-        val minRequiredRest = ShiftRepository.activeWorkProfile.minRestHoursBetweenShifts.coerceAtLeast(8)
 
         if (hours >= minRequiredRest) {
             RestEvaluation(

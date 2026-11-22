@@ -75,11 +75,14 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
     var selectedCalendar by remember { mutableStateOf<RemoteCalendarInfo?>(null) }
     var calendars by remember { mutableStateOf(emptyList<RemoteCalendarInfo>()) }
     var picker by remember { mutableStateOf(false) }
+    var showAccountSheetForCalendar by remember { mutableStateOf(false) }
     var confirmDelete by remember { mutableStateOf(false) }
     var confirmEmpty by remember { mutableStateOf(false) }
     LaunchedEffect(email) {
-        selectedCalendar = null; calendarOwner = null; calendars = emptyList()
-        picker = false; confirmDelete = false; confirmEmpty = false
+        if (email == null || calendarOwner != email) {
+            selectedCalendar = null; calendarOwner = null; calendars = emptyList()
+            picker = false; confirmDelete = false; confirmEmpty = false
+        }
     }
     val today = remember { LocalDate.now() }
     var range by remember { mutableStateOf(0) }
@@ -96,22 +99,29 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
         ShiftRepository.calendarShifts.entries.filter { it.key >= start && it.key <= end }.sumOf { entry -> entry.value.count { it.shiftDefId in selectedIds } }
     }}
 
+    fun loadCalendars(token: String) {
+        val owner = ShiftRepository.googleAccountProfile?.email
+        apiBusy = true; operation = "Caricamento dei calendari…"
+        scope.launch {
+            try {
+                val available = withContext(Dispatchers.IO) { GoogleCalendarRemote.calendars(token) }
+                if (ShiftRepository.googleAccountProfile?.email == owner) {
+                    calendars = available; calendarOwner = owner; picker = available.isNotEmpty()
+                    if (available.isEmpty()) feedback = ActionFeedback("Questo account non contiene calendari con permesso di scrittura.", true)
+                }
+            } catch (error: CancellationException) { throw error
+            } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Impossibile caricare i calendari Google.", true)
+            } finally { apiBusy = false; operation = "" }
+        }
+    }
     fun chooseCalendar() {
         if (apiBusy || access.busy) return
+        if (ShiftRepository.googleAccountProfile == null) {
+            showAccountSheetForCalendar = true
+            return
+        }
         access.authorize(GoogleFeature.CALENDAR) { token ->
-            val owner = ShiftRepository.googleAccountProfile?.email
-            apiBusy = true; operation = "Caricamento dei calendari…"
-            scope.launch {
-                try {
-                    val available = withContext(Dispatchers.IO) { GoogleCalendarRemote.calendars(token) }
-                    if (ShiftRepository.googleAccountProfile?.email == owner) {
-                        calendars = available; calendarOwner = owner; picker = available.isNotEmpty()
-                        if (available.isEmpty()) feedback = ActionFeedback("Questo account non contiene calendari con permesso di scrittura.", true)
-                    }
-                } catch (error: CancellationException) { throw error
-                } catch (error: Exception) { feedback = ActionFeedback(error.message ?: "Impossibile caricare i calendari Google.", true)
-                } finally { apiBusy = false; operation = "" }
-            }
+            loadCalendars(token)
         }
     }
     fun synchronize() {
@@ -225,7 +235,13 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             )
         },
     ) {
-        GoogleAccountCard(access, { feedback = it }, enabled = !apiBusy)
+        GoogleAccountCard(
+            access = access,
+            onFeedback = { feedback = it },
+            enabled = !apiBusy,
+            feature = GoogleFeature.CALENDAR,
+            onConnected = { token -> loadCalendars(token) },
+        )
         CloudCard(
             title = "Calendario di destinazione",
             subtitle = "Scegli dove sincronizzare i turni di ${work.name}.",
@@ -675,6 +691,15 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
                 )
             }
         }
+    }
+    if (showAccountSheetForCalendar) {
+        GoogleAccountSheet(
+            access = access,
+            feature = GoogleFeature.CALENDAR,
+            onFeedback = { feedback = it },
+            onDismiss = { showAccountSheetForCalendar = false },
+            onConnected = { token -> loadCalendars(token) },
+        )
     }
 }
 

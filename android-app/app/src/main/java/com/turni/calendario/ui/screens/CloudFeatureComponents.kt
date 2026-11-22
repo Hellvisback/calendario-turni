@@ -25,9 +25,12 @@ import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.interaction.collectIsPressedAsState
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxScope
@@ -93,6 +96,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalConfiguration
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalHapticFeedback
 import androidx.compose.ui.platform.LocalView
@@ -1031,17 +1035,13 @@ internal fun GoogleAccountCard(
     onConnected: ((String) -> Unit)? = null,
 ) {
     var showAccessDetails by remember { mutableStateOf(false) }
+    var showAccountSheet by remember { mutableStateOf(false) }
     val chevronAngle by animateFloatAsState(
         targetValue = if (showAccessDetails) 180f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "googleAccessChevron",
     )
     val profile = ShiftRepository.googleAccountProfile
-    fun connect() {
-        access.authorize(feature, true) { token ->
-            onConnected?.invoke(token) ?: onFeedback(ActionFeedback("Account Google collegato"))
-        }
-    }
     CloudCard(
         title = "Account Google",
         subtitle = if (profile == null) {
@@ -1051,13 +1051,18 @@ internal fun GoogleAccountCard(
         },
     ) {
         if (profile == null) {
-            GoogleSignInButton(enabled && !access.busy, access.busy, ::connect)
+            GoogleSignInButton(enabled && !access.busy, access.busy) {
+                showAccountSheet = true
+            }
         } else {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .clip(RoundedCornerShape(16.dp))
                     .background(ObsidianSurfaceContainer)
+                    .bouncyClickable(enabled && !access.busy) {
+                        showAccountSheet = true
+                    }
                     .padding(12.dp),
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -1100,10 +1105,11 @@ internal fun GoogleAccountCard(
                         overflow = TextOverflow.Ellipsis,
                     )
                 }
+                SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
             }
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
                 TextButton(
-                    onClick = ::connect,
+                    onClick = { showAccountSheet = true },
                     enabled = enabled && !access.busy,
                     colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
                 ) {
@@ -1160,6 +1166,280 @@ internal fun GoogleAccountCard(
                     lineHeight = 17.sp,
                 )
             }
+        }
+    }
+    if (showAccountSheet) {
+        GoogleAccountSheet(
+            access = access,
+            feature = feature,
+            onFeedback = onFeedback,
+            onDismiss = { showAccountSheet = false },
+            onConnected = onConnected,
+        )
+    }
+}
+
+/** Cohesive Grafite bottom sheet for choosing, switching, or disconnecting Google accounts. */
+@Composable
+internal fun GoogleAccountSheet(
+    access: GoogleAccess,
+    feature: GoogleFeature,
+    onFeedback: (ActionFeedback) -> Unit,
+    onDismiss: () -> Unit,
+    onConnected: ((String) -> Unit)? = null,
+) {
+    val context = LocalContext.current
+    val palette = currentTurniPalette
+    val activeProfile = ShiftRepository.googleAccountProfile
+    val remembered = GoogleAccountSession.rememberedAccounts
+    val accounts = remember(remembered, activeProfile) {
+        if (activeProfile == null || remembered.any { it.email.equals(activeProfile.email, ignoreCase = true) }) {
+            remembered
+        } else {
+            listOf(activeProfile) + remembered
+        }
+    }
+    val subtitle = when (feature) {
+        GoogleFeature.DRIVE -> "Backup e ripristino Drive"
+        GoogleFeature.CALENDAR -> "Sincronizzazione calendario"
+        else -> "Scegli o collega un account"
+    }
+
+    TurniSafeBottomDialog(onClose = onDismiss, scrollContent = false) { finish ->
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .animateContentSize(
+                    animationSpec = spring(
+                        dampingRatio = Spring.DampingRatioNoBouncy,
+                        stiffness = Spring.StiffnessMediumLow,
+                    ),
+                ),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(40.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(ObsidianSurfaceContainer),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(R.drawable.google_g),
+                        contentDescription = null,
+                        modifier = Modifier
+                            .size(22.dp)
+                            .clip(CircleShape)
+                            .background(Color.White)
+                            .padding(3.dp),
+                    )
+                }
+                Column(
+                    modifier = Modifier.weight(1f),
+                    verticalArrangement = Arrangement.spacedBy(2.dp),
+                ) {
+                    Text(
+                        text = "Account Google",
+                        color = TextPrimary,
+                        fontSize = 18.sp,
+                        lineHeight = 23.sp,
+                        fontWeight = FontWeight.Bold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        text = subtitle,
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        lineHeight = 16.sp,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Chiudi",
+                    onClick = { finish(onDismiss) },
+                    size = 36.dp,
+                    cornerRadius = 12.dp,
+                    fill = Color(palette.danger.fill),
+                    tint = ColorNegative,
+                    iconSize = 18.dp,
+                )
+            }
+
+            if (accounts.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(16.dp))
+                        .background(ObsidianSurfaceContainer)
+                        .padding(14.dp),
+                ) {
+                    Text(
+                        text = when (feature) {
+                            GoogleFeature.DRIVE -> "Collega un account Google del telefono per salvare e ripristinare i turni nello spazio privato su Drive."
+                            GoogleFeature.CALENDAR -> "Collega un account Google del telefono per scegliere il calendario su cui sincronizzare i tuoi turni."
+                            else -> "Collega un account Google del telefono per accedere alle funzioni cloud di TurniSync."
+                        },
+                        color = TextSecondary,
+                        fontSize = 13.sp,
+                        lineHeight = 19.sp,
+                    )
+                }
+            } else {
+                LazyColumn(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .weight(1f, fill = false),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items(accounts, key = { it.email.lowercase(Locale.ROOT) }) { account ->
+                        val isActive = activeProfile?.email?.equals(account.email, ignoreCase = true) == true
+                        val itemShape = RoundedCornerShape(16.dp)
+                        val activeBorderColor by animateColorAsState(
+                            targetValue = if (isActive) ObsidianPrimary else Color.Transparent,
+                            animationSpec = tween(durationMillis = 180),
+                            label = "googleAccountCardBorder",
+                        )
+                        val initial = account.displayName.trim().firstOrNull()?.uppercaseChar()?.toString()
+                            ?: account.email.trim().firstOrNull()?.uppercaseChar()?.toString()
+                            ?: "G"
+
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .animateItem()
+                                .tactilePressClickable(
+                                    shape = itemShape,
+                                    enabled = !access.busy,
+                                    pressedScale = 0.985f,
+                                    role = Role.Button,
+                                ) {
+                                    finish {
+                                        onDismiss()
+                                        if (!isActive || onConnected != null) {
+                                            access.authorizeKnownAccount(account.email, feature) { token ->
+                                                onConnected?.invoke(token)
+                                                    ?: onFeedback(ActionFeedback("Account Google collegato"))
+                                            }
+                                        }
+                                    }
+                                }
+                                .background(ObsidianSurfaceContainer)
+                                .then(
+                                    if (isActive) {
+                                        Modifier.border(1.5.dp, activeBorderColor, itemShape)
+                                    } else {
+                                        Modifier
+                                    },
+                                )
+                                .padding(12.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(12.dp),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .size(38.dp)
+                                    .clip(CircleShape)
+                                    .background(if (isActive) ObsidianPrimaryContainer else ObsidianSurface),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                Text(
+                                    text = initial,
+                                    color = if (isActive) BrandInk else TextPrimary,
+                                    fontSize = 15.sp,
+                                    fontWeight = FontWeight.Bold,
+                                )
+                            }
+                            Column(
+                                modifier = Modifier.weight(1f),
+                                verticalArrangement = Arrangement.spacedBy(2.dp),
+                            ) {
+                                Text(
+                                    text = account.displayName.ifBlank { account.email.substringBefore('@') },
+                                    color = TextPrimary,
+                                    fontSize = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = account.email,
+                                    color = TextSecondary,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
+                            if (isActive) {
+                                PastelPill(
+                                    text = "Attivo",
+                                    color = ExpressivePastel.MINT.sourceColor,
+                                    icon = "check",
+                                )
+                            } else {
+                                TonalIconButton(
+                                    icon = "trash",
+                                    contentDescription = "Rimuovi ${account.email} dalla cronologia",
+                                    onClick = { GoogleAccountSession.forgetRemembered(context, account.email) },
+                                    size = 34.dp,
+                                    cornerRadius = 11.dp,
+                                    fill = ObsidianSurface,
+                                    tint = TextSecondary,
+                                    iconSize = 16.dp,
+                                    enabled = !access.busy,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+
+            CloudButton(
+                label = if (accounts.isEmpty()) "Scegli account Google" else "Aggiungi o cambia su Google",
+                icon = "plus",
+                onClick = {
+                    finish {
+                        onDismiss()
+                        access.authorize(feature, true) { token ->
+                            onConnected?.invoke(token)
+                                ?: onFeedback(ActionFeedback("Account Google collegato"))
+                        }
+                    }
+                },
+                enabled = !access.busy,
+            )
+
+            if (activeProfile != null) {
+                CloudButton(
+                    label = "Disconnetti account attivo",
+                    icon = "x",
+                    onClick = {
+                        finish {
+                            onDismiss()
+                            access.disconnect {
+                                onFeedback(ActionFeedback("Account Google scollegato"))
+                            }
+                        }
+                    },
+                    enabled = !access.busy,
+                    destructive = true,
+                )
+            }
+
+            Text(
+                text = "Per collegare un nuovo account del telefono Google mostra la finestra di sistema per il consenso.",
+                color = TextSecondary,
+                fontSize = 11.sp,
+                lineHeight = 16.sp,
+            )
         }
     }
 }

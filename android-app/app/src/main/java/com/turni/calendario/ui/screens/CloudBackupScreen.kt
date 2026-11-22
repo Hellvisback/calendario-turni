@@ -58,6 +58,8 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
     var busy by remember{mutableStateOf(false)}
     val access=rememberGoogleAccess{feedback=ActionFeedback(it,true)}
     var remoteInfo by remember{mutableStateOf<String?>(null)}
+    var remoteInfoOwner by remember{mutableStateOf<String?>(null)}
+    var pendingDriveAction by remember{mutableStateOf<((String)->Unit)?>(null)}
     var localInfo by remember{mutableStateOf(GoogleDriveBackupHelper.getLocalBackupInfo(context))}
     var preview by remember{mutableStateOf<BackupRestorePreview?>(null)}
     var review by remember{mutableStateOf<BackupReviewRequest?>(null)}
@@ -72,7 +74,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
     var otherCopies by remember{mutableStateOf(restoreOnly&&!accountEntry)}
     fun refreshAutomatic(){DriveAutomaticBackup.refresh(context)}
     LaunchedEffect(email){
-        remoteInfo=null
+        if(email==null||remoteInfoOwner!=email){remoteInfo=null;remoteInfoOwner=null}
         if(review?.owner!=email)review=null
         if(historyOwner!=email){history=emptyList();historyToken=null;historyOwner=null}
         if(automatic.enabled&&!BackupInstallationApproval.contains(context.noBackupFilesDir,email))
@@ -109,7 +111,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
             }
             if(ShiftRepository.googleAccountProfile?.email==owner){
                 DriveAutomaticBackup.recordManualSuccess(context,owner,saved.modifiedTime)
-                refreshAutomatic();remoteInfo=formatBackupTime(saved.modifiedTime)
+                refreshAutomatic();remoteInfo=formatBackupTime(saved.modifiedTime);remoteInfoOwner=owner
                 feedback=ActionFeedback("Nuova copia salvata su Google Drive")
             }
         }catch(e:CancellationException){throw e}catch(e:Exception){failed(e)}finally{busy=false}}
@@ -133,7 +135,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
           try{
             val latest=withContext(Dispatchers.IO){GoogleDriveRemote.latest(token)}
             if(DriveBackupPolicy.sameAccount(owner,ShiftRepository.googleAccountProfile?.email)){
-                remoteInfo=latest?.let{formatBackupTime(it.modifiedTime)}
+                remoteInfo=latest?.let{formatBackupTime(it.modifiedTime)};remoteInfoOwner=owner
                 if(latest!=null&&!BackupInstallationApproval.contains(context.noBackupFilesDir,owner))
                     review=BackupReviewRequest(token,owner,latest,save,hours)
                 else if(save||hours!=null)continueWithLocal=true
@@ -143,8 +145,15 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
           if(continueWithLocal)proceed(token,owner,save,hours)
         }
     }
+    fun runWithDriveAccount(action:(String)->Unit){
+        if(ShiftRepository.googleAccountProfile==null){
+            pendingDriveAction=action
+        }else{
+            access.authorize(GoogleFeature.DRIVE,onToken=action)
+        }
+    }
     fun enableAutomatic(hours:Int){
-        access.authorize(GoogleFeature.DRIVE){token->
+        runWithDriveAccount{token->
             checkRemote(token,hours=hours)
         }
     }
@@ -383,7 +392,7 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                     CloudButton(
                         label = if (busy) "Operazione…" else "Salva ora",
                         icon = "upload",
-                        onClick = { access.authorize(GoogleFeature.DRIVE) { checkRemote(it, save = true) } },
+                        onClick = { runWithDriveAccount { checkRemote(it, save = true) } },
                         enabled = enabled,
                         modifier = Modifier.weight(1f),
                     )
@@ -392,8 +401,8 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                     label = if (accountEntry) "Recupera il calendario" else "Ripristina",
                     icon = "download",
                     onClick = {
-                        access.authorize(GoogleFeature.DRIVE) { token ->
-                            val owner = ShiftRepository.googleAccountProfile?.email ?: return@authorize
+                        runWithDriveAccount { token ->
+                            val owner = ShiftRepository.googleAccountProfile?.email ?: return@runWithDriveAccount
                             busy = true
                             scope.launch {
                                 try {
@@ -973,6 +982,18 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 )
             }
         }
+    }
+    pendingDriveAction?.let { nextAction ->
+        GoogleAccountSheet(
+            access = access,
+            feature = GoogleFeature.DRIVE,
+            onFeedback = { feedback = it },
+            onDismiss = { pendingDriveAction = null },
+            onConnected = { token ->
+                pendingDriveAction = null
+                nextAction(token)
+            },
+        )
     }
 }
 

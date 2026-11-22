@@ -150,8 +150,12 @@ fun FirstRunScreen() {
                                                 SiteIcon(activeWork.iconKey,null,Modifier.size(20.dp),BrandInk)
                                                 Column(Modifier.weight(1f),verticalArrangement=Arrangement.spacedBy(2.dp)) {
                                                     Text("Dettagli del lavoro (facoltativo)",color=TextPrimary,fontSize=13.sp,fontWeight=FontWeight.SemiBold)
-                                                    val maxConsecutiveSummary=if(activeWork.maxConsecutiveWorkDays>0)" · max ${activeWork.maxConsecutiveWorkDays} di fila" else ""
-                                                    Text("${activeWork.weeklyHours} h/sett · riposo ${activeWork.minRestHoursBetweenShifts} h$maxConsecutiveSummary",color=TextSecondary,fontSize=11.sp,lineHeight=16.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
+                                                    val detailsSummary=buildList {
+                                                        if(activeWork.weeklyHours>0)add("${activeWork.weeklyHours} h/sett")
+                                                        if(activeWork.minRestHoursBetweenShifts>0)add("riposo ${activeWork.minRestHoursBetweenShifts} h")
+                                                        if(activeWork.maxConsecutiveWorkDays>0)add("max ${activeWork.maxConsecutiveWorkDays} di fila")
+                                                    }.joinToString(" · ").ifEmpty { "Controlli orario facoltativi" }
+                                                    Text(detailsSummary,color=TextSecondary,fontSize=11.sp,lineHeight=16.sp,maxLines=2,overflow=TextOverflow.Ellipsis)
                                                 }
                                                 SiteIcon("chevron-right",null,Modifier.size(16.dp),TextSecondary)
                                             }

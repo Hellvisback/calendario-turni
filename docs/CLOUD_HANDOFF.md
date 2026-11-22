@@ -4,7 +4,11 @@ Per il ritorno alla precedente chat sul PC locale leggere prima [LOCAL_HANDOFF_2
 
 L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaricabile su GitHub, attraverso una nuova pre-release versionata. La pagina stabile da condividere è https://github.com/Hellvisback/calendario-turni/releases; le beta sono pre-release e non compaiono necessariamente come `latest`. Specificare se l'APK è il package separato `com.turni.calendario.setupqa`: può essere installato accanto all'app personale, ma richiede la stessa chiave QA per aggiornare una precedente installazione QA. L'aggiornamento dell'app personale richiede la sua chiave originale, esterna al repository. Usare `scripts/release.ps1` e non sovrascrivere release esistenti. La procedura cloud verificata, incluso il fallback GitHub Actions per il servizio upload, è in [RELEASE_QA.md](RELEASE_QA.md).
 
-Aggiornato il 17 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+Aggiornato il 22 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+
+## Orario unificato, controlli lavoro facoltativi, wizard AI, PDF editoriali e sheet account Google beta.30
+
+La beta.30 personale (75) unifica straordinari e permessi nella scheda unica *Orario* del dettaglio turno (positivi in verde per straordinario, negativi in ambra per permesso) e disegna la banda permesso (`−1h30`, compatta o affiancata a `TR`) direttamente sotto i turni nelle celle della griglia calendario (`NativeMonthCanvas`), trasforma *Orario e controlli* dell'editor lavoro in un unico gruppo opzionale a tendina senza spunte interne (lasciando vuoto qualsiasi campo non viene conteggiato), centra i badge numerici di *Importa turni con AI* trasformandolo in un wizard guidato a 4 passaggi (`1 Dati` -> `2 AI` -> `3 Risultato` -> `4 Revisione`), rinnova lo stile editoriale pastello dei PDF esportati (`Elenco`, `Mese`, `Anno`, `Periodo`) e introduce uno sheet Grafite/Cobalto per gestione e cambio rapido degli account Google ricordati su Backup e Google Calendar. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.30.md).
 
 ## Dialoghi sicuri, orologio Grafite, turni consecutivi, permessi e Impostazioni sobrie beta.29
 

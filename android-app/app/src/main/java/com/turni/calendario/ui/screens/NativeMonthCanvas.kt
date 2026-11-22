@@ -53,7 +53,11 @@ internal fun calendarAnnotationIcon(hasNotes:Boolean,hasTags:Boolean):String? = 
 
 private data class PaintedDay(val info:CalendarDayInfo,val shifts:List<Pair<AssignedShift,ShiftDefinition>>,
     val preview:Boolean,val onCall:Boolean,val original:String?,val holidayName:String?,val hasNotes:Boolean,val hasTags:Boolean)
-private data class CalendarExtraState(val overtime:Float,val travel:Boolean)
+private data class CalendarExtraState(val overtime: Float, val permission: Float, val travel: Boolean)
+private data class ExtraWeights(val overtime: Float, val permission: Float, val travel: Float) {
+    val max: Float get() = maxOf(overtime, permission, travel)
+}
+private data class ExtraBand(val weight: Float, val share: Float, val fill: Color, val ink: Color, val caption: String)
 private data class CalendarCellPaint(val definitionId:String,val assignmentIds:Set<String>,val origin:Offset)
 internal data class CalendarPaintRequest(val date:LocalDate,val definitionId:String,val sequence:Long,val endDate:LocalDate=date)
 
@@ -103,12 +107,27 @@ internal fun calendarOvertimeLabel(hours:Float):String {
     val minutes=(hours*60).roundToInt().coerceAtLeast(0)
     return when { minutes<60 -> "+${minutes}m"; minutes%60==0 -> "+${minutes/60}h";else -> "+${minutes/60}h${(minutes%60).toString().padStart(2,'0')}" }
 }
-internal fun calendarShiftAccessibility(name: String, timeRange: String, overtime: Float, travel: Boolean): String =
+internal fun calendarPermissionLabel(hours: Float): String {
+    val minutes = (if (hours.isFinite()) (hours * 60).roundToInt() else 0).coerceAtLeast(0)
+    return when {
+        minutes < 60 -> "−${minutes}m"
+        minutes % 60 == 0 -> "−${minutes / 60}h"
+        else -> "−${minutes / 60}h${(minutes % 60).toString().padStart(2, '0')}"
+    }
+}
+internal fun calendarShiftAccessibility(
+    name: String,
+    timeRange: String,
+    overtime: Float,
+    travel: Boolean,
+    permission: Float = 0f,
+): String =
     buildString {
         append(name)
         append(", ")
         append(timeRange)
         if (overtime > 0f) append(", straordinario ${calendarOvertimeLabel(overtime)}")
+        if (permission > 0f) append(", permesso ${calendarPermissionLabel(permission)}")
         if (travel) append(", trasferta")
     }
 
@@ -181,8 +200,10 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val palette=turniPalette(dark)
     // Tonal surfaces belong to the metadata, independently of the user's shift color.
     val overtimeBand = lerp(Color(palette.overtime.fill), Color(palette.overtime.ink), if (dark) .17f else .06f)
+    val permissionBand = lerp(Color(palette.warning.fill), Color(palette.warning.ink), if (dark) .17f else .06f)
     val travelBand = lerp(surface, Color(palette.travel.edge), if (dark) .27f else .17f)
     val overtimeText = readableInk(overtimeBand, Color(palette.overtime.ink))
+    val permissionText = readableInk(permissionBand, Color(palette.warning.ink))
     val travelText = readableInk(travelBand, Color(palette.travel.edge))
     val shiftPaints=remember(defs,dark,palette) {
         defs.mapValues { (_, def) ->
@@ -231,7 +252,9 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val anchorReveal=remember(anchor,mode){Animatable(if(anchor!=null&&mode==CalendarEditMode.RANGE)0f else 1f)}
     LaunchedEffect(anchor,mode){if(anchor!=null&&mode==CalendarEditMode.RANGE){anchorReveal.snapTo(0f);anchorReveal.animateTo(1f,tween(420,easing=FastOutSlowInEasing))}}
     // Retain both states through removal: metadata fades and contracts without dropping the shift.
-    val extrasKey=data.flatMap{it.shifts}.associate{it.first.id to CalendarExtraState(it.first.overtimeHours,it.first.isTrasferta)}
+    val extrasKey = data.flatMap { it.shifts }.associate {
+        it.first.id to CalendarExtraState(it.first.overtimeHours, it.first.permissionHours, it.first.isTrasferta)
+    }
     var fromExtras by remember{mutableStateOf(extrasKey)}
     var toExtras by remember{mutableStateOf(extrasKey)}
     val extrasReveal=remember{Animatable(1f)}
@@ -322,19 +345,22 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             fun cellBackground(item:PaintedDay):Color = cellPaint(item)?.let{
                 lerp(baseCellBackground(item),it,paintExit.value*operationReveal(item))
             }?:baseCellBackground(item)
-            fun extraWeights(shift:AssignedShift):Pair<Float,Float>{
-                val old=fromExtras[shift.id]?:CalendarExtraState(0f,false)
-                val target=toExtras[shift.id]?:CalendarExtraState(shift.overtimeHours,shift.isTrasferta)
-                val t=extrasReveal.value
-                return ((if(old.overtime>0)1f else 0f)*(1-t)+(if(target.overtime>0)1f else 0f)*t)*(1-editReveal) to
-                    ((if(old.travel)1f else 0f)*(1-t)+(if(target.travel)1f else 0f)*t)*(1-editReveal)
+            fun extraWeights(shift: AssignedShift): ExtraWeights {
+                val old = fromExtras[shift.id] ?: CalendarExtraState(0f, 0f, false)
+                val target = toExtras[shift.id] ?: CalendarExtraState(shift.overtimeHours, shift.permissionHours, shift.isTrasferta)
+                val t = extrasReveal.value
+                val scale = 1f - editReveal
+                return ExtraWeights(
+                    overtime = ((if (old.overtime > 0f) 1f else 0f) * (1f - t) + (if (target.overtime > 0f) 1f else 0f) * t) * scale,
+                    permission = ((if (old.permission > 0f) 1f else 0f) * (1f - t) + (if (target.permission > 0f) 1f else 0f) * t) * scale,
+                    travel = ((if (old.travel) 1f else 0f) * (1f - t) + (if (target.travel) 1f else 0f) * t) * scale,
+                )
             }
             // Only use space left after reserving every visible badge and its overflow dots.
             fun footerHeight(item: PaintedDay, layout: CalendarShiftLayout, available: Float): Float {
                 var occupied = 0
                 for (index in 0 until layout.visibleCount) {
-                    val (overtime, travel) = extraWeights(item.shifts[index].first)
-                    if (maxOf(overtime, travel) > .001f) occupied++
+                    if (extraWeights(item.shifts[index].first).max > .001f) occupied++
                 }
                 if (occupied == 0) return 0f
                 val spare = available - layout.overflowHeight - layout.visibleCount * layout.chipHeight -
@@ -351,8 +377,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 item.shifts.take(layout.visibleCount).forEach{(shift,_)->
                     val height=dp(layout.chipHeight)
                     if(shift.id in mark.assignmentIds)return Rect(x+dp(4f),cursor,x+cellWidth-dp(4f),cursor+height)
-                    val (overtime, travel) = extraWeights(shift)
-                    cursor+=height+dp(layout.gap + footer * maxOf(overtime,travel))
+                    val weights = extraWeights(shift)
+                    cursor+=height+dp(layout.gap + footer * weights.max)
                 }
                 // If the assignment is overflowed, contract into its compact marker instead.
                 return Rect(x+cellWidth/2-dp(1.7f),bottom-dp(4.7f),x+cellWidth/2+dp(1.7f),bottom-dp(1.3f))
@@ -507,7 +533,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (assignmentBottom-cursor)/px)
                 item.shifts.take(layout.visibleCount).forEach{(shift,def)->
-                    val (overtimeWeight,travelWeight) = extraWeights(shift)
+                    val weights = extraWeights(shift)
                     val baseChip=layout.chipHeight
                     val available=(assignmentBottom-cursor)/px-layout.overflowHeight
                     val chipHeight=dp(baseChip)
@@ -523,19 +549,15 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
                         label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
                         clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
-                        val visibility = maxOf(overtimeWeight, travelWeight)
+                        val visibility = weights.max
                         val footerSpace = dp(footer) * visibility
                         if (visibility > .001f) {
                             val compact = footer == 0f
-                            val inset = dp(if (compact) 4f else .5f)
+                            val bandInset = dp(if (compact) 4f else .5f)
                             val bandTop = cursor + chipHeight + if (compact) -dp(2.5f) else dp(1f) * visibility
                             val height = if (compact) dp(2f) else footerSpace - dp(1f) * visibility
-                            val start = left + inset
-                            val end = left + width - inset
-                            // Give the duration more room and keep TR anchored on the right.
-                            val split = if (compact) .61f else overtimeWeight / (overtimeWeight + .59f * travelWeight)
-                            val join = start + (end - start) * split
-                            val gap = dp(1f) * minOf(overtimeWeight, travelWeight)
+                            val start = left + bandInset
+                            val end = left + width - bandInset
                             fun band(x1: Float, x2: Float, weight: Float, fill: Color, ink: Color, caption: String) {
                                 if (weight <= .001f || x2 <= x1) return
                                 val color = if (compact) readablePigment(style.timeFill, ink) else fill
@@ -544,10 +566,38 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                                 if (!compact) label(caption,(x1+x2)/2,bandTop+height/2,8.5f,ink,true,weight,
                                     maxWidth=((x2-x1)/px-2.5f).coerceAtLeast(0f),maxHeight=height/px)
                             }
-                            val hours = toExtras[shift.id]?.overtime?.takeIf { it > 0f }
+                            val overtimeValue = toExtras[shift.id]?.overtime?.takeIf { it > 0f }
                                 ?: fromExtras[shift.id]?.overtime ?: shift.overtimeHours
-                            band(start,join-gap,overtimeWeight,overtimeBand,overtimeText,calendarOvertimeLabel(hours))
-                            band(join+gap,end,travelWeight,travelBand,travelText,"TR")
+                            val permissionValue = toExtras[shift.id]?.permission?.takeIf { it > 0f }
+                                ?: fromExtras[shift.id]?.permission ?: shift.permissionHours
+                            val active = buildList {
+                                if (weights.overtime > .001f) {
+                                    add(ExtraBand(weights.overtime, 1f, overtimeBand, overtimeText, calendarOvertimeLabel(overtimeValue)))
+                                }
+                                if (weights.permission > .001f) {
+                                    add(ExtraBand(weights.permission, 1f, permissionBand, permissionText, calendarPermissionLabel(permissionValue)))
+                                }
+                                if (weights.travel > .001f) {
+                                    add(ExtraBand(weights.travel, .59f, travelBand, travelText, "TR"))
+                                }
+                            }
+                            if (active.isNotEmpty()) {
+                                val totalShare = active.sumOf { (it.weight * it.share).toDouble() }.toFloat().coerceAtLeast(.001f)
+                                val gapWidths = FloatArray((active.size - 1).coerceAtLeast(0)) { gapIndex ->
+                                    dp(1f) * minOf(active[gapIndex].weight, active[gapIndex + 1].weight)
+                                }
+                                val usableWidth = (end - start - gapWidths.sum()).coerceAtLeast(0f)
+                                var segX = start
+                                active.forEachIndexed { segIndex, seg ->
+                                    val segWidth = if (segIndex == active.lastIndex) {
+                                        (end - segX).coerceAtLeast(0f)
+                                    } else {
+                                        usableWidth * (seg.weight * seg.share / totalShare)
+                                    }
+                                    band(segX, segX + segWidth, seg.weight, seg.fill, seg.ink, seg.caption)
+                                    segX += segWidth + if (segIndex < gapWidths.size) gapWidths[segIndex] else 0f
+                                }
+                            }
                         }
                         cursor+=chipHeight+dp(layout.gap)+footerSpace;shown++
                     }
@@ -585,7 +635,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             data.chunked(7).forEach{week->Row(Modifier.weight(1f).fillMaxWidth()){
                 week.forEach{day->Box(Modifier.weight(1f).fillMaxHeight().semantics(mergeDescendants=true){
                     role=Role.Button;this.text=AnnotatedString(day.info.date.dayOfMonth.toString());selected=selection==day.info.date||anchor==day.info.date
-                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");if(day.info.date in consecutiveAlertDates)append(", turni consecutivi superati");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(shift,def)->append(", ");append(calendarShiftAccessibility(def.name,def.timeRangeFormatted,shift.overtimeHours,shift.isTrasferta))};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
+                    contentDescription=buildString{append(day.info.date.toString());if(day.info.date in restDates)append(", riposo minimo non rispettato");if(day.info.date in consecutiveAlertDates)append(", turni consecutivi superati");day.holidayName?.let{append(", festività: $it")};if(day.onCall)append(", reperibilità");if(day.hasNotes)append(", note presenti");if(day.hasTags)append(", etichette presenti");day.shifts.forEach{(shift,def)->append(", ");append(calendarShiftAccessibility(def.name,def.timeRangeFormatted,shift.overtimeHours,shift.isTrasferta,shift.permissionHours))};if(day.preview)append(", anteprima");if(editing&&mode==CalendarEditMode.RANGE&&day.info.date==anchor)append(", inizio periodo: scegli un giorno precedente o successivo");if(editing&&mode==CalendarEditMode.ROTATION)rotationCycleNumber(anchor,day.info.date,rotation?.daySequence?.size?:0)?.let{append(", inizio ciclo $it")}}
                 }.pointerInput(day.info.date){
                     awaitEachGesture{
                         val down=awaitFirstDown(requireUnconsumed=false)
