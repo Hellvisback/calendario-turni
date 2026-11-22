@@ -26,9 +26,11 @@ import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.text.PlatformTextStyle
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.*
@@ -162,7 +164,8 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
     onUndo: () -> Unit, onClose: () -> Unit, catalogOverride:List<ShiftDefinition>?=null, rotationsOverride:List<ShiftRotation>?=null, title:String="Modifica turni") {
     val effectiveRotations=rotationsOverride?:ShiftRepository.getRotationsSortedByDefault()
     val rotationDefinitions=(catalogOverride?:ShiftRepository.shiftDefinitions).associateBy{it.id}
-    Column(Modifier.fillMaxWidth().height(170.dp).clip(RoundedCornerShape(24.dp))
+    val dark = TurniThemeState.dark
+    Column(Modifier.fillMaxWidth().height(178.dp).clip(RoundedCornerShape(24.dp))
         .background(ObsidianSurface)
         .padding(start = 10.dp, end = 10.dp, top = 10.dp, bottom = 12.dp)) {
         Row(Modifier.fillMaxWidth().height(36.dp), verticalAlignment = Alignment.CenterVertically) {
@@ -216,27 +219,148 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
             if (mode == CalendarEditMode.ROTATION) {
                 effectiveRotations.forEach { rotation ->
                     val selected = rotation.id == rotationId
-                    val outline by animateColorAsState(if(selected)BrandInk else ObsidianBorderSubtle,tween(220))
-                    Column(Modifier.width(144.dp).height(48.dp).clip(RoundedCornerShape(13.dp))
-                        .background(ObsidianSurfaceContainer)
-                        .border(if(selected)2.dp else 1.dp,outline,RoundedCornerShape(13.dp))
-                        .semantics{this.selected=selected}
-                        .bouncyClickable { onRotation(rotation.id) }.padding(horizontal = 9.dp, vertical = 7.dp)) {
-                        Row(verticalAlignment = Alignment.CenterVertically) {
-                            Text(rotation.name, color = TextPrimary,
-                                fontSize = 11.sp, fontWeight = FontWeight.SemiBold, maxLines = 1, overflow = TextOverflow.Ellipsis, modifier = Modifier.weight(1f))
-                            if (ShiftRepository.defaultRotationId == rotation.id) Box(Modifier.size(16.dp).clip(RoundedCornerShape(5.dp)).background(Color(currentTurniPalette.warning.fill)),contentAlignment=Alignment.Center){
-                                SiteIcon("star", "Rotazione predefinita", Modifier.size(12.dp), Color(currentTurniPalette.warning.ink))
+                    val outline by animateColorAsState(if (selected) BrandInk else ObsidianBorderSubtle, tween(220), label = "rotationCardOutline")
+                    val cardFill by animateColorAsState(
+                        if (selected) lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.16f else 0.10f)
+                        else ObsidianSurfaceContainer,
+                        tween(220),
+                        label = "rotationCardFill",
+                    )
+                    Column(
+                        Modifier
+                            .widthIn(min = 152.dp, max = 216.dp)
+                            .width(IntrinsicSize.Max)
+                            .height(58.dp)
+                            .clip(RoundedCornerShape(13.dp))
+                            .background(cardFill)
+                            .border(if (selected) 2.dp else 1.dp, outline, RoundedCornerShape(13.dp))
+                            .semantics { this.selected = selected }
+                            .bouncyClickable { onRotation(rotation.id) }
+                            .padding(horizontal = 9.dp, vertical = 6.dp),
+                        verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
+                    ) {
+                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                            Text(
+                                text = rotation.name,
+                                color = TextPrimary,
+                                style = TextStyle(
+                                    fontSize = 11.sp,
+                                    lineHeight = 14.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                ),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                                modifier = Modifier.weight(1f),
+                            )
+                            if (ShiftRepository.defaultRotationId == rotation.id) {
+                                Spacer(Modifier.width(4.dp))
+                                Box(
+                                    Modifier
+                                        .size(16.dp)
+                                        .clip(RoundedCornerShape(5.dp))
+                                        .background(Color(currentTurniPalette.warning.fill)),
+                                    contentAlignment = Alignment.Center,
+                                ) {
+                                    SiteIcon("star", "Rotazione predefinita", Modifier.size(11.dp), Color(currentTurniPalette.warning.ink))
+                                }
                             }
-                            if (selected) {Spacer(Modifier.width(3.dp));SiteIcon("check", null, Modifier.size(12.dp), BrandInk)}
+                            if (selected) {
+                                Spacer(Modifier.width(3.dp))
+                                SiteIcon("check", null, Modifier.size(12.dp), BrandInk)
+                            }
                         }
-                        Spacer(Modifier.height(4.dp))
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                            Row(Modifier.clip(RoundedCornerShape(4.dp)).background(ObsidianSurfaceHigh).padding(3.dp),horizontalArrangement=Arrangement.spacedBy(2.dp)){
-                                rotation.daySequence.take(7).forEach { id -> Box(Modifier.width(8.dp).height(5.dp).clip(RoundedCornerShape(2.dp)).background(rotationDefinitions[id]?.color ?: ObsidianBorder)) }
+                        val previewDays = rotation.daySequence.take(7)
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            if (previewDays.isNotEmpty()) {
+                                Row(
+                                    horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                ) {
+                                    previewDays.forEach { id ->
+                                        val def = id.takeIf { it.isNotBlank() }?.let { rotationDefinitions[it] }
+                                        if (def != null) {
+                                            val tone = shiftColorStyle(
+                                                source = def.color,
+                                                dark = dark,
+                                                backdrop = ObsidianSurfaceContainer,
+                                                definitionId = def.id,
+                                            )
+                                            val code = def.shortCode.trim().ifBlank {
+                                                getCompactShiftCode(def.id, def.shortCode)
+                                            }.take(2)
+                                            Box(
+                                                Modifier
+                                                    .size(width = 16.dp, height = 14.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(tone.codeFill),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(
+                                                    text = code,
+                                                    color = tone.codeInk,
+                                                    style = TextStyle(
+                                                        fontSize = 7.sp,
+                                                        lineHeight = 8.sp,
+                                                        fontWeight = FontWeight.Bold,
+                                                        letterSpacing = (-0.2).sp,
+                                                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                                        lineHeightStyle = LineHeightStyle(
+                                                            alignment = LineHeightStyle.Alignment.Center,
+                                                            trim = LineHeightStyle.Trim.Both,
+                                                        ),
+                                                    ),
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    textAlign = TextAlign.Center,
+                                                )
+                                            }
+                                        } else {
+                                            Box(
+                                                Modifier
+                                                    .size(width = 16.dp, height = 14.dp)
+                                                    .clip(RoundedCornerShape(4.dp))
+                                                    .background(ObsidianSurface),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text(
+                                                    text = "—",
+                                                    color = TextMuted,
+                                                    style = TextStyle(
+                                                        fontSize = 7.sp,
+                                                        lineHeight = 8.sp,
+                                                        fontWeight = FontWeight.Medium,
+                                                        platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                                        lineHeightStyle = LineHeightStyle(
+                                                            alignment = LineHeightStyle.Alignment.Center,
+                                                            trim = LineHeightStyle.Trim.Both,
+                                                        ),
+                                                    ),
+                                                    maxLines = 1,
+                                                    softWrap = false,
+                                                    textAlign = TextAlign.Center,
+                                                )
+                                            }
+                                        }
+                                    }
+                                }
                             }
-                            Text("${rotation.daySequence.size} g", color = TextSecondary,
-                                fontSize = 9.sp, modifier = Modifier.padding(start = 4.dp))
+                            Text(
+                                text = "${rotation.daySequence.size} g",
+                                color = TextSecondary,
+                                style = TextStyle(
+                                    fontSize = 9.sp,
+                                    lineHeight = 11.sp,
+                                    fontWeight = FontWeight.Medium,
+                                    platformStyle = PlatformTextStyle(includeFontPadding = false),
+                                ),
+                                maxLines = 1,
+                                softWrap = false,
+                                modifier = Modifier.padding(start = if (previewDays.isNotEmpty()) 4.dp else 0.dp),
+                            )
                         }
                     }
                 }

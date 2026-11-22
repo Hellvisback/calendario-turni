@@ -86,7 +86,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
         spring(dampingRatio=1f,stiffness=170f),label="calendarEditGeometry")
     var mode by remember{mutableStateOf(CalendarEditMode.REPLACE)}
     var brush by remember{mutableStateOf(ShiftRepository.shiftDefinitions.firstOrNull()?.id?:"")}
-    var rotationId by remember{mutableStateOf(ShiftRepository.defaultRotationId.ifBlank{ShiftRepository.activeRotationId})}
+    var rotationId by remember{mutableStateOf(ShiftRepository.defaultRotationId.ifBlank{ShiftRepository.activeRotationId}.ifBlank{ShiftRepository.getRotationsSortedByDefault().firstOrNull()?.id.orEmpty()})}
     var anchor by remember{mutableStateOf<LocalDate?>(null)}
     var rangeEnd by remember{mutableStateOf<LocalDate?>(null)}
     var editTool by remember{mutableStateOf<String?>(null)}
@@ -113,6 +113,20 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     LaunchedEffect(active,ShiftRepository.selectedDateFromWidget){if(active)ShiftRepository.selectedDateFromWidget?.let{
         monthKey=YearMonth.from(it).toString();lastDate=it;selectedDate=it;ShiftRepository.selectedDateFromWidget=null
     }}
+    val rotationIds = ShiftRepository.rotations.map { it.id }
+    LaunchedEffect(
+        editing,
+        mode,
+        ShiftRepository.activeWorkProfileId,
+        ShiftRepository.defaultRotationId,
+        ShiftRepository.rotations.size,
+        rotationIds,
+    ) {
+        val activeRotations = ShiftRepository.getRotationsSortedByDefault()
+        if (rotationId.isBlank() || activeRotations.none { it.id == rotationId }) {
+            rotationId = activeRotations.firstOrNull()?.id.orEmpty()
+        }
+    }
     fun closeEditor(){editing=false;paintRequest=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null}
     BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};rangeGesture!=null->{rangeGesture=null;anchor=null;rangeEnd=null;feedback=null};else->closeEditor()}}
     fun changeMonth(direction:Int){
@@ -176,12 +190,21 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                 paintRequest=CalendarPaintRequest(start,if(brush=="eraser")"" else brush,nextPaintSequence(),end)
                 anchor=null;rangeEnd=null;feedback=ActionFeedback(if(brush=="eraser")"Turni eliminati" else "Periodo applicato",brush=="eraser")
             }
-            CalendarEditMode.ROTATION->if(anchor==null||date.isBefore(anchor)){anchor=date}else{
-                val rotation=ShiftRepository.rotations.firstOrNull{it.id==rotationId}
-                val offset=ChronoUnit.DAYS.between(anchor,date).toInt()
-                ShiftRepository.applyRotation(rotationId,anchor!!,offset+1)
-                rotation?.daySequence?.takeIf{it.isNotEmpty()}?.let{paintDay(date,it[offset%it.size])}
-                anchor=null;feedback=ActionFeedback("Rotazione applicata",false)
+            CalendarEditMode.ROTATION->{
+                val activeRotations=ShiftRepository.getRotationsSortedByDefault()
+                val rotation=activeRotations.firstOrNull{it.id==rotationId}?:activeRotations.firstOrNull()
+                if(rotation==null){
+                    anchor=null
+                    feedback=ActionFeedback("Crea una rotazione in Turni",true)
+                }else{
+                    if(rotationId!=rotation.id)rotationId=rotation.id
+                    if(anchor==null||date.isBefore(anchor)){anchor=date}else{
+                        val offset=ChronoUnit.DAYS.between(anchor,date).toInt()
+                        ShiftRepository.applyRotation(rotation.id,anchor!!,offset+1)
+                        rotation.daySequence.takeIf{it.isNotEmpty()}?.let{paintDay(date,it[offset%it.size])}
+                        anchor=null;feedback=ActionFeedback("Rotazione applicata",false)
+                    }
+                }
             }
         }
     }
@@ -283,8 +306,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
         AnimatedVisibility(editing,enter=slideInVertically(spring(.95f,380f)){it}+fadeIn(),
             exit=slideOutVertically(spring(1f,420f)){it}+fadeOut(),
             modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal=8.dp).padding(bottom=6.dp)) {
-            NativeEditToolbar(mode,brush,rotationId,editTool,onTool={editTool=if(editTool==it)null else it;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onMode={mode=it;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onBrush={brush=it;editTool=null;eraseAnchor=null;rangeGesture=null;anchor=null;rangeEnd=null},
-                onRotation={rotationId=it},onUndo={if(ShiftRepository.undo()){rangeGesture=null;eraseAnchor=null;anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()})
+            NativeEditToolbar(mode,brush,rotationId,editTool,onTool={editTool=if(editTool==it)null else it;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onMode={mode=it;editTool=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onBrush={brush=it;editTool=null;eraseAnchor=null;rangeGesture=null;anchor=null;rangeEnd=null},
+                onRotation={rotationId=it;editTool=null;eraseAnchor=null;rangeGesture=null},onUndo={if(ShiftRepository.undo()){rangeGesture=null;eraseAnchor=null;anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()})
         }
         MagicalActionFeedbackHUD(feedback,onDismiss={feedback=null},modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top=8.dp))
         eraseDate?.let{date->

@@ -77,7 +77,7 @@ private val sitePaths = mapOf(
     "moon" to listOf("M20.9 13A9 9 0 0 1 11 3.1 9 9 0 1 0 20.9 13Z"),
     "sun" to listOf("M16 12a4 4 0 1 1-8 0 4 4 0 0 1 8 0Z", "M12 2v2M12 20v2M2 12h2M20 12h2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41"),
     "timer" to listOf("M20 14a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z", "M9 2h6M19 5l2 2", "M12 6v6l3 2"),
-    "alarm-clock" to listOf("M19 13a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z", "M12 9v4l2.5 1.5", "M2.5 5 6 2.5M18 2.5 21.5 5M7 19l-2 2M17 19l2 2"),
+    "alarm-clock" to listOf("M19 13a7 7 0 1 1-14 0 7 7 0 0 1 14 0Z", "M12 9v4l2.5 1.5", "M2.5 5 6 2.5M18 2.5 21.5 5", "M7 19l-2 2M17 19l2 2"),
     "file-text" to listOf("M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8ZM14 2v6h6", "M8 13h8", "M8 17h6"),
     "shield-alert" to listOf("M12 2 3 6v6c0 5 9 10 9 10s9-5 9-10V6Z", "M12 8v5M12 16h.01"),
     "cloud" to listOf("M20 16a4 4 0 0 0-1-7.87A7 7 0 0 0 5.3 8.4 4 4 0 0 0 6 16Z"),
@@ -136,30 +136,66 @@ private fun sitePartTransform(name: String, i: Int, p: Float, wave: Float): Site
             2 -> { sy = 1f - .4f * wave; py = 10f; alpha = 1f - .28f * wave }
         }
         "calendar-heart" -> when (i) {
-            0 -> { sx = 1f + sin(p * 2 * PI).toFloat() * -.015f; sy = sx }
-            1 -> ty = -.8f * wave
+            0 -> {
+                ty = -1.2f * wave
+                sx = 1f + .06f * wave; sy = sx
+            }
+            1 -> ty = -2.1f * wave
             2 -> {
                 py = 15.5f
-                val beat = abs(sin(p * 2 * PI)).toFloat() * (1f - 0.25f * p)
-                sx = 1f + 0.24f * beat
+                ty = -1.0f * wave
+                val beat1 = pulseWindow(p, 0.06f, 0.34f)
+                val beat2 = pulseWindow(p, 0.42f, 0.44f)
+                sx = 1f + 0.32f * beat1 + 0.42f * beat2
                 sy = sx
             }
         }
         "calendar-sync" -> when (i) {
-            0 -> { sx = 1f + sin(p * 2 * PI).toFloat() * -.015f; sy = sx }
-            1 -> ty = -.8f * wave
-            2 -> { py = 15.5f; rotation = 360f * p }
-            3 -> { py = 15.5f; rotation = -360f * p }
+            0 -> { ty = -1.1f * wave; sx = 1f + .05f * wave; sy = sx }
+            1 -> ty = -2.1f * wave
+            2 -> { py = 15.5f; ty = -1.0f * wave; rotation = 360f * p; sx = 1f + .14f * wave; sy = sx }
+            3 -> { py = 15.5f; ty = -1.0f * wave; rotation = -360f * p; sx = 1f + .14f * wave; sy = sx }
         }
-        "report" -> { sy = 1f + (listOf(.3f, -.2f, -.12f)[i]) * wave; py = 20f }
+        "report" -> {
+            val barWave = pulseWindow(p, i * 0.08f, 0.84f)
+            sy = 1f + (listOf(.42f, -.34f, .26f)[i]) * barWave
+            py = 20f
+        }
         "edit" -> { rotation = -11f * wave; if (i == 0) { tx = -.8f * wave; ty = .8f * wave }; if (i == 2) { tx = -1.2f * wave; ty = 1.2f * wave } }
         "clock" -> rotation = if (i == 1) 60f * wave else if (i == 2) 17f * wave else 0f
-        "alarm-clock" -> { rotation = if (i == 1) 35f * wave else if (i == 2) sin(p * 4 * PI).toFloat() * 5f * (1 - p) else 0f }
+        "alarm-clock" -> {
+            px = 12f; py = 13f
+            when (i) {
+                0 -> {
+                    ty = -.8f * wave
+                    rotation = sin(p * 6 * PI).toFloat() * 3.5f * wave
+                    sx = 1f + .05f * wave; sy = sx
+                }
+                1 -> {
+                    ty = -.8f * wave
+                    rotation = 65f * wave
+                }
+                2 -> {
+                    ty = -1.4f * wave
+                    rotation = sin(p * 6 * PI).toFloat() * 11f * (1f - 0.25f * p)
+                }
+                else -> ty = -.3f * wave
+            }
+        }
         "swap" -> tx = if (i == 0) 4f * wave else -4f * wave
         "layers" -> ty = if (i == 0) -2f * wave else 2f * wave
         "rotation" -> rotation = -360f * p
         "settings" -> rotation = 90f * p
-        "bell" -> { rotation = sin(p * 4 * PI).toFloat() * 14f * (1 - p); py = 4f }
+        "bell" -> {
+            val ring = sin(p * 4 * PI).toFloat() * (1f - 0.5f * p)
+            py = 3.5f
+            if (i == 0) {
+                rotation = ring * 26f
+            } else {
+                rotation = ring * 23.5f
+                sx = 1f + .05f * wave; sy = sx
+            }
+        }
         "plane" -> { tx = if (p < .5f) 12f * p else -10f * (1 - p); ty = -tx; alpha = abs(2 * p - 1).coerceIn(0f, 1f) }
         "eraser" -> { tx = sin(p * 2 * PI).toFloat() * 2f; rotation = -12f * wave }
         "undo" -> rotation = -26f * wave
@@ -177,7 +213,7 @@ private fun sitePartTransform(name: String, i: Int, p: Float, wave: Float): Site
         "minus" -> { sx = 1f - .22f * wave; sy = 1f + .12f * wave }
         "check" -> { px = 11f; py = 13f; sx = 1f + .22f * wave; sy = sx; rotation = -6f * sin(p * 2 * PI).toFloat() }
         "copy" -> { val d = 1.2f * wave; if (i == 0) { tx = d; ty = d } else { tx = -d; ty = -d } }
-        "trash" -> if (i == 0) { py = 6f; ty = -2.4f * wave; rotation = -11f * wave } else { py = 14f; sy = 1f - .04f * wave; ty = .4f * wave }
+        "trash" -> if (i == 0) { py = 6f; ty = -3.4f * wave; rotation = -22f * wave } else { py = 14f; sy = 1f - .08f * wave; sx = 1f + .05f * wave; ty = .8f * wave }
         "sun" -> if (i == 0) { sx = 1f + .12f * wave; sy = sx } else { rotation = 90f * p; sx = 1f + .06f * wave; sy = sx }
         "moon" -> { rotation = sin(p * 2 * PI).toFloat() * 14f; sx = 1f + .06f * wave; sy = sx }
         "smartphone" -> {
@@ -198,38 +234,39 @@ private fun sitePartTransform(name: String, i: Int, p: Float, wave: Float): Site
             ty = -1.1f * wave; sx = 1f + .14f * wave; sy = sx
         }
         "palette" -> when (i) {
-            0 -> { rotation = -10f * sin(p * 2 * PI).toFloat(); sx = 1f + .04f * wave; sy = sx }
+            0 -> { rotation = -18f * sin(p * 2 * PI).toFloat(); sx = 1f + .08f * wave; sy = sx }
             else -> {
                 val pivots = listOf(8f to 8f, 12f to 6f, 16f to 8f, 6f to 12f)
                 val (dx, dy) = pivots[(i - 1).coerceIn(0, 3)]
-                val dotWave = pulseWindow(p, (i - 1) * 0.14f, 0.5f)
+                val dotWave = pulseWindow(p, (i - 1) * 0.14f, 0.48f)
                 px = dx; py = dy
-                sx = 1f + .55f * dotWave; sy = sx
-                ty = -.7f * dotWave
+                sx = 1f + .85f * dotWave; sy = sx
+                ty = -1.1f * dotWave
             }
         }
         "scan-text" -> if (i == 0) {
-            sx = 1f + .06f * wave; sy = sx
+            sx = 1f + .10f * wave; sy = sx
         } else {
-            val scan = pulseWindow(p, (i - 1) * 0.16f, 0.56f)
+            val scan = pulseWindow(p, (i - 1) * 0.14f, 0.58f)
             px = 7f; py = (8 + (i - 1) * 4).toFloat()
-            sx = 1f - .16f * scan
-            alpha = 1f - .38f * scan
-            tx = .6f * scan
+            sx = 1f - .52f * scan
+            alpha = 1f - .55f * scan
+            tx = 2.6f * scan
         }
         "file-text" -> if (i == 0) {
-            ty = -1.1f * wave; sx = 1f + .03f * wave; sy = sx
+            ty = -1.8f * wave; sx = 1f + .06f * wave; sy = sx
         } else {
-            val lineWave = pulseWindow(p, (i - 1) * 0.18f, 0.6f)
+            val lineWave = pulseWindow(p, (i - 1) * 0.16f, 0.62f)
             px = 8f; py = if (i == 1) 13f else 17f
-            ty = -1.1f * wave
-            sx = 1f - .22f * lineWave
-            alpha = 1f - .28f * lineWave
+            ty = -1.8f * wave
+            tx = 1.6f * lineWave
+            sx = 1f - .48f * lineWave
+            alpha = 1f - .45f * lineWave
         }
         "database-backup" -> if (i == 0) {
-            ty = -.8f * wave
+            ty = -1.4f * wave; sx = 1f + .05f * wave; sy = sx
         } else {
-            px = 17.3f; py = 17.8f; rotation = -360f * p
+            px = 17.3f; py = 17.8f; rotation = -360f * p; sx = 1f + .16f * wave; sy = sx
         }
         "briefcase" -> when (i) {
             0 -> { ty = -.8f * wave; rotation = 3f * sin(p * 2 * PI).toFloat() }

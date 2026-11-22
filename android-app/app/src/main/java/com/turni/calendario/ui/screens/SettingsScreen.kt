@@ -61,6 +61,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalDensity
@@ -110,8 +111,12 @@ import com.turni.calendario.ui.theme.currentTurniPalette
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftColorStyle
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.PI
+import kotlin.math.sin
 
 private enum class SettingsSubScreen {
     NONE,
@@ -142,17 +147,34 @@ fun SettingsScreen(
     var deleteStep by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
 
-    LaunchedEffect(Unit) {
-        entranceWaves.forEachIndexed { index, anim ->
-            launch {
-                delay(index * 55L)
-                anim.snapTo(0f)
-                anim.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
-                anim.snapTo(0f)
+    LaunchedEffect(screen) {
+        onSubScreenActiveChanged(screen != SettingsSubScreen.NONE)
+        if (screen != SettingsSubScreen.NONE) {
+            entranceWaves.forEach { it.snapTo(0f) }
+            return@LaunchedEffect
+        }
+        entranceWaves.forEach { it.snapTo(0f) }
+        delay(260L)
+        coroutineScope {
+            entranceWaves.forEachIndexed { index, anim ->
+                launch {
+                    delay(index * 80L)
+                    anim.snapTo(0f)
+                    anim.animateTo(1f, tween(720, easing = FastOutSlowInEasing))
+                    anim.snapTo(0f)
+                }
             }
         }
+        var index = 0
+        while (isActive) {
+            val anim = entranceWaves[index]
+            anim.snapTo(0f)
+            anim.animateTo(1f, tween(820, easing = FastOutSlowInEasing))
+            anim.snapTo(0f)
+            delay(280L)
+            index = (index + 1) % entranceWaves.size
+        }
     }
-    LaunchedEffect(screen) { onSubScreenActiveChanged(screen != SettingsSubScreen.NONE) }
     DisposableEffect(Unit) { onDispose { onSubScreenActiveChanged(false) } }
     BackHandler { if (screen != SettingsSubScreen.NONE) screen = SettingsSubScreen.NONE else onDismiss() }
 
@@ -232,7 +254,7 @@ fun SettingsScreen(
                                 icon = "palette",
                                 title = "Aspetto e calendario",
                                 trailingText = themeBadge,
-                                entranceProgress = entranceWaves[0].value,
+                                entranceProgress = { entranceWaves[0].value },
                             ) {
                                 screen = SettingsSubScreen.APPEARANCE
                             }
@@ -242,7 +264,7 @@ fun SettingsScreen(
                                 icon = "calendar-heart",
                                 title = "Festività",
                                 trailingText = if (holidayCount == 1) "1 attiva" else "$holidayCount attive",
-                                entranceProgress = entranceWaves[1].value,
+                                entranceProgress = { entranceWaves[1].value },
                             ) {
                                 screen = SettingsSubScreen.HOLIDAYS
                             }
@@ -251,7 +273,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "report",
                                 title = "Conteggio statistiche",
-                                entranceProgress = entranceWaves[2].value,
+                                entranceProgress = { entranceWaves[2].value },
                             ) {
                                 screen = SettingsSubScreen.STATISTICS_RULES
                             }
@@ -274,7 +296,7 @@ fun SettingsScreen(
                                 title = "Reperibilità",
                                 trailingText = onCallStatus,
                                 trailingPill = onCallMode != ReperibilitaMode.MANUALE,
-                                entranceProgress = entranceWaves[3].value,
+                                entranceProgress = { entranceWaves[3].value },
                             ) {
                                 screen = SettingsSubScreen.REPERIBILITA
                             }
@@ -282,8 +304,8 @@ fun SettingsScreen(
                             val alarms = ShiftRepository.smartAlarmsConfig
                             SmartAlarmsPreferenceRow(
                                 checked = alarms.isGlobalEnabled,
-                                externalProgress = bellMotion.value,
-                                entranceProgress = entranceWaves[4].value,
+                                externalProgress = { bellMotion.value },
+                                entranceProgress = { entranceWaves[4].value },
                                 onToggle = { enabled ->
                                     val latest = ShiftRepository.smartAlarmsConfig
                                     bellJob?.cancel()
@@ -323,7 +345,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "scan-text",
                                 title = "Importa turni con AI",
-                                entranceProgress = entranceWaves[5].value,
+                                entranceProgress = { entranceWaves[5].value },
                             ) {
                                 screen = SettingsSubScreen.IMPORT_SHIFTS
                             }
@@ -332,7 +354,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "file-text",
                                 title = "Esporta e stampa PDF",
-                                entranceProgress = entranceWaves[6].value,
+                                entranceProgress = { entranceWaves[6].value },
                             ) {
                                 screen = SettingsSubScreen.PDF_EXPORT
                             }
@@ -341,7 +363,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "calendar-sync",
                                 title = "Google Calendar",
-                                entranceProgress = entranceWaves[7].value,
+                                entranceProgress = { entranceWaves[7].value },
                             ) {
                                 screen = SettingsSubScreen.GOOGLE_CALENDAR_SYNC
                             }
@@ -356,7 +378,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "database-backup",
                                 title = "Backup e ripristino",
-                                entranceProgress = entranceWaves[8].value,
+                                entranceProgress = { entranceWaves[8].value },
                             ) {
                                 screen = SettingsSubScreen.CLOUD_BACKUP
                             }
@@ -366,7 +388,7 @@ fun SettingsScreen(
                                 icon = "trash-2",
                                 title = "Elimina tutti i turni",
                                 danger = true,
-                                entranceProgress = entranceWaves[9].value,
+                                entranceProgress = { entranceWaves[9].value },
                             ) {
                                 deleteStep = 1
                             }
@@ -556,6 +578,58 @@ private fun PreferenceGroup(
 }
 
 @Composable
+private fun SettingsRowIconBadge(
+    icon: String,
+    pastel: ExpressivePastel?,
+    danger: Boolean,
+    progress: () -> Float,
+) {
+    val palette = currentTurniPalette
+    val badgeModifier = Modifier.graphicsLayer {
+        val pop = sin(progress().coerceIn(0f, 1f) * PI).toFloat()
+        val scale = 1f + 0.09f * pop
+        scaleX = scale
+        scaleY = scale
+    }
+    when {
+        danger -> {
+            val tileFill = Color(palette.danger.fill)
+            val tint = Color(palette.danger.ink)
+            Box(
+                modifier = badgeModifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(tileFill),
+                contentAlignment = Alignment.Center,
+            ) {
+                SiteIconMotion(icon, null, Modifier.size(19.dp), tint = tint, progress = progress)
+            }
+        }
+        pastel != null -> {
+            PastelBadge(
+                color = pastel.sourceColor,
+                modifier = badgeModifier,
+                size = 38.dp,
+                cornerRadius = (38f * 0.31f).dp,
+            ) { ink ->
+                SiteIconMotion(icon, null, Modifier.size(19.dp), tint = ink, progress = progress)
+            }
+        }
+        else -> {
+            Box(
+                modifier = badgeModifier
+                    .size(38.dp)
+                    .clip(RoundedCornerShape(12.dp))
+                    .background(ObsidianSurfaceContainer),
+                contentAlignment = Alignment.Center,
+            ) {
+                SiteIconMotion(icon, null, Modifier.size(19.dp), tint = BrandInk, progress = progress)
+            }
+        }
+    }
+}
+
+@Composable
 private fun PreferenceRow(
     pastel: ExpressivePastel?,
     icon: String,
@@ -564,8 +638,8 @@ private fun PreferenceRow(
     danger: Boolean = false,
     trailingText: String? = null,
     trailingPill: Boolean = false,
-    externalProgress: Float = 0f,
-    entranceProgress: Float = 0f,
+    externalProgress: () -> Float = { 0f },
+    entranceProgress: () -> Float = { 0f },
     showChevron: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -584,8 +658,8 @@ private fun PreferenceRow(
     val motion = remember { Animatable(0f) }
     var motionJob by remember { mutableStateOf<Job?>(null) }
     var highlightJob by remember { mutableStateOf<Job?>(null) }
-    val iconPhase = maxOf(motion.value, externalProgress, entranceProgress)
-    val chevronPhase = maxOf(motion.value, externalProgress)
+    val iconPhase: () -> Float = { maxOf(motion.value, externalProgress(), entranceProgress()) }
+    val chevronPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val highlightBase = if (danger) Color(palette.danger.fill) else ObsidianSurfaceContainer
     val highlightAlpha = (if (danger) 0.42f else 0.72f) * maxOf(pressAlpha, tapHighlight.value)
     val rowShape = RoundedCornerShape(14.dp)
@@ -618,37 +692,12 @@ private fun PreferenceRow(
             .padding(horizontal = 4.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        if (danger) {
-            val tileFill = Color(palette.danger.fill)
-            val tint = Color(palette.danger.ink)
-            Box(
-                modifier = Modifier
-                    .size(38.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(tileFill),
-                contentAlignment = Alignment.Center,
-            ) {
-                SiteIconMotion(icon, null, Modifier.size(19.dp), tint = tint) { iconPhase }
-            }
-        } else if (pastel != null) {
-            PastelIconBadge(
-                pastel = pastel,
-                icon = icon,
-                size = 38.dp,
-                iconSize = 19.dp,
-                progress = iconPhase,
-            )
-        } else {
-            NeutralIconBadge(
-                icon = icon,
-                size = 38.dp,
-                cornerRadius = 12.dp,
-                iconSize = 19.dp,
-                fill = ObsidianSurfaceContainer,
-                tint = BrandInk,
-                progress = iconPhase,
-            )
-        }
+        SettingsRowIconBadge(
+            icon = icon,
+            pastel = pastel,
+            danger = danger,
+            progress = iconPhase,
+        )
         Spacer(Modifier.width(12.dp))
         Column(Modifier.weight(1f)) {
             Text(
@@ -710,9 +759,8 @@ private fun PreferenceRow(
                 description = null,
                 modifier = Modifier.size(16.dp),
                 tint = if (danger) Color(palette.danger.ink).copy(alpha = 0.72f) else TextSecondary,
-            ) {
-                chevronPhase
-            }
+                progress = chevronPhase,
+            )
         }
     }
 }
@@ -720,8 +768,8 @@ private fun PreferenceRow(
 @Composable
 private fun SmartAlarmsPreferenceRow(
     checked: Boolean,
-    externalProgress: Float,
-    entranceProgress: Float,
+    externalProgress: () -> Float,
+    entranceProgress: () -> Float,
     onToggle: (Boolean) -> Unit,
     onOpen: () -> Unit,
 ) {
@@ -762,8 +810,8 @@ private fun SmartAlarmsPreferenceRow(
         onOpen()
     }
 
-    val leftIconPhase = maxOf(motion.value, externalProgress, entranceProgress)
-    val chevronPhase = maxOf(motion.value, externalProgress)
+    val leftIconPhase: () -> Float = { maxOf(motion.value, externalProgress(), entranceProgress()) }
+    val chevronPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val rowShape = RoundedCornerShape(14.dp)
 
     Row(
@@ -786,11 +834,10 @@ private fun SmartAlarmsPreferenceRow(
                 .padding(horizontal = 4.dp, vertical = 9.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            PastelIconBadge(
-                pastel = ExpressivePastel.AMBER,
+            SettingsRowIconBadge(
                 icon = "alarm-clock",
-                size = 38.dp,
-                iconSize = 19.dp,
+                pastel = ExpressivePastel.AMBER,
+                danger = false,
                 progress = leftIconPhase,
             )
             Spacer(Modifier.width(12.dp))
@@ -833,9 +880,8 @@ private fun SmartAlarmsPreferenceRow(
                 description = null,
                 modifier = Modifier.size(16.dp),
                 tint = TextSecondary,
-            ) {
-                chevronPhase
-            }
+                progress = chevronPhase,
+            )
         }
     }
 }

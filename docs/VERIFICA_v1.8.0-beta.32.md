@@ -1,0 +1,16 @@
+# TurniSync 1.8.0-beta.32
+
+Versione Android 77, package personale `com.turni.calendario` con firma originale. Le prove sul dispositivo sono state eseguite sul Realme 8 Pro (`cb08bc57`) nel package QA separato `com.turni.calendario.setupqa`.
+
+## Novità e correzioni grafiche/funzionali
+
+- **Mini-anteprima rotazioni in `Modifica turni` (`NativeCalendarPanels.kt`, `CalendarScreen.kt`, `NativeMonthCanvas.kt`):** corretta l'altezza delle schede rotazione nella barra di modifica (`178.dp` totali, `58.dp` per scheda) con tipografia compatta e fascia visibile fino a 7 mini-tessere pastello (`shortCode` + durata ciclica), e ripristinato il riallineamento automatico di `rotationId` su cambio profilo/rotazioni per assicurare l'anteprima in tempo reale sulla griglia quando si sceglie il giorno iniziale.
+- **Animazioni continue sui loghi a sinistra in `Impostazioni` (`SiteIcons.kt`, `SettingsScreen.kt`):** potenziate le ampiezze delle trasformazioni articolate di tutte le icone a `19.dp` in `sitePartTransform` (`palette`, `calendar-heart`, `report`, `bell`, `alarm-clock`, `scan-text`, `file-text`, `calendar-sync`, `database-backup`, `trash`) e sostituito l'effetto una tantum con una cascata al rientro in `SettingsSubScreen.NONE` seguita da un ciclo continuo discreto (spotlight `1100ms` / animazione `820ms` + micro-rimbalzo del badge via `graphicsLayer`, oltre alla risposta immediata al tocco).
+- **Esportazione PDF `Periodo` adattiva stile annuale (`PdfExportPlan.kt`, `PdfGenerator.kt`, `PdfExportScreen.kt`, `PdfExportPlanTest.kt`):** `PdfExportMode.PERSONALIZZATO` utilizza sempre la presentazione a colonne verticali editoriali (`PdfPresentation.OVERVIEW`), scegliendo automaticamente orientamento e formato carta (`A4` verticale per `1` mese, `A4/A3` per `2..3` mesi, `A4/A3/A2` orizzontale per `4..6`, `A3/A2/A1` oltre) e adattando righe giornaliere, intestazioni mese/anno, font e altezza massima delle righe alla lunghezza dell'intervallo scelto mantenendo la resa garantita `1 / 1`.
+- **Conteggio statistiche intuitivo con terminologia generica (`StatisticsRulesScreen.kt`):** rimosso il vecchio pannello esplicativo superiore e tutti i riferimenti rigidi a «Ferie/FER/RIP»; schermata riorganizzata in due sezioni chiare (*Esclusioni nei festivi* e *Sostituzioni di turno*) con equazioni visive pastello immediate (`[Festivo] × ...`, `[Turno] → conta [Sostituiti]`), editor a passi chiari e selettori senza bordi pesanti con animazioni elastiche.
+
+## Verifiche eseguite e limiti
+
+- `assembleBeta` (R8 e `lintVitalBeta`) e `testDebugUnitTest` superati con successo: **61 suite, 520 test unitari** (inclusi i 14 test aggiornati in `PdfExportPlanTest`), 0 fallimenti, 0 errori, 0 saltati.
+- Verificato dal vivo su Realme 8 Pro (`cb08bc57`, `com.turni.calendario.setupqa`) in tema chiaro e scuro: mini-anteprima rotazioni in toolbar e anteprima live su griglia, animazione progressiva/ciclica dei loghi a sinistra in *Impostazioni*, esportazione *PDF Periodo* su intervalli da 14 giorni, 1 mese, 3 mesi e 7 mesi senza troncamenti o errori, e *Conteggio statistiche* + entrambi gli editor, con **0 crash** in `logcat -s AndroidRuntime:E`.
+- La distribuzione `beta.32` conserva la firma personale originale (`cf099674...`), quindi aggiorna direttamente `com.turni.calendario` esistente senza perdere dati locali.

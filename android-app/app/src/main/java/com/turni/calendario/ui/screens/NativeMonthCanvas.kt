@@ -158,7 +158,7 @@ internal fun calendarShiftLayout(availableHeight: Float, shiftCount: Int, fontSc
 internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolean,mode:CalendarEditMode,
     brush:String,rotationId:String,anchor:LocalDate?,rangeEnd:LocalDate?,modifier:Modifier,
     paintRequest:CalendarPaintRequest?=null,editSession:Long=0L,editProgress:State<Float>,animate:Boolean=true,onPaintConsumed:(Long)->Unit={},onClick:(LocalDate)->Unit,onPreview:(LocalDate)->Unit,longPressEnabled:Boolean=true,onLongClick:((LocalDate)->Unit)?=null,
-    previewData:CalendarGridPreview?=null,editingBottomInset:Dp=128.dp) {
+    previewData:CalendarGridPreview?=null,editingBottomInset:Dp=136.dp) {
     val days=previewData?.days ?: remember(month,ShiftRepository.appPreferences.weekStartMonday){getMonthGridDays(month,ShiftRepository.appPreferences.weekStartMonday)}
     val defs by if(previewData!=null)rememberUpdatedState(previewData.definitions.associateBy{it.id})
         else remember{derivedStateOf{ShiftRepository.shiftDefinitions.associateBy{it.id}}}

@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 22 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Mini-anteprima rotazioni, loghi Impostazioni animati, PDF Periodo adattivo e Conteggio statistiche intuitivo beta.32
+
+La beta.32 personale (77) ripristina la mini-anteprima pastello nella barra *Modifica turni → Rotazioni* e garantisce la coerenza dell'anteprima in griglia, rende visivamente animate e dinamiche le icone a sinistra in *Impostazioni* (ampiezze aumentate in `SiteIcons.kt` + cascata al rientro e spotlight continuo discreto), allinea l'esportazione PDF *Periodo* al layout editoriale a colonne dell'*Annuale* adattando carta/righe/intestazioni alla lunghezza dell'intervallo e riorganizza *Conteggio statistiche* con nomi generici privi di riferimenti rigidi a «Ferie/FER/RIP» e due sezioni intuitive ad equazioni visive. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.32.md).
+
 ## Account Google unificato, AI e Impostazioni essenziali, animazioni ed Etichette pulite beta.31
 
 La beta.31 personale (76) corregge la riconnessione account Google dopo disconnessione (`GoogleAuthUtil.clearToken` + ritentativo su `401`/`403` + protezione race su logout), rende intera e cliccabile la riga *«Quali dati autorizzo?»*, fonde account Google e controlli Drive/Calendar in una card unica espandibile allo sblocco, semplifica *Importa con AI* in 3 passaggi rimuovendo l'allegato file iniziale, elimina testi e ripetizioni superflui in tutta l'area *Impostazioni* (mantenendo gli swatch palette senza descrizione testuale), anima le icone a sinistra e le relative sottoschermate, sposta lo switch *Sveglie* prima della freccia di dettaglio correggendo l'accensione rapida, rimuove *«Imposta come lavoro attivo»* dall'editor lavoro e il badge *«Predefinita»* sulle rotazioni lasciando la sola stellina dorata, ed elimina i bordi scuri dall'editor *Etichette*. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.31.md).

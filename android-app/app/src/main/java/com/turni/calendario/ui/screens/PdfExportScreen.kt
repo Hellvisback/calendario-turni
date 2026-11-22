@@ -68,6 +68,7 @@ import kotlinx.coroutines.withContext
 import java.io.File
 import java.time.YearMonth
 import java.time.format.DateTimeFormatter
+import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 @Composable
@@ -112,6 +113,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             }
         } catch (error: Exception) {
             if (error is kotlinx.coroutines.CancellationException) throw error
+            preview = null
             previewError = if (error is IllegalArgumentException) {
                 error.message
             } else {
@@ -348,10 +350,26 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
         }
 
         val filteredModel = options.filterShiftId?.let { ShiftRepository.getShiftDefinition(it) }
+        val periodSubtitle = when {
+            range.second.isBefore(range.first) -> "Intervallo non valido · Cambia periodo"
+            options.mode == PdfExportMode.PERSONALIZZATO -> {
+                val spanDays = ChronoUnit.DAYS.between(range.first, range.second) + 1
+                val spanMonths = (range.second.year - range.first.year) * 12 +
+                    (range.second.monthValue - range.first.monthValue) + 1
+                when {
+                    spanMonths > PdfExportPlan.MAX_OVERVIEW_MONTHS ->
+                        "Troppi mesi ($spanMonths) · max ${PdfExportPlan.MAX_OVERVIEW_MONTHS}"
+                    spanMonths == 1 ->
+                        if (spanDays == 1L) "1 giorno · Cambia periodo" else "$spanDays giorni · Cambia periodo"
+                    else -> "$spanDays giorni · $spanMonths mesi"
+                }
+            }
+            else -> "Cambia periodo"
+        }
         CloudCard("Periodo e turni") {
             PdfAction(
                 title = "${range.first.format(formatter)} – ${range.second.format(formatter)}",
-                subtitle = "Cambia periodo",
+                subtitle = periodSubtitle,
                 onClick = { dateDialog = true },
                 badge = { progress ->
                     NeutralIconBadge(
@@ -896,15 +914,50 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                             selectingEnd = true
                         }
                     }
+                    val selectedDays = ChronoUnit.DAYS.between(from, to) + 1
+                    val selectedMonths = (to.year - from.year) * 12 + (to.monthValue - from.monthValue) + 1
+                    val spanLabel = when {
+                        selectedMonths == 1 -> if (selectedDays == 1L) "1 giorno selezionato" else "$selectedDays giorni selezionati"
+                        else -> "$selectedDays giorni · $selectedMonths mesi"
+                    }
+                    Text(
+                        text = spanLabel,
+                        color = TextSecondary,
+                        fontSize = 12.sp,
+                        fontWeight = FontWeight.Medium,
+                    )
                 }
             }
-            error?.let { Text(it, color = ColorNegative, fontSize = 12.sp, lineHeight = 17.sp) }
+            val limitError = if (options.mode == PdfExportMode.PERSONALIZZATO) {
+                val selectedMonths = (to.year - from.year) * 12 + (to.monthValue - from.monthValue) + 1
+                if (selectedMonths > PdfExportPlan.MAX_OVERVIEW_MONTHS) PdfExportPlan.OVERVIEW_MAX_MONTHS_ERROR else null
+            } else {
+                null
+            }
+            val activeError = error ?: limitError
+            activeError?.let { message ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(13.dp))
+                        .background(Color(palette.danger.fill))
+                        .padding(horizontal = 12.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    SiteIcon("alert-triangle", null, Modifier.size(16.dp), Color(palette.danger.ink))
+                    Text(message, color = Color(palette.danger.ink), fontSize = 12.sp, lineHeight = 17.sp)
+                }
+            }
         }
+        val canConfirm = options.mode != PdfExportMode.PERSONALIZZATO ||
+            ((to.year - from.year) * 12 + (to.monthValue - from.monthValue) + 1) <= PdfExportPlan.MAX_OVERVIEW_MONTHS
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             CloudButton("Annulla", "x", { finish(dismiss) }, modifier = Modifier.weight(1f), secondary = true)
             CloudButton(
                 label = "Conferma",
                 icon = "check",
+                enabled = canConfirm,
                 onClick = {
                     try {
                         val changed = when (options.mode) {
@@ -912,7 +965,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                             PdfExportMode.ANNO -> options.copy(selectedYear = year)
                             else -> options.copy(startDate = from, endDate = to)
                         }
-                        PdfExportPlan.dates(changed)
+                        PdfExportPlan.validateForExport(changed)
                         finish { save(changed) }
                     } catch (exception: IllegalArgumentException) {
                         error = exception.message

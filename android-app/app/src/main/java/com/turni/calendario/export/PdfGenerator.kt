@@ -81,9 +81,9 @@ object PdfGenerator {
     fun writePdf(context: Context, snapshot: PdfExportSnapshot): File {
         val output = File.createTempFile("turnisync-", ".pdf", context.cacheDir)
         val presentation = PdfExportPlan.presentation(snapshot.options)
-        val months=snapshot.days.map{YearMonth.from(it.date)}.distinct().size
+        val months = snapshot.days.map { YearMonth.from(it.date) }.distinct().size
         val papers = when (presentation) {
-            PdfPresentation.OVERVIEW -> listOf(1191 to 842, 1684 to 1191, 2384 to 1684)
+            PdfPresentation.OVERVIEW -> overviewPaperSizes(months)
             PdfPresentation.MONTHS -> if (months > 1) listOf(595 to 842, 1191 to 1684) else listOf(595 to 842)
             PdfPresentation.LIST -> listOf(595 to 842, 842 to 1191)
         }
@@ -151,7 +151,6 @@ object PdfGenerator {
         private val format = DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN)
         private val weekdayFormat = DateTimeFormatter.ofPattern("EEE", Locale.ITALIAN)
         private val listDateFormat = DateTimeFormatter.ofPattern("dd/MM", Locale.ITALIAN)
-        private val monthFormat = DateTimeFormatter.ofPattern("MMM", Locale.ITALIAN)
         private val crowded = "I dettagli selezionati non entrano leggibili in una pagina. Riduci il periodo oppure disattiva note, durata o pause."
 
         private data class ShiftPaint(val fill: Int, val ink: Int, val accentBar: Int)
@@ -608,132 +607,216 @@ object PdfGenerator {
             val isHolidayDetail: Boolean = false,
         )
 
+        private fun buildOverviewLines(
+            day: PdfDayRow,
+            pillW: Float,
+            textAvailW: Float,
+            font: Float,
+        ): List<OverviewLine> = buildList {
+            day.shifts.forEach { shift ->
+                val badgeColor = shift.color.takeIf { data.options.includeIcon }
+                if (shift.name.isNotBlank()) {
+                    lines(shift.name, textAvailW, font, true).forEach { label ->
+                        add(OverviewLine(label, badgeColor, bold = true, isShiftBadge = true))
+                    }
+                }
+                val markFirstDetail = shift.name.isBlank()
+                val firstDetailIdx = size
+                shift.details.forEach { detail ->
+                    val compact = compactCalendarDetail(detail).replace("Tutto il giorno", "Intera giornata")
+                    val avail = if (markFirstDetail && size == firstDetailIdx) textAvailW else pillW - 2f
+                    lines(compact, avail, font).forEach { label ->
+                        val asBadge = markFirstDetail && size == firstDetailIdx
+                        add(
+                            OverviewLine(
+                                label = label,
+                                color = badgeColor.takeIf { asBadge },
+                                bold = asBadge,
+                                isShiftBadge = asBadge,
+                            ),
+                        )
+                    }
+                }
+                if (shift.name.isBlank() && size == firstDetailIdx) {
+                    add(OverviewLine(shift.code, badgeColor, bold = true, isShiftBadge = true))
+                }
+            }
+            day.details.forEach { detail ->
+                lines(detail, pillW - 2f, font).forEach {
+                    add(OverviewLine(it, isHolidayDetail = day.holiday))
+                }
+            }
+        }
+
         private fun overview(months: List<YearMonth>, top: Float) {
-            require(months.size <= 12) { "Per una panoramica su una pagina, seleziona al massimo 12 mesi." }
-            val gap = 4.5f
+            require(months.size <= PdfExportPlan.MAX_OVERVIEW_MONTHS) { PdfExportPlan.OVERVIEW_MAX_MONTHS_ERROR }
+            if (data.days.isEmpty()) return
+            val gap = when {
+                months.size <= 3 -> 8f
+                months.size <= 6 -> 6f
+                else -> 4.5f
+            }
             val columnWidth = (width - 2 * margin - gap * (months.size - 1)) / months.size
             val gridTop = top + 22f
             val availableHeight = height - 42f - gridTop
-            val badgeXOffset = 21f
+            val badgeXOffset = if (months.size <= 3) 25f else 21f
             val pillW = (columnWidth - badgeXOffset - 2f).coerceAtLeast(20f)
             val textAvailW = (pillW - 6.5f).coerceAtLeast(14f)
             val byDate = data.days.associateBy { it.date }
+            val dayDates = data.days.map { it.date }
 
-            for (font in listOf(8f, 7.5f, 7f, 6.5f)) {
+            for (font in overviewFontCandidates(months.size)) {
                 val leading = font + 2.2f
+                val baseRowHeight = if (font >= 9f) 18.5f else 16f
                 val contents = data.days.associate { day ->
-                    day.date to buildList<OverviewLine> {
-                        day.shifts.forEach { shift ->
-                            val badgeColor = shift.color.takeIf { data.options.includeIcon }
-                            if (shift.name.isNotBlank()) {
-                                lines(shift.name, textAvailW, font, true).forEach { label ->
-                                    add(OverviewLine(label, badgeColor, bold = true, isShiftBadge = true))
-                                }
-                            }
-                            val markFirstDetail = shift.name.isBlank()
-                            val firstDetailIdx = size
-                            shift.details.forEach { detail ->
-                                val compact = compactCalendarDetail(detail).replace("Tutto il giorno", "Intera giornata")
-                                val avail = if (markFirstDetail && size == firstDetailIdx) textAvailW else pillW - 2f
-                                lines(compact, avail, font).forEach { label ->
-                                    val asBadge = markFirstDetail && size == firstDetailIdx
-                                    add(
-                                        OverviewLine(
-                                            label = label,
-                                            color = badgeColor.takeIf { asBadge },
-                                            bold = asBadge,
-                                            isShiftBadge = asBadge,
-                                        ),
-                                    )
-                                }
-                            }
-                            if (shift.name.isBlank() && size == firstDetailIdx && data.options.includeIcon) {
-                                add(OverviewLine(shift.code, shift.color, bold = true, isShiftBadge = true))
-                            }
-                        }
-                        day.details.forEach { detail ->
-                            lines(detail, pillW - 2f, font).forEach {
-                                add(OverviewLine(it, isHolidayDetail = day.holiday))
-                            }
-                        }
-                    }
+                    day.date to buildOverviewLines(day, pillW, textAvailW, font)
                 }
-                val minimumHeights = FloatArray(31) { 16f }
-                contents.forEach { (date, content) ->
-                    val index = date.dayOfMonth - 1
-                    minimumHeights[index] = maxOf(minimumHeights[index], content.size * leading + 3.5f)
-                }
-                val spare = availableHeight - minimumHeights.sum()
-                if (spare < 0f) continue
-                val rowHeights = minimumHeights.map { it + spare / minimumHeights.size }
-                val rowTops = rowHeights.runningFold(gridTop, Float::plus)
+                val columnPlans = planOverviewColumns(
+                    months = months,
+                    dates = dayDates,
+                    mode = data.options.mode,
+                    gridTop = gridTop,
+                    availableHeight = availableHeight,
+                    baseRowHeight = baseRowHeight,
+                    leading = leading,
+                    lineCounts = contents.mapValues { it.value.size },
+                ) ?: continue
 
-                months.forEachIndexed { index, month ->
+                val hSize = when {
+                    months.size <= 2 -> 9.5f
+                    months.size <= 5 -> 9f
+                    else -> 8.5f
+                }
+                val numSize = if (font >= 9f) 8.5f else 7.5f
+                val wdSize = if (font >= 9f) 5.8f else 5.2f
+
+                columnPlans.forEachIndexed { index, plan ->
                     val x = margin + index * (columnWidth + gap)
-                    box(x, top, columnWidth, 19f, accentTint, 4f)
-                    box(x + 1f, top, columnWidth - 2f, 2.2f, accent, 1.1f)
-                    val monthLabel = month.atDay(1).format(monthFormat).replaceFirstChar { it.uppercase() }
-                    val headerText = if (data.options.mode == PdfExportMode.ANNO) monthLabel else "$monthLabel ${month.year}"
-                    val hSize = 8.5f
-                    val hTextW = measure(headerText, hSize, bold = true)
-                    val hx = x + ((columnWidth - hTextW) / 2f).coerceAtLeast(4f)
-                    fittedText(headerText, hx, top + 13.5f, hSize, columnWidth - 8f, accentInk, bold = true)
-
-                    for (dayNumber in 1..month.lengthOfMonth()) {
-                        val date = month.atDay(dayNumber)
-                        val row = byDate[date] ?: continue
-                        val y = rowTops[dayNumber - 1]
-                        val rowH = rowHeights[dayNumber - 1]
-                        val isWeekend = date.dayOfWeek.value >= 6
-                        val fill = when {
-                            row.holiday -> holidayCell
-                            isWeekend -> weekendCell
-                            dayNumber % 2 == 0 -> paper
-                            else -> Color.WHITE
-                        }
-                        box(x, y, columnWidth, rowH - 0.4f, fill, 0f)
-                        val isWeekStart = date.dayOfWeek.value == 1
-                        box(x, y, columnWidth, if (isWeekStart) 0.75f else 0.35f, if (isWeekStart) weekRule else gridRule, 0f)
-
-                        if (row.holiday) {
-                            box(x + 2f, y + 1.5f, 16f, 13.5f, holiday, 3f)
-                        }
-                        val numInk = when {
-                            row.holiday -> holidayInk
-                            isWeekend -> accentInk
-                            else -> ink
-                        }
-                        val wdInk = when {
-                            row.holiday -> holidayInk
-                            isWeekend -> accent
-                            else -> muted
-                        }
-                        text(dayNumber.toString(), x + 3.2f, y + 8f, 7.5f, numInk, true)
-                        text(date.format(weekdayFormat).uppercase(Locale.ITALIAN).take(3), x + 3.2f, y + 13.6f, 5.2f, wdInk, true)
-
-                        val labelX = x + badgeXOffset
-                        contents.getValue(date).forEachIndexed { lineIndex, line ->
-                            val baseline = y + font + 1.2f + lineIndex * leading
-                            if (line.isShiftBadge && line.color != null) {
-                                val resolved = resolveShiftPaint(line.color)
-                                val pTop = baseline - font * 0.88f
-                                val pH = font * 1.14f
-                                box(labelX, pTop, pillW, pH, resolved.fill, 2.4f)
-                                box(labelX + 1.2f, pTop + 1.2f, 1.6f, (pH - 2.4f).coerceAtLeast(2f), resolved.accentBar, 0.8f)
-                                fittedText(line.label, labelX + 4.5f, baseline, font, textAvailW, resolved.ink, bold = true)
-                            } else if (line.isShiftBadge) {
-                                box(labelX, baseline - font * 0.88f, pillW, font * 1.14f, slateSoft, 2.4f)
-                                fittedText(line.label, labelX + 3f, baseline, font, pillW - 5f, ink, bold = true)
-                            } else {
-                                val (dColor, dBold) = detailTone(line.label, line.isHolidayDetail)
-                                fittedText(line.label, labelX + 1f, baseline, font, pillW - 2f, dColor, line.bold || dBold)
-                            }
-                        }
-                    }
+                    drawOverviewColumnHeader(x, top, columnWidth, plan.month, months.size, hSize)
+                    drawOverviewColumnRows(
+                        x = x,
+                        columnWidth = columnWidth,
+                        plan = plan,
+                        byDate = byDate,
+                        contents = contents,
+                        font = font,
+                        leading = leading,
+                        baseRowHeight = baseRowHeight,
+                        badgeXOffset = badgeXOffset,
+                        pillW = pillW,
+                        textAvailW = textAvailW,
+                        numSize = numSize,
+                        wdSize = wdSize,
+                    )
                 }
                 return
             }
             throw IllegalArgumentException(crowded)
+        }
+
+        private fun drawOverviewColumnHeader(
+            x: Float,
+            top: Float,
+            columnWidth: Float,
+            month: YearMonth,
+            monthCount: Int,
+            hSize: Float,
+        ) {
+            box(x, top, columnWidth, 19f, accentTint, 4f)
+            box(x + 1f, top, columnWidth - 2f, 2.2f, accent, 1.1f)
+            val fullCandidate = formatItalianMonthHeader(month, monthFullYearFormat)
+            val fitsFull = measure(fullCandidate, hSize, bold = true) <= columnWidth - 8f
+            val headerText = overviewColumnHeaderText(month, data.options.mode, monthCount, fitsFull)
+            val hTextW = measure(headerText, hSize, bold = true)
+            val drawW = minOf(hTextW, columnWidth - 8f)
+            val hx = x + ((columnWidth - drawW) / 2f).coerceAtLeast(4f)
+            fittedText(headerText, hx, top + 13.5f, hSize, columnWidth - 8f, accentInk, bold = true)
+        }
+
+        private fun drawOverviewColumnRows(
+            x: Float,
+            columnWidth: Float,
+            plan: OverviewColumnPlan,
+            byDate: Map<LocalDate, PdfDayRow>,
+            contents: Map<LocalDate, List<OverviewLine>>,
+            font: Float,
+            leading: Float,
+            baseRowHeight: Float,
+            badgeXOffset: Float,
+            pillW: Float,
+            textAvailW: Float,
+            numSize: Float,
+            wdSize: Float,
+        ) {
+            val holidayBoxW = if (badgeXOffset >= 24f) 19.5f else 16f
+            val holidayBoxH = if (numSize >= 8f) 15.5f else 13.5f
+            val numOffsetY = if (numSize >= 8f) 9.2f else 8f
+            val wdOffsetY = if (numSize >= 8f) 15.5f else 13.6f
+
+            plan.slots.forEachIndexed { slotIdx, slot ->
+                val date = slot.date
+                val row = byDate[date] ?: return@forEachIndexed
+                val y = plan.rowTops[slot.rowIndex]
+                val rowH = plan.rowHeights[slot.rowIndex]
+                val linesForDate = contents.getValue(date)
+                val minContentH = maxOf(baseRowHeight, linesForDate.size * leading + 3.5f)
+                val topPad = if (data.options.mode == PdfExportMode.ANNO) {
+                    0f
+                } else {
+                    ((rowH - minContentH) / 2f).coerceIn(0f, 5f)
+                }
+
+                val isWeekend = date.dayOfWeek.value >= 6
+                val fill = when {
+                    row.holiday -> holidayCell
+                    isWeekend -> weekendCell
+                    slot.rowIndex % 2 == 1 -> paper
+                    else -> Color.WHITE
+                }
+                box(x, y, columnWidth, rowH - 0.4f, fill, 0f)
+                val isWeekStart = date.dayOfWeek.value == 1
+                box(x, y, columnWidth, if (isWeekStart) 0.75f else 0.35f, if (isWeekStart) weekRule else gridRule, 0f)
+
+                if (row.holiday) {
+                    box(x + 2f, y + 1.5f + topPad, holidayBoxW, holidayBoxH, holiday, 3f)
+                }
+                val numInk = when {
+                    row.holiday -> holidayInk
+                    isWeekend -> accentInk
+                    else -> ink
+                }
+                val wdInk = when {
+                    row.holiday -> holidayInk
+                    isWeekend -> accent
+                    else -> muted
+                }
+                text(date.dayOfMonth.toString(), x + 3.2f, y + topPad + numOffsetY, numSize, numInk, true)
+                text(date.format(weekdayFormat).uppercase(Locale.ITALIAN).take(3), x + 3.2f, y + topPad + wdOffsetY, wdSize, wdInk, true)
+
+                val labelX = x + badgeXOffset
+                linesForDate.forEachIndexed { lineIndex, line ->
+                    val baseline = y + topPad + font + 1.2f + lineIndex * leading
+                    if (line.isShiftBadge && line.color != null) {
+                        val resolved = resolveShiftPaint(line.color)
+                        val pTop = baseline - font * 0.88f
+                        val pH = font * 1.14f
+                        box(labelX, pTop, pillW, pH, resolved.fill, 2.4f)
+                        box(labelX + 1.2f, pTop + 1.2f, 1.6f, (pH - 2.4f).coerceAtLeast(2f), resolved.accentBar, 0.8f)
+                        fittedText(line.label, labelX + 4.5f, baseline, font, textAvailW, resolved.ink, bold = true)
+                    } else if (line.isShiftBadge) {
+                        box(labelX, baseline - font * 0.88f, pillW, font * 1.14f, slateSoft, 2.4f)
+                        fittedText(line.label, labelX + 3f, baseline, font, pillW - 5f, ink, bold = true)
+                    } else {
+                        val (dColor, dBold) = detailTone(line.label, line.isHolidayDetail)
+                        fittedText(line.label, labelX + 1f, baseline, font, pillW - 2f, dColor, line.bold || dBold)
+                    }
+                }
+
+                val nextSlot = plan.slots.getOrNull(slotIdx + 1)
+                if (nextSlot == null || nextSlot.rowIndex != slot.rowIndex + 1) {
+                    box(x, y + rowH - 0.4f, columnWidth, 0.4f, gridRule, 0f)
+                }
+            }
         }
 
         private fun compactCalendarDetail(value: String): String {
@@ -964,4 +1047,139 @@ object PdfGenerator {
         }
     }
 
+}
+
+internal enum class OverviewRowLayout {
+    SINGLE_MONTH_COMPACT,
+    MULTI_MONTH_COMPACT,
+    ALIGNED_MATRIX,
+}
+
+internal data class OverviewSlot(
+    val rowIndex: Int,
+    val date: LocalDate,
+)
+
+internal data class OverviewColumnPlan(
+    val month: YearMonth,
+    val slots: List<OverviewSlot>,
+    val rowHeights: List<Float>,
+    val rowTops: List<Float>,
+)
+
+private val monthShortFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM", Locale.ITALIAN)
+private val monthShortYearFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MMM yyyy", Locale.ITALIAN)
+private val monthFullYearFormat: DateTimeFormatter = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
+
+internal fun formatItalianMonthHeader(month: YearMonth, formatter: DateTimeFormatter): String =
+    month.atDay(1).format(formatter).replaceFirstChar { it.uppercase() }
+
+internal fun overviewPaperSizes(monthCount: Int): List<Pair<Int, Int>> = when {
+    monthCount <= 1 -> listOf(595 to 842, 842 to 1191)
+    monthCount <= 3 -> listOf(595 to 842, 842 to 595, 1191 to 842)
+    monthCount <= 6 -> listOf(842 to 595, 1191 to 842, 1684 to 1191)
+    else -> listOf(1191 to 842, 1684 to 1191, 2384 to 1684)
+}
+
+internal fun overviewFontCandidates(monthCount: Int): List<Float> = when {
+    monthCount <= 2 -> listOf(10f, 9.5f, 9f, 8.5f, 8f, 7.5f, 7f, 6.5f)
+    monthCount <= 5 -> listOf(9f, 8.5f, 8f, 7.5f, 7f, 6.5f)
+    else -> listOf(8f, 7.5f, 7f, 6.5f)
+}
+
+internal fun resolveOverviewRowLayout(
+    mode: PdfExportMode,
+    monthCount: Int,
+    dayCount: Int,
+): OverviewRowLayout = when {
+    mode == PdfExportMode.PERSONALIZZATO && monthCount == 1 -> OverviewRowLayout.SINGLE_MONTH_COMPACT
+    mode == PdfExportMode.PERSONALIZZATO && monthCount >= 2 && dayCount <= 31 -> OverviewRowLayout.MULTI_MONTH_COMPACT
+    else -> OverviewRowLayout.ALIGNED_MATRIX
+}
+
+internal fun overviewColumnHeaderText(
+    month: YearMonth,
+    mode: PdfExportMode,
+    monthCount: Int,
+    fitsFullMonthYear: Boolean,
+): String = when {
+    mode == PdfExportMode.ANNO -> formatItalianMonthHeader(month, monthShortFormat)
+    monthCount <= 2 && fitsFullMonthYear -> formatItalianMonthHeader(month, monthFullYearFormat)
+    else -> formatItalianMonthHeader(month, monthShortYearFormat)
+}
+
+internal fun capOverviewRowHeight(minHeight: Float, extraPerRow: Float): Float {
+    val maxRowHeight = maxOf(minHeight, minOf(minHeight * 2.2f, 38f))
+    return minOf(minHeight + extraPerRow, maxRowHeight)
+}
+
+internal fun planOverviewColumns(
+    months: List<YearMonth>,
+    dates: List<LocalDate>,
+    mode: PdfExportMode,
+    gridTop: Float,
+    availableHeight: Float,
+    baseRowHeight: Float,
+    leading: Float,
+    lineCounts: Map<LocalDate, Int>,
+): List<OverviewColumnPlan>? {
+    if (months.isEmpty()) return emptyList()
+    val layout = resolveOverviewRowLayout(mode, months.size, dates.size)
+    fun minHeightFor(date: LocalDate): Float {
+        val count = lineCounts[date] ?: 0
+        return maxOf(baseRowHeight, count * leading + 3.5f)
+    }
+
+    return when (layout) {
+        OverviewRowLayout.SINGLE_MONTH_COMPACT,
+        OverviewRowLayout.MULTI_MONTH_COMPACT -> {
+            val colDatesList = months.map { month ->
+                if (layout == OverviewRowLayout.SINGLE_MONTH_COMPACT) {
+                    dates.sorted()
+                } else {
+                    dates.filter { YearMonth.from(it) == month }.sorted()
+                }
+            }
+            val colMinHeights = colDatesList.map { colDates ->
+                colDates.map { d -> minHeightFor(d) }
+            }
+            if (colMinHeights.any { it.sum() > availableHeight }) return null
+            val maxRows = colMinHeights.maxOfOrNull { it.size }?.coerceAtLeast(1) ?: 1
+            val minSpare = colMinHeights.minOfOrNull { availableHeight - it.sum() } ?: availableHeight
+            val extraPerRow = (minSpare / maxRows).coerceAtLeast(0f)
+            months.mapIndexed { index, month ->
+                val colDates = colDatesList[index]
+                val mins = colMinHeights[index]
+                val heights = mins.map { capOverviewRowHeight(it, extraPerRow) }
+                val tops = heights.runningFold(gridTop, Float::plus)
+                val slots = colDates.mapIndexed { rowIndex, date -> OverviewSlot(rowIndex, date) }
+                OverviewColumnPlan(month, slots, heights, tops)
+            }
+        }
+        OverviewRowLayout.ALIGNED_MATRIX -> {
+            val maxDay = if (mode == PdfExportMode.ANNO) 31 else months.maxOf { it.lengthOfMonth() }
+            val minimumHeights = FloatArray(maxDay) { baseRowHeight }
+            dates.forEach { date ->
+                val index = (date.dayOfMonth - 1).coerceIn(0, maxDay - 1)
+                minimumHeights[index] = maxOf(minimumHeights[index], minHeightFor(date))
+            }
+            val spare = availableHeight - minimumHeights.sum()
+            if (spare < 0f) return null
+            val extraPerRow = spare / minimumHeights.size
+            val rowHeights = if (mode == PdfExportMode.ANNO) {
+                minimumHeights.map { it + extraPerRow }
+            } else {
+                minimumHeights.map { capOverviewRowHeight(it, extraPerRow) }
+            }
+            val rowTops = rowHeights.runningFold(gridTop, Float::plus)
+            val dateSet = dates.toSet()
+            months.map { month ->
+                val slots = (1..month.lengthOfMonth()).mapNotNull { dayNumber ->
+                    val date = month.atDay(dayNumber)
+                    if (date in dateSet) OverviewSlot(dayNumber - 1, date) else null
+                }
+                OverviewColumnPlan(month, slots, rowHeights, rowTops)
+            }
+        }
+    }
 }
