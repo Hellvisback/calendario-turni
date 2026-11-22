@@ -102,29 +102,17 @@ fun TurniModelsScreen(
                     tint = TextPrimary,
                     iconSize = 20.dp,
                 )
-                Column(
+                Text(
+                    text = "Modelli e turni",
+                    color = TextPrimary,
+                    fontSize = 23.sp,
+                    lineHeight = 27.sp,
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = (-0.6).sp,
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
                     modifier = Modifier.weight(1f),
-                    verticalArrangement = Arrangement.spacedBy(2.dp),
-                ) {
-                    Text(
-                        text = "Modelli e turni",
-                        color = TextPrimary,
-                        fontSize = 23.sp,
-                        lineHeight = 27.sp,
-                        fontWeight = FontWeight.Bold,
-                        letterSpacing = (-0.6).sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "Il tuo catalogo, in un unico posto",
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
+                )
                 PastelPill(
                     text = headerCountLabel,
                     color = headerPastel.sourceColor,
@@ -179,14 +167,7 @@ fun TurniModelsScreen(
                                             title = "Nessun modello di turno",
                                             accent = ExpressivePastel.SKY,
                                             modifier = Modifier.animateItem(),
-                                        ) {
-                                            Text(
-                                                text = "Crea il primo turno dal pulsante qui sotto per iniziare a compilare il calendario.",
-                                                color = TextSecondary,
-                                                fontSize = 13.sp,
-                                                lineHeight = 19.sp,
-                                            )
-                                        }
+                                        ) {}
                                     }
                                 }
                                 items(definitions, key = { it.id }) { definition ->
@@ -216,14 +197,7 @@ fun TurniModelsScreen(
                                             title = "Nessuna rotazione",
                                             accent = ExpressivePastel.LAVENDER,
                                             modifier = Modifier.animateItem(),
-                                        ) {
-                                            Text(
-                                                text = "Crea una sequenza di turni ricorrente dal pulsante qui sotto per applicarla rapidamente al calendario.",
-                                                color = TextSecondary,
-                                                fontSize = 13.sp,
-                                                lineHeight = 19.sp,
-                                            )
-                                        }
+                                        ) {}
                                     }
                                 }
                                 items(rotations, key = { it.id }) { rotation ->
@@ -564,14 +538,16 @@ private fun WorkProfileCatalogCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    Text(
-                        text = profile.companyOrDepartment.ifBlank { "Calendario di lavoro" },
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        color = TextSecondary,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    if (profile.companyOrDepartment.isNotBlank()) {
+                        Text(
+                            text = profile.companyOrDepartment,
+                            fontSize = 12.sp,
+                            lineHeight = 16.sp,
+                            color = TextSecondary,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
                 }
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -763,20 +739,7 @@ private fun RotationCatalogCard(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                     )
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(4.dp),
-                    ) {
-                        TonalMetaChip(text = "${rotation.daySequence.size} g · $weeks sett")
-                        if (preferred) {
-                            PastelPill(
-                                text = "Predefinita",
-                                color = ExpressivePastel.AMBER.sourceColor,
-                                solid = true,
-                                icon = "star",
-                            )
-                        }
-                    }
+                    TonalMetaChip(text = "${rotation.daySequence.size} g · $weeks sett")
                 }
                 Box(
                     modifier = Modifier
@@ -936,23 +899,10 @@ private fun SiteCyclePreview(rotation: ShiftRotation) {
             }
         }
         if (overflow > 0) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                PastelPill(
-                    text = "+$overflow",
-                    color = ExpressivePastel.LAVENDER.sourceColor,
-                )
-                Text(
-                    text = "altri giorni nel ciclo",
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    color = TextSecondary,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
+            PastelPill(
+                text = "+$overflow giorni",
+                color = ExpressivePastel.LAVENDER.sourceColor,
+            )
         }
     }
 }

@@ -185,7 +185,16 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
 
     DisposableEffect(lifecycle) {
         val observer = LifecycleEventObserver { _, event ->
-            if (event == Lifecycle.Event.ON_RESUME) refresh++
+            if (event == Lifecycle.Event.ON_RESUME) {
+                val latest = ShiftRepository.smartAlarmsConfig
+                if (latest.isGlobalEnabled &&
+                    ShiftAlarmScheduler.canScheduleExactAlarms(context) &&
+                    ShiftAlarmScheduler.hasNotificationPermission(context)
+                ) {
+                    ShiftAlarmScheduler.scheduleNextAlarm(context)
+                }
+                refresh++
+            }
         }
         lifecycle.lifecycle.addObserver(observer)
         onDispose { lifecycle.lifecycle.removeObserver(observer) }
@@ -198,6 +207,9 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
     val toolsMotion = remember { Animatable(0f) }
     var toolsJob by remember { mutableStateOf<Job?>(null) }
     var wasRinging by remember { mutableStateOf(false) }
+    LaunchedEffect(Unit) {
+        bellJob = scope.triggerAlarmMotion(bellMotion, bellJob, 580)
+    }
     LaunchedEffect(ringing) {
         if (ringing) {
             wasRinging = true
@@ -226,7 +238,6 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
     Box(modifier = Modifier.fillMaxSize()) {
         CloudFeatureScaffold(
             title = "Sveglie",
-            subtitle = "Collegate ai tuoi turni",
             onDismiss = onDismiss,
             scrollable = false,
         ) {
@@ -275,7 +286,11 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                             color = TextPrimary,
                         )
                         Text(
-                            text = if (config.isGlobalEnabled) "$activeRules regole attive" else "In pausa · regole conservate",
+                            text = if (config.isGlobalEnabled) {
+                                if (activeRules == 1) "1 regola attiva" else "$activeRules regole attive"
+                            } else {
+                                "In pausa"
+                            },
                             fontSize = 12.sp,
                             lineHeight = 17.sp,
                             color = TextSecondary,
@@ -284,8 +299,16 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                     TurniSwitch(
                         checked = config.isGlobalEnabled,
                         onCheckedChange = { enabled ->
-                            ShiftRepository.smartAlarmsConfig = ShiftRepository.smartAlarmsConfig.copy(isGlobalEnabled = enabled)
-                            if (enabled) permissionsReady() else ShiftAlarmScheduler.cancelScheduledAlarm(context)
+                            val latest = ShiftRepository.smartAlarmsConfig
+                            ShiftRepository.smartAlarmsConfig = latest.copy(isGlobalEnabled = enabled)
+                            if (enabled) {
+                                if (permissionsReady()) {
+                                    ShiftAlarmScheduler.scheduleNextAlarm(context)
+                                }
+                            } else {
+                                ShiftAlarmScheduler.cancelScheduledAlarm(context)
+                            }
+                            ShiftRepository.notifyDataChanged()
                             bellJob = scope.triggerAlarmMotion(bellMotion, bellJob, 620)
                             refresh++
                         },
@@ -382,7 +405,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                 verticalAlignment = Alignment.CenterVertically,
                             ) {
                                 Text(
-                                    text = "Scegli quando suonare",
+                                    text = "$activeRules/${definitions.size + 1} attive",
                                     fontSize = 12.sp,
                                     lineHeight = 17.sp,
                                     color = TextSecondary,
@@ -410,6 +433,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                             )
                                             if (enable && current.isGlobalEnabled) permissionsReady()
                                             ShiftAlarmScheduler.scheduleNextAlarm(context)
+                                            ShiftRepository.notifyDataChanged()
                                             bellJob = scope.triggerAlarmMotion(bellMotion, bellJob, 560)
                                             refresh++
                                             report(
@@ -473,18 +497,18 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                             item {
                                 CloudCard(
                                     title = "Sveglie in pausa",
-                                    subtitle = "Riattiva lo switch in alto per programmare le sveglie. Le tue regole restano salvate.",
+                                    subtitle = "Attiva in alto per programmarle.",
                                 ) {}
                             }
                         }
                         if (upcoming.isEmpty()) {
                             item {
                                 CloudCard(
-                                    title = "Nessuna sveglia da mostrare",
-                                    subtitle = "Le sveglie compaiono quando un turno ha una regola attiva.",
+                                    title = "Nessuna sveglia",
+                                    subtitle = "Attiva una regola nei turni.",
                                 ) {
                                     CloudButton(
-                                        label = "Scegli le regole",
+                                        label = "Regole",
                                         icon = "settings",
                                         onClick = { tab = 0 },
                                         secondary = true,
@@ -646,7 +670,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                         } else if (alarmVolume == 0) {
                                             "Volume sveglie a zero"
                                         } else {
-                                            "Audio, autorizzazioni e prova sonora"
+                                            "Volume $alarmVolume/${audio.getStreamMaxVolume(AudioManager.STREAM_ALARM)}"
                                         },
                                         fontSize = 11.sp,
                                         lineHeight = 15.sp,
@@ -681,10 +705,10 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                             )
                                         }
                                         Text(
-                                            text = "Consente di aprire la sveglia a schermo bloccato. Senza questa opzione restano audio e notifica; il dispositivo decide come mostrarla.",
+                                            text = "Mostra la sveglia a schermo bloccato.",
                                             color = TextSecondary,
                                             fontSize = 11.sp,
-                                            lineHeight = 17.sp,
+                                            lineHeight = 16.sp,
                                         )
                                     }
                                     AlarmPermissionRow("Sveglie esatte", exact) { permissionsReady() }
@@ -767,7 +791,7 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                         }
                                     }
                                     Text(
-                                        text = "Prova: massimo 20 secondi. Sveglie: massimo 2 minuti. Volume e Non disturbare restano sotto il tuo controllo.",
+                                        text = "Prova: 20 s · Sveglia: 2 min",
                                         color = TextSecondary,
                                         fontSize = 11.sp,
                                         lineHeight = 16.sp,
@@ -1038,7 +1062,7 @@ private fun NativeAlarmRule(
                     text = if (onCall) {
                         "Alle $currentFixedTime · giorno precedente"
                     } else if (rule.customTime == null) {
-                        "${rule.minutesBefore} min prima dell'attacco"
+                        "${rule.minutesBefore} min prima"
                     } else {
                         "Alle $currentFixedTime"
                     },
@@ -1201,12 +1225,12 @@ private fun NativeAlarmRule(
                             fill = ObsidianPrimarySubtle,
                             ink = BrandInk,
                         )
-                        SiteIcon(
+                        SiteIconMotion(
                             name = "chevron-right",
-                            contentDescription = null,
+                            description = null,
                             tint = TextSecondary,
                             modifier = Modifier.size(16.dp),
-                        )
+                        ) { clockMotion.value }
                     }
                 }
             }

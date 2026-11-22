@@ -5,7 +5,9 @@ import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.FastOutSlowInEasing
+import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
 import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
@@ -219,7 +221,7 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
 
     CloudFeatureScaffold(
         title = "Google Calendar",
-        subtitle = "Sincronizza i turni di ${work.name} sul tuo calendario",
+        subtitle = null,
         onDismiss = onDismiss,
         feedback = feedback,
         onDismissFeedback = { feedback = null },
@@ -240,234 +242,255 @@ fun GoogleCalendarSyncScreen(onDismiss: () -> Unit) {
             onFeedback = { feedback = it },
             enabled = !apiBusy,
             feature = GoogleFeature.CALENDAR,
+            explanation = null,
             onConnected = { token -> loadCalendars(token) },
-        )
-        CloudCard(
-            title = "Calendario di destinazione",
-            subtitle = "Scegli dove sincronizzare i turni di ${work.name}.",
-        ) {
-            val calShape = RoundedCornerShape(16.dp)
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clip(calShape)
-                    .background(ObsidianSurfaceContainer)
-                    .bouncyClickable(enabled = !busy) {
-                        calendarRowJob = scope.triggerSyncMotion(calendarRowMotion, calendarRowJob)
-                        chooseCalendar()
+            connectedContent = {
+                val calShape = RoundedCornerShape(16.dp)
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(calShape)
+                        .background(ObsidianSurfaceContainer)
+                        .bouncyClickable(enabled = !busy) {
+                            calendarRowJob = scope.triggerSyncMotion(calendarRowMotion, calendarRowJob)
+                            chooseCalendar()
+                        }
+                        .padding(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    NeutralIconBadge(
+                        icon = "calendar-sync",
+                        size = 40.dp,
+                        cornerRadius = 12.dp,
+                        iconSize = 20.dp,
+                        fill = if (selectedCalendar != null) ObsidianPrimaryContainer else ObsidianSurface,
+                        tint = BrandInk,
+                        progress = calendarRowMotion.value,
+                    )
+                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                        Text(
+                            text = selectedCalendar?.name ?: "Scegli calendario",
+                            color = TextPrimary.copy(alpha = if (!busy) 1f else 0.5f),
+                            fontWeight = FontWeight.SemiBold,
+                            fontSize = 14.sp,
+                            lineHeight = 19.sp,
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        val calendarHint = when {
+                            selectedCalendar?.primary == true -> "Calendario principale"
+                            selectedCalendar == null -> "Seleziona un calendario"
+                            else -> null
+                        }
+                        if (calendarHint != null) {
+                            Text(
+                                text = calendarHint,
+                                color = TextSecondary,
+                                fontSize = 12.sp,
+                                lineHeight = 16.sp,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
                     }
-                    .padding(12.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                NeutralIconBadge(
-                    icon = "calendar-sync",
-                    size = 40.dp,
-                    cornerRadius = 12.dp,
-                    iconSize = 20.dp,
-                    fill = if (selectedCalendar != null) ObsidianPrimaryContainer else ObsidianSurface,
-                    tint = BrandInk,
-                    progress = calendarRowMotion.value,
-                )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = selectedCalendar?.name ?: "Scegli calendario",
-                        color = TextPrimary.copy(alpha = if (!busy) 1f else 0.5f),
-                        fontWeight = FontWeight.SemiBold,
-                        fontSize = 14.sp,
-                        lineHeight = 19.sp,
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
+                    CalendarStatusPill(
+                        text = if (selectedCalendar == null) "Scegli" else "Cambia",
+                        fill = ObsidianPrimarySubtle,
+                        ink = BrandInk,
                     )
-                    Text(
-                        text = if (selectedCalendar != null) {
-                            calendarOwner.orEmpty()
-                        } else {
-                            "Seleziona un calendario Google scrivibile"
-                        },
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                        maxLines = 3,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                    SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
                 }
-                CalendarStatusPill(
-                    text = if (selectedCalendar == null) "Scegli" else "Cambia",
-                    fill = ObsidianPrimarySubtle,
-                    ink = BrandInk,
-                )
-                SiteIcon("chevron-right", null, Modifier.size(16.dp), TextSecondary)
-            }
-        }
-        CloudCard(
-            title = "Periodo",
-            subtitle = "${start.format(formatter)} – ${end.format(formatter)}",
-        ) {
-            SlidingSegmentBar(
-                items = listOf(
-                    "Mese" to "calendar",
-                    "3 mesi" to "layers",
-                    "Anno" to "clock",
-                ),
-                selectedIndex = range,
-                onSelect = { range = it },
-                enabled = !busy,
-            )
-            CalendarStatusPill(
-                text = "$shiftCount ${if (shiftCount == 1) "turno" else "turni"} · ${work.name}",
-                fill = ObsidianSurfaceContainer,
-                ink = BrandInk,
-                icon = "calendar",
-                progress = periodMotion.value,
-            )
-        }
-        CloudCard("Opzioni degli eventi") {
-            CalendarOptionSwitch(
-                title = "Orari precisi",
-                subtitle = "Usa attacco, stacco effettivo e straordinario.",
-                value = exactHours,
-                enabled = !busy,
-                onChange = { exactHours = it },
-            )
-            SettingsDivider()
-            CalendarOptionSwitch(
-                title = "Includi i riposi",
-                subtitle = "Mostra anche i turni della categoria Riposo.",
-                value = includeRest,
-                enabled = !busy,
-                onChange = { includeRest = it },
-            )
-            SettingsDivider()
-            CalendarOptionSwitch(
-                title = "Promemoria",
-                subtitle = "Aggiunge un avviso nel calendario Google.",
-                value = reminderEnabled,
-                enabled = !busy,
-                onChange = { reminderEnabled = it },
-            )
-            val reminderDurations = remember { listOf(15, 30, 60) }
-            AnimatedVisibility(
-                visible = reminderEnabled,
-                enter = expandVertically(tween(260)) + fadeIn(tween(220)),
-                exit = shrinkVertically(tween(220)) + fadeOut(tween(180)),
-            ) {
+                SettingsDivider()
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    SettingsDivider()
-                    Text("Anticipo avviso", fontSize = 12.sp, color = TextSecondary)
-                    val activeBg = remember(dark) {
-                        lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.22f else 0.12f)
-                    }
                     Row(
                         modifier = Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.SpaceBetween,
                     ) {
-                        reminderDurations.forEach { minutes ->
-                            val selected = reminderMinutes == minutes
-                            val pillShape = RoundedCornerShape(14.dp)
-                            val targetBg = if (selected) activeBg else ObsidianSurfaceContainer
-                            val targetInk = if (selected) BrandInk else TextSecondary
-                            val bg by animateColorAsState(
-                                targetValue = targetBg,
-                                animationSpec = tween(180),
-                                label = "reminderPillBg",
-                            )
-                            val ink by animateColorAsState(
-                                targetValue = targetInk.copy(alpha = if (!busy) 1f else 0.5f),
-                                animationSpec = tween(180),
-                                label = "reminderPillInk",
-                            )
-                            val ring by animateColorAsState(
-                                targetValue = if (selected) ObsidianPrimary else Color.Transparent,
-                                animationSpec = tween(180),
-                                label = "reminderPillRing",
-                            )
-                            Box(
-                                modifier = Modifier
-                                    .weight(1f)
-                                    .height(42.dp)
-                                    .clip(pillShape)
-                                    .background(bg)
-                                    .then(if (selected) Modifier.border(2.dp, ring, pillShape) else Modifier)
-                                    .clickable(
-                                        interactionSource = remember(minutes) { MutableInteractionSource() },
-                                        indication = null,
-                                        enabled = !busy,
-                                    ) { reminderMinutes = minutes },
-                                contentAlignment = Alignment.Center,
+                        Text(
+                            text = "Periodo",
+                            color = TextPrimary,
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.SemiBold,
+                        )
+                        Text(
+                            text = "${start.format(formatter)} – ${end.format(formatter)}",
+                            color = TextSecondary,
+                            fontSize = 12.sp,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                    SlidingSegmentBar(
+                        items = listOf(
+                            "Mese" to "calendar",
+                            "3 mesi" to "layers",
+                            "Anno" to "clock",
+                        ),
+                        selectedIndex = range,
+                        onSelect = { range = it },
+                        enabled = !busy,
+                    )
+                    CalendarStatusPill(
+                        text = "$shiftCount ${if (shiftCount == 1) "turno" else "turni"} · ${work.name}",
+                        fill = ObsidianSurfaceContainer,
+                        ink = BrandInk,
+                        icon = "calendar",
+                        progress = periodMotion.value,
+                    )
+                }
+                SettingsDivider()
+                Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    CalendarOptionSwitch(
+                        title = "Orari precisi",
+                        subtitle = "Attacco, stacco e straordinario",
+                        value = exactHours,
+                        enabled = !busy,
+                        onChange = { exactHours = it },
+                    )
+                    CalendarOptionSwitch(
+                        title = "Includi i riposi",
+                        subtitle = null,
+                        value = includeRest,
+                        enabled = !busy,
+                        onChange = { includeRest = it },
+                    )
+                    CalendarOptionSwitch(
+                        title = "Promemoria",
+                        subtitle = null,
+                        value = reminderEnabled,
+                        enabled = !busy,
+                        onChange = { reminderEnabled = it },
+                    )
+                    val reminderDurations = remember { listOf(15, 30, 60) }
+                    AnimatedVisibility(
+                        visible = reminderEnabled,
+                        enter = expandVertically(tween(260)) + fadeIn(tween(220)),
+                        exit = shrinkVertically(tween(220)) + fadeOut(tween(180)),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Anticipo avviso", fontSize = 12.sp, color = TextSecondary)
+                            val activeBg = remember(dark) {
+                                lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.22f else 0.12f)
+                            }
+                            Row(
+                                modifier = Modifier.fillMaxWidth(),
+                                horizontalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
-                                Text(
-                                    text = if (minutes == 60) "1 ora" else "$minutes min",
-                                    fontSize = 13.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                    color = ink,
-                                    maxLines = 1,
-                                    overflow = TextOverflow.Ellipsis,
-                                )
+                                reminderDurations.forEach { minutes ->
+                                    val selected = reminderMinutes == minutes
+                                    val pillShape = RoundedCornerShape(14.dp)
+                                    val targetBg = if (selected) activeBg else ObsidianSurfaceContainer
+                                    val targetInk = if (selected) BrandInk else TextSecondary
+                                    val bg by animateColorAsState(
+                                        targetValue = targetBg,
+                                        animationSpec = tween(180),
+                                        label = "reminderPillBg",
+                                    )
+                                    val ink by animateColorAsState(
+                                        targetValue = targetInk.copy(alpha = if (!busy) 1f else 0.5f),
+                                        animationSpec = tween(180),
+                                        label = "reminderPillInk",
+                                    )
+                                    val ring by animateColorAsState(
+                                        targetValue = if (selected) ObsidianPrimary else Color.Transparent,
+                                        animationSpec = tween(180),
+                                        label = "reminderPillRing",
+                                    )
+                                    Box(
+                                        modifier = Modifier
+                                            .weight(1f)
+                                            .height(42.dp)
+                                            .clip(pillShape)
+                                            .background(bg)
+                                            .then(if (selected) Modifier.border(2.dp, ring, pillShape) else Modifier)
+                                            .clickable(
+                                                interactionSource = remember(minutes) { MutableInteractionSource() },
+                                                indication = null,
+                                                enabled = !busy,
+                                            ) { reminderMinutes = minutes },
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        Text(
+                                            text = if (minutes == 60) "1 ora" else "$minutes min",
+                                            fontSize = 13.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = ink,
+                                            maxLines = 1,
+                                            overflow = TextOverflow.Ellipsis,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }
                 }
-            }
-        }
-        CloudButton(
-            label = if (apiBusy) operation else if (cooldown > 0) "Attendi ${CalendarCooldownPolicy.label(cooldown)}" else "Sincronizza ora",
-            icon = "upload",
-            onClick = { if (shiftCount == 0) confirmEmpty = true else synchronize() },
-            enabled = canChange && selectedCalendar != null,
+                SettingsDivider()
+                CloudButton(
+                    label = if (apiBusy) operation else if (cooldown > 0) "Attendi ${CalendarCooldownPolicy.label(cooldown)}" else "Sincronizza ora",
+                    icon = "upload",
+                    onClick = { if (shiftCount == 0) confirmEmpty = true else synchronize() },
+                    enabled = canChange && selectedCalendar != null,
+                )
+                AnimatedVisibility(
+                    visible = cooldown > 0,
+                    enter = expandVertically(tween(240)) + fadeIn(),
+                    exit = shrinkVertically(tween(200)) + fadeOut(),
+                ) {
+                    val targetProgress = (1f - cooldown.toFloat() / CalendarCooldownPolicy.DURATION_MILLIS).coerceIn(0f, 1f)
+                    val animatedProgress by animateFloatAsState(
+                        targetValue = targetProgress,
+                        animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
+                        label = "calendarCooldownProgress",
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .height(8.dp)
+                                .clip(CircleShape)
+                                .background(ObsidianSurfaceHigh),
+                        ) {
+                            Box(
+                                modifier = Modifier
+                                    .fillMaxWidth(animatedProgress)
+                                    .fillMaxHeight()
+                                    .clip(CircleShape)
+                                    .background(Brush.horizontalGradient(listOf(BrandInk, ObsidianPrimary))),
+                            )
+                        }
+                        Text(
+                            text = "Attendi 3 minuti tra due operazioni.",
+                            fontSize = 12.sp,
+                            lineHeight = 17.sp,
+                            color = TextSecondary,
+                        )
+                    }
+                }
+            },
         )
         AnimatedVisibility(
-            visible = cooldown > 0,
-            enter = expandVertically(tween(240)) + fadeIn(),
-            exit = shrinkVertically(tween(200)) + fadeOut(),
+            visible = email != null,
+            enter = expandVertically(
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            ) + fadeIn(tween(220)),
+            exit = shrinkVertically(
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            ) + fadeOut(tween(160)),
         ) {
-            val targetProgress = (1f - cooldown.toFloat() / CalendarCooldownPolicy.DURATION_MILLIS).coerceIn(0f, 1f)
-            val animatedProgress by animateFloatAsState(
-                targetValue = targetProgress,
-                animationSpec = tween(durationMillis = 450, easing = FastOutSlowInEasing),
-                label = "calendarCooldownProgress",
-            )
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .clip(CircleShape)
-                        .background(ObsidianSurfaceHigh),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxWidth(animatedProgress)
-                            .fillMaxHeight()
-                            .clip(CircleShape)
-                            .background(Brush.horizontalGradient(listOf(BrandInk, ObsidianPrimary))),
-                    )
-                }
-                Text(
-                    text = "Google può impiegare qualche minuto ad aggiornare gli eventi. Dopo ogni sincronizzazione o rimozione attendi 3 minuti prima della prossima operazione.",
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    color = TextSecondary,
+            CloudCard(
+                title = "Eventi sincronizzati",
+                subtitle = "Rimuove solo gli eventi creati da TurniSync",
+            ) {
+                CloudButton(
+                    label = if (cooldown > 0) "Rimuovi tra ${CalendarCooldownPolicy.label(cooldown)}" else "Rimuovi eventi TurniSync",
+                    icon = "trash",
+                    onClick = { confirmDelete = true },
+                    enabled = canChange && selectedCalendar != null,
+                    destructive = true,
                 )
             }
-        }
-        Text(
-            text = "La sincronizzazione aggiorna gli eventi TurniSync del lavoro e del periodo scelti. Gli eventi personali restano invariati.",
-            fontSize = 12.sp,
-            lineHeight = 17.sp,
-            color = TextSecondary,
-        )
-        CloudCard(
-            title = "Gestione degli eventi",
-            subtitle = "Rimuove dal calendario scelto solo gli eventi creati da TurniSync, anche degli altri lavori e periodi. I turni nell'app restano salvati.",
-        ) {
-            CloudButton(
-                label = if (cooldown > 0) "Rimuovi tra ${CalendarCooldownPolicy.label(cooldown)}" else "Rimuovi eventi TurniSync",
-                icon = "trash",
-                onClick = { confirmDelete = true },
-                enabled = canChange && selectedCalendar != null,
-                destructive = true,
-            )
         }
     }
     if (picker) {
@@ -754,7 +777,7 @@ private fun CalendarStatusPill(
 }
 
 @Composable
-private fun CalendarOptionSwitch(title: String, subtitle: String, value: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
+private fun CalendarOptionSwitch(title: String, subtitle: String?, value: Boolean, enabled: Boolean, onChange: (Boolean) -> Unit) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
@@ -769,7 +792,9 @@ private fun CalendarOptionSwitch(title: String, subtitle: String, value: Boolean
     ) {
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(title, fontSize = 14.sp, lineHeight = 19.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-            Text(subtitle, fontSize = 12.sp, lineHeight = 17.sp, color = TextSecondary)
+            if (!subtitle.isNullOrBlank()) {
+                Text(subtitle, fontSize = 12.sp, lineHeight = 17.sp, color = TextSecondary)
+            }
         }
         TurniSwitch(checked = value, onCheckedChange = onChange, enabled = enabled)
     }

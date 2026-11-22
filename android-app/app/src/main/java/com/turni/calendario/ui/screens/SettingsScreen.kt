@@ -110,6 +110,7 @@ import com.turni.calendario.ui.theme.currentTurniPalette
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftColorStyle
 import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 
 private enum class SettingsSubScreen {
@@ -134,11 +135,23 @@ fun SettingsScreen(
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
     val bellMotion = remember { Animatable(0f) }
+    var bellJob by remember { mutableStateOf<Job?>(null) }
+    val entranceWaves = remember { List(10) { Animatable(0f) } }
     val settingsScroll = rememberScrollState()
     var screen by remember { mutableStateOf(SettingsSubScreen.NONE) }
     var deleteStep by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(Unit) {
+        entranceWaves.forEachIndexed { index, anim ->
+            launch {
+                delay(index * 55L)
+                anim.snapTo(0f)
+                anim.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+                anim.snapTo(0f)
+            }
+        }
+    }
     LaunchedEffect(screen) { onSubScreenActiveChanged(screen != SettingsSubScreen.NONE) }
     DisposableEffect(Unit) { onDispose { onSubScreenActiveChanged(false) } }
     BackHandler { if (screen != SettingsSubScreen.NONE) screen = SettingsSubScreen.NONE else onDismiss() }
@@ -190,7 +203,6 @@ fun SettingsScreen(
                     SettingsSubScreen.HOLIDAYS -> HolidaysSettingsScreen(onDismiss = close)
                     SettingsSubScreen.APPEARANCE -> CloudFeatureScaffold(
                         title = "Aspetto e calendario",
-                        subtitle = "Tema, inizio settimana, orari ed ex turni",
                         onDismiss = close,
                     ) {
                         AppearanceSettingsContent()
@@ -214,12 +226,13 @@ fun SettingsScreen(
                                 ThemeMode.LIGHT -> "Chiaro"
                                 ThemeMode.DARK -> "Scuro"
                             }
+                            val holidayCount = ShiftRepository.enabledHolidayIds.size
                             PreferenceRow(
                                 pastel = null,
                                 icon = "palette",
                                 title = "Aspetto e calendario",
-                                subtitle = "Tema, inizio settimana, orari ed ex turni",
                                 trailingText = themeBadge,
+                                entranceProgress = entranceWaves[0].value,
                             ) {
                                 screen = SettingsSubScreen.APPEARANCE
                             }
@@ -228,8 +241,8 @@ fun SettingsScreen(
                                 pastel = ExpressivePastel.CORAL,
                                 icon = "calendar-heart",
                                 title = "Festività",
-                                subtitle = "Ricorrenze valide per il tuo lavoro",
-                                trailingText = "${ShiftRepository.enabledHolidayIds.size} attive",
+                                trailingText = if (holidayCount == 1) "1 attiva" else "$holidayCount attive",
+                                entranceProgress = entranceWaves[1].value,
                             ) {
                                 screen = SettingsSubScreen.HOLIDAYS
                             }
@@ -238,7 +251,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "report",
                                 title = "Conteggio statistiche",
-                                subtitle = "Turni sostituiti e ferie nei festivi",
+                                entranceProgress = entranceWaves[2].value,
                             ) {
                                 screen = SettingsSubScreen.STATISTICS_RULES
                             }
@@ -259,54 +272,46 @@ fun SettingsScreen(
                                 pastel = ExpressivePastel.AMBER,
                                 icon = "bell",
                                 title = "Reperibilità",
-                                subtitle = "Mostra la campanella sui giorni in cui sei reperibile",
                                 trailingText = onCallStatus,
                                 trailingPill = onCallMode != ReperibilitaMode.MANUALE,
+                                entranceProgress = entranceWaves[3].value,
                             ) {
                                 screen = SettingsSubScreen.REPERIBILITA
                             }
                             SettingsDivider(Modifier.padding(horizontal = 4.dp))
                             val alarms = ShiftRepository.smartAlarmsConfig
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                            ) {
-                                PreferenceRow(
-                                    pastel = ExpressivePastel.AMBER,
-                                    icon = "alarm-clock",
-                                    title = "Regole e prossime sveglie",
-                                    subtitle = "Configura gli avvisi sonori legati ai turni",
-                                    externalProgress = bellMotion.value,
-                                    modifier = Modifier.weight(1f),
-                                ) {
-                                    screen = SettingsSubScreen.SMART_ALARMS
-                                }
-                                TurniSwitch(
-                                    checked = alarms.isGlobalEnabled,
-                                    onCheckedChange = { enabled ->
-                                        if (enabled && (!ShiftAlarmScheduler.canScheduleExactAlarms(context) || !ShiftAlarmScheduler.hasNotificationPermission(context))) {
-                                            screen = SettingsSubScreen.SMART_ALARMS
+                            SmartAlarmsPreferenceRow(
+                                checked = alarms.isGlobalEnabled,
+                                externalProgress = bellMotion.value,
+                                entranceProgress = entranceWaves[4].value,
+                                onToggle = { enabled ->
+                                    val latest = ShiftRepository.smartAlarmsConfig
+                                    bellJob?.cancel()
+                                    bellJob = scope.launch {
+                                        bellMotion.snapTo(0f)
+                                        bellMotion.animateTo(1f, tween(580, easing = FastOutSlowInEasing))
+                                        bellMotion.snapTo(0f)
+                                    }
+                                    if (enabled) {
+                                        ShiftRepository.smartAlarmsConfig = latest.copy(isGlobalEnabled = true)
+                                        ShiftRepository.notifyDataChanged()
+                                        if (ShiftAlarmScheduler.canScheduleExactAlarms(context) &&
+                                            ShiftAlarmScheduler.hasNotificationPermission(context)
+                                        ) {
+                                            ShiftAlarmScheduler.scheduleNextAlarm(context)
                                         } else {
-                                            ShiftRepository.smartAlarmsConfig = alarms.copy(isGlobalEnabled = enabled)
-                                            if (enabled) {
-                                                ShiftAlarmScheduler.scheduleNextAlarm(context)
-                                                scope.launch {
-                                                    bellMotion.snapTo(0f)
-                                                    bellMotion.animateTo(1f, tween(580))
-                                                    bellMotion.snapTo(0f)
-                                                }
-                                            } else {
-                                                ShiftAlarmScheduler.cancelScheduledAlarm(context)
-                                            }
-                                            ShiftRepository.notifyDataChanged()
+                                            screen = SettingsSubScreen.SMART_ALARMS
                                         }
-                                    },
-                                    modifier = Modifier.semantics {
-                                        contentDescription = "Sveglie automatiche"
-                                    },
-                                )
-                            }
+                                    } else {
+                                        ShiftRepository.smartAlarmsConfig = latest.copy(isGlobalEnabled = false)
+                                        ShiftAlarmScheduler.cancelScheduledAlarm(context)
+                                        ShiftRepository.notifyDataChanged()
+                                    }
+                                },
+                                onOpen = {
+                                    screen = SettingsSubScreen.SMART_ALARMS
+                                },
+                            )
                         }
 
                         SectionLabel(
@@ -318,7 +323,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "scan-text",
                                 title = "Importa turni con AI",
-                                subtitle = "Crea modelli e rotazioni da un prospetto",
+                                entranceProgress = entranceWaves[5].value,
                             ) {
                                 screen = SettingsSubScreen.IMPORT_SHIFTS
                             }
@@ -327,7 +332,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "file-text",
                                 title = "Esporta e stampa PDF",
-                                subtitle = "Calendario o elenco dei turni",
+                                entranceProgress = entranceWaves[6].value,
                             ) {
                                 screen = SettingsSubScreen.PDF_EXPORT
                             }
@@ -336,7 +341,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "calendar-sync",
                                 title = "Google Calendar",
-                                subtitle = "Sincronizza i turni come eventi",
+                                entranceProgress = entranceWaves[7].value,
                             ) {
                                 screen = SettingsSubScreen.GOOGLE_CALENDAR_SYNC
                             }
@@ -351,7 +356,7 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "database-backup",
                                 title = "Backup e ripristino",
-                                subtitle = "Salva o recupera tutti i dati dell’app",
+                                entranceProgress = entranceWaves[8].value,
                             ) {
                                 screen = SettingsSubScreen.CLOUD_BACKUP
                             }
@@ -360,8 +365,8 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "trash-2",
                                 title = "Elimina tutti i turni",
-                                subtitle = "Da tutti i calendari · richiede conferma",
                                 danger = true,
+                                entranceProgress = entranceWaves[9].value,
                             ) {
                                 deleteStep = 1
                             }
@@ -406,6 +411,24 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
     val activeWork = ShiftRepository.activeWorkProfile
     val hasMultipleProfiles = ShiftRepository.workProfiles.size > 1
     var workMenuOpen by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+    val workBadgeMotion = remember { Animatable(0f) }
+    var workBadgeJob by remember { mutableStateOf<Job?>(null) }
+    var lastWorkId by remember { mutableStateOf(activeWork.id) }
+    fun pulseWorkBadge() {
+        workBadgeJob?.cancel()
+        workBadgeJob = scope.launch {
+            workBadgeMotion.snapTo(0f)
+            workBadgeMotion.animateTo(1f, tween(540, easing = FastOutSlowInEasing))
+            workBadgeMotion.snapTo(0f)
+        }
+    }
+    LaunchedEffect(activeWork.id) {
+        if (activeWork.id != lastWorkId) {
+            lastWorkId = activeWork.id
+            pulseWorkBadge()
+        }
+    }
     val chevronAngle by animateFloatAsState(
         targetValue = if (workMenuOpen) 180f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 420f),
@@ -447,7 +470,10 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
             val pillModifier = if (hasMultipleProfiles) {
                 Modifier
                     .clip(pillShape)
-                    .bouncyClickable { workMenuOpen = true }
+                    .bouncyClickable {
+                        pulseWorkBadge()
+                        workMenuOpen = true
+                    }
             } else {
                 Modifier
             }
@@ -468,6 +494,7 @@ private fun PreferenceHeading(title: String, onBack: () -> Unit) {
                         iconSize = 13.dp,
                         fill = ObsidianSurfaceContainer,
                         tint = BrandInk,
+                        progress = workBadgeMotion.value,
                     )
                     Text(
                         text = activeWork.name,
@@ -533,11 +560,12 @@ private fun PreferenceRow(
     pastel: ExpressivePastel?,
     icon: String,
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     danger: Boolean = false,
     trailingText: String? = null,
     trailingPill: Boolean = false,
     externalProgress: Float = 0f,
+    entranceProgress: Float = 0f,
     showChevron: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -556,7 +584,8 @@ private fun PreferenceRow(
     val motion = remember { Animatable(0f) }
     var motionJob by remember { mutableStateOf<Job?>(null) }
     var highlightJob by remember { mutableStateOf<Job?>(null) }
-    val iconPhase = maxOf(motion.value, externalProgress)
+    val iconPhase = maxOf(motion.value, externalProgress, entranceProgress)
+    val chevronPhase = maxOf(motion.value, externalProgress)
     val highlightBase = if (danger) Color(palette.danger.fill) else ObsidianSurfaceContainer
     val highlightAlpha = (if (danger) 0.42f else 0.72f) * maxOf(pressAlpha, tapHighlight.value)
     val rowShape = RoundedCornerShape(14.dp)
@@ -564,7 +593,7 @@ private fun PreferenceRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(min = 60.dp)
+            .heightIn(min = 56.dp)
             .clip(rowShape)
             .background(highlightBase.copy(alpha = highlightAlpha))
             .clickable(
@@ -586,7 +615,7 @@ private fun PreferenceRow(
                 }
                 onClick()
             }
-            .padding(horizontal = 4.dp, vertical = 10.dp),
+            .padding(horizontal = 4.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (danger) {
@@ -631,15 +660,17 @@ private fun PreferenceRow(
                 maxLines = 2,
                 overflow = TextOverflow.Ellipsis,
             )
-            Text(
-                text = subtitle,
-                modifier = Modifier.padding(top = 2.dp),
-                color = TextSecondary,
-                fontSize = 11.5.sp,
-                lineHeight = 16.sp,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis,
-            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    modifier = Modifier.padding(top = 2.dp),
+                    color = TextSecondary,
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp,
+                    maxLines = 3,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         if (!trailingText.isNullOrBlank()) {
             Spacer(Modifier.width(8.dp))
@@ -680,7 +711,130 @@ private fun PreferenceRow(
                 modifier = Modifier.size(16.dp),
                 tint = if (danger) Color(palette.danger.ink).copy(alpha = 0.72f) else TextSecondary,
             ) {
-                iconPhase
+                chevronPhase
+            }
+        }
+    }
+}
+
+@Composable
+private fun SmartAlarmsPreferenceRow(
+    checked: Boolean,
+    externalProgress: Float,
+    entranceProgress: Float,
+    onToggle: (Boolean) -> Unit,
+    onOpen: () -> Unit,
+) {
+    val scope = rememberCoroutineScope()
+    val haptic = LocalHapticFeedback.current
+    val rowInteraction = remember { MutableInteractionSource() }
+    val chevronInteraction = remember { MutableInteractionSource() }
+    val rowPressed by rowInteraction.collectIsPressedAsState()
+    val chevronPressed by chevronInteraction.collectIsPressedAsState()
+    val rowPressAlpha by animateFloatAsState(
+        targetValue = if (rowPressed) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 500f),
+        label = "smartAlarmsRowPress",
+    )
+    val chevronPressAlpha by animateFloatAsState(
+        targetValue = if (chevronPressed) 1f else 0f,
+        animationSpec = spring(dampingRatio = 0.85f, stiffness = 500f),
+        label = "smartAlarmsChevronPress",
+    )
+    val tapHighlight = remember { Animatable(0f) }
+    val motion = remember { Animatable(0f) }
+    var motionJob by remember { mutableStateOf<Job?>(null) }
+    var highlightJob by remember { mutableStateOf<Job?>(null) }
+
+    fun openWithMotion() {
+        runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+        motionJob?.cancel()
+        motionJob = scope.launch {
+            motion.snapTo(0f)
+            motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+            motion.snapTo(0f)
+        }
+        highlightJob?.cancel()
+        highlightJob = scope.launch {
+            tapHighlight.snapTo(0.9f)
+            tapHighlight.animateTo(0f, tween(340, easing = FastOutSlowInEasing))
+        }
+        onOpen()
+    }
+
+    val leftIconPhase = maxOf(motion.value, externalProgress, entranceProgress)
+    val chevronPhase = maxOf(motion.value, externalProgress)
+    val rowShape = RoundedCornerShape(14.dp)
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .heightIn(min = 56.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 56.dp)
+                .clip(rowShape)
+                .background(ObsidianSurfaceContainer.copy(alpha = 0.72f * maxOf(rowPressAlpha, tapHighlight.value)))
+                .clickable(
+                    interactionSource = rowInteraction,
+                    indication = null,
+                    role = Role.Button,
+                ) { openWithMotion() }
+                .padding(horizontal = 4.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            PastelIconBadge(
+                pastel = ExpressivePastel.AMBER,
+                icon = "alarm-clock",
+                size = 38.dp,
+                iconSize = 19.dp,
+                progress = leftIconPhase,
+            )
+            Spacer(Modifier.width(12.dp))
+            Text(
+                text = "Sveglie",
+                color = TextPrimary,
+                fontSize = 14.sp,
+                lineHeight = 19.sp,
+                fontWeight = FontWeight.SemiBold,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+        }
+        Spacer(Modifier.width(4.dp))
+        TurniSwitch(
+            checked = checked,
+            onCheckedChange = onToggle,
+            modifier = Modifier.semantics {
+                contentDescription = "Sveglie automatiche"
+            },
+        )
+        Spacer(Modifier.width(4.dp))
+        Box(
+            modifier = Modifier
+                .size(width = 40.dp, height = 48.dp)
+                .clip(RoundedCornerShape(12.dp))
+                .background(ObsidianSurfaceContainer.copy(alpha = 0.72f * maxOf(chevronPressAlpha, tapHighlight.value)))
+                .semantics { contentDescription = "Apri sveglie" }
+                .clickable(
+                    interactionSource = chevronInteraction,
+                    indication = null,
+                    role = Role.Button,
+                    onClickLabel = "Apri sveglie",
+                ) { openWithMotion() },
+            contentAlignment = Alignment.Center,
+        ) {
+            SiteIconMotion(
+                name = "chevron-right",
+                description = null,
+                modifier = Modifier.size(16.dp),
+                tint = TextSecondary,
+            ) {
+                chevronPhase
             }
         }
     }
@@ -689,14 +843,14 @@ private fun PreferenceRow(
 @Composable
 private fun PreferenceToggle(
     title: String,
-    subtitle: String,
+    subtitle: String? = null,
     checked: Boolean,
     onChange: (Boolean) -> Unit,
 ) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .heightIn(min = 58.dp)
+            .heightIn(min = 52.dp)
             .padding(vertical = 4.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(16.dp),
@@ -709,13 +863,15 @@ private fun PreferenceToggle(
                 fontWeight = FontWeight.SemiBold,
                 color = TextPrimary,
             )
-            Text(
-                text = subtitle,
-                modifier = Modifier.padding(top = 3.dp),
-                fontSize = 11.5.sp,
-                lineHeight = 16.sp,
-                color = TextSecondary,
-            )
+            if (!subtitle.isNullOrBlank()) {
+                Text(
+                    text = subtitle,
+                    modifier = Modifier.padding(top = 3.dp),
+                    fontSize = 11.5.sp,
+                    lineHeight = 16.sp,
+                    color = TextSecondary,
+                )
+            }
         }
         TurniSwitch(
             checked = checked,
@@ -939,19 +1095,13 @@ private fun AppearanceSettingsContent() {
 
     AppearanceLivePreviewCard()
 
-    CloudCard(
-        title = "Tema",
-        subtitle = "Adatta superfici e contrasto al tuo dispositivo.",
-    ) {
+    CloudCard(title = "Tema") {
         PreferenceThemeSelector()
         SettingsDivider()
         PreferencePaletteSelector()
     }
 
-    CloudCard(
-        title = "Layout e formato",
-        subtitle = "Inizio settimana, formato orario ed ex turni.",
-    ) {
+    CloudCard(title = "Layout e formato") {
         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -980,16 +1130,6 @@ private fun AppearanceSettingsContent() {
                     ShiftRepository.notifyDataChanged()
                 },
                 height = 44.dp,
-            )
-            Text(
-                text = if (prefs.weekStartMonday) {
-                    "Le colonne iniziano dal lunedì (L M M G V S D)."
-                } else {
-                    "Le colonne iniziano dalla domenica (D L M M G V S)."
-                },
-                color = TextSecondary,
-                fontSize = 11.5.sp,
-                lineHeight = 16.sp,
             )
         }
 
@@ -1024,23 +1164,12 @@ private fun AppearanceSettingsContent() {
                 },
                 height = 44.dp,
             )
-            Text(
-                text = if (prefs.timeFormat24h) {
-                    "Formato 24 ore attivo (es. 06:00 · 14:00)."
-                } else {
-                    "Formato 12 ore attivo (es. 6:00 AM · 2:00 PM)."
-                },
-                color = TextSecondary,
-                fontSize = 11.5.sp,
-                lineHeight = 16.sp,
-            )
         }
 
         SettingsDivider()
 
         PreferenceToggle(
-            title = "Mostra turno di provenienza",
-            subtitle = "Mostra «ex turno» quando sostituisci un turno inserito da una rotazione. La gomma rimuove anche questa provenienza.",
+            title = "Ex turno nel calendario",
             checked = prefs.showExShifts,
         ) {
             ShiftRepository.appPreferences = prefs.copy(showExShifts = it)
@@ -1090,24 +1219,14 @@ private fun AppearanceLivePreviewCard() {
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            Column(
+            Text(
+                text = "Anteprima calendario",
+                color = TextPrimary,
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.SemiBold,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "Anteprima calendario",
-                    color = TextPrimary,
-                    fontSize = 16.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.SemiBold,
-                )
-                Text(
-                    text = "Settimana, orario ed ex turno in tempo reale",
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                )
-            }
+            )
             AppearanceStatusChip(
                 text = "${if (prefs.weekStartMonday) "Lun–Dom" else "Dom–Sab"} · ${if (prefs.timeFormat24h) "24h" else "12h"}",
             )
@@ -1379,34 +1498,14 @@ internal fun PreferenceThemeSelector() {
         )
     }
 
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        SlidingSegmentBar(
-            items = items,
-            selectedIndex = modes.indexOf(selected).coerceAtLeast(0),
-            onSelect = { index ->
-                TurniThemeState.setMode(context, modes[index])
-            },
-            height = 50.dp,
-        )
-        AnimatedContent(
-            targetState = selected,
-            transitionSpec = {
-                fadeIn(tween(220)) togetherWith fadeOut(tween(160))
-            },
-            label = "themeModeDescription",
-        ) { mode ->
-            Text(
-                text = when (mode) {
-                    ThemeMode.AUTOMATIC -> "Segue il tema del dispositivo, anche quando cambia durante la giornata."
-                    ThemeMode.LIGHT -> "Superfici chiare e colori ad alto contrasto."
-                    ThemeMode.DARK -> "Superfici scure e luminosità ridotta."
-                },
-                color = TextSecondary,
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-            )
-        }
-    }
+    SlidingSegmentBar(
+        items = items,
+        selectedIndex = modes.indexOf(selected).coerceAtLeast(0),
+        onSelect = { index ->
+            TurniThemeState.setMode(context, modes[index])
+        },
+        height = 50.dp,
+    )
 }
 
 @Composable
@@ -1436,66 +1535,58 @@ private fun PreferencePaletteSelector() {
     val fontScale = LocalDensity.current.fontScale
     val shiftSwatches = remember { listOf(ColorMattina, ColorPomeriggio, ColorNotte) }
 
-    Column(Modifier.padding(top = 2.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Surface(
-            shape = RoundedCornerShape(14.dp),
-            color = ObsidianSurfaceContainer,
-            modifier = Modifier.fillMaxWidth(),
-        ) {
-            if (fontScale > 1.3f) {
-                Column(
-                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                ) {
-                    Text(
-                        text = "Grafite · Cobalto · Pastelli turni",
-                        color = TextPrimary,
-                        fontSize = 12.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    CalmPaletteSwatchSample(
-                        graphiteColor = Color(palette.calendar),
-                        graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
-                        cobaltColor = Color(palette.dockSelected),
-                        shiftColors = shiftSwatches,
-                        dark = dark,
-                    )
-                }
-            } else {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    Text(
-                        text = "Grafite e cobalto",
-                        color = TextPrimary,
-                        fontSize = 12.5.sp,
-                        lineHeight = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        modifier = Modifier.weight(1f).padding(end = 8.dp),
-                        maxLines = 2,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    CalmPaletteSwatchSample(
-                        graphiteColor = Color(palette.calendar),
-                        graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
-                        cobaltColor = Color(palette.dockSelected),
-                        shiftColors = shiftSwatches,
-                        dark = dark,
-                    )
-                }
+    Surface(
+        shape = RoundedCornerShape(14.dp),
+        color = ObsidianSurfaceContainer,
+        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+    ) {
+        if (fontScale > 1.3f) {
+            Column(
+                modifier = Modifier.padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = "Grafite · Cobalto · Pastelli turni",
+                    color = TextPrimary,
+                    fontSize = 12.5.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                )
+                CalmPaletteSwatchSample(
+                    graphiteColor = Color(palette.calendar),
+                    graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
+                    cobaltColor = Color(palette.dockSelected),
+                    shiftColors = shiftSwatches,
+                    dark = dark,
+                )
+            }
+        } else {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Text(
+                    text = "Grafite e cobalto",
+                    color = TextPrimary,
+                    fontSize = 12.5.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f).padding(end = 8.dp),
+                    maxLines = 2,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                CalmPaletteSwatchSample(
+                    graphiteColor = Color(palette.calendar),
+                    graphiteOutline = Color(palette.outline).copy(alpha = 0.5f),
+                    cobaltColor = Color(palette.dockSelected),
+                    shiftColors = shiftSwatches,
+                    dark = dark,
+                )
             }
         }
-        Text(
-            text = "Superfici Grafite, accento Cobalto e pastelli calibrati per chiaro e scuro. I colori personalizzati dei tuoi turni restano disponibili.",
-            color = TextSecondary,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-        )
     }
 }
 

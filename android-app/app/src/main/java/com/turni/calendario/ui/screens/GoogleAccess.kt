@@ -13,6 +13,7 @@ import androidx.activity.result.IntentSenderRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.runtime.*
 import androidx.compose.ui.platform.LocalContext
+import com.google.android.gms.auth.GoogleAuthUtil
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.AuthorizationResult
 import com.google.android.gms.auth.api.identity.Identity
@@ -156,6 +157,30 @@ internal object GoogleAccountSession {
     }
 }
 
+internal class GoogleTokenUnauthorizedException(
+    val statusCode: Int,
+    message: String = "Google non ha confermato l’identità dell’account. Ricollegalo e riprova.",
+) : IllegalStateException(message)
+
+internal object GoogleAccessRetryPolicy {
+    fun isUnauthorizedStatus(statusCode: Int): Boolean =
+        statusCode == HttpURLConnection.HTTP_UNAUTHORIZED || statusCode == HttpURLConnection.HTTP_FORBIDDEN
+
+    fun shouldRetryWithClearedToken(
+        allowStaleRetry: Boolean,
+        accessToken: String?,
+        hasAllRequestedScopes: Boolean,
+        userInfoStatusCode: Int? = null,
+    ): Boolean {
+        if (!allowStaleRetry || accessToken.isNullOrBlank()) return false
+        if (!hasAllRequestedScopes) return true
+        return userInfoStatusCode != null && isUnauthorizedStatus(userInfoStatusCode)
+    }
+
+    fun shouldRunDisconnectRevoke(currentGeneration: Long, logoutGeneration: Long): Boolean =
+        currentGeneration == logoutGeneration
+}
+
 /** Account choice and Google consent are separate from the requested Drive/Calendar operation. */
 internal class GoogleAccess(private val activity:ComponentActivity,private val scope:CoroutineScope,private val onError:(String)->Unit){
     var busy by mutableStateOf(false);private set
@@ -165,9 +190,17 @@ internal class GoogleAccess(private val activity:ComponentActivity,private val s
     private var email:String?=null
     private var completion:((String)->Unit)?=null
     private var cachedToken:String?=null
+    private var revokeJob:Job?=null
+    @Volatile private var authGeneration=0L
     private val client get()=Identity.getAuthorizationClient(activity)
+    private fun startNewAuthGeneration(){
+        authGeneration++
+        revokeJob?.cancel()
+        revokeJob=null
+    }
     fun authorize(feature:GoogleFeature,chooseAccount:Boolean=false,onToken:(String)->Unit){
         if(busy)return
+        startNewAuthGeneration()
         if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity)!=ConnectionResult.SUCCESS){onError("Aggiorna o attiva Google Play Services per collegare il tuo account.");return}
         this.feature=feature;completion=onToken;busy=true
         val remembered=ShiftRepository.googleAccountProfile?.email
@@ -181,6 +214,7 @@ internal class GoogleAccess(private val activity:ComponentActivity,private val s
         if(busy)return
         val knownEmail=accountEmail.trim()
         if(knownEmail.isBlank()){authorize(feature,chooseAccount=true,onToken=onToken);return}
+        startNewAuthGeneration()
         if(GoogleApiAvailability.getInstance().isGooglePlayServicesAvailable(activity)!=ConnectionResult.SUCCESS){onError("Aggiorna o attiva Google Play Services per collegare il tuo account.");return}
         this.feature=feature
         this.completion=onToken
@@ -194,50 +228,105 @@ internal class GoogleAccess(private val activity:ComponentActivity,private val s
         if(picked.isNullOrBlank()||data?.getStringExtra(AccountManager.KEY_ACCOUNT_TYPE)!="com.google"){fail("Nessun account Google selezionato.");return}
         email=picked;requestAuthorization()
     }
-    private fun requestAuthorization(){
+    private fun requestAuthorization(allowStaleRetry:Boolean=true){
         val selected=email?:return cancel()
+        val generation=authGeneration
         val request=AuthorizationRequest.builder().setAccount(Account(selected,"com.google"))
             .setRequestedScopes(feature.scopes.map{Scope(it)}).build()
         client.authorize(request).addOnSuccessListener{result->
+            if(authGeneration!=generation||!busy)return@addOnSuccessListener
             if(result.hasResolution()){
                 val pending=result.pendingIntent
                 if(pending==null)fail("Google non ha restituito una richiesta di autorizzazione valida.")
                 else try{resolveConsent?.invoke(IntentSenderRequest.Builder(pending.intentSender).build())?:cancel()}catch(_:Exception){fail("Non è possibile aprire il consenso Google.")}
-            }else acceptResult(result)
-        }.addOnFailureListener{error->fail(googleAccessError(error))}
+            }else acceptResult(result,allowStaleRetry)
+        }.addOnFailureListener{error->
+            if(authGeneration!=generation||!busy)return@addOnFailureListener
+            fail(googleAccessError(error))
+        }
     }
     fun authorizationResult(resultCode:Int,data:Intent?){
         if(resultCode!=Activity.RESULT_OK){cancel();return}
         if(completion==null){fail("L’operazione è stata interrotta. Riprova il collegamento.");return}
-        try{acceptResult(client.getAuthorizationResultFromIntent(data))}catch(e:Exception){fail(googleAccessError(e))}
+        try{acceptResult(client.getAuthorizationResultFromIntent(data),allowStaleRetry=false)}catch(e:Exception){fail(googleAccessError(e))}
     }
-    private fun acceptResult(result:AuthorizationResult){
+    private fun acceptResult(result:AuthorizationResult,allowStaleRetry:Boolean){
         val token=result.accessToken
-        if(token.isNullOrBlank()||!result.grantedScopes.containsAll(feature.scopes)){fail("Non hai concesso tutti i permessi richiesti. Nessuna operazione eseguita.");return}
+        val hasAllScopes=result.grantedScopes.containsAll(feature.scopes)
+        if(token.isNullOrBlank()||!hasAllScopes){
+            if(GoogleAccessRetryPolicy.shouldRetryWithClearedToken(allowStaleRetry=allowStaleRetry,accessToken=token,hasAllRequestedScopes=hasAllScopes)&&!token.isNullOrBlank()){
+                retryAfterClearingToken(token)
+            }else{
+                fail("Non hai concesso tutti i permessi richiesti. Nessuna operazione eseguita.")
+            }
+            return
+        }
         val expected=email?:return cancel()
+        val generation=authGeneration
         scope.launch{
             try{
                 val profile=withContext(Dispatchers.IO){googleUserInfo(token)}
+                if(authGeneration!=generation||!busy)return@launch
                 GoogleAccountSession.accept(activity,profile,expected)
                 cachedToken=token
                 val action=completion;completion=null;busy=false;action?.invoke(token)
-            }catch(e:CancellationException){busy=false;throw e}catch(e:Exception){fail(e.message?:"Impossibile verificare l’account Google.")}
+            }catch(e:CancellationException){
+                busy=false;throw e
+            }catch(e:GoogleTokenUnauthorizedException){
+                if(authGeneration!=generation||!busy)return@launch
+                if(GoogleAccessRetryPolicy.shouldRetryWithClearedToken(allowStaleRetry=allowStaleRetry,accessToken=token,hasAllRequestedScopes=true,userInfoStatusCode=e.statusCode)){
+                    retryAfterClearingToken(token)
+                }else{
+                    fail(e.message?:"Google non ha confermato l’identità dell’account. Ricollegalo e riprova.")
+                }
+            }catch(e:Exception){
+                if(authGeneration!=generation||!busy)return@launch
+                fail(e.message?:"Impossibile verificare l’account Google.")
+            }
+        }
+    }
+    private fun retryAfterClearingToken(staleToken:String){
+        val generation=authGeneration
+        scope.launch{
+            try{
+                withContext(Dispatchers.IO){runCatching{GoogleAuthUtil.clearToken(activity,staleToken)}}
+                if(authGeneration!=generation||!busy)return@launch
+                requestAuthorization(allowStaleRetry=false)
+            }catch(e:CancellationException){
+                busy=false;throw e
+            }
         }
     }
     fun disconnect(onDone:()->Unit){
         if(busy)return
+        val logoutGen=++authGeneration
+        revokeJob?.cancel()
+        revokeJob=null
         val remembered=ShiftRepository.googleAccountProfile?.email
         val token=cachedToken;cachedToken=null
         // Local logout must also work offline, after account removal or revoked Google consent.
         GoogleAccountSession.clear(activity);completion=null;email=null;onDone()
-        if(token!=null){scope.launch{try{withContext(Dispatchers.IO){revokeGoogleAccess(token)}}catch(_:Exception){ /* Local state is already cleared; online grants can be revoked in Google settings. */ }}}
-        else if(!remembered.isNullOrBlank()){
+        if(token!=null){
+            launchRevokeAndClear(token,logoutGen)
+        }else if(!remembered.isNullOrBlank()){
             val request=AuthorizationRequest.builder().setAccount(Account(remembered,"com.google"))
                 .setRequestedScopes(GoogleFeature.PROFILE.scopes.map{Scope(it)}).build()
             client.authorize(request).addOnSuccessListener{result->
+                if(!GoogleAccessRetryPolicy.shouldRunDisconnectRevoke(authGeneration,logoutGen))return@addOnSuccessListener
                 val existing=result.accessToken
-                if(!result.hasResolution()&&!existing.isNullOrBlank())scope.launch{try{withContext(Dispatchers.IO){revokeGoogleAccess(existing)}}catch(_:Exception){ /* No new consent is requested during logout. */ }}
+                if(!result.hasResolution()&&!existing.isNullOrBlank())launchRevokeAndClear(existing,logoutGen)
             }.addOnFailureListener{ /* Signed-out state never depends on network success. */ }
+        }
+    }
+    private fun launchRevokeAndClear(token:String,logoutGen:Long){
+        revokeJob?.cancel()
+        revokeJob=scope.launch{
+            withContext(Dispatchers.IO){
+                if(!GoogleAccessRetryPolicy.shouldRunDisconnectRevoke(authGeneration,logoutGen))return@withContext
+                runCatching{GoogleAuthUtil.clearToken(activity,token)}
+                if(!GoogleAccessRetryPolicy.shouldRunDisconnectRevoke(authGeneration,logoutGen))return@withContext
+                runCatching{revokeGoogleAccess(token)}
+            }
         }
     }
     private fun cancel(){busy=false;completion=null;email=null}
@@ -269,7 +358,9 @@ private fun googleUserInfo(token:String):JSONObject{
     val connection=URL("https://www.googleapis.com/oauth2/v3/userinfo").openConnection() as HttpURLConnection
     return try{
         connection.connectTimeout=20000;connection.readTimeout=20000;connection.setRequestProperty("Authorization","Bearer $token")
-        if(connection.responseCode !in 200..299)throw IllegalStateException("Google non ha confermato l’identità dell’account. Ricollegalo e riprova.")
+        val statusCode=connection.responseCode
+        if(GoogleAccessRetryPolicy.isUnauthorizedStatus(statusCode))throw GoogleTokenUnauthorizedException(statusCode)
+        if(statusCode !in 200..299)throw IllegalStateException("Google non ha confermato l’identità dell’account. Ricollegalo e riprova.")
         val text=connection.inputStream.bufferedReader(Charsets.UTF_8).use{it.readText()}
         require(text.length<65536){"Risposta Google non valida."};JSONObject(text)
     }finally{connection.disconnect()}

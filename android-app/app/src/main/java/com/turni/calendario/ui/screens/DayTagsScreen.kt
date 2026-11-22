@@ -70,23 +70,18 @@ internal fun DayTagChip(
         animationSpec = tween(220),
         label = "dayTagChipInk",
     )
-    val ringColor by animateColorAsState(
-        targetValue = if (selected && onClick != null) colors.codeInk.copy(alpha = 0.35f) else Color.Transparent,
-        animationSpec = tween(220),
-        label = "dayTagChipRing",
-    )
     val phase by animateFloatAsState(
         targetValue = if (selected) 1f else 0f,
         animationSpec = spring(0.85f, 420f),
         label = "dayTagChipPhase",
     )
     val chipShape = RoundedCornerShape(11.dp)
+    val chipBrush = if (selected) pastelSheenBrush(fill, colors.codeInk) else SolidColor(fill)
     Row(
         modifier = modifier
             .heightIn(min = if (compact) 28.dp else 36.dp)
             .clip(chipShape)
-            .background(fill)
-            .then(if (selected && onClick != null) Modifier.border(1.5.dp, ringColor, chipShape) else Modifier)
+            .background(chipBrush)
             .then(
                 if (onClick != null) {
                     Modifier
@@ -106,13 +101,12 @@ internal fun DayTagChip(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        SiteIcon(
+        SiteIconMotion(
             name = tag.iconKey,
-            contentDescription = null,
+            description = null,
             modifier = Modifier.size(16.dp),
             tint = if (selected) ink else readablePigment(fill, shiftDisplayColor(Color(tag.colorHex))),
-            progress = phase,
-        )
+        ) { phase }
         Text(
             text = tag.name,
             color = ink,
@@ -142,7 +136,7 @@ internal fun dayTagMutationFeedback(savedTag: DayTag): ActionFeedback {
 @Composable
 internal fun DayTagsCatalogContent(
     onEditorActiveChanged: ((Boolean) -> Unit)? = null,
-    showHeaderCard: Boolean = true,
+    @Suppress("UNUSED_PARAMETER") showHeaderCard: Boolean = true,
     modifier: Modifier = Modifier,
     onEditTag: (DayTag) -> Unit,
     onFeedback: (ActionFeedback) -> Unit,
@@ -189,34 +183,13 @@ internal fun DayTagsCatalogContent(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
     ) {
-        if (showHeaderCard) {
-            item(key = "tags-intro", contentType = "tags-intro") {
-                CloudCard(
-                    title = "Ritrova ciò che hai fatto",
-                    subtitle = "Aggiungi etichette come Formazione o Visita medica. Ogni etichetta conta i giorni nelle statistiche; puoi affiancarle una nota con i dettagli.",
-                    accent = ExpressivePastel.MINT,
-                    modifier = Modifier.animateItem(),
-                ) {}
-            }
-        }
         if (activeTags.isEmpty()) {
             item(key = "tags-empty", contentType = "tags-empty") {
                 CloudCard(
-                    title = "Le tue etichette",
+                    title = if (archivedTags.isEmpty()) "Nessuna etichetta" else "Tutte archiviate",
                     accent = ExpressivePastel.MINT,
                     modifier = Modifier.animateItem(),
-                ) {
-                    Text(
-                        text = if (archivedTags.isEmpty()) {
-                            "Crea la prima etichetta dal pulsante qui sotto, poi apri un giorno del calendario e tocca Note ed etichette per assegnarla."
-                        } else {
-                            "Tutte le etichette sono archiviate. Puoi riattivarle qui sotto o crearne una nuova."
-                        },
-                        color = TextSecondary,
-                        fontSize = 13.sp,
-                        lineHeight = 19.sp,
-                    )
-                }
+                ) {}
             }
         }
         items(activeTags, key = { it.id }, contentType = { "tag-row" }) { tag ->
@@ -281,13 +254,6 @@ internal fun DayTagsCatalogContent(
                     exit = shrinkVertically() + fadeOut(),
                 ) {
                     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                        Text(
-                            text = "Restano visibili sui giorni già segnati e nelle statistiche.",
-                            color = TextSecondary,
-                            fontSize = 12.sp,
-                            lineHeight = 17.sp,
-                            modifier = Modifier.padding(horizontal = 4.dp),
-                        )
                         archivedTags.forEach { tag ->
                             val usageCount = ShiftRepository.dayExtraInfo.values.count { tag.id in it.tagIds }
                             TagManagementRow(
@@ -309,8 +275,8 @@ internal fun DayTagsCatalogContent(
 
     pendingDelete?.let { target ->
         DayTagDeleteDialog(
-            title = "Eliminare questa etichetta?",
-            message = "«${target.name}» non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
+            title = "Eliminare «${target.name}»?",
+            message = "Questa operazione non può essere annullata.",
             onDismiss = { pendingDelete = null },
             onConfirm = {
                 pendingDelete = null
@@ -335,7 +301,6 @@ internal fun DayTagsSettingsScreen(onDismiss: () -> Unit) {
     Box(Modifier.fillMaxSize()) {
         CloudFeatureScaffold(
             title = "Etichette dei giorni",
-            subtitle = "Attività e note da ritrovare nelle statistiche",
             onDismiss = onDismiss,
             feedback = feedback,
             onDismissFeedback = { feedback = null },
@@ -440,13 +405,12 @@ private fun TagManagementRow(
                     scaleY = badgeScale.value
                 },
             ) { codeInk ->
-                SiteIcon(
+                SiteIconMotion(
                     name = tag.iconKey,
-                    contentDescription = null,
+                    description = null,
                     modifier = Modifier.size(21.dp),
                     tint = codeInk,
-                    progress = iconPhase.value,
-                )
+                ) { iconPhase.value }
             }
             Column(
                 modifier = Modifier.weight(1f),
@@ -553,7 +517,7 @@ internal fun DayTagEditor(
         if (deleting && original != null) {
             DayTagDeleteDialog(
                 title = "Eliminare questa etichetta?",
-                message = "Non è associata a nessuna giornata. Potrai crearne una nuova quando vuoi.",
+                message = "Questa operazione non può essere annullata.",
                 onDismiss = { deleting = false },
                 onConfirm = {
                     deleting = false
@@ -628,36 +592,23 @@ internal fun DayTagEditor(
                                 scaleY = heroBadgeScale.value
                             },
                         ) { ink ->
-                            SiteIcon(
+                            SiteIconMotion(
                                 name = icon,
-                                contentDescription = null,
+                                description = null,
                                 modifier = Modifier.size(22.dp),
                                 tint = ink,
-                                progress = heroIconPhase.value,
-                            )
+                            ) { heroIconPhase.value }
                         }
-                        Column(
+                        Text(
+                            text = name.ifBlank { "La tua etichetta" },
+                            color = TextPrimary,
+                            fontSize = 16.sp,
+                            lineHeight = 21.sp,
+                            fontWeight = FontWeight.Bold,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(2.dp),
-                        ) {
-                            Text(
-                                text = name.ifBlank { "La tua etichetta" },
-                                color = TextPrimary,
-                                fontSize = 16.sp,
-                                lineHeight = 21.sp,
-                                fontWeight = FontWeight.Bold,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                            Text(
-                                text = if (original == null) "Anteprima nel calendario e nei report" else "Aggiorna anche i giorni già segnati",
-                                color = TextSecondary,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
-                        }
+                        )
                     }
                     DayTagChip(
                         tag = DayTag("preview", name.ifBlank { "La tua etichetta" }, icon, color),
@@ -698,24 +649,30 @@ internal fun DayTagEditor(
                         icons.forEachIndexed { column, key ->
                             val chosen = key == icon
                             val tilePhase = remember(key) { Animatable(0f) }
-                            val tilePop = remember(key) { Animatable(1f) }
+                            val tapDip = remember(key) { Animatable(1f) }
+                            var tapPulse by remember(key) { mutableIntStateOf(0) }
                             var wasChosen by remember(key) { mutableStateOf(chosen) }
-                            LaunchedEffect(chosen) {
-                                if (chosen && !wasChosen) {
-                                    tilePop.snapTo(0.92f)
+                            LaunchedEffect(chosen, tapPulse) {
+                                val tappedNow = tapPulse > 0
+                                if ((chosen && !wasChosen) || tappedNow) {
                                     launch {
-                                        tilePop.animateTo(1.06f, spring(dampingRatio = 0.55f, stiffness = 480f))
-                                        tilePop.animateTo(1f, spring(dampingRatio = 0.72f, stiffness = 420f))
+                                        tapDip.snapTo(0.92f)
+                                        tapDip.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = 480f))
                                     }
                                     tilePhase.snapTo(0f)
                                     tilePhase.animateTo(1f, tween(durationMillis = 440, easing = FastOutSlowInEasing))
                                     tilePhase.snapTo(0f)
                                 } else if (!chosen) {
                                     tilePhase.snapTo(0f)
-                                    tilePop.animateTo(1f, spring(dampingRatio = 0.75f, stiffness = 420f))
+                                    tapDip.snapTo(1f)
                                 }
                                 wasChosen = chosen
                             }
+                            val tileScale by animateFloatAsState(
+                                targetValue = if (chosen) 1.06f else 1f,
+                                animationSpec = spring(dampingRatio = 0.6f, stiffness = 440f),
+                                label = "tagIconScale",
+                            )
                             val tileFill by animateColorAsState(
                                 targetValue = if (chosen) selectedTagStyle.codeFill else ObsidianSurfaceContainer,
                                 animationSpec = tween(180),
@@ -726,23 +683,23 @@ internal fun DayTagEditor(
                                 animationSpec = tween(180),
                                 label = "tagIconInk",
                             )
-                            val tileRing by animateColorAsState(
-                                targetValue = if (chosen) selectedTagStyle.codeInk else Color.Transparent,
-                                animationSpec = tween(180),
-                                label = "tagIconRing",
-                            )
                             val tileShape = RoundedCornerShape(13.dp)
+                            val tileBrush = if (chosen) {
+                                pastelSheenBrush(tileFill, selectedTagStyle.codeInk)
+                            } else {
+                                SolidColor(tileFill)
+                            }
                             Box(
                                 modifier = Modifier
                                     .weight(1f)
                                     .height(46.dp)
                                     .graphicsLayer {
-                                        scaleX = tilePop.value
-                                        scaleY = tilePop.value
+                                        val scale = tileScale * tapDip.value
+                                        scaleX = scale
+                                        scaleY = scale
                                     }
                                     .clip(tileShape)
-                                    .background(tileFill)
-                                    .then(if (chosen) Modifier.border(2.dp, tileRing, tileShape) else Modifier)
+                                    .background(tileBrush)
                                     .semantics {
                                         contentDescription = tagIconLabels[row * 3 + column]
                                         selected = chosen
@@ -753,17 +710,17 @@ internal fun DayTagEditor(
                                         indication = null,
                                     ) {
                                         runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
+                                        tapPulse++
                                         icon = key
                                     },
                                 contentAlignment = Alignment.Center,
                             ) {
-                                SiteIcon(
+                                SiteIconMotion(
                                     name = key,
-                                    contentDescription = null,
+                                    description = null,
                                     modifier = Modifier.size(22.dp),
                                     tint = tileInk,
-                                    progress = tilePhase.value,
-                                )
+                                ) { tilePhase.value }
                             }
                         }
                     }
@@ -785,25 +742,11 @@ internal fun DayTagEditor(
                             pastelSheenBrush(swatchColors.codeFill, swatchColors.codeInk)
                         }
                         val selectedSwatch = color == swatch
-                        val ringColor by animateColorAsState(
-                            targetValue = if (selectedSwatch) swatchColors.codeInk else Color.Transparent,
-                            animationSpec = tween(180),
-                            label = "tagSwatchRing",
-                        )
                         val swatchScale by animateFloatAsState(
                             targetValue = if (selectedSwatch) 1.08f else 1f,
                             animationSpec = spring(dampingRatio = 0.6f, stiffness = 440f),
                             label = "tagSwatchScale",
                         )
-                        val checkScale = remember(swatch) { Animatable(if (selectedSwatch) 1f else 0f) }
-                        LaunchedEffect(selectedSwatch) {
-                            if (selectedSwatch) {
-                                checkScale.snapTo(0.4f)
-                                checkScale.animateTo(1f, spring(dampingRatio = 0.58f, stiffness = 480f))
-                            } else {
-                                checkScale.snapTo(0f)
-                            }
-                        }
                         val swatchShape = RoundedCornerShape(13.dp)
                         Box(
                             modifier = Modifier
@@ -814,7 +757,6 @@ internal fun DayTagEditor(
                                 }
                                 .clip(swatchShape)
                                 .background(swatchBrush)
-                                .then(if (selectedSwatch) Modifier.border(2.dp, ringColor, swatchShape) else Modifier)
                                 .semantics {
                                     contentDescription = "Colore ${index + 1}"
                                     selected = selectedSwatch
@@ -829,16 +771,15 @@ internal fun DayTagEditor(
                                 },
                             contentAlignment = Alignment.Center,
                         ) {
-                            if (selectedSwatch) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = selectedSwatch,
+                                enter = scaleIn(spring(dampingRatio = 0.58f, stiffness = 480f)) + fadeIn(tween(150)),
+                                exit = scaleOut(tween(120)) + fadeOut(tween(120)),
+                            ) {
                                 SiteIcon(
                                     name = "check",
                                     contentDescription = null,
-                                    modifier = Modifier
-                                        .size(20.dp)
-                                        .graphicsLayer {
-                                            scaleX = checkScale.value
-                                            scaleY = checkScale.value
-                                        },
+                                    modifier = Modifier.size(20.dp),
                                     tint = swatchColors.codeInk,
                                 )
                             }
@@ -850,12 +791,6 @@ internal fun DayTagEditor(
             if (original != null) {
                 TagEditorSectionCard(inlineContent) {
                     SectionLabel("Gestione")
-                    Text(
-                        text = "Le modifiche aggiornano anche i giorni già segnati. Archiviare nasconde l’etichetta dalle nuove selezioni e conserva lo storico.",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 18.sp,
-                    )
                     CloudButton(
                         label = if (original.archived) "Riattiva etichetta" else "Archivia etichetta",
                         icon = "folder-open",
@@ -910,7 +845,7 @@ internal fun DayTagEditor(
             title = if (original == null) "Nuova etichetta" else "Modifica etichetta",
             onDismiss = { savedTag?.let(onSaved) ?: onClose() },
             heightFraction = 1f,
-            subtitle = "Attività da segnare sui giorni",
+            subtitle = "",
             fullPage = true,
         ) { finish ->
             editor {
@@ -1035,7 +970,7 @@ internal fun ColumnScope.DayAnnotationsContent(date:LocalDate,maxHeight:Dp,onBac
                 Text("Etichette della giornata",Modifier.weight(1f),color=TextSecondary,fontSize=12.sp)
                 if(selected.isNotEmpty())Text("${selected.size} ${if(selected.size==1)"selezionata" else "selezionate"}",color=BrandInk,fontSize=11.sp)
             }
-            if(tags.isEmpty())Text("Segna attività da ritrovare nelle statistiche, come Formazione o Visita medica.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
+            if(tags.isEmpty())Text("Nessuna etichetta",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
             if(tags.size>=7)BasicTextField(query,{query=it},singleLine=true,textStyle=TextStyle(color=TextPrimary,fontSize=12.sp),cursorBrush=SolidColor(ObsidianPrimary),
                 modifier=Modifier.fillMaxWidth().clip(RoundedCornerShape(11.dp)).background(ObsidianSurfaceContainer).padding(11.dp),
                 decorationBox={field->if(query.isBlank())Text("Cerca un’etichetta",color=TextSecondary,fontSize=12.sp);field()})
@@ -1077,8 +1012,7 @@ internal fun LazyListScope.dayTagReport(metrics:List<DayTagMetric>,periodKey:Str
         Surface(color=ObsidianSurface,shape=RoundedCornerShape(topStart=23.dp,topEnd=23.dp),modifier=Modifier.fillMaxWidth()) {
             Column(Modifier.padding(start=14.dp,end=14.dp,top=14.dp,bottom=10.dp),verticalArrangement=Arrangement.spacedBy(10.dp)) {
                 Text("Attività ed etichette",color=TextPrimary,fontSize=16.sp,lineHeight=21.sp,fontWeight=FontWeight.SemiBold)
-                Text("Tutti i giorni segnati nel periodo, raggruppati per attività. Tocca una data solo se vuoi aprirla nel calendario.",color=TextSecondary,fontSize=12.sp,lineHeight=18.sp)
-                if(metrics.isEmpty())Text("Nessuna attività segnata in questo periodo",color=TextSecondary,fontSize=12.sp,lineHeight=17.sp)
+                if(metrics.isEmpty())Text("Nessuna attività nel periodo",color=TextSecondary,fontSize=12.sp,lineHeight=17.sp)
             }
         }
     }

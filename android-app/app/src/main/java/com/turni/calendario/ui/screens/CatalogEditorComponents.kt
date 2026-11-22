@@ -456,7 +456,7 @@ internal fun CatalogEditorSheet(
     title: String,
     onDismiss: () -> Unit,
     heightFraction: Float = .82f,
-    subtitle: String = "Modello per il tuo calendario",
+    subtitle: String = "",
     fullPage: Boolean = false,
     content: @Composable ColumnScope.((() -> Unit) -> Unit) -> Unit,
 ) {
@@ -886,22 +886,14 @@ fun CustomColorPickerDialog(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            Column(Modifier.weight(1f)) {
-                Text(
-                    text = "Colore personalizzato",
-                    color = TextPrimary,
-                    fontSize = 18.sp,
-                    lineHeight = 23.sp,
-                    fontWeight = FontWeight.Bold,
-                )
-                Text(
-                    text = "Palette e personalizzazione",
-                    fontSize = 12.sp,
-                    lineHeight = 16.sp,
-                    color = TextSecondary,
-                    modifier = Modifier.padding(top = 2.dp),
-                )
-            }
+            Text(
+                text = "Colore personalizzato",
+                color = TextPrimary,
+                fontSize = 18.sp,
+                lineHeight = 23.sp,
+                fontWeight = FontWeight.Bold,
+                modifier = Modifier.weight(1f),
+            )
             TonalIconButton(
                 icon = "x",
                 contentDescription = "Chiudi",
@@ -1099,7 +1091,7 @@ fun ShiftEditorScreen(
         title = if (existing) "Modifica turno" else "Nuovo turno",
         onDismiss = onDismiss,
         heightFraction = 1f,
-        subtitle = "Orari, stile e pausa del turno",
+        subtitle = "",
         fullPage = true,
     ) { finish ->
         Column(
@@ -1731,7 +1723,7 @@ fun RotationMatrixEditorScreen(
         title = if (existing) "Modifica rotazione" else "Nuova rotazione",
         onDismiss = onDismiss,
         heightFraction = 1f,
-        subtitle = "Scegli un turno e componi la sequenza",
+        subtitle = "",
         fullPage = true,
     ) { finish ->
         Column(
@@ -2009,36 +2001,14 @@ fun RotationMatrixEditorScreen(
                         ) {
                             CatalogDefaultStar(favorite, "Rotazione predefinita", Modifier.size(21.dp), starMotion.value)
                         }
-                        Column(
+                        Text(
+                            text = "Rotazione predefinita",
+                            color = TextPrimary,
+                            fontSize = 13.sp,
+                            lineHeight = 18.sp,
+                            fontWeight = FontWeight.SemiBold,
                             modifier = Modifier.weight(1f),
-                            verticalArrangement = Arrangement.spacedBy(4.dp),
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(8.dp),
-                            ) {
-                                Text(
-                                    text = "Rotazione predefinita",
-                                    color = TextPrimary,
-                                    fontSize = 13.sp,
-                                    lineHeight = 18.sp,
-                                    fontWeight = FontWeight.SemiBold,
-                                )
-                                AnimatedVisibility(visible = favorite) {
-                                    PastelPill(
-                                        text = "Attiva",
-                                        color = ExpressivePastel.AMBER.sourceColor,
-                                        solid = true,
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "Mostrata per prima nella modifica rapida del calendario",
-                                color = TextSecondary,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
-                            )
-                        }
+                        )
                         TurniSwitch(
                             checked = favorite,
                             onCheckedChange = toggleFavorite,
@@ -2256,7 +2226,6 @@ fun WorkProfileEditorScreen(
     var department by remember(profile.id) { mutableStateOf(profile.companyOrDepartment) }
     var icon by remember(profile.id) { mutableStateOf(profile.iconKey) }
     var color by remember(profile.id) { mutableStateOf(profile.colorHex) }
-    var active by remember(profile.id) { mutableStateOf(profile.isDefault) }
     var hoursText by remember(profile.id, isNew) {
         mutableStateOf(if (isNew) "" else profile.weeklyHours.takeIf { it > 0 }?.toString().orEmpty())
     }
@@ -2338,7 +2307,7 @@ fun WorkProfileEditorScreen(
         title = if (isNew) "Nuovo lavoro" else "Modifica lavoro",
         onDismiss = onDismiss,
         heightFraction = 1f,
-        subtitle = "Calendario e impostazioni del profilo",
+        subtitle = "",
         fullPage = true,
     ) { finish ->
         Column(
@@ -2385,46 +2354,44 @@ fun WorkProfileEditorScreen(
                                 maxLines = 1,
                                 overflow = TextOverflow.Ellipsis,
                             )
-                            Text(
-                                text = department.ifBlank { "Un calendario dedicato" },
-                                fontSize = 12.sp,
-                                lineHeight = 16.sp,
-                                color = TextSecondary,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                            if (department.isNotBlank()) {
+                                Text(
+                                    text = department,
+                                    fontSize = 12.sp,
+                                    lineHeight = 16.sp,
+                                    color = TextSecondary,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                            }
                         }
                     }
                     val hasAnyControl = parsedHours > 0 || parsedRest > 0 || parsedConsecutive > 0
-                    FlowRow(
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                        verticalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        AnimatedVisibility(visible = parsedHours > 0) {
-                            PastelPill(
-                                text = "${displayHours}h/sett",
-                                color = Color(color),
-                                icon = "clock",
-                            )
-                        }
-                        AnimatedVisibility(visible = parsedRest > 0) {
-                            PastelPill(
-                                text = "Riposo ${displayRest}h",
-                                color = ExpressivePastel.MINT.sourceColor,
-                            )
-                        }
-                        AnimatedVisibility(visible = parsedConsecutive > 0) {
-                            PastelPill(
-                                text = "Max $displayConsecutive di fila",
-                                color = ExpressivePastel.AMBER.sourceColor,
-                                icon = "calendar",
-                            )
-                        }
-                        AnimatedVisibility(visible = !hasAnyControl) {
-                            PastelPill(
-                                text = "Nessun limite orario",
-                                color = ExpressivePastel.PEARL.sourceColor,
-                            )
+                    AnimatedVisibility(visible = hasAnyControl) {
+                        FlowRow(
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            verticalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            AnimatedVisibility(visible = parsedHours > 0) {
+                                PastelPill(
+                                    text = "${displayHours}h/sett",
+                                    color = Color(color),
+                                    icon = "clock",
+                                )
+                            }
+                            AnimatedVisibility(visible = parsedRest > 0) {
+                                PastelPill(
+                                    text = "Riposo ${displayRest}h",
+                                    color = ExpressivePastel.MINT.sourceColor,
+                                )
+                            }
+                            AnimatedVisibility(visible = parsedConsecutive > 0) {
+                                PastelPill(
+                                    text = "Max $displayConsecutive di fila",
+                                    color = ExpressivePastel.AMBER.sourceColor,
+                                    icon = "calendar",
+                                )
+                            }
                         }
                     }
                 }
@@ -2566,7 +2533,7 @@ fun WorkProfileEditorScreen(
             val controlsSummary = if (summaryParts.isNotEmpty()) {
                 summaryParts.joinToString(" · ")
             } else {
-                "Facoltativi · nessun conteggio"
+                "Facoltativi"
             }
             val chevronAngle by animateFloatAsState(
                 targetValue = if (controlsEnabled && controlsExpanded) 180f else 0f,
@@ -2751,18 +2718,12 @@ fun WorkProfileEditorScreen(
                                     enabled = parsedConsecutive < 14,
                                 )
                             }
-                            Text(
-                                text = "Compila solo ciò che vuoi monitorare; lascia vuoto per disattivare.",
-                                color = TextSecondary,
-                                fontSize = 11.sp,
-                                lineHeight = 15.sp,
-                            )
                         }
                     }
                 }
             }
 
-            CatalogGroup("Documento CCNL · facoltativo", outlined = true) {
+            CatalogGroup("Documento CCNL", outlined = true) {
                 Row(
                     modifier = Modifier
                         .fillMaxWidth()
@@ -2789,30 +2750,16 @@ fun WorkProfileEditorScreen(
                             tint = TextSecondary,
                         )
                     }
-                    Column(
+                    Text(
+                        text = documentName ?: "Nessun documento allegato",
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        lineHeight = 17.sp,
+                        fontWeight = FontWeight.Medium,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
                         modifier = Modifier.weight(1f),
-                        verticalArrangement = Arrangement.spacedBy(2.dp),
-                    ) {
-                        Text(
-                            text = documentName ?: "Nessun documento allegato",
-                            color = TextPrimary,
-                            fontSize = 13.sp,
-                            lineHeight = 17.sp,
-                            fontWeight = FontWeight.Medium,
-                            maxLines = 2,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Text(
-                            text = if (documentUri != null) {
-                                "PDF pronto per la consultazione rapida"
-                            } else {
-                                "Allega il tuo PDF per averlo sempre a portata di tap"
-                            },
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
-                        )
-                    }
+                    )
                 }
                 if (documentUri == null) {
                     CatalogButton(
@@ -2868,10 +2815,6 @@ fun WorkProfileEditorScreen(
                 }
             }
 
-            CatalogGroup("Calendario", outlined = true) {
-                CatalogToggle("Imposta come lavoro attivo", active) { active = it }
-            }
-
             if (!isNew && onDelete != null && ShiftRepository.workProfiles.size > 1) {
                 CloudButton(
                     label = "Elimina lavoro",
@@ -2909,7 +2852,7 @@ fun WorkProfileEditorScreen(
                             iconKey = icon,
                             colorHex = color,
                             enableAdvancedCalc = profile.enableAdvancedCalc,
-                            isDefault = active,
+                            isDefault = profile.isDefault,
                             ccnlCode = profile.ccnlCode,
                             ccnlName = profile.ccnlName,
                             weeklyHours = parsedHours,

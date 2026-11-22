@@ -6,7 +6,6 @@ import android.graphics.pdf.PdfRenderer
 import android.os.ParcelFileDescriptor
 import android.view.ViewGroup
 import android.view.WindowManager
-import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.Animatable
@@ -16,9 +15,6 @@ import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.animation.shrinkVertically
-import androidx.compose.animation.slideInHorizontally
-import androidx.compose.animation.slideOutHorizontally
-import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -56,7 +52,6 @@ import androidx.compose.ui.window.DialogWindowProvider
 import androidx.core.view.WindowCompat
 import com.turni.calendario.export.PdfExportPlan
 import com.turni.calendario.export.PdfGenerator
-import com.turni.calendario.export.PdfPresentation
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
 import com.turni.calendario.repository.ShiftRepository
@@ -164,15 +159,10 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
     }
     val palette = currentTurniPalette
     val formatIconMotion = remember { Animatable(0f) }
-    var formatFirst by remember { mutableStateOf(true) }
     LaunchedEffect(options.mode) {
-        if (formatFirst) {
-            formatFirst = false
-        } else {
-            formatIconMotion.snapTo(0f)
-            formatIconMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
-            formatIconMotion.snapTo(0f)
-        }
+        formatIconMotion.snapTo(0f)
+        formatIconMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+        formatIconMotion.snapTo(0f)
     }
     val previewIconMotion = remember { Animatable(0f) }
     val previewScope = rememberCoroutineScope()
@@ -209,52 +199,23 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     iconSize = 20.dp,
                     progress = formatIconMotion.value,
                 )
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Text(
-                        text = "Formato",
-                        color = TextPrimary,
-                        fontSize = 16.sp,
-                        fontWeight = FontWeight.SemiBold,
-                    )
-                    Text(
-                        text = "Scegli come organizzare il documento",
-                        color = TextSecondary,
-                        fontSize = 12.sp,
-                        lineHeight = 16.sp,
-                    )
-                }
+                Text(
+                    text = "Formato",
+                    color = TextPrimary,
+                    fontSize = 16.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    modifier = Modifier.weight(1f),
+                )
             }
             SlidingSegmentBar(
                 items = modeItems,
                 selectedIndex = modes.indexOf(options.mode).coerceAtLeast(0),
                 onSelect = { index -> update(options.copy(mode = modes[index])) },
             )
-            AnimatedContent(
-                targetState = options.mode,
-                transitionSpec = {
-                    val forward = targetState.ordinal >= initialState.ordinal
-                    (slideInHorizontally(tween(220, easing = FastOutSlowInEasing)) {
-                        if (forward) it / 6 else -it / 6
-                    } + fadeIn(tween(200))) togetherWith
-                        (slideOutHorizontally(tween(180, easing = FastOutSlowInEasing)) {
-                            if (forward) -it / 8 else it / 8
-                        } + fadeOut(tween(150)))
-                },
-                label = "pdfModeDescription",
-            ) { mode ->
-                val modeDescription = when (PdfExportPlan.presentation(options.copy(mode = mode))) {
-                    PdfPresentation.LIST -> "Elenco compatto su una pagina, con i dettagli selezionati."
-                    PdfPresentation.MONTHS -> "Calendario mensile su una pagina."
-                    else -> "Mesi affiancati e giorni allineati su un foglio orizzontale."
-                }
-                Text(modeDescription, color = TextSecondary, fontSize = 12.sp, lineHeight = 18.sp)
-            }
         }
 
         CloudCard(
             title = "Anteprima",
-            subtitle = preview?.orientationSubtitle?.takeUnless { previewLoading || previewError != null }
-                ?: "Lo stesso foglio che verrà condiviso",
         ) {
             val dark = TurniThemeState.dark
             val stageShape = RoundedCornerShape(18.dp)
@@ -369,17 +330,6 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                             .padding(10.dp)
                             .border(0.75.dp, ObsidianBorder, RoundedCornerShape(10.dp)),
                     )
-                    PdfStatusPill(
-                        text = "Tocca per ingrandire",
-                        fill = ObsidianSurface.copy(alpha = 0.94f),
-                        ink = TextSecondary,
-                        icon = "search",
-                        progress = previewIconMotion.value,
-                        modifier = Modifier
-                            .align(Alignment.BottomCenter)
-                            .padding(bottom = 9.dp)
-                            .border(0.75.dp, ObsidianBorder, RoundedCornerShape(10.dp)),
-                    )
                 }
                 else -> Text("Nessuna anteprima disponibile", color = TextSecondary, fontSize = 12.sp)
             }
@@ -449,7 +399,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             )
         }
 
-        CloudCard("Contenuti", "Anteprima aggiornata automaticamente") {
+        CloudCard("Contenuti") {
             PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
             SettingsDivider()
             PdfToggle("Orario di inizio e fine", options.includeTime) { update(options.copy(includeTime = it)) }
@@ -485,7 +435,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             OutlinedTextField(
                 value = options.headerNotes,
                 onValueChange = { update(options.copy(headerNotes = it.take(4000))) },
-                placeholder = { Text("Una nota per chi riceve il prospetto") },
+                placeholder = { Text("Nota opzionale") },
                 modifier = Modifier.fillMaxWidth().heightIn(min = 88.dp),
                 maxLines = 5,
                 colors = OutlinedTextFieldDefaults.colors(
@@ -503,12 +453,6 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                 ),
                 shape = RoundedCornerShape(15.dp),
             )
-            Text(
-                text = "Il PDF usa fondo bianco e testo scuro per la lettura e la stampa.",
-                fontSize = 11.sp,
-                lineHeight = 16.sp,
-                color = TextMuted,
-            )
         }
     }
 
@@ -525,6 +469,12 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
         val dialogPalette = currentTurniPalette
         TurniSafeBottomDialog(onClose = { filterDialog = false }, scrollContent = false) { finish ->
             val dark = TurniThemeState.dark
+            val filterBadgeMotion = remember { Animatable(0f) }
+            LaunchedEffect(Unit) {
+                filterBadgeMotion.snapTo(0f)
+                filterBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                filterBadgeMotion.snapTo(0f)
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
@@ -537,6 +487,7 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     iconSize = 18.dp,
                     fill = ObsidianPrimaryContainer,
                     tint = BrandInk,
+                    progress = filterBadgeMotion.value,
                 )
                 Text(
                     text = "Turni da includere",
@@ -555,12 +506,6 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     tint = Color(dialogPalette.danger.ink),
                 )
             }
-            Text(
-                text = "Scegli un modello oppure includi tutti i turni del lavoro attivo.",
-                color = TextSecondary,
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-            )
             val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }
             val entries = listOf(null to "Tutti i turni") + models.map { it.id to it.name }
             Column(
@@ -727,7 +672,9 @@ private fun PdfAction(
                 overflow = TextOverflow.Ellipsis,
             )
         }
-        SiteIcon("chevron-right", null, Modifier.size(18.dp), TextSecondary)
+        SiteIconMotion("chevron-right", null, Modifier.size(18.dp), TextSecondary) {
+            progress.value
+        }
     }
 }
 
@@ -765,6 +712,12 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
         else -> "Periodo da esportare"
     }
     TurniSafeBottomDialog(onClose = dismiss, scrollContent = false) { finish ->
+        val calendarBadgeMotion = remember { Animatable(0f) }
+        LaunchedEffect(Unit) {
+            calendarBadgeMotion.snapTo(0f)
+            calendarBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+            calendarBadgeMotion.snapTo(0f)
+        }
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -777,6 +730,7 @@ private fun PdfPeriodDialog(options: PdfExportOptions, dismiss: () -> Unit, save
                 iconSize = 18.dp,
                 fill = ObsidianPrimaryContainer,
                 tint = BrandInk,
+                progress = calendarBadgeMotion.value,
             )
             Text(
                 text = title,
@@ -977,8 +931,6 @@ private data class PdfPreview(val file: File, val bitmap: Bitmap, val width: Int
         get() = if (height >= width) "Verticale" else "Orizzontale"
     val pageBadgeLabel: String
         get() = "$paperSize · 1 pagina"
-    val orientationSubtitle: String
-        get() = "$orientationWord · lo stesso foglio che verrà condiviso"
 }
 
 @Composable
@@ -1123,7 +1075,7 @@ private fun PdfPreviewDialog(
                             )
                         }
                     }
-                    Text("Allarga con due dita per leggere i dettagli", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
+                    Text("Pizzica per ingrandire", fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
                     Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                         CloudButton("Chiudi", "x", onClose, modifier = Modifier.weight(1f), secondary = true)
                         CloudButton(

@@ -1033,6 +1033,7 @@ internal fun GoogleAccountCard(
     feature: GoogleFeature = GoogleFeature.PROFILE,
     explanation: String? = null,
     onConnected: ((String) -> Unit)? = null,
+    connectedContent: (@Composable ColumnScope.() -> Unit)? = null,
 ) {
     var showAccessDetails by remember { mutableStateOf(false) }
     var showAccountSheet by remember { mutableStateOf(false) }
@@ -1041,14 +1042,13 @@ internal fun GoogleAccountCard(
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 360f),
         label = "googleAccessChevron",
     )
+    val detailsIconPhase = remember { Animatable(0f) }
+    val detailsScope = rememberCoroutineScope()
+    var detailsIconJob by remember { mutableStateOf<Job?>(null) }
     val profile = ShiftRepository.googleAccountProfile
     CloudCard(
         title = "Account Google",
-        subtitle = if (profile == null) {
-            explanation ?: "Accedi con il tuo account. I tuoi dati rimangono nel tuo spazio Google."
-        } else {
-            null
-        },
+        subtitle = if (profile == null) explanation?.takeIf { it.isNotBlank() } else null,
     ) {
         if (profile == null) {
             GoogleSignInButton(enabled && !access.busy, access.busy) {
@@ -1128,17 +1128,57 @@ internal fun GoogleAccountCard(
                 }
             }
         }
-        TextButton(
-            onClick = { showAccessDetails = !showAccessDetails },
-            colors = ButtonDefaults.textButtonColors(contentColor = BrandInk),
+        AnimatedVisibility(
+            visible = profile != null && connectedContent != null,
+            enter = expandVertically(
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            ) + fadeIn(tween(220)),
+            exit = shrinkVertically(
+                spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow),
+            ) + fadeOut(tween(160)),
         ) {
-            Text("Quali dati autorizzo?", fontSize = 12.sp, fontWeight = FontWeight.Medium)
-            Spacer(Modifier.width(5.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                SettingsDivider()
+                connectedContent?.invoke(this)
+            }
+        }
+        val detailsShape = RoundedCornerShape(14.dp)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 44.dp)
+                .clip(detailsShape)
+                .background(ObsidianSurfaceContainer)
+                .bouncyClickable {
+                    showAccessDetails = !showAccessDetails
+                    detailsIconJob = detailsScope.replayIconMotion(detailsIconPhase, detailsIconJob, durationMillis = 480)
+                }
+                .padding(horizontal = 12.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SiteIconMotion(
+                name = "shield-alert",
+                description = null,
+                modifier = Modifier.size(16.dp),
+                tint = BrandInk,
+            ) {
+                detailsIconPhase.value
+            }
+            Text(
+                text = "Quali dati autorizzo?",
+                color = BrandInk,
+                fontSize = 13.sp,
+                fontWeight = FontWeight.Medium,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
             SiteIcon(
                 name = "chevron-down",
                 contentDescription = null,
                 modifier = Modifier
-                    .size(14.dp)
+                    .size(16.dp)
                     .rotate(chevronAngle),
                 tint = BrandInk,
             )
@@ -1148,24 +1188,17 @@ internal fun GoogleAccountCard(
             enter = expandVertically() + fadeIn(),
             exit = shrinkVertically() + fadeOut(),
         ) {
-            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(
-                    text = when (feature) {
-                        GoogleFeature.DRIVE -> "Google conferma nome ed email e permette a TurniSync di usare il proprio spazio privato su Drive. Gli altri file di Drive non vengono letti. Collegare l’account non avvia un backup."
-                        GoogleFeature.CALENDAR -> "Google conferma nome ed email, mostra i calendari e chiede il permesso di gestire eventi. Nell’app scegli la destinazione: TurniSync gestisce gli eventi che ha creato, riconoscibili dal proprio contrassegno."
-                        else -> "Google conferma nome ed email dell’account scelto. La password rimane gestita da Google."
-                    },
-                    color = TextSecondary,
-                    fontSize = 12.sp,
-                    lineHeight = 18.sp,
-                )
-                Text(
-                    text = "Durante la beta l’accesso può essere limitato agli account di prova. Il consenso Google e le eventuali limitazioni dipendono dalla configurazione del progetto; cambiare account non trasferisce automaticamente i dati.",
-                    color = TextSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 17.sp,
-                )
-            }
+            Text(
+                text = when (feature) {
+                    GoogleFeature.DRIVE -> "Nome, email e spazio privato TurniSync su Drive. Gli altri file su Drive restano inaccessibili."
+                    GoogleFeature.CALENDAR -> "Nome, email e lista calendari. Gestisce solo gli eventi creati da TurniSync."
+                    else -> "Nome ed email dell’account scelto. La password resta gestita da Google."
+                },
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 17.sp,
+                modifier = Modifier.padding(horizontal = 4.dp),
+            )
         }
     }
     if (showAccountSheet) {
@@ -1200,9 +1233,9 @@ internal fun GoogleAccountSheet(
         }
     }
     val subtitle = when (feature) {
-        GoogleFeature.DRIVE -> "Backup e ripristino Drive"
-        GoogleFeature.CALENDAR -> "Sincronizzazione calendario"
-        else -> "Scegli o collega un account"
+        GoogleFeature.DRIVE -> "Backup su Drive"
+        GoogleFeature.CALENDAR -> "Google Calendar"
+        else -> "Scegli account"
     }
 
     TurniSafeBottomDialog(onClose = onDismiss, scrollContent = false) { finish ->
@@ -1283,9 +1316,9 @@ internal fun GoogleAccountSheet(
                 ) {
                     Text(
                         text = when (feature) {
-                            GoogleFeature.DRIVE -> "Collega un account Google del telefono per salvare e ripristinare i turni nello spazio privato su Drive."
-                            GoogleFeature.CALENDAR -> "Collega un account Google del telefono per scegliere il calendario su cui sincronizzare i tuoi turni."
-                            else -> "Collega un account Google del telefono per accedere alle funzioni cloud di TurniSync."
+                            GoogleFeature.DRIVE -> "Collega un account Google per backup e ripristino su Drive."
+                            GoogleFeature.CALENDAR -> "Collega un account Google per sincronizzare i turni."
+                            else -> "Collega un account Google per le funzioni cloud."
                         },
                         color = TextSecondary,
                         fontSize = 13.sp,
@@ -1433,13 +1466,6 @@ internal fun GoogleAccountSheet(
                     destructive = true,
                 )
             }
-
-            Text(
-                text = "Per collegare un nuovo account del telefono Google mostra la finestra di sistema per il consenso.",
-                color = TextSecondary,
-                fontSize = 11.sp,
-                lineHeight = 16.sp,
-            )
         }
     }
 }

@@ -101,19 +101,25 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
     val activeCount = HolidaysCatalog.allHolidays.count { it.id in enabledIds }
     val defaultIds = remember { HolidaysCatalog.allHolidays.filter { it.isDefaultEnabled }.map { it.id }.toSet() }
     val canReset = enabledIds != defaultIds
-    val subtitle = if (activeCount == 1) {
-        "Calendario $year · 1 ricorrenza attiva"
-    } else {
-        "Calendario $year · $activeCount ricorrenze attive"
-    }
-
-    fun restoreDefaults() {
+    var lastActiveCount by remember { mutableIntStateOf(activeCount) }
+    fun pulseHeroBadge() {
         heroMotionJob?.cancel()
         heroMotionJob = scope.launch {
             heroBadgeMotion.snapTo(0f)
-            heroBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+            heroBadgeMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
             heroBadgeMotion.snapTo(0f)
         }
+    }
+    LaunchedEffect(Unit) { pulseHeroBadge() }
+    LaunchedEffect(activeCount) {
+        if (activeCount != lastActiveCount) {
+            lastActiveCount = activeCount
+            pulseHeroBadge()
+        }
+    }
+
+    fun restoreDefaults() {
+        pulseHeroBadge()
         inlineMotionJob?.cancel()
         inlineMotionJob = scope.launch {
             inlineResetMotion.snapTo(0f)
@@ -126,7 +132,6 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
 
     CloudFeatureScaffold(
         title = "Festività",
-        subtitle = subtitle,
         onDismiss = onDismiss,
         feedback = feedback,
         onDismissFeedback = { feedback = null },
@@ -208,7 +213,7 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
                         )
                     }
                     Text(
-                        text = if (canReset) "Selezione personalizzata · $year" else "Impostazione predefinita · $year",
+                        text = if (canReset) "Personalizzata · $year" else "Predefinita · $year",
                         fontSize = 12.sp,
                         lineHeight = 17.sp,
                         color = TextSecondary,
@@ -246,13 +251,6 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
                     }
                 }
             }
-            SettingsDivider()
-            Text(
-                text = "Scegli le ricorrenze da evidenziare sul calendario e nei conteggi.",
-                fontSize = 12.sp,
-                lineHeight = 18.sp,
-                color = TextSecondary,
-            )
         }
 
         SlidingSegmentBar(
@@ -307,7 +305,7 @@ private fun HolidaySection(
 
     CloudCard(
         title = title,
-        subtitle = "$activeInSection di ${holidays.size} attive nel $year",
+        subtitle = "$activeInSection / ${holidays.size}",
         modifier = Modifier.semantics { heading() },
     ) {
         Column(modifier = Modifier.fillMaxWidth()) {
@@ -442,7 +440,7 @@ private fun HolidaySection(
                             color = titleColor,
                         )
                         Text(
-                            text = if (selected) "$weekday · attiva sul calendario" else weekday,
+                            text = weekday,
                             fontSize = 11.sp,
                             lineHeight = 15.sp,
                             color = if (selected) activeSubtitleInk else TextSecondary,

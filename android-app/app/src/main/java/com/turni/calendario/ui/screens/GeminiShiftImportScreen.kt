@@ -1,4 +1,7 @@
-@file:OptIn(androidx.compose.material3.ExperimentalMaterial3Api::class)
+@file:OptIn(
+    androidx.compose.material3.ExperimentalMaterial3Api::class,
+    androidx.compose.foundation.layout.ExperimentalLayoutApi::class,
+)
 package com.turni.calendario.ui.screens
 
 import android.content.ClipData
@@ -7,8 +10,6 @@ import android.content.Context
 import android.content.Intent
 import android.net.Uri
 import androidx.activity.compose.BackHandler
-import androidx.activity.compose.rememberLauncherForActivityResult
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.animateColorAsState
@@ -21,6 +22,8 @@ import androidx.compose.animation.core.tween
 import androidx.compose.animation.expandVertically
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
+import androidx.compose.animation.scaleIn
+import androidx.compose.animation.scaleOut
 import androidx.compose.animation.shrinkVertically
 import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
@@ -59,7 +62,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.LineHeightStyle
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.turni.calendario.data.*
@@ -73,7 +75,7 @@ import com.turni.calendario.ui.theme.*
 import kotlinx.coroutines.*
 import java.util.UUID
 
-/** Document -> progressive 4-stage AI wizard -> review drafts -> explicit additive catalogue save. */
+/** 3-step AI import wizard (Nome -> Chiedi -> Incolla) -> review drafts -> explicit additive save. */
 @Composable
 fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRotation?) -> Unit)? = null) {
     val context = LocalContext.current
@@ -86,14 +88,12 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
     val nameConfirmed = name.isNotBlank() && name == confirmedName
     val focusManager = LocalFocusManager.current
     val keyboard = LocalSoftwareKeyboardController.current
-    var document by remember { mutableStateOf<AiRosterDocument?>(null) }
     var draft by remember { mutableStateOf<AiRosterDraft?>(null) }
     var selectedCycle by remember { mutableStateOf<String?>(null) }
     var confirmed by remember { mutableStateOf(false) }
     var cycleConfirmed by remember { mutableStateOf(false) }
     var makeDefault by remember { mutableStateOf(false) }
     var busy by remember { mutableStateOf(false) }
-    var busyLabel by remember { mutableStateOf("Lettura del risultato…") }
     var operation by remember { mutableStateOf<Job?>(null) }
     var message by remember { mutableStateOf<ActionFeedback?>(null) }
     var pasted by remember { mutableStateOf("") }
@@ -106,14 +106,13 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
     var pastedError by remember { mutableStateOf(false) }
     val step1Motion = remember { Animatable(0f) }
     var step1Job by remember { mutableStateOf<Job?>(null) }
-    val docPickMotion = remember { Animatable(0f) }
-    var docPickJob by remember { mutableStateOf<Job?>(null) }
     val copyMotion = remember { Animatable(0f) }
     var copyJob by remember { mutableStateOf<Job?>(null) }
     val pasteMotion = remember { Animatable(0f) }
     var pasteJob by remember { mutableStateOf<Job?>(null) }
     val warningsMotion = remember { Animatable(0f) }
     var warningsJob by remember { mutableStateOf<Job?>(null) }
+    val reviewMotion = remember { Animatable(0f) }
     val savedMotion = remember { Animatable(0f) }
 
     fun proceedFromStep0() {
@@ -132,7 +131,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
             setupSubStep = 1
         } else {
             nameError = true
-            message = ActionFeedback("Scrivi nome e cognome come compaiono nel prospetto", true)
+            message = ActionFeedback("Inserisci nome e cognome", true)
         }
     }
 
@@ -141,9 +140,8 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
 
     fun fail(error: Exception) {
         val detail = when (error) {
-            is org.json.JSONException -> "Il testo incollato è incompleto o non rispetta il formato richiesto. Copia tutta la risposta oppure chiedi all’AI di rigenerarla con le istruzioni."
-            is java.nio.charset.CharacterCodingException -> "Il file deve contenere il risultato JSON in formato UTF-8. Prova a incollare direttamente la risposta."
-            else -> error.message ?: "Operazione non riuscita. Riprova."
+            is org.json.JSONException -> "Risposta JSON incompleta o non valida"
+            else -> error.message ?: "Operazione non riuscita"
         }
         if (draft == null && setupSubStep == 2) pastedError = true
         message = ActionFeedback(detail, true)
@@ -179,27 +177,9 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
 
     DisposableEffect(Unit) { onDispose { operation?.cancel() } }
 
-    val picker = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        if (uri != null) {
-            busyLabel = "Lettura del prospetto…"
-            operation = scope.launch {
-                busy = true
-                try {
-                    document = withContext(Dispatchers.IO) { AiRosterDocuments.read(context, uri) }
-                } catch (e: Exception) {
-                    if (e is CancellationException) throw e
-                    fail(e)
-                } finally {
-                    busy = false
-                }
-            }
-        }
-    }
-
     fun parsePasted() {
         focusManager.clearFocus()
         keyboard?.hide()
-        busyLabel = "Analisi della risposta…"
         SecurePreferencesManager.saveUserName(context, name.trim())
         operation = scope.launch {
             busy = true
@@ -221,7 +201,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
         (context.getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager)
             .setPrimaryClip(ClipData.newPlainText("Istruzioni TurniSync", prompt))
         promptCopied = true
-        message = ActionFeedback("Istruzioni copiate · allega anche il prospetto")
+        message = ActionFeedback("Istruzioni copiate")
     }
 
     fun pasteFromClipboard() {
@@ -231,7 +211,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
         val value = clip?.takeIf { it.itemCount > 0 }?.getItemAt(0)?.coerceToText(context)?.toString().orEmpty()
         when {
             value.isBlank() -> {
-                message = ActionFeedback("Appunti vuoti: copia prima la risposta JSON dall’AI", true)
+                message = ActionFeedback("Appunti vuoti", true)
             }
             value.length > 2_000_000 -> {
                 pastedError = true
@@ -242,7 +222,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                 pastedError = false
                 focusManager.clearFocus()
                 keyboard?.hide()
-                message = ActionFeedback("Risposta incollata · premi Analizza turni")
+                message = ActionFeedback("Risposta incollata")
             }
         }
     }
@@ -264,24 +244,23 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
     val palette = currentTurniPalette
 
     LaunchedEffect(wizardStep) {
-        if (wizardStep == 4) {
-            savedMotion.snapTo(0f)
-            savedMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
-            savedMotion.snapTo(0f)
+        when (wizardStep) {
+            0 -> step1Job = launch {
+                step1Motion.snapTo(0f)
+                step1Motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                step1Motion.snapTo(0f)
+            }
+            3 -> {
+                reviewMotion.snapTo(0f)
+                reviewMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                reviewMotion.snapTo(0f)
+            }
+            4 -> {
+                savedMotion.snapTo(0f)
+                savedMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+                savedMotion.snapTo(0f)
+            }
         }
-    }
-
-    val scaffoldTitle = when (wizardStep) {
-        4 -> "Catalogo aggiornato"
-        3 -> "Controlla i turni"
-        else -> "Importa turni con AI"
-    }
-    val scaffoldSubtitle = when (wizardStep) {
-        0 -> "Passo 1 di 4 · Dati del prospetto"
-        1 -> "Passo 2 di 4 · Chiedi alla tua AI"
-        2 -> "Passo 3 di 4 · Incolla la risposta"
-        3 -> "Passo 4 di 4 · Modifiche in bozza prima del salvataggio"
-        else -> "Modelli e rotazione salvati"
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -291,105 +270,34 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                 .windowInsetsPadding(WindowInsets.ime.exclude(WindowInsets.navigationBars)),
         ) {
             CloudFeatureScaffold(
-                title = scaffoldTitle,
-                subtitle = scaffoldSubtitle,
+                title = "Importa con AI",
+                subtitle = null,
                 onDismiss = { back() },
                 feedback = message,
                 onDismissFeedback = { message = null },
                 scrollResetKey = wizardStep,
                 scrollable = false,
-                bottomBar = if (wizardStep in 0..3) {
+                bottomBar = if (wizardStep == 3) {
                     {
-                        AnimatedContent(
-                            targetState = wizardStep,
-                            transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
-                            label = "importBottomBarTransition",
-                        ) { barStep ->
-                            when (barStep) {
-                                0 -> CloudButton(
-                                    label = "Continua · Prepara istruzioni",
-                                    icon = "arrow-right",
-                                    onClick = { proceedFromStep0() },
-                                    enabled = !busy,
-                                )
-                                1 -> Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    CloudButton(
-                                        label = "Indietro",
-                                        icon = "arrow-left",
-                                        onClick = {
-                                            focusManager.clearFocus()
-                                            keyboard?.hide()
-                                            setupSubStep = 0
-                                        },
-                                        enabled = !busy,
-                                        secondary = true,
-                                        modifier = Modifier.weight(0.36f),
-                                    )
-                                    CloudButton(
-                                        label = "Ho la risposta · Avanti",
-                                        icon = "arrow-right",
-                                        onClick = {
-                                            focusManager.clearFocus()
-                                            keyboard?.hide()
-                                            setupSubStep = 2
-                                        },
-                                        enabled = !busy,
-                                        modifier = Modifier.weight(0.64f),
-                                    )
+                        val reviewDraft = current
+                        val valid = reviewDraft != null &&
+                            confirmed &&
+                            AiRosterImport.validate(reviewDraft, selectedCycle, cycleConfirmed).isEmpty()
+                        CloudButton(
+                            label = "Salva nel catalogo",
+                            icon = "check",
+                            onClick = {
+                                if (reviewDraft != null) {
+                                    try {
+                                        saved = AiRosterImport.save(reviewDraft, selectedCycle, cycleConfirmed, makeDefault)
+                                        message = ActionFeedback("Catalogo aggiornato")
+                                    } catch (e: Exception) {
+                                        fail(e)
+                                    }
                                 }
-                                2 -> Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    CloudButton(
-                                        label = "Indietro",
-                                        icon = "arrow-left",
-                                        onClick = {
-                                            focusManager.clearFocus()
-                                            keyboard?.hide()
-                                            setupSubStep = 1
-                                        },
-                                        enabled = !busy,
-                                        secondary = true,
-                                        modifier = Modifier.weight(0.36f),
-                                    )
-                                    CloudButton(
-                                        label = "Analizza turni",
-                                        icon = "check",
-                                        onClick = {
-                                            pasteJob = scope.triggerImportMotion(pasteMotion, pasteJob)
-                                            parsePasted()
-                                        },
-                                        enabled = pasted.isNotBlank() && name.isNotBlank() && !busy,
-                                        modifier = Modifier.weight(0.64f),
-                                    )
-                                }
-                                else -> {
-                                    val reviewDraft = current
-                                    val valid = reviewDraft != null &&
-                                        confirmed &&
-                                        AiRosterImport.validate(reviewDraft, selectedCycle, cycleConfirmed).isEmpty()
-                                    CloudButton(
-                                        label = "Salva nel catalogo",
-                                        icon = "check",
-                                        onClick = {
-                                            if (reviewDraft != null) {
-                                                try {
-                                                    saved = AiRosterImport.save(reviewDraft, selectedCycle, cycleConfirmed, makeDefault)
-                                                    message = ActionFeedback("Catalogo aggiornato")
-                                                } catch (e: Exception) {
-                                                    fail(e)
-                                                }
-                                            }
-                                        },
-                                        enabled = valid && !busy,
-                                    )
-                                }
-                            }
-                        }
+                            },
+                            enabled = valid && !busy,
+                        )
                     }
                 } else {
                     null
@@ -397,6 +305,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
             ) {
                 ImportStepperStrip(
                     wizardStep = wizardStep,
+                    showReviewStep = current != null || saved != null,
                     canJumpBack = current == null && saved == null && !busy,
                     onSelectStep = { target ->
                         focusManager.clearFocus()
@@ -427,14 +336,13 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                         verticalArrangement = Arrangement.spacedBy(12.dp),
                     ) {
                         when {
-                            targetStep == 0 -> ImportStep0Prospetto(
+                            targetStep == 0 -> ImportStep1Name(
                                 name = name,
                                 nameConfirmed = nameConfirmed,
                                 nameError = nameError,
-                                document = document,
                                 busy = busy,
                                 step1Motion = step1Motion.value,
-                                docPickMotion = docPickMotion.value,
+                                onPulseIcon = { step1Job = scope.triggerImportMotion(step1Motion, step1Job) },
                                 onNameChange = { updated ->
                                     name = updated.take(100)
                                     nameError = false
@@ -443,21 +351,15 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                                     }
                                 },
                                 onContinue = { proceedFromStep0() },
-                                onPickDocument = {
-                                    docPickJob = scope.triggerImportMotion(docPickMotion, docPickJob)
-                                    picker.launch(arrayOf("application/pdf", "image/*"))
-                                },
-                                onClearDocument = { document = null },
                             )
-                            targetStep == 1 -> ImportStep1AskAi(
+                            targetStep == 1 -> ImportStep2AskAi(
                                 confirmedName = confirmedName.ifBlank { name },
-                                document = document,
                                 prompt = prompt,
                                 promptCopied = promptCopied,
                                 showPromptPreview = showPromptPreview,
                                 busy = busy,
                                 copyMotion = copyMotion.value,
-                                onEditData = {
+                                onEditName = {
                                     focusManager.clearFocus()
                                     keyboard?.hide()
                                     setupSubStep = 0
@@ -465,10 +367,16 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                                 onCopyPrompt = { copyInstructions() },
                                 onTogglePromptPreview = { showPromptPreview = !showPromptPreview },
                                 onOpenAi = { url -> openAi(url) },
+                                onHaveResponse = {
+                                    focusManager.clearFocus()
+                                    keyboard?.hide()
+                                    setupSubStep = 2
+                                },
                             )
-                            targetStep == 2 -> ImportStep2PasteResponse(
+                            targetStep == 2 -> ImportStep3Paste(
                                 pasted = pasted,
                                 pastedError = pastedError,
+                                canAnalyze = pasted.isNotBlank() && name.isNotBlank() && !busy,
                                 busy = busy,
                                 pasteMotion = pasteMotion.value,
                                 onPasteFromClipboard = { pasteFromClipboard() },
@@ -480,277 +388,258 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                                     pasted = it.take(2_000_001)
                                     pastedError = false
                                 },
+                                onAnalyze = {
+                                    pasteJob = scope.triggerImportMotion(pasteMotion, pasteJob)
+                                    parsePasted()
+                                },
                             )
                             targetStep == 3 && current != null -> {
-                        CloudCard {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(12.dp),
-                            ) {
-                                NeutralIconBadge(
-                                    icon = "check",
-                                    size = 40.dp,
-                                    cornerRadius = 12.dp,
-                                    iconSize = 20.dp,
-                                    fill = ObsidianPrimaryContainer,
-                                    tint = BrandInk,
-                                )
-                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                    Text(
-                                        text = "Proposta estratta",
-                                        fontSize = 15.sp,
-                                        lineHeight = 20.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary,
-                                    )
-                                    Text(
-                                        text = "${current.shifts.size} modelli · ${current.cycles.size} ${if (current.cycles.size == 1) "sequenza" else "sequenze"}",
-                                        fontSize = 13.sp,
-                                        lineHeight = 18.sp,
-                                        color = TextSecondary,
-                                    )
-                                }
-                                if (current.period.isNotBlank()) {
-                                    ImportStatusPill(
-                                        text = current.period,
-                                        fill = ObsidianSurfaceContainer,
-                                        ink = BrandInk,
-                                    )
-                                }
-                            }
-                            Text(
-                                text = "Salvi nel lavoro ${ShiftRepository.workProfiles.firstOrNull { it.id == current.profileId }?.name.orEmpty()}. Puoi correggere nomi, sigle, orari, colori e ogni giorno del ciclo. Nessun turno sarà applicato al calendario.",
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                                color = TextSecondary,
-                            )
-                            if (current.warnings.isNotEmpty()) {
-                                SettingsDivider()
-                                val warningChevron by animateFloatAsState(
-                                    targetValue = if (showSource) 180f else 0f,
-                                    animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
-                                    label = "importWarningsChevron",
-                                )
-                                val warningShape = RoundedCornerShape(14.dp)
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(warningShape)
-                                        .background(ObsidianSurfaceContainer)
-                                        .bouncyClickable {
-                                            showSource = !showSource
-                                            warningsJob = scope.triggerImportMotion(warningsMotion, warningsJob)
-                                        }
-                                        .padding(horizontal = 12.dp, vertical = 10.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    NeutralIconBadge(
-                                        icon = "message",
-                                        size = 32.dp,
-                                        cornerRadius = 10.dp,
-                                        iconSize = 16.dp,
-                                        fill = Color(palette.warning.fill),
-                                        tint = Color(palette.warning.ink),
-                                        progress = warningsMotion.value,
-                                    )
-                                    Text(
-                                        text = if (showSource) "Nascondi ${current.warnings.size} osservazioni" else "Leggi ${current.warnings.size} osservazioni",
-                                        modifier = Modifier.weight(1f),
-                                        color = TextPrimary,
-                                        fontSize = 13.sp,
-                                        lineHeight = 18.sp,
-                                        fontWeight = FontWeight.Medium,
-                                    )
-                                    SiteIcon("chevron-down", null, Modifier.size(18.dp).rotate(warningChevron), TextSecondary)
-                                }
-                                AnimatedVisibility(
-                                    visible = showSource,
-                                    enter = fadeIn(tween(200)) + expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)),
-                                    exit = fadeOut(tween(160)) + shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)),
-                                ) {
-                                    Column(
-                                        modifier = Modifier
-                                            .fillMaxWidth()
-                                            .clip(warningShape)
-                                            .background(ObsidianSurfaceContainer)
-                                            .padding(12.dp),
-                                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                                val profileName = ShiftRepository.workProfiles
+                                    .firstOrNull { it.id == current.profileId }
+                                    ?.name
+                                    .orEmpty()
+                                CloudCard {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
                                     ) {
-                                        current.warnings.forEach { warning ->
-                                            Text("• $warning", fontSize = 12.sp, lineHeight = 18.sp, color = TextSecondary)
+                                        NeutralIconBadge(
+                                            icon = "check",
+                                            size = 40.dp,
+                                            cornerRadius = 12.dp,
+                                            iconSize = 20.dp,
+                                            fill = ObsidianPrimaryContainer,
+                                            tint = BrandInk,
+                                            progress = reviewMotion.value,
+                                        )
+                                        Text(
+                                            text = "Turni estratti",
+                                            modifier = Modifier.weight(1f),
+                                            fontSize = 16.sp,
+                                            lineHeight = 21.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary,
+                                        )
+                                        if (current.period.isNotBlank()) {
+                                            ImportStatusPill(
+                                                text = current.period,
+                                                fill = ObsidianSurfaceContainer,
+                                                ink = BrandInk,
+                                                icon = "calendar",
+                                            )
                                         }
                                     }
-                                }
-                            }
-                        }
-                        CloudCard("Modelli dei turni") {
-                            current.shifts.forEachIndexed { index, row ->
-                                if (index > 0) SettingsDivider()
-                                Row(
-                                    modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                                    verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(10.dp),
-                                ) {
-                                    PastelBadge(
-                                        color = Color(row.definition.colorHex),
-                                        size = 44.dp,
-                                        cornerRadius = 13.dp,
-                                        definitionId = row.definition.id,
-                                    ) { ink ->
-                                        Text(
-                                            text = row.definition.shortCode,
-                                            fontWeight = FontWeight.Bold,
-                                            fontSize = 12.sp,
-                                            lineHeight = 12.sp,
-                                            color = ink,
-                                            textAlign = TextAlign.Center,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                            style = centeredBadgeTextStyle(),
+                                    FlowRow(
+                                        modifier = Modifier.fillMaxWidth(),
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        if (profileName.isNotBlank()) {
+                                            ImportStatusPill(
+                                                text = profileName,
+                                                fill = ObsidianSurfaceContainer,
+                                                ink = TextPrimary,
+                                                icon = "briefcase",
+                                            )
+                                        }
+                                        ImportStatusPill(
+                                            text = "${current.shifts.size} ${if (current.shifts.size == 1) "modello" else "modelli"}",
+                                            fill = ObsidianPrimarySubtle,
+                                            ink = BrandInk,
+                                            icon = "clock",
+                                        )
+                                        ImportStatusPill(
+                                            text = "${current.cycles.size} ${if (current.cycles.size == 1) "ciclo" else "cicli"}",
+                                            fill = ObsidianPrimarySubtle,
+                                            ink = BrandInk,
+                                            icon = "rotation",
+                                        )
+                                        ImportStatusPill(
+                                            text = "Solo catalogo",
+                                            fill = Color(palette.success.fill),
+                                            ink = Color(palette.success.ink),
+                                            icon = "layers",
                                         )
                                     }
-                                    Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                        Text(row.definition.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 19.sp, color = TextPrimary)
-                                        if (row.needsReview) {
-                                            ImportStatusPill(
-                                                text = "Da completare: apri e verifica",
+                                    if (current.warnings.isNotEmpty()) {
+                                        SettingsDivider()
+                                        val warningChevron by animateFloatAsState(
+                                            targetValue = if (showSource) 180f else 0f,
+                                            animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
+                                            label = "importWarningsChevron",
+                                        )
+                                        val warningShape = RoundedCornerShape(14.dp)
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(warningShape)
+                                                .background(ObsidianSurfaceContainer)
+                                                .bouncyClickable {
+                                                    showSource = !showSource
+                                                    warningsJob = scope.triggerImportMotion(warningsMotion, warningsJob)
+                                                }
+                                                .padding(horizontal = 12.dp, vertical = 10.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        ) {
+                                            NeutralIconBadge(
+                                                icon = "message",
+                                                size = 32.dp,
+                                                cornerRadius = 10.dp,
+                                                iconSize = 16.dp,
                                                 fill = Color(palette.warning.fill),
-                                                ink = Color(palette.warning.ink),
+                                                tint = Color(palette.warning.ink),
+                                                progress = warningsMotion.value,
                                             )
-                                        } else {
                                             Text(
-                                                text = if (row.definition.isAllDay) {
-                                                    "Giornata intera · ${row.definition.category.name.lowercase().replaceFirstChar { it.titlecase() }}"
-                                                } else {
-                                                    "${row.definition.startTime} – ${row.definition.endTime}"
-                                                },
-                                                fontSize = 11.sp,
-                                                lineHeight = 16.sp,
-                                                color = TextSecondary,
+                                                text = "${current.warnings.size} ${if (current.warnings.size == 1) "avviso" else "avvisi"}",
+                                                modifier = Modifier.weight(1f),
+                                                color = TextPrimary,
+                                                fontSize = 13.sp,
+                                                lineHeight = 18.sp,
+                                                fontWeight = FontWeight.Medium,
                                             )
+                                            SiteIcon("chevron-down", null, Modifier.size(18.dp).rotate(warningChevron), TextSecondary)
                                         }
-                                        if (row.evidence.isNotBlank()) {
-                                            Text(row.evidence, fontSize = 10.sp, lineHeight = 14.sp, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                        AnimatedVisibility(
+                                            visible = showSource,
+                                            enter = fadeIn(tween(200)) + expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)),
+                                            exit = fadeOut(tween(160)) + shrinkVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)),
+                                        ) {
+                                            Column(
+                                                modifier = Modifier
+                                                    .fillMaxWidth()
+                                                    .clip(warningShape)
+                                                    .background(ObsidianSurfaceContainer)
+                                                    .padding(12.dp),
+                                                verticalArrangement = Arrangement.spacedBy(8.dp),
+                                            ) {
+                                                current.warnings.forEach { warning ->
+                                                    Text("• $warning", fontSize = 12.sp, lineHeight = 18.sp, color = TextSecondary)
+                                                }
+                                            }
                                         }
                                     }
-                                    TonalIconButton(
-                                        icon = "edit",
-                                        contentDescription = "Modifica ${row.definition.name}",
-                                        onClick = { editShift = row.definition.id },
-                                    )
-                                    TonalIconButton(
-                                        icon = "trash",
-                                        contentDescription = "Rimuovi ${row.definition.name}",
+                                }
+                                CloudCard("Modelli") {
+                                    current.shifts.forEachIndexed { index, row ->
+                                        if (index > 0) SettingsDivider()
+                                        Row(
+                                            modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp),
+                                            verticalAlignment = Alignment.CenterVertically,
+                                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                                        ) {
+                                            PastelBadge(
+                                                color = Color(row.definition.colorHex),
+                                                size = 44.dp,
+                                                cornerRadius = 13.dp,
+                                                definitionId = row.definition.id,
+                                            ) { ink ->
+                                                Text(
+                                                    text = row.definition.shortCode,
+                                                    fontWeight = FontWeight.Bold,
+                                                    fontSize = 12.sp,
+                                                    lineHeight = 12.sp,
+                                                    color = ink,
+                                                    textAlign = TextAlign.Center,
+                                                    maxLines = 1,
+                                                    overflow = TextOverflow.Ellipsis,
+                                                    style = centeredBadgeTextStyle(),
+                                                )
+                                            }
+                                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
+                                                Text(row.definition.name, fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 19.sp, color = TextPrimary)
+                                                if (row.needsReview) {
+                                                    ImportStatusPill(
+                                                        text = "Da verificare",
+                                                        fill = Color(palette.warning.fill),
+                                                        ink = Color(palette.warning.ink),
+                                                        icon = "alert-triangle",
+                                                    )
+                                                } else {
+                                                    ImportStatusPill(
+                                                        text = if (row.definition.isAllDay) {
+                                                            "Tutto il giorno · ${row.definition.category.name.lowercase().replaceFirstChar { it.titlecase() }}"
+                                                        } else {
+                                                            "${row.definition.startTime} – ${row.definition.endTime}"
+                                                        },
+                                                        fill = ObsidianSurfaceContainer,
+                                                        ink = TextSecondary,
+                                                        icon = "clock",
+                                                    )
+                                                }
+                                                if (row.evidence.isNotBlank()) {
+                                                    Text(row.evidence, fontSize = 10.sp, lineHeight = 14.sp, color = TextMuted, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                                                }
+                                            }
+                                            TonalIconButton(
+                                                icon = "edit",
+                                                contentDescription = "Modifica ${row.definition.name}",
+                                                onClick = { editShift = row.definition.id },
+                                            )
+                                            TonalIconButton(
+                                                icon = "trash",
+                                                contentDescription = "Rimuovi ${row.definition.name}",
+                                                onClick = {
+                                                    draft = current.copy(shifts = current.shifts.filterNot { it.definition.id == row.definition.id })
+                                                    confirmed = false
+                                                },
+                                                fill = Color(palette.danger.fill),
+                                                tint = Color(palette.danger.ink),
+                                            )
+                                        }
+                                    }
+                                    if (current.shifts.isNotEmpty()) SettingsDivider()
+                                    CloudButton(
+                                        label = "Aggiungi modello",
+                                        icon = "plus",
                                         onClick = {
-                                            draft = current.copy(shifts = current.shifts.filterNot { it.definition.id == row.definition.id })
+                                            val id = "ai-draft-" + UUID.randomUUID()
+                                            val row = AiReviewShift("manual-$id", ShiftDefinition(id, "", "TUR", workProfileId = current.profileId), true, "")
+                                            draft = current.copy(shifts = current.shifts + row)
                                             confirmed = false
+                                            editShift = id
                                         },
-                                        fill = Color(palette.danger.fill),
-                                        tint = Color(palette.danger.ink),
+                                        enabled = current.shifts.size < 150,
+                                        secondary = true,
                                     )
                                 }
-                            }
-                            if (current.shifts.isNotEmpty()) SettingsDivider()
-                            CloudButton(
-                                label = "Aggiungi modello mancante",
-                                icon = "plus",
-                                onClick = {
-                                    val id = "ai-draft-" + UUID.randomUUID()
-                                    val row = AiReviewShift("manual-$id", ShiftDefinition(id, "", "TUR", workProfileId = current.profileId), true, "")
-                                    draft = current.copy(shifts = current.shifts + row)
-                                    confirmed = false
-                                    editShift = id
-                                },
-                                enabled = current.shifts.size < 150,
-                                secondary = true,
-                            )
-                        }
-                        CloudCard("La tua rotazione") {
-                            Text(
-                                text = "Scegli una sequenza. Se il nome non è stato trovato con certezza, nessuna viene selezionata automaticamente.",
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                                color = TextSecondary,
-                            )
-                            val noCycleShape = RoundedCornerShape(15.dp)
-                            val noCycleSelected = selectedCycle == null
-                            val activeCycleBg = remember(dark) {
-                                lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.20f else 0.10f)
-                            }
-                            val noCycleBg by animateColorAsState(
-                                targetValue = if (noCycleSelected) activeCycleBg else ObsidianSurfaceContainer,
-                                animationSpec = tween(180),
-                                label = "noCycleBg",
-                            )
-                            val noCycleRing by animateColorAsState(
-                                targetValue = if (noCycleSelected) ObsidianPrimary else Color.Transparent,
-                                animationSpec = tween(180),
-                                label = "noCycleRing",
-                            )
-                            Row(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .clip(noCycleShape)
-                                    .background(noCycleBg)
-                                    .then(if (noCycleSelected) Modifier.border(2.dp, noCycleRing, noCycleShape) else Modifier)
-                                    .clickable(
-                                        interactionSource = remember { MutableInteractionSource() },
-                                        indication = null,
-                                    ) {
-                                        selectedCycle = null
-                                        cycleConfirmed = false
+                                CloudCard("Rotazione") {
+                                    val noCycleShape = RoundedCornerShape(15.dp)
+                                    val noCycleSelected = selectedCycle == null
+                                    val activeCycleBg = remember(dark) {
+                                        lerp(ObsidianSurfaceContainer, ObsidianPrimary, if (dark) 0.20f else 0.10f)
                                     }
-                                    .padding(horizontal = 8.dp, vertical = 4.dp),
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) {
-                                RadioButton(
-                                    selected = noCycleSelected,
-                                    onClick = {
-                                        selectedCycle = null
-                                        cycleConfirmed = false
-                                    },
-                                    colors = RadioButtonDefaults.colors(
-                                        selectedColor = ObsidianPrimary,
-                                        unselectedColor = TextSecondary,
-                                    ),
-                                )
-                                Text("Salva soltanto i modelli", fontSize = 13.sp, lineHeight = 18.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
-                            }
-                            current.cycles.forEach { cycle ->
-                                val selected = selectedCycle == cycle.rotation.id
-                                val cycleShape = RoundedCornerShape(15.dp)
-                                val cycleBg by animateColorAsState(
-                                    targetValue = if (selected) activeCycleBg else ObsidianSurfaceContainer,
-                                    animationSpec = tween(180),
-                                    label = "cycleCardBg",
-                                )
-                                val cycleRing by animateColorAsState(
-                                    targetValue = if (selected) ObsidianPrimary else Color.Transparent,
-                                    animationSpec = tween(180),
-                                    label = "cycleCardRing",
-                                )
-                                Column(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clip(cycleShape)
-                                        .background(cycleBg)
-                                        .then(if (selected) Modifier.border(2.dp, cycleRing, cycleShape) else Modifier)
-                                        .clickable(
-                                            interactionSource = remember(cycle.rotation.id) { MutableInteractionSource() },
-                                            indication = null,
-                                        ) {
-                                            selectedCycle = cycle.rotation.id
-                                            cycleConfirmed = false
-                                        }
-                                        .padding(10.dp),
-                                    verticalArrangement = Arrangement.spacedBy(8.dp),
-                                ) {
-                                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    val noCycleBg by animateColorAsState(
+                                        targetValue = if (noCycleSelected) activeCycleBg else ObsidianSurfaceContainer,
+                                        animationSpec = tween(180),
+                                        label = "noCycleBg",
+                                    )
+                                    val noCycleRing by animateColorAsState(
+                                        targetValue = if (noCycleSelected) ObsidianPrimary else Color.Transparent,
+                                        animationSpec = tween(180),
+                                        label = "noCycleRing",
+                                    )
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clip(noCycleShape)
+                                            .background(noCycleBg)
+                                            .then(if (noCycleSelected) Modifier.border(2.dp, noCycleRing, noCycleShape) else Modifier)
+                                            .clickable(
+                                                interactionSource = remember { MutableInteractionSource() },
+                                                indication = null,
+                                            ) {
+                                                selectedCycle = null
+                                                cycleConfirmed = false
+                                            }
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
                                         RadioButton(
-                                            selected = selected,
+                                            selected = noCycleSelected,
                                             onClick = {
-                                                selectedCycle = cycle.rotation.id
+                                                selectedCycle = null
                                                 cycleConfirmed = false
                                             },
                                             colors = RadioButtonDefaults.colors(
@@ -758,183 +647,270 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                                                 unselectedColor = TextSecondary,
                                             ),
                                         )
-                                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                                            Text(cycle.rotation.name, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                                            Text(
-                                                text = "${cycle.rotation.daySequence.size} giorni · " + when (cycle.basis) {
-                                                    "explicit" -> "ciclo indicato"
-                                                    "repeated" -> "ripetizione rilevata"
-                                                    else -> "sequenza osservata, da confermare"
-                                                },
-                                                fontSize = 11.sp,
-                                                lineHeight = 16.sp,
-                                                color = TextSecondary,
-                                            )
-                                        }
-                                        TonalIconButton(
-                                            icon = "edit",
-                                            contentDescription = "Modifica ${cycle.rotation.name}",
-                                            onClick = { editCycle = cycle.rotation.id },
-                                            fill = ObsidianSurface,
+                                        Text("Solo modelli", fontSize = 13.sp, lineHeight = 18.sp, color = TextPrimary, fontWeight = FontWeight.Medium)
+                                    }
+                                    current.cycles.forEach { cycle ->
+                                        val selected = selectedCycle == cycle.rotation.id
+                                        val cycleShape = RoundedCornerShape(15.dp)
+                                        val cycleBg by animateColorAsState(
+                                            targetValue = if (selected) activeCycleBg else ObsidianSurfaceContainer,
+                                            animationSpec = tween(180),
+                                            label = "cycleCardBg",
                                         )
-                                    }
-                                    if (selected && cycle.evidence.isNotBlank()) {
-                                        Text(cycle.evidence, fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
-                                    }
-                                    if (selected) {
-                                        cycle.rotation.daySequence.chunked(7).forEach { week ->
-                                            Row(
-                                                modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
-                                                horizontalArrangement = Arrangement.spacedBy(4.dp),
-                                            ) {
-                                                week.forEach { id ->
-                                                    val def = current.shifts.firstOrNull { it.definition.id == id }?.definition
-                                                    if (def != null) {
-                                                        val tileStyle = shiftColorStyle(
-                                                            source = Color(def.colorHex),
-                                                            dark = dark,
-                                                            backdrop = ObsidianSurfaceContainer,
-                                                            definitionId = def.id,
+                                        val cycleRing by animateColorAsState(
+                                            targetValue = if (selected) ObsidianPrimary else Color.Transparent,
+                                            animationSpec = tween(180),
+                                            label = "cycleCardRing",
+                                        )
+                                        Column(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(cycleShape)
+                                                .background(cycleBg)
+                                                .then(if (selected) Modifier.border(2.dp, cycleRing, cycleShape) else Modifier)
+                                                .clickable(
+                                                    interactionSource = remember(cycle.rotation.id) { MutableInteractionSource() },
+                                                    indication = null,
+                                                ) {
+                                                    selectedCycle = cycle.rotation.id
+                                                    cycleConfirmed = false
+                                                }
+                                                .padding(10.dp),
+                                            verticalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                                                RadioButton(
+                                                    selected = selected,
+                                                    onClick = {
+                                                        selectedCycle = cycle.rotation.id
+                                                        cycleConfirmed = false
+                                                    },
+                                                    colors = RadioButtonDefaults.colors(
+                                                        selectedColor = ObsidianPrimary,
+                                                        unselectedColor = TextSecondary,
+                                                    ),
+                                                )
+                                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                                    Text(cycle.rotation.name, fontSize = 14.sp, lineHeight = 19.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
+                                                    FlowRow(
+                                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                                        verticalArrangement = Arrangement.spacedBy(4.dp),
+                                                    ) {
+                                                        ImportStatusPill(
+                                                            text = "${cycle.rotation.daySequence.size}g",
+                                                            fill = ObsidianSurface,
+                                                            ink = TextSecondary,
+                                                            icon = "rotation",
                                                         )
-                                                        val tileBrush = pastelSheenBrush(tileStyle.codeFill, tileStyle.codeInk)
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .weight(1f)
-                                                                .height(30.dp)
-                                                                .clip(RoundedCornerShape(8.dp))
-                                                                .background(tileBrush),
-                                                            contentAlignment = Alignment.Center,
-                                                        ) {
-                                                            Text(
-                                                                text = def.shortCode,
-                                                                color = tileStyle.codeInk,
-                                                                fontSize = 10.sp,
-                                                                lineHeight = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                textAlign = TextAlign.Center,
-                                                                maxLines = 1,
-                                                                overflow = TextOverflow.Ellipsis,
-                                                                style = centeredBadgeTextStyle(),
-                                                            )
+                                                        val (basisLabel, basisFill, basisInk) = when (cycle.basis) {
+                                                            "explicit" -> Triple("Indicato", Color(palette.success.fill), Color(palette.success.ink))
+                                                            "repeated" -> Triple("Ripetuto", ObsidianPrimarySubtle, BrandInk)
+                                                            else -> Triple("Da confermare", Color(palette.warning.fill), Color(palette.warning.ink))
                                                         }
-                                                    } else {
-                                                        Box(
-                                                            modifier = Modifier
-                                                                .weight(1f)
-                                                                .height(30.dp)
-                                                                .clip(RoundedCornerShape(8.dp))
-                                                                .background(ObsidianSurface),
-                                                            contentAlignment = Alignment.Center,
-                                                        ) {
-                                                            Text(
-                                                                text = "—",
-                                                                color = TextMuted,
-                                                                fontSize = 10.sp,
-                                                                lineHeight = 10.sp,
-                                                                fontWeight = FontWeight.Bold,
-                                                                textAlign = TextAlign.Center,
-                                                                style = centeredBadgeTextStyle(),
-                                                            )
-                                                        }
+                                                        ImportStatusPill(
+                                                            text = basisLabel,
+                                                            fill = basisFill,
+                                                            ink = basisInk,
+                                                        )
                                                     }
                                                 }
-                                                repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
+                                                TonalIconButton(
+                                                    icon = "edit",
+                                                    contentDescription = "Modifica ${cycle.rotation.name}",
+                                                    onClick = { editCycle = cycle.rotation.id },
+                                                    fill = ObsidianSurface,
+                                                )
+                                            }
+                                            if (selected && cycle.evidence.isNotBlank()) {
+                                                Text(cycle.evidence, fontSize = 11.sp, lineHeight = 16.sp, color = TextSecondary)
+                                            }
+                                            if (selected) {
+                                                cycle.rotation.daySequence.chunked(7).forEach { week ->
+                                                    Row(
+                                                        modifier = Modifier.fillMaxWidth().padding(top = 2.dp),
+                                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
+                                                    ) {
+                                                        week.forEach { id ->
+                                                            val def = current.shifts.firstOrNull { it.definition.id == id }?.definition
+                                                            if (def != null) {
+                                                                val tileStyle = shiftColorStyle(
+                                                                    source = Color(def.colorHex),
+                                                                    dark = dark,
+                                                                    backdrop = ObsidianSurfaceContainer,
+                                                                    definitionId = def.id,
+                                                                )
+                                                                val tileBrush = pastelSheenBrush(tileStyle.codeFill, tileStyle.codeInk)
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .weight(1f)
+                                                                        .height(30.dp)
+                                                                        .clip(RoundedCornerShape(8.dp))
+                                                                        .background(tileBrush),
+                                                                    contentAlignment = Alignment.Center,
+                                                                ) {
+                                                                    Text(
+                                                                        text = def.shortCode,
+                                                                        color = tileStyle.codeInk,
+                                                                        fontSize = 10.sp,
+                                                                        lineHeight = 10.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        textAlign = TextAlign.Center,
+                                                                        maxLines = 1,
+                                                                        overflow = TextOverflow.Ellipsis,
+                                                                        style = centeredBadgeTextStyle(),
+                                                                    )
+                                                                }
+                                                            } else {
+                                                                Box(
+                                                                    modifier = Modifier
+                                                                        .weight(1f)
+                                                                        .height(30.dp)
+                                                                        .clip(RoundedCornerShape(8.dp))
+                                                                        .background(ObsidianSurface),
+                                                                    contentAlignment = Alignment.Center,
+                                                                ) {
+                                                                    Text(
+                                                                        text = "—",
+                                                                        color = TextMuted,
+                                                                        fontSize = 10.sp,
+                                                                        lineHeight = 10.sp,
+                                                                        fontWeight = FontWeight.Bold,
+                                                                        textAlign = TextAlign.Center,
+                                                                        style = centeredBadgeTextStyle(),
+                                                                    )
+                                                                }
+                                                            }
+                                                        }
+                                                        repeat(7 - week.size) { Spacer(Modifier.weight(1f)) }
+                                                    }
+                                                }
                                             }
                                         }
                                     }
+                                    CloudButton(
+                                        label = "Nuova rotazione",
+                                        icon = "plus",
+                                        onClick = {
+                                            val id = "ai-cycle-" + UUID.randomUUID()
+                                            val row = AiReviewCycle(
+                                                rotation = ShiftRotation(id, "Nuova rotazione", 7, List(7) { "" }),
+                                                basis = "observed",
+                                                evidence = "",
+                                                employees = emptyList(),
+                                            )
+                                            draft = current.copy(cycles = current.cycles + row)
+                                            selectedCycle = id
+                                            cycleConfirmed = false
+                                            editCycle = id
+                                        },
+                                        enabled = current.cycles.size < 50,
+                                        secondary = true,
+                                    )
+                                    AnimatedVisibility(
+                                        visible = selectedCycle != null,
+                                        enter = fadeIn(tween(180)) + expandVertically(tween(220)),
+                                        exit = fadeOut(tween(140)) + shrinkVertically(tween(180)),
+                                    ) {
+                                        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                            SettingsDivider()
+                                            ImportSwitchRow(
+                                                label = "Sequenza verificata",
+                                                checked = cycleConfirmed,
+                                                onCheckedChange = { cycleConfirmed = it },
+                                            )
+                                            SettingsDivider()
+                                            ImportSwitchRow(
+                                                label = "Imposta come predefinita",
+                                                checked = makeDefault,
+                                                onCheckedChange = { makeDefault = it },
+                                            )
+                                        }
+                                    }
                                 }
-                            }
-                            CloudButton(
-                                label = "Crea una sequenza da correggere",
-                                icon = "plus",
-                                onClick = {
-                                    val id = "ai-cycle-" + UUID.randomUUID()
-                                    val row = AiReviewCycle(
-                                        rotation = ShiftRotation(id, "Nuova rotazione", 7, List(7) { "" }),
-                                        basis = "observed",
-                                        evidence = "Sequenza manuale da completare",
-                                        employees = emptyList(),
-                                    )
-                                    draft = current.copy(cycles = current.cycles + row)
-                                    selectedCycle = id
-                                    cycleConfirmed = false
-                                    editCycle = id
-                                },
-                                enabled = current.cycles.size < 50,
-                                secondary = true,
-                            )
-                            AnimatedVisibility(
-                                visible = selectedCycle != null,
-                                enter = fadeIn(tween(180)) + expandVertically(tween(220)),
-                                exit = fadeOut(tween(140)) + shrinkVertically(tween(180)),
-                            ) {
-                                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    SettingsDivider()
+                                CloudCard {
                                     ImportSwitchRow(
-                                        label = "Ho verificato la sequenza e voglio usarla come ciclo",
-                                        checked = cycleConfirmed,
-                                        onCheckedChange = { cycleConfirmed = it },
+                                        label = "Dati verificati",
+                                        checked = confirmed,
+                                        onCheckedChange = { confirmed = it },
                                     )
+                                    val problems = AiRosterImport.validate(current, selectedCycle, cycleConfirmed)
+                                    if (problems.isNotEmpty()) {
+                                        SettingsDivider()
+                                        Row(
+                                            modifier = Modifier
+                                                .fillMaxWidth()
+                                                .clip(RoundedCornerShape(12.dp))
+                                                .background(Color(palette.warning.fill))
+                                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                                            verticalAlignment = Alignment.Top,
+                                            horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                        ) {
+                                            SiteIcon("alert-triangle", null, Modifier.padding(top = 2.dp).size(15.dp), Color(palette.warning.ink))
+                                            Text(
+                                                text = problems.joinToString("\n"),
+                                                fontSize = 12.sp,
+                                                lineHeight = 17.sp,
+                                                color = Color(palette.warning.ink),
+                                            )
+                                        }
+                                    }
                                     SettingsDivider()
-                                    ImportSwitchRow(
-                                        label = "Imposta come rotazione predefinita",
-                                        checked = makeDefault,
-                                        onCheckedChange = { makeDefault = it },
-                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                                    ) {
+                                        SiteIcon("layers", null, Modifier.size(14.dp), BrandInk)
+                                        Text(
+                                            text = "Aggiunta sicura · modelli esistenti intatti",
+                                            fontSize = 11.sp,
+                                            lineHeight = 15.sp,
+                                            color = TextSecondary,
+                                        )
+                                    }
                                 }
-                            }
-                        }
-                        CloudCard("Prima di salvare") {
-                            ImportSwitchRow(
-                                label = "Ho verificato modelli, orari e osservazioni",
-                                checked = confirmed,
-                                onCheckedChange = { confirmed = it },
-                            )
-                            val problems = AiRosterImport.validate(current, selectedCycle, cycleConfirmed)
-                            if (problems.isNotEmpty()) {
-                                SettingsDivider()
-                                Text(
-                                    text = problems.joinToString("\n"),
-                                    fontSize = 12.sp,
-                                    lineHeight = 18.sp,
-                                    color = Color(currentTurniPalette.warning.ink),
-                                )
-                            }
-                            SettingsDivider()
-                            Text(
-                                text = "I modelli esistenti rimangono invariati. Le corrispondenze esatte vengono riutilizzate; eventuali varianti vengono aggiunte al catalogo.",
-                                fontSize = 11.sp,
-                                lineHeight = 16.sp,
-                                color = TextSecondary,
-                            )
-                        }
                             }
                             targetStep == 4 -> {
-                                CloudCard("Salvataggio completato") {
-                                    NeutralIconBadge(
-                                        icon = "check",
-                                        size = 46.dp,
-                                        cornerRadius = 14.dp,
-                                        iconSize = 24.dp,
-                                        fill = Color(palette.success.fill),
-                                        tint = Color(palette.success.ink),
-                                        progress = savedMotion.value,
-                                    )
-                                    Text(
-                                        text = "${saved?.shifts ?: 0} nuovi modelli · ${saved?.cycles ?: 0} rotazioni salvate",
-                                        fontSize = 17.sp,
-                                        lineHeight = 22.sp,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = TextPrimary,
-                                    )
-                                    Text(
-                                        text = "Li trovi in Modelli e turni. Puoi modificarli ancora da lì e applicare la rotazione dal calendario.",
-                                        fontSize = 13.sp,
-                                        lineHeight = 19.sp,
-                                        color = TextSecondary,
-                                    )
+                                CloudCard {
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                                    ) {
+                                        NeutralIconBadge(
+                                            icon = "check",
+                                            size = 44.dp,
+                                            cornerRadius = 14.dp,
+                                            iconSize = 22.dp,
+                                            fill = Color(palette.success.fill),
+                                            tint = Color(palette.success.ink),
+                                            progress = savedMotion.value,
+                                        )
+                                        Text(
+                                            text = "Catalogo aggiornato",
+                                            fontSize = 18.sp,
+                                            lineHeight = 23.sp,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = TextPrimary,
+                                        )
+                                    }
+                                    FlowRow(
+                                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                                    ) {
+                                        ImportStatusPill(
+                                            text = "+${saved?.shifts ?: 0} ${(saved?.shifts ?: 0).let { if (it == 1) "modello" else "modelli" }}",
+                                            fill = Color(palette.success.fill),
+                                            ink = Color(palette.success.ink),
+                                            icon = "clock",
+                                        )
+                                        ImportStatusPill(
+                                            text = "+${saved?.cycles ?: 0} ${(saved?.cycles ?: 0).let { if (it == 1) "rotazione" else "rotazioni" }}",
+                                            fill = ObsidianPrimarySubtle,
+                                            ink = BrandInk,
+                                            icon = "rotation",
+                                        )
+                                    }
                                     CloudButton(
-                                        label = "Apri Modelli e turni",
+                                        label = "Vai ai modelli",
                                         icon = "clock",
                                         onClick = { onNavigateToTurni?.invoke(null) ?: onDismiss() },
                                     )
@@ -965,14 +941,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     CircularProgressIndicator(color = BrandInk)
-                    Text(busyLabel, fontSize = 18.sp, lineHeight = 23.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
-                    Text(
-                        text = "Controlliamo il formato sul dispositivo. Il calendario resta invariato.",
-                        fontSize = 13.sp,
-                        lineHeight = 18.sp,
-                        color = TextSecondary,
-                        textAlign = TextAlign.Center,
-                    )
+                    Text("Analisi in corso…", fontSize = 17.sp, lineHeight = 22.sp, fontWeight = FontWeight.SemiBold, color = TextPrimary)
                     CloudButton("Annulla", "x", { cancel() }, secondary = true)
                 }
             }
@@ -1026,7 +995,7 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                     tint = Color(palette.danger.ink),
                 )
                 Text(
-                    text = "Scartare la revisione?",
+                    text = "Scartare la bozza?",
                     modifier = Modifier.weight(1f),
                     color = TextPrimary,
                     fontSize = 18.sp,
@@ -1044,19 +1013,19 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
                 )
             }
             Text(
-                text = "Le modifiche sono ancora in bozza. Se torni indietro, perderai questa revisione. I turni già salvati nel catalogo restano invariati.",
+                text = "Le modifiche non salvate andranno perse.",
                 color = TextSecondary,
                 fontSize = 13.sp,
-                lineHeight = 19.sp,
+                lineHeight = 18.sp,
             )
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 CloudButton(
-                    label = "Continua revisione",
+                    label = "Continua",
                     icon = "check",
                     onClick = { finish { discard = false } },
                 )
                 CloudButton(
-                    label = "Scarta e torna indietro",
+                    label = "Scarta",
                     icon = "trash",
                     onClick = {
                         finish {
@@ -1073,36 +1042,44 @@ fun GeminiShiftImportScreen(onDismiss: () -> Unit, onNavigateToTurni: ((ShiftRot
 }
 
 @Composable
-private fun ImportStep0Prospetto(
+private fun ImportStep1Name(
     name: String,
     nameConfirmed: Boolean,
     nameError: Boolean,
-    document: AiRosterDocument?,
     busy: Boolean,
     step1Motion: Float,
-    docPickMotion: Float,
+    onPulseIcon: () -> Unit,
     onNameChange: (String) -> Unit,
     onContinue: () -> Unit,
-    onPickDocument: () -> Unit,
-    onClearDocument: () -> Unit,
 ) {
     val palette = currentTurniPalette
+    val badgeFill by animateColorAsState(
+        targetValue = if (name.isNotBlank()) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
+        animationSpec = tween(220),
+        label = "step1BadgeFill",
+    )
     CloudCard {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            NeutralIconBadge(
-                icon = "scan-text",
-                size = 40.dp,
-                cornerRadius = 12.dp,
-                iconSize = 20.dp,
-                fill = if (nameConfirmed) ObsidianPrimaryContainer else ObsidianSurfaceContainer,
-                tint = BrandInk,
-                progress = step1Motion,
-            )
+            Box(
+                modifier = Modifier
+                    .size(42.dp)
+                    .clip(RoundedCornerShape(13.dp))
+                    .background(badgeFill)
+                    .bouncyClickable(enabled = !busy, onClick = onPulseIcon),
+                contentAlignment = Alignment.Center,
+            ) {
+                SiteIconMotion(
+                    name = "scan-text",
+                    description = null,
+                    modifier = Modifier.size(21.dp),
+                    tint = BrandInk,
+                ) { step1Motion }
+            }
             Text(
-                text = "Dati del prospetto",
+                text = "Il tuo nome",
                 modifier = Modifier.weight(1f),
                 color = TextPrimary,
                 fontSize = 16.sp,
@@ -1118,14 +1095,8 @@ private fun ImportStep0Prospetto(
                 )
             }
         }
-        Text(
-            text = "Ti guidiamo passo dopo passo: prepariamo le istruzioni per la tua AI senza inviare nulla in automatico.",
-            fontSize = 13.sp,
-            lineHeight = 19.sp,
-            color = TextSecondary,
-        )
         ImportField(
-            label = "Nome e cognome nel documento",
+            label = "Nome e cognome nel prospetto",
             placeholder = "Es. Mario Rossi",
             value = name,
             change = onNameChange,
@@ -1133,213 +1104,185 @@ private fun ImportStep0Prospetto(
             isError = nameError,
             onDone = onContinue,
         )
-        Text(
-            text = if (nameError) {
-                "Scrivi il nome e cognome come compaiono nel documento per proseguire."
-            } else {
-                "Serve all’AI per riconoscere la tua riga o squadra tra quelle dei colleghi."
-            },
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            color = if (nameError) ColorNegative else TextSecondary,
+        CloudButton(
+            label = "Continua",
+            icon = "arrow-right",
+            onClick = onContinue,
+            enabled = !busy,
         )
-    }
-
-    CloudCard(
-        title = "Prospetto · facoltativo",
-        subtitle = "Controlla qui il PDF o un’immagine del prospetto prima di allegarlo nella chat della tua AI.",
-    ) {
-        val docPickerShape = RoundedCornerShape(15.dp)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(docPickerShape)
-                .background(ObsidianSurfaceContainer)
-                .bouncyClickable(enabled = !busy, onClick = onPickDocument)
-                .padding(12.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-        ) {
-            NeutralIconBadge(
-                icon = if (document == null) "upload" else "file-text",
-                size = 38.dp,
-                cornerRadius = 12.dp,
-                iconSize = 18.dp,
-                fill = ObsidianSurface,
-                tint = BrandInk,
-                progress = docPickMotion,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                Text(
-                    text = document?.name ?: "Scegli PDF o immagine",
-                    fontSize = 13.sp,
-                    lineHeight = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary.copy(alpha = if (!busy) 1f else 0.5f),
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = if (document != null) {
-                        "Documento verificato sul dispositivo"
-                    } else {
-                        "PDF multipagina o foto delle pagine"
-                    },
-                    fontSize = 11.sp,
-                    lineHeight = 16.sp,
-                    maxLines = 2,
-                    overflow = TextOverflow.Ellipsis,
-                    color = TextSecondary,
-                )
-            }
-            if (document != null) {
-                ImportStatusPill(
-                    text = "${document.pages} ${if (document.pages == 1) "pag." else "pagg."}",
-                    fill = ObsidianPrimaryContainer,
-                    ink = BrandInk,
-                )
-                TonalIconButton(
-                    icon = "x",
-                    contentDescription = "Rimuovi documento",
-                    onClick = onClearDocument,
-                    size = 30.dp,
-                    cornerRadius = 10.dp,
-                    fill = ObsidianSurface,
-                    tint = TextSecondary,
-                    iconSize = 14.dp,
-                    enabled = !busy,
-                )
-            } else {
-                ImportStatusPill(
-                    text = "Allega",
-                    fill = ObsidianPrimarySubtle,
-                    ink = BrandInk,
-                )
-            }
-        }
     }
 }
 
 @Composable
-private fun ImportStep1AskAi(
+private fun ImportStep2AskAi(
     confirmedName: String,
-    document: AiRosterDocument?,
     prompt: String,
     promptCopied: Boolean,
     showPromptPreview: Boolean,
     busy: Boolean,
     copyMotion: Float,
-    onEditData: () -> Unit,
+    onEditName: () -> Unit,
     onCopyPrompt: () -> Unit,
     onTogglePromptPreview: () -> Unit,
     onOpenAi: (String) -> Unit,
+    onHaveResponse: () -> Unit,
 ) {
     val palette = currentTurniPalette
-    Surface(
-        shape = RoundedCornerShape(18.dp),
-        color = ObsidianSurface,
-        modifier = Modifier.fillMaxWidth(),
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(horizontal = 14.dp, vertical = 11.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            NeutralIconBadge(
-                icon = "scan-text",
-                size = 34.dp,
-                cornerRadius = 10.dp,
-                iconSize = 17.dp,
-                fill = ObsidianPrimaryContainer,
-                tint = BrandInk,
-            )
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
-                Text(
-                    text = confirmedName,
-                    color = TextPrimary,
-                    fontSize = 14.sp,
-                    lineHeight = 18.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    text = document?.let { file ->
-                        "${file.name} · ${file.pages} ${if (file.pages == 1) "pag." else "pagg."}"
-                    } ?: "Solo nome · nessun file",
-                    color = TextSecondary,
-                    fontSize = 11.sp,
-                    lineHeight = 15.sp,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .heightIn(min = 34.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(ObsidianPrimarySubtle)
-                    .bouncyClickable(enabled = !busy, onClick = onEditData)
-                    .padding(horizontal = 10.dp, vertical = 6.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                SiteIcon("edit", null, Modifier.size(12.dp), BrandInk)
-                Text(
-                    text = "Modifica",
-                    color = BrandInk,
-                    fontSize = 11.sp,
-                    lineHeight = 11.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    style = centeredBadgeTextStyle(),
-                )
-            }
-        }
-    }
+    val copyFill by animateColorAsState(
+        targetValue = if (promptCopied) Color(palette.success.fill) else ObsidianPrimary,
+        animationSpec = tween(240),
+        label = "copyButtonFill",
+    )
+    val copyInk by animateColorAsState(
+        targetValue = if (promptCopied) Color(palette.success.ink) else OnBrand,
+        animationSpec = tween(240),
+        label = "copyButtonInk",
+    )
+    val copyEnabled = confirmedName.isNotBlank() && !busy
+    val copyAlpha = if (copyEnabled) 1f else 0.45f
 
     CloudCard {
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            StepNumberCircleBadge(
-                number = "1",
-                done = promptCopied,
-                size = 28.dp,
+            NeutralIconBadge(
+                icon = "message",
+                size = 38.dp,
+                cornerRadius = 12.dp,
+                iconSize = 19.dp,
+                fill = ObsidianPrimaryContainer,
+                tint = BrandInk,
                 progress = copyMotion,
             )
             Text(
-                text = "Copia le istruzioni",
+                text = "Chiedi all’AI",
                 modifier = Modifier.weight(1f),
                 color = TextPrimary,
                 fontSize = 16.sp,
                 lineHeight = 21.sp,
                 fontWeight = FontWeight.SemiBold,
             )
-            if (promptCopied) {
-                ImportStatusPill(
-                    text = "Copiate",
-                    fill = Color(palette.success.fill),
-                    ink = Color(palette.success.ink),
-                    icon = "check",
+            Row(
+                modifier = Modifier
+                    .widthIn(max = 156.dp)
+                    .clip(RoundedCornerShape(10.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .bouncyClickable(enabled = !busy, onClick = onEditName)
+                    .padding(horizontal = 9.dp, vertical = 5.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Text(
+                    text = confirmedName,
+                    color = TextPrimary,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                    fontWeight = FontWeight.Medium,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.weight(1f, fill = false),
+                )
+                SiteIcon("edit", "Modifica nome", Modifier.size(11.dp), BrandInk)
+            }
+        }
+
+        Surface(
+            shape = RoundedCornerShape(15.dp),
+            color = copyFill,
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 48.dp)
+                .clip(RoundedCornerShape(15.dp))
+                .bouncyClickable(enabled = copyEnabled, onClick = onCopyPrompt),
+        ) {
+            Row(
+                modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.Center,
+            ) {
+                AnimatedContent(
+                    targetState = promptCopied,
+                    transitionSpec = {
+                        (fadeIn(tween(220)) + scaleIn(spring(dampingRatio = 0.68f, stiffness = 460f), initialScale = 0.55f)) togetherWith
+                            (fadeOut(tween(130)) + scaleOut(tween(130), targetScale = 0.55f))
+                    },
+                    label = "copyMorphIcon",
+                ) { copied ->
+                    SiteIconMotion(
+                        name = if (copied) "check" else "copy",
+                        description = null,
+                        modifier = Modifier.size(18.dp),
+                        tint = copyInk.copy(alpha = copyAlpha),
+                    ) { copyMotion }
+                }
+                Spacer(Modifier.width(8.dp))
+                Text(
+                    text = if (promptCopied) "Istruzioni copiate" else "Copia istruzioni",
+                    color = copyInk.copy(alpha = copyAlpha),
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
         }
-        Text(
-            text = "Le istruzioni includono già il tuo nome e chiedono all’AI di rispondere solo in formato JSON completo.",
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
-        CloudButton(
-            label = if (promptCopied) "Istruzioni copiate · Copia di nuovo" else "Copia istruzioni su misura",
-            icon = if (promptCopied) "check" else "copy",
-            onClick = onCopyPrompt,
-            enabled = confirmedName.isNotBlank() && !busy,
-            secondary = promptCopied,
-        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        ) {
+            SiteIcon("file-text", null, Modifier.size(13.dp), TextSecondary)
+            Text(
+                text = "Allega il prospetto nella chat",
+                color = TextSecondary,
+                fontSize = 12.sp,
+                lineHeight = 16.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+        }
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            listOf(
+                "ChatGPT" to "https://chatgpt.com/",
+                "Gemini" to "https://gemini.google.com/",
+                "Claude" to "https://claude.ai/",
+            ).forEach { (serviceName, serviceUrl) ->
+                val pillShape = RoundedCornerShape(14.dp)
+                Row(
+                    modifier = Modifier
+                        .weight(1f)
+                        .heightIn(min = 44.dp)
+                        .clip(pillShape)
+                        .background(ObsidianSurfaceContainer)
+                        .bouncyClickable(enabled = !busy) { onOpenAi(serviceUrl) }
+                        .padding(horizontal = 6.dp, vertical = 10.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+                ) {
+                    SiteIcon(
+                        name = "message",
+                        contentDescription = "Apri $serviceName",
+                        modifier = Modifier.size(13.dp),
+                        tint = BrandInk.copy(alpha = if (!busy) 1f else 0.45f),
+                    )
+                    Text(
+                        text = serviceName,
+                        color = TextPrimary.copy(alpha = if (!busy) 1f else 0.45f),
+                        fontSize = 13.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
+        }
+
         val promptChevron by animateFloatAsState(
             targetValue = if (showPromptPreview) 180f else 0f,
             animationSpec = spring(dampingRatio = 0.85f, stiffness = Spring.StiffnessMediumLow),
@@ -1356,9 +1299,9 @@ private fun ImportStep1AskAi(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
-            SiteIcon("file-text", null, Modifier.size(16.dp), BrandInk)
+            SiteIcon("file-text", null, Modifier.size(15.dp), BrandInk)
             Text(
-                text = if (showPromptPreview) "Nascondi testo istruzioni" else "Mostra testo istruzioni",
+                text = "Vedi istruzioni",
                 modifier = Modifier.weight(1f),
                 color = TextPrimary,
                 fontSize = 13.sp,
@@ -1387,102 +1330,28 @@ private fun ImportStep1AskAi(
                 )
             }
         }
-    }
 
-    CloudCard {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            StepNumberCircleBadge(
-                number = "2",
-                done = false,
-                size = 28.dp,
-            )
-            Text(
-                text = "Apri la tua AI preferita",
-                modifier = Modifier.weight(1f),
-                color = TextPrimary,
-                fontSize = 16.sp,
-                lineHeight = 21.sp,
-                fontWeight = FontWeight.SemiBold,
-            )
-        }
-        Text(
-            text = "Incolla le istruzioni e allega il PDF o le foto di tutte le pagine del prospetto, poi copia tutta la risposta JSON.",
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            listOf(
-                "ChatGPT" to "https://chatgpt.com/",
-                "Gemini" to "https://gemini.google.com/",
-                "Claude" to "https://claude.ai/",
-            ).forEach { (serviceName, serviceUrl) ->
-                val pillShape = RoundedCornerShape(15.dp)
-                Column(
-                    modifier = Modifier
-                        .weight(1f)
-                        .heightIn(min = 66.dp)
-                        .clip(pillShape)
-                        .background(ObsidianSurfaceContainer)
-                        .bouncyClickable(enabled = !busy) { onOpenAi(serviceUrl) }
-                        .padding(horizontal = 8.dp, vertical = 10.dp),
-                    horizontalAlignment = Alignment.CenterHorizontally,
-                    verticalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterVertically),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(26.dp)
-                            .clip(CircleShape)
-                            .background(ObsidianPrimaryContainer),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        SiteIcon(
-                            name = "message",
-                            contentDescription = null,
-                            modifier = Modifier.size(13.dp),
-                            tint = BrandInk.copy(alpha = if (!busy) 1f else 0.45f),
-                        )
-                    }
-                    Text(
-                        text = serviceName,
-                        color = TextPrimary.copy(alpha = if (!busy) 1f else 0.45f),
-                        fontSize = 13.sp,
-                        fontWeight = FontWeight.SemiBold,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        text = "Apri chat",
-                        color = BrandInk.copy(alpha = if (!busy) 1f else 0.45f),
-                        fontSize = 10.sp,
-                        lineHeight = 12.sp,
-                        fontWeight = FontWeight.Medium,
-                        maxLines = 1,
-                    )
-                }
-            }
-        }
-        Text(
-            text = "Nessun file viene inviato automaticamente: sei tu a incollare e allegare nella chat che preferisci.",
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            color = TextSecondary,
+        CloudButton(
+            label = "Ho la risposta",
+            icon = "arrow-right",
+            onClick = onHaveResponse,
+            enabled = !busy,
+            secondary = !promptCopied,
         )
     }
 }
 
 @Composable
-private fun ImportStep2PasteResponse(
+private fun ImportStep3Paste(
     pasted: String,
     pastedError: Boolean,
+    canAnalyze: Boolean,
     busy: Boolean,
     pasteMotion: Float,
     onPasteFromClipboard: () -> Unit,
     onClearPasted: () -> Unit,
     onPastedChange: (String) -> Unit,
+    onAnalyze: () -> Unit,
 ) {
     val palette = currentTurniPalette
     CloudCard {
@@ -1516,12 +1385,6 @@ private fun ImportStep2PasteResponse(
                 )
             }
         }
-        Text(
-            text = "Incolla qui la risposta completa generata dall’AI (formato JSON). Nessun turno verrà toccato sul calendario prima della tua revisione.",
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
@@ -1567,7 +1430,7 @@ private fun ImportStep2PasteResponse(
                 ) {
                     SiteIcon(
                         name = "trash",
-                        contentDescription = "Svuota risposta",
+                        contentDescription = "Svuota",
                         modifier = Modifier.size(14.dp),
                         tint = TextSecondary.copy(alpha = if (!busy) 1f else 0.45f),
                     )
@@ -1584,28 +1447,27 @@ private fun ImportStep2PasteResponse(
         OutlinedTextField(
             value = pasted,
             onValueChange = onPastedChange,
-            placeholder = { Text("Incolla qui la risposta dell’AI (es. {\"shiftDefinitions\": ...})") },
+            placeholder = { Text("Risposta JSON dall’AI…") },
             isError = pastedError,
             enabled = !busy,
-            modifier = Modifier.fillMaxWidth().heightIn(min = 144.dp, max = 230.dp),
+            modifier = Modifier.fillMaxWidth().heightIn(min = 140.dp, max = 230.dp),
             maxLines = 9,
             colors = importTextFieldColors(),
             shape = RoundedCornerShape(15.dp),
         )
         AnimatedVisibility(visible = pastedError) {
             Text(
-                text = "Controlla di aver copiato tutta la risposta JSON dall’inizio alla fine (fino all’ultima parentesi graffa }).",
+                text = "Copia l’intera risposta JSON dall’inizio alla fine",
                 color = ColorNegative,
                 fontSize = 12.sp,
-                lineHeight = 17.sp,
+                lineHeight = 16.sp,
             )
         }
-        SettingsDivider()
-        Text(
-            text = "Suggerimento: puoi incollare l’intero messaggio anche se contiene testo introduttivo prima o dopo il JSON. TurniSync estrae i dati automaticamente.",
-            fontSize = 11.sp,
-            lineHeight = 16.sp,
-            color = TextSecondary,
+        CloudButton(
+            label = "Analizza",
+            icon = "check",
+            onClick = onAnalyze,
+            enabled = canAnalyze,
         )
     }
 }
@@ -1630,56 +1492,6 @@ private fun centeredBadgeTextStyle(): TextStyle = TextStyle(
         trim = LineHeightStyle.Trim.Both,
     ),
 )
-
-@Composable
-private fun StepNumberCircleBadge(
-    number: String,
-    done: Boolean = false,
-    fill: Color = ObsidianPrimaryContainer,
-    tint: Color = BrandInk,
-    size: Dp = 28.dp,
-    progress: Float = 0f,
-) {
-    val palette = currentTurniPalette
-    val targetFill = if (done) Color(palette.success.fill) else fill
-    val targetTint = if (done) Color(palette.success.ink) else tint
-    val animatedFill by animateColorAsState(
-        targetValue = targetFill,
-        animationSpec = tween(200),
-        label = "cardStepBadgeFill",
-    )
-    val animatedTint by animateColorAsState(
-        targetValue = targetTint,
-        animationSpec = tween(200),
-        label = "cardStepBadgeTint",
-    )
-    Box(
-        modifier = Modifier
-            .size(size)
-            .clip(CircleShape)
-            .background(animatedFill),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (done) {
-            SiteIconMotion(
-                name = "check",
-                description = null,
-                modifier = Modifier.size(15.dp),
-                tint = animatedTint,
-            ) { progress }
-        } else {
-            Text(
-                text = number,
-                color = animatedTint,
-                fontSize = 12.sp,
-                lineHeight = 12.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
-                style = centeredBadgeTextStyle(),
-            )
-        }
-    }
-}
 
 @Composable
 private fun ImportStatusPill(
@@ -1724,19 +1536,22 @@ private data class ImportWizardStepMeta(
     val label: String,
 )
 
-private val importWizardSteps = listOf(
-    ImportWizardStepMeta(0, "1", "Dati"),
-    ImportWizardStepMeta(1, "2", "AI"),
-    ImportWizardStepMeta(2, "3", "Risultato"),
-    ImportWizardStepMeta(3, "4", "Revisione"),
+private val importBaseSteps = listOf(
+    ImportWizardStepMeta(0, "1", "Nome"),
+    ImportWizardStepMeta(1, "2", "Chiedi"),
+    ImportWizardStepMeta(2, "3", "Incolla"),
 )
+
+private val importReviewStep = ImportWizardStepMeta(3, "4", "Salva")
 
 @Composable
 private fun ImportStepperStrip(
     wizardStep: Int,
+    showReviewStep: Boolean,
     canJumpBack: Boolean,
     onSelectStep: (Int) -> Unit,
 ) {
+    val steps = if (showReviewStep) importBaseSteps + importReviewStep else importBaseSteps
     Surface(
         shape = RoundedCornerShape(18.dp),
         color = ObsidianSurface,
@@ -1744,9 +1559,23 @@ private fun ImportStepperStrip(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth().padding(5.dp),
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
         ) {
-            importWizardSteps.forEach { item ->
+            steps.forEachIndexed { index, item ->
+                if (index > 0) {
+                    val connectorTint by animateColorAsState(
+                        targetValue = if (item.index <= wizardStep) ObsidianPrimary else TextMuted,
+                        animationSpec = tween(220),
+                        label = "importStepConnector$index",
+                    )
+                    SiteIcon(
+                        name = "chevron-right",
+                        contentDescription = null,
+                        modifier = Modifier.size(12.dp),
+                        tint = connectorTint,
+                    )
+                }
                 val isDone = item.index < wizardStep
                 val isActive = item.index == wizardStep
                 val isClickable = canJumpBack && isDone
@@ -1824,7 +1653,7 @@ private fun ImportStepChip(
                 scaleX = chipScale
                 scaleY = chipScale
             }
-            .heightIn(min = 52.dp)
+            .heightIn(min = 46.dp)
             .clip(RoundedCornerShape(13.dp))
             .background(fill)
             .then(
@@ -1843,7 +1672,7 @@ private fun ImportStepChip(
                     if (clickable) append(", tocca per tornare indietro")
                 }
             }
-            .padding(horizontal = 4.dp, vertical = 7.dp),
+            .padding(horizontal = 4.dp, vertical = 6.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(4.dp, Alignment.CenterVertically),
     ) {

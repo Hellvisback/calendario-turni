@@ -102,15 +102,9 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
         editing != null -> "Turno originale"
         else -> "Conteggio statistiche"
     }
-    val subtitle = when {
-        editingHolidays -> "Escludi alcuni turni dal totale nei giorni festivi"
-        editing != null -> "Conta l’ex turno al posto del modello visibile"
-        else -> "Scegli come contare sostituzioni e ferie nei festivi"
-    }
 
     CloudFeatureScaffold(
         title = title,
-        subtitle = subtitle,
         onDismiss = ::close,
         feedback = feedback,
         onDismissFeedback = { feedback = null },
@@ -153,6 +147,7 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                             holidayBadgeMotion.snapTo(0f)
                         }
                     }
+                    LaunchedEffect(Unit) { pulseHolidayBadge() }
 
                     CloudCard {
                         Row(
@@ -216,17 +211,11 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                 },
                             )
                         }
-                        Text(
-                            text = "I modelli scelti restano sul calendario, ma non aumentano i totali nei festivi attivi.",
-                            fontSize = 12.sp,
-                            lineHeight = 18.sp,
-                            color = TextSecondary,
-                        )
                         if (excludedDefinitions.isNotEmpty()) {
                             ShiftChipStrip(definitions = excludedDefinitions)
                         } else {
                             Text(
-                                text = "Nessun modello selezionato",
+                                text = "Nessun modello",
                                 fontSize = 12.sp,
                                 lineHeight = 17.sp,
                                 color = TextMuted,
@@ -239,6 +228,11 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                     if (rules.isEmpty()) {
                         val layersMotion = remember { Animatable(0f) }
                         var layersJob by remember { mutableStateOf<Job?>(null) }
+                        LaunchedEffect(Unit) {
+                            layersMotion.snapTo(0f)
+                            layersMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                            layersMotion.snapTo(0f)
+                        }
                         CloudCard {
                             Row(
                                 modifier = Modifier
@@ -285,12 +279,6 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                     )
                                 }
                             }
-                            Text(
-                                text = "Sostituisci ad esempio Riposo con Ferie sul calendario: con questa regola nelle statistiche resta contato Riposo se proviene da una rotazione.",
-                                fontSize = 12.sp,
-                                lineHeight = 18.sp,
-                                color = TextSecondary,
-                            )
                         }
                     }
 
@@ -373,9 +361,9 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                         )
                                     }
                                     Text(
-                                        text = "Quando ${visible.name} copre uno di questi ex turni, nei totali conta l’originale:",
+                                        text = "Originale contato:",
                                         fontSize = 12.sp,
-                                        lineHeight = 18.sp,
+                                        lineHeight = 17.sp,
                                         color = TextSecondary,
                                     )
                                     if (originalDefinitions.isNotEmpty()) {
@@ -410,8 +398,7 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                     val used = rules.filterNot { it.id == draft.id }.map { it.displayedShiftId }.toSet()
 
                     CloudCard(
-                        title = "1 · Il turno che inserisci sopra",
-                        subtitle = "Scegli il modello che usi per sostituire un turno originale, per esempio Ferie.",
+                        title = "1 · Turno visibile",
                     ) {
                         CloudButton(
                             label = selected?.name ?: "Seleziona un turno",
@@ -461,8 +448,7 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                             it.id != displayed && it.workProfileId == selected?.workProfileId
                         }
                         CloudCard(
-                            title = "2 · Gli ex turni da contare",
-                            subtitle = "Scegli cosa contare al suo posto. La regola vale solo se uno di questi modelli è registrato come ex turno.",
+                            title = "2 · Ex turni da contare",
                         ) {
                             if (candidateOriginals.isEmpty()) {
                                 Text(
@@ -509,7 +495,7 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                             previewArrowMotion.snapTo(0f)
                         }
                         CloudCard(
-                            title = "La tua regola",
+                            title = "Anteprima",
                         ) {
                             Column(
                                 modifier = Modifier.animateContentSize(
@@ -541,10 +527,10 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                                     }
                                 }
                                 Text(
-                                    text = "${selected?.name.orEmpty()} sopra ${selectedOriginals.joinToString { it.name }} → conta il turno originale.",
-                                    fontSize = 13.sp,
-                                    lineHeight = 20.sp,
-                                    color = TextPrimary,
+                                    text = "${selected?.name.orEmpty()} → conta ${selectedOriginals.joinToString { it.name }}",
+                                    fontSize = 12.5.sp,
+                                    lineHeight = 18.sp,
+                                    color = TextSecondary,
                                 )
                             }
                         }
@@ -622,6 +608,11 @@ private fun StatisticsRulesExplainerCard() {
     val arrowMotion = remember { Animatable(0f) }
     var reportJob by remember { mutableStateOf<Job?>(null) }
     var arrowJob by remember { mutableStateOf<Job?>(null) }
+    LaunchedEffect(Unit) {
+        reportMotion.snapTo(0f)
+        reportMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+        reportMotion.snapTo(0f)
+    }
 
     CloudCard {
         Row(
@@ -650,24 +641,14 @@ private fun StatisticsRulesExplainerCard() {
                 tint = BrandInk,
                 progress = reportMotion.value,
             )
-            Column(
+            Text(
+                text = "Cambia solo il conteggio",
+                fontSize = 16.sp,
+                lineHeight = 21.sp,
+                fontWeight = FontWeight.SemiBold,
+                color = TextPrimary,
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(2.dp),
-            ) {
-                Text(
-                    text = "Cambia il conteggio, non il calendario",
-                    fontSize = 16.sp,
-                    lineHeight = 21.sp,
-                    fontWeight = FontWeight.SemiBold,
-                    color = TextPrimary,
-                )
-                Text(
-                    text = "I turni sul calendario restano uguali.",
-                    fontSize = 12.sp,
-                    lineHeight = 17.sp,
-                    color = TextSecondary,
-                )
-            }
+            )
         }
 
         SettingsDivider()
@@ -838,6 +819,11 @@ private fun HolidayStatisticsRuleEditor(
     val scope = rememberCoroutineScope()
     val editorBadgeMotion = remember { Animatable(0f) }
     var editorBadgeJob by remember { mutableStateOf<Job?>(null) }
+    LaunchedEffect(Unit) {
+        editorBadgeMotion.snapTo(0f)
+        editorBadgeMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+        editorBadgeMotion.snapTo(0f)
+    }
     val toggleLabelColor by animateColorAsState(
         targetValue = if (enabled) TextPrimary else TextSecondary,
         animationSpec = tween(180),
@@ -871,7 +857,7 @@ private fun HolidayStatisticsRuleEditor(
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
                 Text(
-                    text = "Escludi dal conteggio nei festivi",
+                    text = "Escludi nei festivi",
                     fontSize = 14.sp,
                     lineHeight = 19.sp,
                     fontWeight = FontWeight.SemiBold,
@@ -879,9 +865,9 @@ private fun HolidayStatisticsRuleEditor(
                 )
                 Text(
                     text = if (enabled) {
-                        if (selected.isEmpty()) "Seleziona i modelli qui sotto" else "${selected.size} modelli esclusi nei festivi"
+                        if (selected.isEmpty()) "Scegli i modelli" else "${selected.size} esclusi"
                     } else {
-                        "Tutti i turni vengono conteggiati normalmente"
+                        "Disattivata"
                     },
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
@@ -901,18 +887,10 @@ private fun HolidayStatisticsRuleEditor(
                 },
             )
         }
-        SettingsDivider()
-        Text(
-            text = "I turni scelti restano nel calendario, ma non vengono conteggiati nelle festività abilitate in Impostazioni → Festività.",
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
     }
 
     CloudCard(
-        title = "2 · Modelli da escludere",
-        subtitle = "Scegli uno o più modelli, anche con nomi personalizzati. Nei giorni feriali continuano a essere contati.",
+        title = "Modelli da escludere",
     ) {
         definitions.chunked(2).forEach { pair ->
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -1084,6 +1062,14 @@ private fun StatisticsModelTile(
             enter = fadeIn(tween(160)) + scaleIn(spring(dampingRatio = 0.65f, stiffness = 500f)),
             exit = fadeOut(tween(140)) + scaleOut(tween(140)),
         ) {
+            val checkMotion = remember(model.id) { Animatable(0f) }
+            LaunchedEffect(selected) {
+                if (selected) {
+                    checkMotion.snapTo(0f)
+                    checkMotion.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+                    checkMotion.snapTo(0f)
+                }
+            }
             Box(
                 modifier = Modifier
                     .size(20.dp)
@@ -1091,7 +1077,9 @@ private fun StatisticsModelTile(
                     .background(tone.codeFill),
                 contentAlignment = Alignment.Center,
             ) {
-                SiteIcon("check", null, Modifier.size(12.dp), tint = tone.codeInk)
+                SiteIconMotion("check", null, Modifier.size(12.dp), tint = tone.codeInk) {
+                    checkMotion.value
+                }
             }
         }
     }

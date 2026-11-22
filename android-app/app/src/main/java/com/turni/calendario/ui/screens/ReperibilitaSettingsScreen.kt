@@ -149,7 +149,6 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
 
     CloudFeatureScaffold(
         title = "Reperibilità",
-        subtitle = "Configura regole automatiche per turno o stagionali",
         onDismiss = onDismiss,
     ) {
         OnCallHeroCard(
@@ -236,8 +235,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                             ReperibilitaMode.ALTERNATA_STAGIONALE -> {
                                 val seasonal = config.seasonal
                                 CloudCard(
-                                    title = "Periodo annuale su turno",
-                                    subtitle = "Tra queste due date (comprese, anche oltre Capodanno) sei reperibile solo nei modelli scelti.",
+                                    title = "Periodo su turno",
                                     accent = ExpressivePastel.AMBER,
                                 ) {
                                     AnnualOnCallDate(
@@ -272,7 +270,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                     )
                                     SettingsDivider()
                                     Text(
-                                        text = "Modelli attivi nel periodo",
+                                        text = "Modelli attivi",
                                         fontSize = 13.sp,
                                         lineHeight = 18.sp,
                                         fontWeight = FontWeight.SemiBold,
@@ -289,8 +287,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                 }
 
                                 CloudCard(
-                                    title = "Ciclo nel resto dell'anno",
-                                    subtitle = "Fuori dal periodo sopra, i giorni seguono blocchi da 7 dalla data iniziale, anche senza turno.",
+                                    title = "Ciclo resto dell'anno",
                                     accent = ExpressivePastel.AMBER,
                                 ) {
                                     OnCallReferenceDate(
@@ -354,7 +351,6 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                     OnCallCycleSummary(
                                         onCallWeeks = seasonal.summerCycleOnCallWeeks,
                                         workWeeks = seasonal.summerCycleWorkWeeks,
-                                        referenceDate = seasonal.summerCycleReferenceDate,
                                     )
                                 }
                             }
@@ -367,19 +363,13 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
         }
 
         CloudCard(
-            title = "Precedenza sul calendario",
+            title = "Precedenza",
         ) {
             Text(
-                text = "La campanella impostata su un singolo giorno dal calendario ha sempre la precedenza sulle regole automatiche.",
-                color = TextPrimary,
-                fontSize = 13.sp,
-                lineHeight = 19.sp,
-            )
-            Text(
-                text = "Le modifiche si salvano automaticamente. Per ricevere un avviso acustico, usa Sveglie automatiche.",
+                text = "Le modifiche manuali sul singolo giorno prevalgono sulle regole.",
                 color = TextSecondary,
                 fontSize = 12.sp,
-                lineHeight = 18.sp,
+                lineHeight = 17.sp,
             )
         }
     }
@@ -394,6 +384,15 @@ private fun OnCallHeroCard(
     val scope = rememberCoroutineScope()
     val bellMotion = remember { Animatable(0f) }
     var bellJob by remember { mutableStateOf<Job?>(null) }
+    fun pulseBell() {
+        bellJob?.cancel()
+        bellJob = scope.launch {
+            bellMotion.snapTo(0f)
+            bellMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
+            bellMotion.snapTo(0f)
+        }
+    }
+    LaunchedEffect(Unit) { pulseBell() }
     val badgeAlpha by animateFloatAsState(
         targetValue = if (enabled) 1f else 0.58f,
         animationSpec = tween(200),
@@ -402,7 +401,12 @@ private fun OnCallHeroCard(
 
     CloudCard {
         Row(
-            modifier = Modifier.fillMaxWidth(),
+            modifier = Modifier
+                .fillMaxWidth()
+                .clickable(
+                    interactionSource = remember { MutableInteractionSource() },
+                    indication = null,
+                ) { pulseBell() },
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
@@ -445,47 +449,12 @@ private fun OnCallHeroCard(
             TurniSwitch(
                 checked = enabled,
                 onCheckedChange = { next ->
-                    bellJob?.cancel()
-                    bellJob = scope.launch {
-                        bellMotion.snapTo(0f)
-                        bellMotion.animateTo(1f, tween(560, easing = FastOutSlowInEasing))
-                        bellMotion.snapTo(0f)
-                    }
+                    pulseBell()
                     onToggle(next)
                 },
                 modifier = Modifier.semantics {
                     contentDescription = "Reperibilità automatica"
                 },
-            )
-        }
-
-        SettingsDivider()
-
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-        ) {
-            if (enabled) {
-                PastelPill(
-                    text = "Attiva",
-                    color = ExpressivePastel.AMBER.sourceColor,
-                    solid = true,
-                    icon = "bell",
-                )
-            } else {
-                OnCallNeutralPill(text = "Disattiva")
-            }
-            Text(
-                text = if (enabled) {
-                    "La campanella segue la regola automatica configurata."
-                } else {
-                    "Attivala per collegare la campanella a turni o periodi."
-                },
-                color = TextSecondary,
-                fontSize = 12.sp,
-                lineHeight = 17.sp,
-                modifier = Modifier.weight(1f),
             )
         }
     }
@@ -533,7 +502,6 @@ private fun OnCallWorkGroupedCards(
     if (all.isEmpty()) {
         CloudCard(
             title = "Modelli di turno",
-            subtitle = "La campanella si accende automaticamente nei giorni con almeno uno dei turni selezionati.",
             accent = ExpressivePastel.AMBER,
         ) {
             OnCallEmptyModelsNotice()
@@ -545,7 +513,6 @@ private fun OnCallWorkGroupedCards(
     if (profiles.size <= 1 || grouped.size <= 1) {
         CloudCard(
             title = "Modelli di turno",
-            subtitle = "La campanella si accende automaticamente nei giorni con almeno uno dei turni selezionati.",
             accent = ExpressivePastel.AMBER,
         ) {
             OnCallModelGrid(models = all, selected = selected, onChange = onChange)
@@ -558,16 +525,10 @@ private fun OnCallWorkGroupedCards(
             text = "Modelli per lavoro",
             trailing = "${selected.count { id -> all.any { it.id == id } }} scelti",
         )
-        grouped.forEachIndexed { groupIndex, (workId, models) ->
+        grouped.forEach { (workId, models) ->
             val profile = profiles.firstOrNull { it.id == workId }
             val chosenInGroup = models.count { it.id in selected }
-            CloudCard(
-                subtitle = if (groupIndex == 0) {
-                    "La campanella si accende nei giorni con almeno uno dei turni selezionati."
-                } else {
-                    null
-                },
-            ) {
+            CloudCard {
                 OnCallWorkGroupHeader(
                     profile = profile,
                     chosenCount = chosenInGroup,
@@ -583,17 +544,32 @@ private fun OnCallWorkGroupHeader(
     profile: WorkProfile?,
     chosenCount: Int,
 ) {
+    val workIconMotion = remember(profile?.id) { Animatable(0f) }
+    var lastChosenCount by remember(profile?.id) { mutableIntStateOf(chosenCount) }
+    LaunchedEffect(profile?.id) {
+        workIconMotion.snapTo(0f)
+        workIconMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+        workIconMotion.snapTo(0f)
+    }
+    LaunchedEffect(chosenCount) {
+        if (chosenCount != lastChosenCount) {
+            lastChosenCount = chosenCount
+            workIconMotion.snapTo(0f)
+            workIconMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
+            workIconMotion.snapTo(0f)
+        }
+    }
     Row(
         modifier = Modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp),
     ) {
-        SiteIcon(
+        SiteIconMotion(
             name = safeOnCallWorkIcon(profile?.iconKey),
-            contentDescription = null,
+            description = null,
             modifier = Modifier.size(16.dp),
             tint = BrandInk,
-        )
+        ) { workIconMotion.value }
         Text(
             text = profile?.name ?: "Altro lavoro",
             color = TextPrimary,
@@ -634,7 +610,7 @@ private fun OnCallEmptyModelsNotice() {
             tint = TextSecondary,
         )
         Text(
-            text = "Non hai ancora modelli di turno. Creali in Modelli e rotazioni, poi torna qui per sceglierli.",
+            text = "Nessun modello di turno disponibile.",
             fontSize = 12.sp,
             lineHeight = 18.sp,
             color = TextSecondary,
@@ -662,16 +638,22 @@ private fun OnCallModelChoices(
         }
         if (profiles.size > 1) {
             val profile = profiles.firstOrNull { it.id == workId }
+            val workIconMotion = remember(workId) { Animatable(0f) }
+            LaunchedEffect(workId) {
+                workIconMotion.snapTo(0f)
+                workIconMotion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                workIconMotion.snapTo(0f)
+            }
             Row(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                SiteIcon(
+                SiteIconMotion(
                     name = safeOnCallWorkIcon(profile?.iconKey),
-                    contentDescription = null,
+                    description = null,
                     modifier = Modifier.size(14.dp),
                     tint = BrandInk,
-                )
+                ) { workIconMotion.value }
                 Text(
                     text = profile?.name ?: "Altro lavoro",
                     fontSize = 12.sp,
@@ -836,12 +818,20 @@ private fun OnCallModelTile(
                 enter = fadeIn(tween(150)) + scaleIn(spring(dampingRatio = 0.65f, stiffness = 500f)),
                 exit = fadeOut(tween(120)) + scaleOut(tween(120)),
             ) {
-                SiteIcon(
+                val checkMotion = remember(model.id) { Animatable(0f) }
+                LaunchedEffect(chosen) {
+                    if (chosen) {
+                        checkMotion.snapTo(0f)
+                        checkMotion.animateTo(1f, tween(380, easing = FastOutSlowInEasing))
+                        checkMotion.snapTo(0f)
+                    }
+                }
+                SiteIconMotion(
                     name = "check",
-                    contentDescription = null,
+                    description = null,
                     modifier = Modifier.size(12.dp),
                     tint = tone.codeInk,
-                )
+                ) { checkMotion.value }
             }
         }
     }
@@ -1164,7 +1154,7 @@ private fun OnCallReferenceDate(
         ) {
             Column(modifier = Modifier.weight(1f)) {
                 Text(
-                    text = "Inizio della prima settimana reperibile",
+                    text = "Inizio ciclo",
                     fontSize = 11.sp,
                     lineHeight = 15.sp,
                     color = TextSecondary,
@@ -1503,17 +1493,8 @@ private fun CompactIconButton(
 private fun OnCallCycleSummary(
     onCallWeeks: Int,
     workWeeks: Int,
-    referenceDate: LocalDate,
 ) {
-    val formattedDate = referenceDate.format(DateTimeFormatter.ofPattern("d MMM yyyy", Locale.ITALIAN))
     val totalLong = onCallWeeks.toLong() + workWeeks.toLong()
-    val summary = if (workWeeks == 0) {
-        "Reperibilità attiva tutte le settimane fuori dal periodo annuale, con inizio dal $formattedDate."
-    } else {
-        val onLabel = if (onCallWeeks == 1) "1 settimana" else "$onCallWeeks settimane"
-        val offLabel = if (workWeeks == 1) "1 senza" else "$workWeeks senza"
-        "Ciclo da $totalLong settimane: $onLabel con reperibilità, poi $offLabel, a partire dal $formattedDate."
-    }
 
     val amberStyle = ExpressivePastel.AMBER.style()
     val amberBrush = remember(amberStyle.codeFill, amberStyle.codeInk) {
@@ -1651,12 +1632,5 @@ private fun OnCallCycleSummary(
                 }
             }
         }
-
-        Text(
-            text = summary,
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
     }
 }
