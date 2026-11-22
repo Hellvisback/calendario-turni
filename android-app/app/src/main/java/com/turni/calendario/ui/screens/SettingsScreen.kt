@@ -111,9 +111,7 @@ import com.turni.calendario.ui.theme.currentTurniPalette
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftColorStyle
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlin.math.PI
 import kotlin.math.sin
@@ -141,7 +139,6 @@ fun SettingsScreen(
     val scope = rememberCoroutineScope()
     val bellMotion = remember { Animatable(0f) }
     var bellJob by remember { mutableStateOf<Job?>(null) }
-    val entranceWaves = remember { List(10) { Animatable(0f) } }
     val settingsScroll = rememberScrollState()
     var screen by remember { mutableStateOf(SettingsSubScreen.NONE) }
     var deleteStep by remember { mutableIntStateOf(0) }
@@ -149,31 +146,6 @@ fun SettingsScreen(
 
     LaunchedEffect(screen) {
         onSubScreenActiveChanged(screen != SettingsSubScreen.NONE)
-        if (screen != SettingsSubScreen.NONE) {
-            entranceWaves.forEach { it.snapTo(0f) }
-            return@LaunchedEffect
-        }
-        entranceWaves.forEach { it.snapTo(0f) }
-        delay(260L)
-        coroutineScope {
-            entranceWaves.forEachIndexed { index, anim ->
-                launch {
-                    delay(index * 80L)
-                    anim.snapTo(0f)
-                    anim.animateTo(1f, tween(720, easing = FastOutSlowInEasing))
-                    anim.snapTo(0f)
-                }
-            }
-        }
-        var index = 0
-        while (isActive) {
-            val anim = entranceWaves[index]
-            anim.snapTo(0f)
-            anim.animateTo(1f, tween(820, easing = FastOutSlowInEasing))
-            anim.snapTo(0f)
-            delay(280L)
-            index = (index + 1) % entranceWaves.size
-        }
     }
     DisposableEffect(Unit) { onDispose { onSubScreenActiveChanged(false) } }
     BackHandler { if (screen != SettingsSubScreen.NONE) screen = SettingsSubScreen.NONE else onDismiss() }
@@ -254,7 +226,6 @@ fun SettingsScreen(
                                 icon = "palette",
                                 title = "Aspetto e calendario",
                                 trailingText = themeBadge,
-                                entranceProgress = { entranceWaves[0].value },
                             ) {
                                 screen = SettingsSubScreen.APPEARANCE
                             }
@@ -264,7 +235,6 @@ fun SettingsScreen(
                                 icon = "calendar-heart",
                                 title = "Festività",
                                 trailingText = if (holidayCount == 1) "1 attiva" else "$holidayCount attive",
-                                entranceProgress = { entranceWaves[1].value },
                             ) {
                                 screen = SettingsSubScreen.HOLIDAYS
                             }
@@ -273,7 +243,6 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "report",
                                 title = "Conteggio statistiche",
-                                entranceProgress = { entranceWaves[2].value },
                             ) {
                                 screen = SettingsSubScreen.STATISTICS_RULES
                             }
@@ -296,7 +265,6 @@ fun SettingsScreen(
                                 title = "Reperibilità",
                                 trailingText = onCallStatus,
                                 trailingPill = onCallMode != ReperibilitaMode.MANUALE,
-                                entranceProgress = { entranceWaves[3].value },
                             ) {
                                 screen = SettingsSubScreen.REPERIBILITA
                             }
@@ -305,7 +273,6 @@ fun SettingsScreen(
                             SmartAlarmsPreferenceRow(
                                 checked = alarms.isGlobalEnabled,
                                 externalProgress = { bellMotion.value },
-                                entranceProgress = { entranceWaves[4].value },
                                 onToggle = { enabled ->
                                     val latest = ShiftRepository.smartAlarmsConfig
                                     bellJob?.cancel()
@@ -345,7 +312,6 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "scan-text",
                                 title = "Importa turni con AI",
-                                entranceProgress = { entranceWaves[5].value },
                             ) {
                                 screen = SettingsSubScreen.IMPORT_SHIFTS
                             }
@@ -354,7 +320,6 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "file-text",
                                 title = "Esporta e stampa PDF",
-                                entranceProgress = { entranceWaves[6].value },
                             ) {
                                 screen = SettingsSubScreen.PDF_EXPORT
                             }
@@ -363,7 +328,6 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "calendar-sync",
                                 title = "Google Calendar",
-                                entranceProgress = { entranceWaves[7].value },
                             ) {
                                 screen = SettingsSubScreen.GOOGLE_CALENDAR_SYNC
                             }
@@ -378,7 +342,6 @@ fun SettingsScreen(
                                 pastel = null,
                                 icon = "database-backup",
                                 title = "Backup e ripristino",
-                                entranceProgress = { entranceWaves[8].value },
                             ) {
                                 screen = SettingsSubScreen.CLOUD_BACKUP
                             }
@@ -388,7 +351,6 @@ fun SettingsScreen(
                                 icon = "trash-2",
                                 title = "Elimina tutti i turni",
                                 danger = true,
-                                entranceProgress = { entranceWaves[9].value },
                             ) {
                                 deleteStep = 1
                             }
@@ -639,7 +601,6 @@ private fun PreferenceRow(
     trailingText: String? = null,
     trailingPill: Boolean = false,
     externalProgress: () -> Float = { 0f },
-    entranceProgress: () -> Float = { 0f },
     showChevron: Boolean = true,
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
@@ -658,7 +619,7 @@ private fun PreferenceRow(
     val motion = remember { Animatable(0f) }
     var motionJob by remember { mutableStateOf<Job?>(null) }
     var highlightJob by remember { mutableStateOf<Job?>(null) }
-    val iconPhase: () -> Float = { maxOf(motion.value, externalProgress(), entranceProgress()) }
+    val iconPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val chevronPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val highlightBase = if (danger) Color(palette.danger.fill) else ObsidianSurfaceContainer
     val highlightAlpha = (if (danger) 0.42f else 0.72f) * maxOf(pressAlpha, tapHighlight.value)
@@ -678,16 +639,20 @@ private fun PreferenceRow(
                 runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
                 motionJob?.cancel()
                 motionJob = scope.launch {
-                    motion.snapTo(0f)
-                    motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
-                    motion.snapTo(0f)
+                    val anim = launch {
+                        motion.snapTo(0f)
+                        motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                        motion.snapTo(0f)
+                    }
+                    delay(115L)
+                    onClick()
+                    anim.join()
                 }
                 highlightJob?.cancel()
                 highlightJob = scope.launch {
                     tapHighlight.snapTo(0.9f)
                     tapHighlight.animateTo(0f, tween(340, easing = FastOutSlowInEasing))
                 }
-                onClick()
             }
             .padding(horizontal = 4.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -769,7 +734,6 @@ private fun PreferenceRow(
 private fun SmartAlarmsPreferenceRow(
     checked: Boolean,
     externalProgress: () -> Float,
-    entranceProgress: () -> Float,
     onToggle: (Boolean) -> Unit,
     onOpen: () -> Unit,
 ) {
@@ -798,19 +762,23 @@ private fun SmartAlarmsPreferenceRow(
         runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
         motionJob?.cancel()
         motionJob = scope.launch {
-            motion.snapTo(0f)
-            motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
-            motion.snapTo(0f)
+            val anim = launch {
+                motion.snapTo(0f)
+                motion.animateTo(1f, tween(520, easing = FastOutSlowInEasing))
+                motion.snapTo(0f)
+            }
+            delay(115L)
+            onOpen()
+            anim.join()
         }
         highlightJob?.cancel()
         highlightJob = scope.launch {
             tapHighlight.snapTo(0.9f)
             tapHighlight.animateTo(0f, tween(340, easing = FastOutSlowInEasing))
         }
-        onOpen()
     }
 
-    val leftIconPhase: () -> Float = { maxOf(motion.value, externalProgress(), entranceProgress()) }
+    val leftIconPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val chevronPhase: () -> Float = { maxOf(motion.value, externalProgress()) }
     val rowShape = RoundedCornerShape(14.dp)
 

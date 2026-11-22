@@ -1,13 +1,18 @@
 package com.turni.calendario
 
+import com.turni.calendario.model.AssignedShift
+import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.ui.screens.ActualExitEvaluation
 import com.turni.calendario.ui.screens.calendarPermissionLabel
 import com.turni.calendario.ui.screens.calendarShiftAccessibility
 import com.turni.calendario.ui.screens.evaluateActualExitTime
+import com.turni.calendario.ui.screens.resolvedShiftDisplayExitTime
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
+import java.time.LocalDate
 
 class UnifiedShiftTimeTest {
     @Test
@@ -138,5 +143,63 @@ class UnifiedShiftTimeTest {
             "Mattina, 06:00–14:00, straordinario +30m, permesso −15m, trasferta",
             calendarShiftAccessibility("Mattina", "06:00–14:00", 0.5f, true, permission = 0.25f),
         )
+    }
+
+    @Test
+    fun resolvedShiftDisplayExitTimeComputesPermissionExitAndPreservesActualEndTime() {
+        val sampleDate = LocalDate.of(2026, 11, 22)
+        val morningDef = ShiftDefinition(
+            id = "mattina",
+            name = "Mattina",
+            shortCode = "M",
+            startTime = "06:00",
+            endTime = "14:00",
+            colorHex = 0xFFEBC986,
+        )
+        val regularShift = AssignedShift(id = "s-reg", date = sampleDate, shiftDefId = "mattina")
+        assertNull(resolvedShiftDisplayExitTime(regularShift, morningDef))
+
+        val overtimeShift = AssignedShift(
+            id = "s-ot",
+            date = sampleDate,
+            shiftDefId = "mattina",
+            overtimeHours = 1.5f,
+            actualEndTime = "15:30",
+        )
+        assertEquals("15:30", resolvedShiftDisplayExitTime(overtimeShift, morningDef))
+
+        val permissionShift = AssignedShift(
+            id = "s-perm",
+            date = sampleDate,
+            shiftDefId = "mattina",
+            permissionHours = 1.5f,
+            actualEndTime = null,
+        )
+        assertEquals("12:30", resolvedShiftDisplayExitTime(permissionShift, morningDef))
+
+        val breakDef = morningDef.copy(
+            startTime = "08:00",
+            endTime = "17:00",
+            breakMinutes = 60,
+            breakStartTime = "12:00",
+        )
+        val afterBreakPerm = AssignedShift(
+            id = "s-perm-after-break",
+            date = sampleDate,
+            shiftDefId = "mattina",
+            permissionHours = 1.5f,
+        )
+        assertEquals("15:30", resolvedShiftDisplayExitTime(afterBreakPerm, breakDef))
+
+        val beforeBreakPerm = AssignedShift(
+            id = "s-perm-before-break",
+            date = sampleDate,
+            shiftDefId = "mattina",
+            permissionHours = 5f,
+        )
+        assertEquals("11:00", resolvedShiftDisplayExitTime(beforeBreakPerm, breakDef))
+
+        val allDayDef = morningDef.copy(isAllDay = true)
+        assertNull(resolvedShiftDisplayExitTime(permissionShift, allDayDef))
     }
 }

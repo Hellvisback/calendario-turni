@@ -569,26 +569,32 @@ private fun NativeDayShiftRow(date: LocalDate, shift: AssignedShift, onDetails: 
             if (!narrow) tools()
         }
         if (narrow) Row(Modifier.fillMaxWidth().padding(top = 6.dp), verticalAlignment = Alignment.CenterVertically) {
-            NativeShiftExtraChips(shift, Modifier.weight(1f), vertical = true)
+            NativeShiftExtraChips(shift, def, Modifier.weight(1f), vertical = true)
             tools()
-        } else NativeShiftExtraChips(shift, Modifier.fillMaxWidth())
+        } else NativeShiftExtraChips(shift, def, Modifier.fillMaxWidth())
     }
 }
 
 @Composable
-private fun NativeShiftExtraChips(shift: AssignedShift, modifier: Modifier = Modifier, vertical: Boolean = false) {
+private fun NativeShiftExtraChips(
+    shift: AssignedShift,
+    def: ShiftDefinition,
+    modifier: Modifier = Modifier,
+    vertical: Boolean = false,
+) {
     Column(modifier) {
-        val hasExtra = shift.overtimeHours > 0 || shift.permissionHours > 0f || shift.actualEndTime != null
+        val displayExitTime = remember(shift, def) { resolvedShiftDisplayExitTime(shift, def) }
+        val hasExtra = shift.overtimeHours > 0 || shift.permissionHours > 0f || displayExitTime != null
         if(hasExtra) {
             val warning = currentTurniPalette.warning
             val contents: @Composable () -> Unit = {
                 if (shift.overtimeHours > 0) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
                 if (shift.permissionHours > 0f) DetailPill(
-                    "−${formatOvertime(shift.permissionHours)} perm.",
+                    "−${formatOvertime(shift.permissionHours)}",
                     Color(warning.ink),
                     Color(warning.fill),
                 )
-                shift.actualEndTime?.let { DetailPill("Stacco $it", BrandInk, ObsidianSurface) }
+                displayExitTime?.let { DetailPill("Stacco $it", BrandInk, ObsidianSurface) }
             }
             if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
             else FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { contents() }
@@ -777,6 +783,26 @@ private fun permissionExitTimeString(
         if (targetWorked <= breakStartOffset) targetWorked else targetWorked + breakMinutes
     } else targetWorked
     return start.plusMinutes(offset).format(DateTimeFormatter.ofPattern("HH:mm"))
+}
+
+internal fun resolvedShiftDisplayExitTime(
+    shift: AssignedShift,
+    def: ShiftDefinition,
+): String? {
+    shift.actualEndTime?.takeIf { it.isNotBlank() }?.let { return it }
+    if (shift.permissionHours <= 0f || def.isAllDay) return null
+    val startTime = (shift.customStartTime ?: def.startTime).takeIf { it.isNotBlank() } ?: return null
+    val endTime = (shift.customEndTime ?: def.endTime).takeIf { it.isNotBlank() } ?: return null
+    val baseDurationMinutes = def.copy(startTime = startTime, endTime = endTime).durationMinutes
+    if (baseDurationMinutes <= 0L) return null
+    return permissionExitTimeString(
+        startTime = startTime,
+        endTime = endTime,
+        breakMinutes = def.breakMinutes,
+        breakStartTime = def.breakStartTime,
+        permissionHours = shift.permissionHours,
+        baseDurationMinutes = baseDurationMinutes,
+    )
 }
 
 @Composable

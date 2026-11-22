@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 22 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Loghi Impostazioni solo al tocco, permesso con Stacco senza «perm.» e bande calendario a proseguo piatto beta.33
+
+La beta.33 personale (78) rimuove l'animazione automatica all'ingresso e il loop continuo dei loghi a sinistra in *Impostazioni* lasciandoli animare esclusivamente alla pressione della singola voce, uniforma la visualizzazione del permesso a quella dello straordinario nella card giorno (`−1h30` senza `"perm."` + badge `"Stacco HH:mm"` calcolato dinamicamente tramite `resolvedShiftDisplayExitTime`) e salda le bande di straordinario, permesso e trasferta nella griglia del calendario mensile (`NativeMonthCanvas`) come proseguo piatto diretto sotto la tessera del turno (angoli di contatto piatti, stessa larghezza, soli angoli esterni arrotondati). [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.33.md).
+
 ## Mini-anteprima rotazioni, loghi Impostazioni animati, PDF Periodo adattivo e Conteggio statistiche intuitivo beta.32
 
 La beta.32 personale (77) ripristina la mini-anteprima pastello nella barra *Modifica turni → Rotazioni* e garantisce la coerenza dell'anteprima in griglia, rende visivamente animate e dinamiche le icone a sinistra in *Impostazioni* (ampiezze aumentate in `SiteIcons.kt` + cascata al rientro e spotlight continuo discreto), allinea l'esportazione PDF *Periodo* al layout editoriale a colonne dell'*Annuale* adattando carta/righe/intestazioni alla lunghezza dell'intervallo e riorganizza *Conteggio statistiche* con nomi generici privi di riferimenti rigidi a «Ferie/FER/RIP» e due sezioni intuitive ad equazioni visive. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.32.md).

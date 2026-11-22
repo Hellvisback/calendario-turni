@@ -269,6 +269,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
     val digitBounds=remember(density.density,density.fontScale){mutableMapOf<String,android.graphics.RectF>()}
     val digitPath=remember{android.graphics.Path()}
     val chipClip=remember { Path() }
+    val bandClip=remember { Path() }
     val viewport=remember { Path() }
     val bellSet=data.filter{it.onCall}.map{it.info.date}.toSet()
     var previousBells by remember{mutableStateOf(bellSet)}
@@ -543,28 +544,87 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                         val left=x+dp(4f);val width=cellWidth-dp(8f)
                         val merged=cellMark(item)?.assignmentIds?.contains(shift.id)==true
                         val badgeAlpha=if(merged)1f-paintExit.value else 1f
-                        drawRoundRect(style.timeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,chipHeight),CornerRadius(dp(5f)))
-                        val topPath=chipClip.apply{reset();addRoundRect(RoundRect(Rect(left,cursor,left+width,cursor+chipHeight),CornerRadius(dp(5f))))}
+                        val visibility = weights.max
+                        val compact = footer == 0f
+                        val attachBlend = if (!compact) visibility.coerceIn(0f, 1f) else 0f
+                        val topRadius = CornerRadius(dp(5f))
+                        val bottomRadius = CornerRadius(dp(5f) * (1f - attachBlend))
+                        val topPath = chipClip.apply {
+                            reset()
+                            addRoundRect(
+                                RoundRect(
+                                    left = left,
+                                    top = cursor,
+                                    right = left + width,
+                                    bottom = cursor + chipHeight,
+                                    topLeftCornerRadius = topRadius,
+                                    topRightCornerRadius = topRadius,
+                                    bottomRightCornerRadius = bottomRadius,
+                                    bottomLeftCornerRadius = bottomRadius,
+                                ),
+                            )
+                        }
+                        drawPath(topPath, style.timeFill.copy(alpha = badgeAlpha))
                         drawContext.canvas.save();drawContext.canvas.clipPath(topPath);drawRect(style.codeFill.copy(alpha=badgeAlpha),Offset(left,cursor),Size(width,dp(baseChip/2)));drawContext.canvas.restore()
                         if(!subdued)drawRoundRect(style.accent.copy(alpha=badgeAlpha),Offset(left+dp(2f),cursor+dp(5f)),Size(dp(1.5f),dp(baseChip-10f)),CornerRadius(dp(1f)))
                         label(getCompactShiftCode(def.id,def.shortCode),center,cursor+dp(baseChip*.27f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.codeFill,operationReveal(item)),style.codeInk)else style.codeInk,true,maxWidth=width/px-10f)
                         clockLabel(if(def.isAllDay)"– –" else calendarStartLabel(shift.customStartTime?:def.startTime,timeFormat24h),center,cursor+dp(baseChip*.74f),11f,if(merged)readableInk(lerp(baseCellBackground(item),style.timeFill,operationReveal(item)),style.timeInk)else style.timeInk,maxWidth=width/px-2f)
-                        val visibility = weights.max
                         val footerSpace = dp(footer) * visibility
                         if (visibility > .001f) {
-                            val compact = footer == 0f
-                            val bandInset = dp(if (compact) 4f else .5f)
-                            val bandTop = cursor + chipHeight + if (compact) -dp(2.5f) else dp(1f) * visibility
-                            val height = if (compact) dp(2f) else footerSpace - dp(1f) * visibility
+                            val bandInset = if (compact) dp(4f) else 0f
+                            val bandTop = cursor + chipHeight + if (compact) -dp(2.5f) else 0f
+                            val height = if (compact) dp(2f) else footerSpace
                             val start = left + bandInset
                             val end = left + width - bandInset
-                            fun band(x1: Float, x2: Float, weight: Float, fill: Color, ink: Color, caption: String) {
+                            fun band(
+                                x1: Float,
+                                x2: Float,
+                                weight: Float,
+                                fill: Color,
+                                ink: Color,
+                                caption: String,
+                                isFirst: Boolean,
+                                isLast: Boolean,
+                            ) {
                                 if (weight <= .001f || x2 <= x1) return
                                 val color = if (compact) readablePigment(style.timeFill, ink) else fill
-                                drawRoundRect(color.copy(alpha=weight), Offset(x1,bandTop), Size(x2-x1,height),
-                                    CornerRadius(minOf(dp(3f), height/2, (x2-x1)/2)))
-                                if (!compact) label(caption,(x1+x2)/2,bandTop+height/2,8.5f,ink,true,weight,
-                                    maxWidth=((x2-x1)/px-2.5f).coerceAtLeast(0f),maxHeight=height/px)
+                                if (compact) {
+                                    drawRoundRect(
+                                        color.copy(alpha = weight),
+                                        Offset(x1, bandTop),
+                                        Size(x2 - x1, height),
+                                        CornerRadius(minOf(dp(3f), height / 2, (x2 - x1) / 2)),
+                                    )
+                                } else {
+                                    val bottomR = CornerRadius(minOf(dp(5f), height / 2f, (x2 - x1) / 2f))
+                                    val segPath = bandClip.apply {
+                                        reset()
+                                        addRoundRect(
+                                            RoundRect(
+                                                left = x1,
+                                                top = bandTop,
+                                                right = x2,
+                                                bottom = bandTop + height,
+                                                topLeftCornerRadius = CornerRadius.Zero,
+                                                topRightCornerRadius = CornerRadius.Zero,
+                                                bottomRightCornerRadius = if (isLast) bottomR else CornerRadius.Zero,
+                                                bottomLeftCornerRadius = if (isFirst) bottomR else CornerRadius.Zero,
+                                            ),
+                                        )
+                                    }
+                                    drawPath(segPath, color.copy(alpha = weight))
+                                    label(
+                                        caption,
+                                        (x1 + x2) / 2,
+                                        bandTop + height / 2,
+                                        8.5f,
+                                        ink,
+                                        true,
+                                        weight,
+                                        maxWidth = ((x2 - x1) / px - 2.5f).coerceAtLeast(0f),
+                                        maxHeight = height / px,
+                                    )
+                                }
                             }
                             val overtimeValue = toExtras[shift.id]?.overtime?.takeIf { it > 0f }
                                 ?: fromExtras[shift.id]?.overtime ?: shift.overtimeHours
@@ -594,7 +654,16 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                                     } else {
                                         usableWidth * (seg.weight * seg.share / totalShare)
                                     }
-                                    band(segX, segX + segWidth, seg.weight, seg.fill, seg.ink, seg.caption)
+                                    band(
+                                        segX,
+                                        segX + segWidth,
+                                        seg.weight,
+                                        seg.fill,
+                                        seg.ink,
+                                        seg.caption,
+                                        isFirst = segIndex == 0,
+                                        isLast = segIndex == active.lastIndex,
+                                    )
                                     segX += segWidth + if (segIndex < gapWidths.size) gapWidths[segIndex] else 0f
                                 }
                             }
