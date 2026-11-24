@@ -69,6 +69,7 @@ import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.StatisticsRule
 import com.turni.calendario.model.WorkProfile
 import com.turni.calendario.model.holidayExclusionSelectionForToggle
+import com.turni.calendario.model.sortedChronologically
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
@@ -91,12 +92,18 @@ import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
 
 @Composable
-fun StatisticsRulesScreen(onDismiss: () -> Unit) {
+fun StatisticsRulesScreen(
+    onDismiss: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
+) {
     var editing by remember { mutableStateOf<StatisticsRule?>(null) }
     var editingHolidays by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
-    val definitions = ShiftRepository.shiftDefinitions.toList()
-    val rules = ShiftRepository.statisticsRules.toList()
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val definitions = ShiftRepository.shiftDefinitions
+        .filter { it.workProfileId == activeProfileId }
+        .sortedChronologically()
+    val rules = ShiftRepository.activeStatisticsRules
     val profiles = ShiftRepository.workProfiles.toList()
 
     fun close() {
@@ -170,7 +177,15 @@ fun StatisticsRulesScreen(onDismiss: () -> Unit) {
                         profiles = profiles,
                         onEditHolidays = { editingHolidays = true },
                         onEditRule = { editing = it },
-                        onCreateRule = { editing = StatisticsRule(UUID.randomUUID().toString(), "", emptySet()) },
+                        onCreateRule = {
+                            editing = StatisticsRule(
+                                id = UUID.randomUUID().toString(),
+                                displayedShiftId = "",
+                                originalShiftIds = emptySet(),
+                                workProfileId = activeProfileId,
+                            )
+                        },
+                        onNavigateToTurni = onNavigateToTurni,
                         onFeedback = { feedback = it },
                     )
                 }
@@ -244,8 +259,25 @@ private fun StatisticsRulesOverview(
     onEditHolidays: () -> Unit,
     onEditRule: (StatisticsRule) -> Unit,
     onCreateRule: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
     onFeedback: (ActionFeedback) -> Unit,
 ) {
+    if (definitions.isEmpty()) {
+        CloudCard(
+            title = "Nessun modello di turno",
+            subtitle = "Crea almeno un turno nel lavoro attivo per configurare le statistiche.",
+            accent = ExpressivePastel.LAVENDER,
+        ) {
+            if (onNavigateToTurni != null) {
+                CloudButton(
+                    label = "Crea un turno",
+                    icon = "plus",
+                    onClick = onNavigateToTurni,
+                )
+            }
+        }
+        return
+    }
     val preferences = ShiftRepository.appPreferences
     val holidayActive = preferences.excludeVacationOnHolidays
     val excludedDefinitions = definitions.filter { it.id in preferences.holidayExcludedShiftIds }

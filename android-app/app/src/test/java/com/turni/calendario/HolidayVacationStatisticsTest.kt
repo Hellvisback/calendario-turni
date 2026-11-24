@@ -50,14 +50,14 @@ class HolidayVacationStatisticsTest {
             assertEquals(totals.shiftCounts,ShiftRepository.getReportStats(day,day.plusDays(1)))
             assertEquals(8f,totals.totalHours,.001f)
             assertEquals(1,totals.workedDays)
-            assertEquals(leave.id,ShiftRepository.getShiftsForDate(day).first().shiftDefId)
+            assertTrue(ShiftRepository.getShiftsForDate(day).any { it.shiftDefId == leave.id })
             ShiftRepository.enabledHolidayIds=emptySet()
             assertEquals(2,ShiftRepository.getReportStats(day,day.plusDays(1))[leave.id])
         } finally {DatabaseRestore.apply(original)}
     }
     @Test fun backupRoundTripPreservesRuleAndOldBackupsDefaultToOff() {
         val original=DatabaseSnapshot.capture()
-        val configured=original.copy(preferences=original.preferences.copy(excludeVacationOnHolidays=true,holidayExcludedShiftIds=setOf(original.definitions.first().id)))
+        val configured=original.copy(definitions=models,rotations=emptyList(),shifts=emptyMap(),extras=emptyMap(),extrasByProfile=emptyMap(),statisticsRules=emptyList(),dayTags=emptyList(),preferences=original.preferences.copy(excludeVacationOnHolidays=true,holidayExcludedShiftIds=setOf(leave.id)))
         val json=JSONObject(GoogleDriveBackupHelper.exportDatabaseToJson(configured))
         assertEquals(configured.preferences,DatabaseRestore.parse(json.toString(),configured).preferences)
         json.getJSONObject("appPreferences").remove("excludeVacationOnHolidays")

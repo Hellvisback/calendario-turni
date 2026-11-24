@@ -150,6 +150,61 @@ import java.util.UUID
 val catalogPastelColors = listOf(0xFFDBC38EL, 0xFFD9AE9BL, 0xFFAEBCE4L, 0xFF97C6BFL, 0xFF9EC4DEL, 0xFFB8C1C8L)
 internal fun catalogInk(color: Color): Color = readableInk(color, Color(0xFF211728))
 
+private val shortCodeStopWords = setOf("DI", "DA", "IN", "A", "E", "ED", "IL", "LO", "LA", "I", "GLI", "LE", "DEL", "DEI", "DELLA", "PER", "CON", "SU")
+
+internal fun suggestShiftShortCodes(name: String, existingCodes: Set<String>): List<String> {
+    val normalized = java.text.Normalizer.normalize(name.trim(), java.text.Normalizer.Form.NFD)
+        .replace(Regex("\\p{InCombiningDiacriticalMarks}+"), "")
+        .uppercase(Locale.ROOT)
+    val rawWords = normalized.split(Regex("[^A-Z0-9]+")).filter { it.isNotBlank() }
+    if (rawWords.isEmpty()) return emptyList()
+
+    val meaningfulWords = rawWords.filter { it !in shortCodeStopWords }.ifEmpty { rawWords }
+    val existingUpper = existingCodes.mapTo(HashSet()) { it.uppercase(Locale.ROOT) }
+    val candidates = LinkedHashSet<String>()
+
+    fun addCandidate(raw: String) {
+        val clean = raw.filter { it in 'A'..'Z' || it in '0'..'9' }.take(4)
+        if (clean.length in 2..4) {
+            candidates.add(clean)
+        }
+    }
+
+    if (meaningfulWords.size == 1) {
+        val word = meaningfulWords[0]
+        if (word.length >= 3) addCandidate(word.take(3))
+        if (word.length >= 4) addCandidate(word.take(4))
+        if (word.length >= 2) addCandidate(word.take(2))
+        val consonants = word.filter { it !in "AEIOU" }
+        if (consonants.length >= 2) addCandidate(consonants.take(3))
+        if (word.length == 1) addCandidate("${word}1")
+    } else {
+        val w1 = meaningfulWords[0]
+        val w2 = meaningfulWords[1]
+        if (meaningfulWords.size >= 3) {
+            addCandidate(meaningfulWords.take(4).joinToString("") { it.take(1) })
+        }
+        addCandidate("${w1.take(1)}${w2.take(1)}")
+        if (w2.length >= 2) addCandidate("${w1.take(1)}${w2.take(2)}")
+        if (w1.length >= 3) addCandidate(w1.take(3))
+        if (w1.length >= 2) addCandidate("${w1.take(2)}${w2.take(1)}")
+        if (w1.length >= 2 && w2.length >= 2) addCandidate("${w1.take(2)}${w2.take(2)}")
+    }
+
+    val available = candidates.filter { it !in existingUpper }.toMutableList()
+    if (available.size < 3 && candidates.isNotEmpty()) {
+        val base = candidates.first().take(3)
+        for (suffix in 2..9) {
+            if (available.size >= 3) break
+            val numbered = "$base$suffix".take(4)
+            if (numbered !in existingUpper && numbered !in available) {
+                available.add(numbered)
+            }
+        }
+    }
+    return available.take(3)
+}
+
 private val catalogTimeFormatter = DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT)
 
 private fun CoroutineScope.replayCatalogMotion(
@@ -1057,6 +1112,7 @@ fun ShiftEditorScreen(
 ) {
     var name by remember(shift.id) { mutableStateOf(shift.name) }
     var code by remember(shift.id) { mutableStateOf(shift.shortCode.take(4)) }
+    var codeManuallyEdited by remember(shift.id) { mutableStateOf(false) }
     var start by remember(shift.id) { mutableStateOf(shift.startTime) }
     var end by remember(shift.id) { mutableStateOf(shift.endTime) }
     var allDay by remember(shift.id) { mutableStateOf(shift.isAllDay) }
@@ -1068,6 +1124,14 @@ fun ShiftEditorScreen(
     var workMenu by remember { mutableStateOf(false) }
     var deleteConfirm by remember { mutableStateOf(false) }
     val existing = ShiftRepository.shiftDefinitions.any { it.id == shift.id }
+    val existingCodes = remember(shift.id, workId, ShiftRepository.shiftDefinitions.size) {
+        ShiftRepository.shiftDefinitions
+            .filter { it.id != shift.id && it.workProfileId == workId }
+            .mapTo(HashSet()) { it.shortCode.uppercase(Locale.ROOT) }
+    }
+    val codeSuggestions = remember(name, existingCodes) {
+        suggestShiftShortCodes(name, existingCodes)
+    }
     val previewColor = shiftDisplayColor(Color(color), definitionId = shift.id)
     fun validTime(value: String) = runCatching { LocalTime.parse(value) }.isSuccess
     val validCode = code.matches(Regex("[A-Z0-9]{1,4}"))
@@ -1229,19 +1293,64 @@ fun ShiftEditorScreen(
                     CatalogField(
                         label = "Nome del turno",
                         value = name,
-                        change = { name = it.take(60) },
+                        change = { updated ->
+                            val nextName = updated.take(60)
+                            name = nextName
+                            if (!existing && !codeManuallyEdited) {
+                                val nextSuggestions = suggestShiftShortCodes(nextName, existingCodes)
+                                if (nextSuggestions.isNotEmpty()) {
+                                    code = nextSuggestions.first()
+                                }
+                            }
+                        },
                         modifier = Modifier.weight(2f),
                         placeholder = "Es. Mattina",
                     )
                     CatalogField(
                         label = "Sigla",
                         value = code,
-                        change = { code = it.uppercase().filter { ch -> ch in 'A'..'Z' || ch in '0'..'9' }.take(4) },
+                        change = {
+                            codeManuallyEdited = true
+                            code = it.uppercase().filter { ch -> ch in 'A'..'Z' || ch in '0'..'9' }.take(4)
+                        },
                         modifier = Modifier.weight(1f),
                         error = !validCode,
                         centered = true,
                         placeholder = "MAT",
                     )
+                }
+                if (codeSuggestions.isNotEmpty()) {
+                    FlowRow(
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        verticalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = "Suggerimenti:",
+                            fontSize = 11.sp,
+                            color = TextSecondary,
+                            modifier = Modifier.align(Alignment.CenterVertically),
+                        )
+                        codeSuggestions.forEach { suggestion ->
+                            val selected = code == suggestion
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(if (selected) ObsidianPrimaryContainer else ObsidianSurfaceContainer)
+                                    .bouncyClickable {
+                                        code = suggestion
+                                        codeManuallyEdited = true
+                                    }
+                                    .padding(horizontal = 10.dp, vertical = 5.dp),
+                            ) {
+                                Text(
+                                    text = suggestion,
+                                    fontSize = 11.sp,
+                                    fontWeight = if (selected) FontWeight.Bold else FontWeight.SemiBold,
+                                    color = if (selected) BrandInk else TextPrimary,
+                                )
+                            }
+                        }
+                    }
                 }
                 if (allowWorkSelection && ShiftRepository.workProfiles.size > 1) {
                     val selectedWork = ShiftRepository.workProfiles.firstOrNull { it.id == workId }

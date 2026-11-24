@@ -50,6 +50,7 @@ class CalendarEditInteractionTest {
     @Test fun singleShiftAndOnCallEraseCanBeUndoneTogether() {
         val original=DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             ShiftRepository.calendarShifts.clear()
             ShiftRepository.dayExtraInfo.clear()
             ShiftRepository.reperibilitaConfig=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE)
@@ -77,6 +78,7 @@ class CalendarEditInteractionTest {
     @Test fun appliedRangeUpdatesAllDaysAndOneUndoRestoresTheWholeOperation() {
         val original=DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             ShiftRepository.calendarShifts.clear()
             ShiftRepository.dayExtraInfo.clear()
             val model=ShiftRepository.shiftDefinitions.first{it.workProfileId==ShiftRepository.activeWorkProfileId}

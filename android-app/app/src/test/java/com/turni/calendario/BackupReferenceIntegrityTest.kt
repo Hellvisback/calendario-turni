@@ -27,7 +27,10 @@ class BackupReferenceIntegrityTest {
             rotations = listOf(ShiftRotation("backup-cycle", "Ciclo", 2, listOf(model.id, ""))),
             shifts = mapOf(date to listOf(AssignedShift("backup-assignment", date, model.id))),
             extras = emptyMap(), activeWorkProfileId = "backup-work", activeRotationId = "backup-cycle",
-            defaultRotationId = "backup-cycle", onCall = ReperibilitaConfig(), alarms = SmartAlarmsConfig()
+            defaultRotationId = "backup-cycle", onCall = ReperibilitaConfig(), alarms = SmartAlarmsConfig(),
+            extrasByProfile = emptyMap(), onCallByProfile = emptyMap(), alarmsByProfile = emptyMap(),
+            activeRotationIdByProfile = mapOf("backup-work" to "backup-cycle"),
+            defaultRotationIdByProfile = mapOf("backup-work" to "backup-cycle")
         )
     }
 

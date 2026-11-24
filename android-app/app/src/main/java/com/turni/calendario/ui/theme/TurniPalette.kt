@@ -71,7 +71,7 @@ private val GraphiteDay = TurniPalette(
     text = 0xFF182D3A, secondaryText = 0xFF455A6A, mutedText = 0xFF455A6A,
     calendar = 0xFFFFFFFF, calendarWeekend = 0xFFE2E9EF, calendarToday = 0xFFC6D5FF,
     dock = 0xFFDCE4EA, dockInk = 0xFF263743, dockSelected = CobaltDay, dockOnSelected = 0xFFFFFFFF,
-    onCall = SemanticTone(0xFFF5E7C9, 0xFF795312, 0xFF795312),
+    onCall = SemanticTone(0xFFFFF0D4, 0xFF9E5405, 0xFFD98218),
     overtime = SemanticTone(0xFFDCEEF6, 0xFF1D617D, 0xFF1D617D),
     travel = SemanticTone(0xFF63438E, 0xFFFFFFFF, 0xFF63438E),
     warning = SemanticTone(0xFFF5E7C9, 0xFF795312, 0xFF795312),
@@ -212,12 +212,16 @@ internal fun metricColorStyle(
 ): MetricColorStyle {
     val palette = turniPalette(dark, style)
     val tone = shiftTone(source)
-    val fill = if (onCall) Color(palette.onCall.fill) else tone?.chart(dark)
-        ?: Color(source.toArgb() or 0xFF000000.toInt())
+    val raw = Color(source.toArgb() or 0xFF000000.toInt())
+    val fill = when {
+        onCall -> Color(palette.onCall.fill)
+        tone != null -> tone.fill(dark)
+        dark -> raw
+        else -> lerp(raw, Color(palette.surface), .35f)
+    }
     val preferred = when {
         onCall -> Color(palette.onCall.ink)
-        tone != null && dark -> tone.ink(true)
-        tone != null -> Color.White
+        tone != null -> tone.ink(dark)
         else -> Color(palette.text)
     }
     val ink = readableInk(fill, preferred)

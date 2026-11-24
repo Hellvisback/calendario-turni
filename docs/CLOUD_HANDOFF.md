@@ -4,7 +4,11 @@ Per il ritorno alla precedente chat sul PC locale leggere prima [LOCAL_HANDOFF_2
 
 L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaricabile su GitHub, attraverso una nuova pre-release versionata. La pagina stabile da condividere è https://github.com/Hellvisback/calendario-turni/releases; le beta sono pre-release e non compaiono necessariamente come `latest`. Specificare se l'APK è il package separato `com.turni.calendario.setupqa`: può essere installato accanto all'app personale, ma richiede la stessa chiave QA per aggiornare una precedente installazione QA. L'aggiornamento dell'app personale richiede la sua chiave originale, esterna al repository. Usare `scripts/release.ps1` e non sovrascrivere release esistenti. La procedura cloud verificata, incluso il fallback GitHub Actions per il servizio upload, è in [RELEASE_QA.md](RELEASE_QA.md).
 
-Aggiornato il 22 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+Aggiornato il 24 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
+
+## Revisione pre-lancio: pulizia defaults, widget per lavoro, Attacco/Stacco, festività dinamiche e isolamento profili beta.35
+
+La beta.35 personale (80) completa l'audit pre-lancio su calendario, widget, catalogo, statistiche, PDF e sicurezza dati: pallini multi-turno leggibili in tema chiaro, intestazione settimana scorrevole con la griglia, widget coerenti nei temi Chiaro/Scuro con colonna weekend continua e profilo lavoro selezionabile per singola istanza (`WidgetWorkProfileActivity`), primo avvio pulito senza limiti o dati finti precompilati, fix data backup `01/01/1970`, straordinario/permesso sia in Attacco che in Stacco, statistiche pastello e colore Reperibilità calibrati in tema chiaro, ordinamento cronologico dei turni ovunque, catalogo Festività dinamico con filtri e ricerca per Patroni/Ricorrenze, avviso `!` spostato in alto a sinistra, raggruppamento e duplicazione turni per lavoro con suggerimento automatico sigla, stati vuoti guidati, isolamento rigoroso dei dati per profilo lavoro e conferma `Elimina tutto` con conto alla rovescia di 5 secondi e opzione di ripartenza dal tutorial iniziale. [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.35.md).
 
 ## Guida interattiva passo-passo per le funzioni di modifica al primo avvio beta.34
 

@@ -162,7 +162,8 @@ private fun PanelButton(label: String, glyph: String? = null, primary: Boolean =
 internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId: String, tool:String?, onTool:(String)->Unit,
     onMode: (CalendarEditMode) -> Unit, onBrush: (String) -> Unit, onRotation: (String) -> Unit,
     onUndo: () -> Unit, onClose: () -> Unit, catalogOverride:List<ShiftDefinition>?=null, rotationsOverride:List<ShiftRotation>?=null, title:String="Modifica turni",
-    highlightTarget: PracticeHighlightTarget? = null, highlightPulse: Float = 0f) {
+    highlightTarget: PracticeHighlightTarget? = null, highlightPulse: Float = 0f,
+    onNavigateToTurni: (Int) -> Unit = {}) {
     val effectiveRotations=rotationsOverride?:ShiftRepository.getRotationsSortedByDefault()
     val rotationDefinitions=(catalogOverride?:ShiftRepository.shiftDefinitions).associateBy{it.id}
     val dark = TurniThemeState.dark
@@ -419,9 +420,33 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
                         }
                     }
                 }
-                if (effectiveRotations.isEmpty()) Text("Crea una rotazione in Turni", color = TextSecondary, fontSize = 12.sp)
+                if (effectiveRotations.isEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Nessuna rotazione nel profilo", color = TextSecondary, fontSize = 12.sp)
+                        PanelButton("Crea una rotazione", "circle-plus", primary = true, height = 34.dp) {
+                            onClose(); onNavigateToTurni(2)
+                        }
+                    }
+                }
             } else {
-                (catalogOverride?:ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }).forEach { def ->
+                val activeShifts = (catalogOverride ?: ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.sortedChronologically())
+                if (activeShifts.isEmpty()) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Text("Nessun turno nel profilo", color = TextSecondary, fontSize = 12.sp)
+                        PanelButton("Crea un turno", "circle-plus", primary = true, height = 34.dp) {
+                            onClose(); onNavigateToTurni(0)
+                        }
+                    }
+                }
+                activeShifts.forEach { def ->
                     val selected = tool==null && brush == def.id
                     val brushGuided = highlightTarget?.brushId == def.id
                     val phase=remember{Animatable(0f)};val scope=rememberCoroutineScope()
@@ -462,7 +487,10 @@ internal fun NativeEditToolbar(mode: CalendarEditMode, brush: String, rotationId
 internal fun NativeDayCard(date: LocalDate, onClose: () -> Unit, onSelectShift: (Boolean) -> Unit,
     onFeedback: (ActionFeedback) -> Unit, onDateChange: (LocalDate) -> Unit = {},
     onDetailsActive: (Boolean) -> Unit = {}) {
-    val shifts = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
+    val defs = ShiftRepository.shiftDefinitions.associateBy { it.id }
+    val shifts = ShiftRepository.getShiftsForDate(date)
+        .filter { defs[it.shiftDefId]?.workProfileId == ShiftRepository.activeWorkProfileId }
+        .sortedChronologically(defs)
     var detailShift by remember(date) { mutableStateOf<AssignedShift?>(null) }
     var dayNotes by remember(date) { mutableStateOf(false) }
     val holidays = ShiftRepository.holidaysForDate(date)
@@ -655,17 +683,19 @@ private fun NativeShiftExtraChips(
     vertical: Boolean = false,
 ) {
     Column(modifier) {
+        val displayStartTime = remember(shift, def) { resolvedShiftDisplayStartTime(shift, def) }
         val displayExitTime = remember(shift, def) { resolvedShiftDisplayExitTime(shift, def) }
-        val hasExtra = shift.overtimeHours > 0 || shift.permissionHours > 0f || displayExitTime != null
+        val hasExtra = shift.overtimeHours > 0f || shift.permissionHours > 0f || displayStartTime != null || displayExitTime != null
         if(hasExtra) {
             val warning = currentTurniPalette.warning
             val contents: @Composable () -> Unit = {
-                if (shift.overtimeHours > 0) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
+                if (shift.overtimeHours > 0f) DetailPill("+${formatOvertime(shift.overtimeHours)}", panelOvertimeInk, panelOvertimeSurface)
                 if (shift.permissionHours > 0f) DetailPill(
                     "−${formatOvertime(shift.permissionHours)}",
                     Color(warning.ink),
                     Color(warning.fill),
                 )
+                displayStartTime?.let { DetailPill("Attacco $it", BrandInk, ObsidianSurface) }
                 displayExitTime?.let { DetailPill("Stacco $it", BrandInk, ObsidianSurface) }
             }
             if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
@@ -694,7 +724,7 @@ private fun DetailPill(text: String, color: Color, background: Color) {
 
 /** One floating, opaque surface; the existing day surface is hidden while this is open. */
 @Composable
-internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 86.dp, dimAmount: Float = 0f,
+internal fun NativeBottomDialog(onClose: () -> Unit, bottomInset: Dp = 96.dp, dimAmount: Float = 0f,
     scrollContent: Boolean = true, content: @Composable ColumnScope.(close: () -> Unit) -> Unit) {
     var visible by remember { mutableStateOf(false) }; var closing by remember { mutableStateOf(false) }
     val scope = rememberCoroutineScope()
@@ -857,12 +887,99 @@ private fun permissionExitTimeString(
     return start.plusMinutes(offset).format(DateTimeFormatter.ofPattern("HH:mm"))
 }
 
+internal fun evaluateActualStartTime(
+    startTime: String,
+    endTime: String,
+    breakMinutes: Int,
+    breakStartTime: String?,
+    chosenStartTime: String,
+    baseDurationMinutes: Long,
+    baseHours: Float,
+): ActualExitEvaluation {
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    val end = runCatching { LocalTime.parse(endTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    val chosen = runCatching { LocalTime.parse(chosenStartTime.trim()) }.getOrNull()
+        ?: return ActualExitEvaluation(0f, 0f, false)
+    if (chosen == start) return ActualExitEvaluation(0f, 0f, true)
+    val spanMin = shiftSpanMinutes(start, end)
+    val startMin = start.toSecondOfDay() / 60L
+    val chosenMin = chosen.toSecondOfDay() / 60L
+    val afterStart = Math.floorMod(chosenMin - startMin, 1440L)
+    if (afterStart < spanMin) {
+        val breakSkipped = if (breakMinutes > 0) {
+            val breakStartOffset = breakStartOffsetMinutes(start, spanMin, breakMinutes, breakStartTime)
+            (afterStart - breakStartOffset).coerceIn(0L, breakMinutes.toLong())
+        } else 0L
+        val permHours = ((afterStart - breakSkipped).coerceAtLeast(0L) / 60f).coerceIn(0f, baseHours)
+        return ActualExitEvaluation(overtimeHours = 0f, permissionHours = permHours, valid = true)
+    }
+    val beforeStart = Math.floorMod(startMin - chosenMin, 1440L)
+    return if (beforeStart in 1..960) {
+        ActualExitEvaluation(overtimeHours = beforeStart / 60f, permissionHours = 0f, valid = true)
+    } else {
+        ActualExitEvaluation(0f, 0f, false)
+    }
+}
+
+private fun permissionStartTimeString(
+    startTime: String,
+    endTime: String,
+    breakMinutes: Int,
+    breakStartTime: String?,
+    permissionHours: Float,
+    baseDurationMinutes: Long,
+): String? {
+    if (baseDurationMinutes <= 0L) return startTime
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull() ?: return null
+    val end = runCatching { LocalTime.parse(endTime.trim()) }.getOrNull() ?: return null
+    val permMin = (permissionHours.coerceAtLeast(0f) * 60f).roundToInt().toLong().coerceIn(0L, baseDurationMinutes)
+    if (permMin <= 0L) return start.format(DateTimeFormatter.ofPattern("HH:mm"))
+    val totalSpanMin = shiftSpanMinutes(start, end)
+    val offset = if (breakMinutes > 0) {
+        val breakStartOffset = breakStartOffsetMinutes(start, totalSpanMin, breakMinutes, breakStartTime)
+        if (permMin <= breakStartOffset) permMin else permMin + breakMinutes
+    } else permMin
+    return start.plusMinutes(offset).format(DateTimeFormatter.ofPattern("HH:mm"))
+}
+
+internal fun resolvedShiftDisplayStartTime(
+    shift: AssignedShift,
+    def: ShiftDefinition,
+): String? {
+    shift.actualStartTime?.takeIf { it.isNotBlank() }?.let { return it }
+    if (def.isAllDay) return null
+    val startTime = (shift.customStartTime ?: def.startTime).takeIf { it.isNotBlank() } ?: return null
+    val endTime = (shift.customEndTime ?: def.endTime).takeIf { it.isNotBlank() } ?: return null
+    val start = runCatching { LocalTime.parse(startTime.trim()) }.getOrNull() ?: return null
+    if (shift.startOvertimeHours > 0f) {
+        val min = (shift.startOvertimeHours * 60f).roundToInt().toLong()
+        if (min > 0L) return start.minusMinutes(min).format(DateTimeFormatter.ofPattern("HH:mm"))
+    }
+    if (shift.startPermissionHours > 0f) {
+        val baseDurationMinutes = def.copy(startTime = startTime, endTime = endTime).durationMinutes
+        if (baseDurationMinutes > 0L) {
+            return permissionStartTimeString(
+                startTime = startTime,
+                endTime = endTime,
+                breakMinutes = def.breakMinutes,
+                breakStartTime = def.breakStartTime,
+                permissionHours = shift.startPermissionHours,
+                baseDurationMinutes = baseDurationMinutes,
+            )
+        }
+    }
+    return null
+}
+
 internal fun resolvedShiftDisplayExitTime(
     shift: AssignedShift,
     def: ShiftDefinition,
 ): String? {
     shift.actualEndTime?.takeIf { it.isNotBlank() }?.let { return it }
-    if (shift.permissionHours <= 0f || def.isAllDay) return null
+    val endPerm = if (shift.endPermissionHours > 0f || shift.startPermissionHours > 0f) shift.endPermissionHours else shift.permissionHours
+    if (endPerm <= 0f || def.isAllDay) return null
     val startTime = (shift.customStartTime ?: def.startTime).takeIf { it.isNotBlank() } ?: return null
     val endTime = (shift.customEndTime ?: def.endTime).takeIf { it.isNotBlank() } ?: return null
     val baseDurationMinutes = def.copy(startTime = startTime, endTime = endTime).durationMinutes
@@ -872,7 +989,7 @@ internal fun resolvedShiftDisplayExitTime(
         endTime = endTime,
         breakMinutes = def.breakMinutes,
         breakStartTime = def.breakStartTime,
-        permissionHours = shift.permissionHours,
+        permissionHours = endPerm,
         baseDurationMinutes = baseDurationMinutes,
     )
 }
@@ -890,21 +1007,69 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
     val baseDurationMin = effectiveDef.durationMinutes
     val baseHours = effectiveDef.durationHoursFloat
     val timeFormatter = remember { DateTimeFormatter.ofPattern("HH:mm", Locale.ROOT) }
+    val baseStart = remember(shiftStart) { runCatching { LocalTime.parse(shiftStart.trim()) }.getOrNull() }
     val base = remember(baseEnd) { runCatching { LocalTime.parse(baseEnd.trim()) }.getOrNull() }
     var notes by remember(shift.id) { mutableStateOf(shift.notes) }
+
+    val initialEndOt = if (shift.endOvertimeHours > 0f || shift.startOvertimeHours > 0f) shift.endOvertimeHours else shift.overtimeHours
+    val initialEndPerm = if (shift.endPermissionHours > 0f || shift.startPermissionHours > 0f) shift.endPermissionHours else shift.permissionHours
+
+    var startOtHours by remember(shift.id) {
+        mutableStateOf(if (def.isAllDay) 0f else shift.startOvertimeHours.coerceAtLeast(0f))
+    }
+    var startPermHours by remember(shift.id) {
+        val initial = if (shift.startPermissionHours.isFinite()) shift.startPermissionHours else 0f
+        mutableStateOf(if (def.isAllDay) 0f else initial.coerceIn(0f, baseHours))
+    }
+    var actualStart by remember(shift.id) {
+        val initialStart = when {
+            def.isAllDay -> shiftStart
+            !shift.actualStartTime.isNullOrBlank() -> shift.actualStartTime
+            shift.startOvertimeHours > 0f && baseStart != null ->
+                baseStart.minusMinutes((shift.startOvertimeHours * 60f).roundToInt().toLong()).format(timeFormatter)
+            shift.startPermissionHours > 0f ->
+                permissionStartTimeString(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, shift.startPermissionHours, baseDurationMin)
+                    ?: shiftStart
+            else -> shiftStart
+        }
+        mutableStateOf(initialStart)
+    }
+    var startDeltaMin by remember(shift.id) {
+        val initialDelta = when {
+            def.isAllDay -> 0
+            shift.startOvertimeHours > 0f -> -(shift.startOvertimeHours * 60f).roundToInt().coerceIn(0, 960)
+            shift.startPermissionHours > 0f -> (shift.startPermissionHours * 60f).roundToInt().coerceIn(0, baseDurationMin.toInt().coerceAtLeast(0))
+            else -> 0
+        }
+        mutableStateOf(initialDelta)
+    }
+    var startValid by remember(shift.id) {
+        mutableStateOf(
+            def.isAllDay || evaluateActualStartTime(
+                startTime = shiftStart,
+                endTime = baseEnd,
+                breakMinutes = def.breakMinutes,
+                breakStartTime = def.breakStartTime,
+                chosenStartTime = actualStart,
+                baseDurationMinutes = baseDurationMin,
+                baseHours = baseHours,
+            ).valid
+        )
+    }
+
     var hours by remember(shift.id) {
-        mutableStateOf(if (def.isAllDay) 0f else shift.overtimeHours.coerceAtLeast(0f))
+        mutableStateOf(if (def.isAllDay) 0f else initialEndOt.coerceAtLeast(0f))
     }
     var permHours by remember(shift.id) {
-        val initial = if (shift.permissionHours.isFinite()) shift.permissionHours else 0f
+        val initial = if (initialEndPerm.isFinite()) initialEndPerm else 0f
         mutableStateOf(if (def.isAllDay) 0f else initial.coerceIn(0f, baseHours))
     }
     var end by remember(shift.id) {
         val initialEnd = if (def.isAllDay) {
             baseEnd
-        } else if (shift.permissionHours > 0f && shift.overtimeHours == 0f) {
+        } else if (initialEndPerm > 0f && initialEndOt == 0f) {
             shift.actualEndTime
-                ?: permissionExitTimeString(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, shift.permissionHours, baseDurationMin)
+                ?: permissionExitTimeString(shiftStart, baseEnd, def.breakMinutes, def.breakStartTime, initialEndPerm, baseDurationMin)
                 ?: baseEnd
         } else {
             shift.actualEndTime ?: baseEnd
@@ -914,8 +1079,8 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
     var deltaOffsetMin by remember(shift.id) {
         val initialDelta = when {
             def.isAllDay -> 0
-            shift.overtimeHours > 0f -> (shift.overtimeHours * 60f).roundToInt().coerceIn(0, 960)
-            shift.permissionHours > 0f -> -(shift.permissionHours * 60f).roundToInt().coerceIn(0, baseDurationMin.toInt().coerceAtLeast(0))
+            initialEndOt > 0f -> (initialEndOt * 60f).roundToInt().coerceIn(0, 960)
+            initialEndPerm > 0f -> -(initialEndPerm * 60f).roundToInt().coerceIn(0, baseDurationMin.toInt().coerceAtLeast(0))
             else -> 0
         }
         mutableStateOf(initialDelta)
@@ -934,19 +1099,101 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
         )
     }
     var noteTab by remember(shift.id) { mutableStateOf(false) }
+    var timeSegment by remember(shift.id) { mutableStateOf(if (shift.startOvertimeHours > 0f || shift.startPermissionHours > 0f || !shift.actualStartTime.isNullOrBlank()) 0 else 1) }
     var showTimePicker by remember(shift.id) { mutableStateOf(false) }
     val warning = currentTurniPalette.warning
     val permInk = Color(warning.ink)
     val permSurface = Color(warning.fill)
     val minDelta = -baseDurationMin.toInt().coerceAtLeast(0)
     val maxDelta = 960
+    val minStartDelta = -960
+    val maxStartDelta = baseDurationMin.toInt().coerceAtLeast(0)
 
     val resetTime: () -> Unit = {
+        actualStart = shiftStart
+        startOtHours = 0f
+        startPermHours = 0f
+        startDeltaMin = 0
+        startValid = true
         end = baseEnd
         hours = 0f
         permHours = 0f
         deltaOffsetMin = 0
         valid = true
+    }
+
+    val applyStartTime: (String) -> Unit = { raw ->
+        val filtered = raw.filter { char -> char.isDigit() || char == ':' }.take(5)
+        actualStart = filtered
+        if (def.isAllDay) {
+            startOtHours = 0f
+            startPermHours = 0f
+            startDeltaMin = 0
+            startValid = true
+        } else {
+            val eval = evaluateActualStartTime(
+                startTime = shiftStart,
+                endTime = baseEnd,
+                breakMinutes = def.breakMinutes,
+                breakStartTime = def.breakStartTime,
+                chosenStartTime = filtered,
+                baseDurationMinutes = baseDurationMin,
+                baseHours = baseHours,
+            )
+            startValid = eval.valid
+            if (eval.valid) {
+                startOtHours = eval.overtimeHours
+                startPermHours = eval.permissionHours
+                startDeltaMin = when {
+                    eval.overtimeHours > 0f -> -(eval.overtimeHours * 60f).roundToInt().coerceIn(1, 960)
+                    eval.permissionHours > 0f -> (eval.permissionHours * 60f).roundToInt().coerceIn(0, maxStartDelta)
+                    else -> 0
+                }
+            } else {
+                startOtHours = 0f
+                startPermHours = 0f
+                if (filtered.isBlank()) startDeltaMin = 0
+            }
+        }
+    }
+
+    val applyStartStepMinutes: (Int) -> Unit = { stepMinutes ->
+        if (!def.isAllDay && baseStart != null) {
+            val currentDelta = when {
+                !startValid -> 0
+                startOtHours > 0f -> startDeltaMin.coerceIn(minStartDelta, -1)
+                startPermHours > 0f -> startDeltaMin.coerceIn(1, maxStartDelta)
+                else -> 0
+            }
+            val clampedDelta = (currentDelta + stepMinutes).coerceIn(minStartDelta, maxStartDelta)
+            startDeltaMin = clampedDelta
+            startValid = true
+            when {
+                clampedDelta == 0 -> {
+                    actualStart = shiftStart
+                    startOtHours = 0f
+                    startPermHours = 0f
+                }
+                clampedDelta < 0 -> {
+                    actualStart = baseStart.plusMinutes(clampedDelta.toLong()).format(timeFormatter)
+                    startOtHours = -clampedDelta / 60f
+                    startPermHours = 0f
+                }
+                else -> {
+                    val nextPerm = (clampedDelta / 60f).coerceIn(0f, baseHours)
+                    startPermHours = nextPerm
+                    actualStart = permissionStartTimeString(
+                        startTime = shiftStart,
+                        endTime = baseEnd,
+                        breakMinutes = def.breakMinutes,
+                        breakStartTime = def.breakStartTime,
+                        permissionHours = nextPerm,
+                        baseDurationMinutes = baseDurationMin,
+                    ) ?: shiftStart
+                    startOtHours = 0f
+                }
+            }
+        }
     }
 
     val applyExitTime: (String) -> Unit = { raw ->
@@ -1023,47 +1270,36 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
         }
     }
 
-    val statusKind = when {
-        hours > 0f -> 1
-        permHours > 0f -> -1
-        else -> 0
-    }
-    val exitInk by animateColorAsState(
+    val totalOvertime = startOtHours + hours
+    val totalPermission = startPermHours + permHours
+    val isAttacco = timeSegment == 0
+    val activeFieldValid = if (isAttacco) startValid else valid
+    val activeOt = if (isAttacco) startOtHours else hours
+    val activePerm = if (isAttacco) startPermHours else permHours
+
+    val fieldInk by animateColorAsState(
         targetValue = when {
-            !valid -> panelDanger
-            hours > 0f -> panelOvertime
-            permHours > 0f -> permInk
+            !activeFieldValid -> panelDanger
+            activeOt > 0f -> panelOvertime
+            activePerm > 0f -> permInk
             else -> TextPrimary
         },
         animationSpec = tween(180),
-        label = "shiftExitInk",
+        label = "shiftFieldInk",
     )
     val clockTint by animateColorAsState(
         targetValue = when {
-            hours > 0f -> panelOvertime
-            permHours > 0f -> permInk
+            activeOt > 0f -> panelOvertime
+            activePerm > 0f -> permInk
             else -> BrandInk
         },
         animationSpec = tween(180),
         label = "shiftClockTint",
     )
-    val statusColor by animateColorAsState(
-        targetValue = when (statusKind) {
-            1 -> panelOvertime
-            -1 -> permInk
-            else -> TextSecondary
-        },
-        animationSpec = tween(180),
-        label = "shiftStatusColor",
-    )
-    val statusText = when {
-        hours > 0f -> "+${formatOvertime(hours)} · Straordinario"
-        permHours > 0f -> "−${formatOvertime(permHours)} · Permesso"
-        else -> "Orario regolare"
-    }
-    val canReset = hours > 0f || permHours > 0f || (!def.isAllDay && end != baseEnd)
+    val canReset = totalOvertime > 0f || totalPermission > 0f || (!def.isAllDay && (actualStart != shiftStart || end != baseEnd))
+    val bothValid = startValid && valid
 
-    NativeBottomDialog(onClose, bottomInset = 86.dp) { close ->
+    NativeBottomDialog(onClose, bottomInset = 96.dp) { close ->
         Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
             PanelIcon("arrow-left", "Torna al dettaglio giorno", close, width = 40.dp, height = 40.dp, glyphSize = 20.dp)
             Column(Modifier.weight(1f)) {
@@ -1117,15 +1353,23 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                         lineHeight = 17.sp,
                     )
                 } else {
+                    SlidingSegmentBar(
+                        items = listOf("Attacco" to null, "Stacco" to null),
+                        selectedIndex = timeSegment,
+                        onSelect = { timeSegment = it },
+                        height = 38.dp,
+                        pillColor = ObsidianPrimary,
+                        pillInk = OnBrand,
+                    )
                     Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(10.dp),
                     ) {
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(7.dp)) {
-                            Text("Fine prevista", color = TextSecondary, fontSize = 11.sp)
+                            Text(if (isAttacco) "Inizio previsto" else "Fine prevista", color = TextSecondary, fontSize = 11.sp)
                             Text(
-                                text = baseEnd,
+                                text = if (isAttacco) shiftStart else baseEnd,
                                 color = TextPrimary,
                                 fontSize = 18.sp,
                                 fontWeight = FontWeight.SemiBold,
@@ -1133,20 +1377,20 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                             )
                         }
                         Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text("Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
+                            Text(if (isAttacco) "Attacco effettivo" else "Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 BasicTextField(
-                                    value = end,
-                                    onValueChange = applyExitTime,
+                                    value = if (isAttacco) actualStart else end,
+                                    onValueChange = { if (isAttacco) applyStartTime(it) else applyExitTime(it) },
                                     singleLine = true,
                                     textStyle = TextStyle(
-                                        color = exitInk,
+                                        color = fieldInk,
                                         fontSize = 19.sp,
                                         fontWeight = FontWeight.SemiBold,
                                         fontFeatureSettings = "tnum",
                                     ),
                                     keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Ascii),
-                                    cursorBrush = SolidColor(exitInk),
+                                    cursorBrush = SolidColor(fieldInk),
                                     modifier = Modifier
                                         .weight(1f)
                                         .heightIn(min = 44.dp)
@@ -1157,7 +1401,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                                 )
                                 PanelIcon(
                                     name = "clock",
-                                    label = "Scegli stacco effettivo",
+                                    label = if (isAttacco) "Scegli attacco effettivo" else "Scegli stacco effettivo",
                                     onClick = {
                                         focus.clearFocus()
                                         keyboard?.hide()
@@ -1173,20 +1417,31 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                         }
                     }
                     Row(Modifier.fillMaxWidth().heightIn(min = 38.dp), verticalAlignment = Alignment.CenterVertically) {
-                        AnimatedContent(
-                            targetState = statusText,
-                            transitionSpec = { fadeIn(tween(160)) togetherWith fadeOut(tween(90)) },
-                            label = "shiftTimeStatus",
-                            modifier = Modifier.weight(1f),
-                        ) { label ->
-                            Text(
-                                text = label,
-                                color = statusColor,
-                                fontSize = 13.sp,
-                                fontWeight = FontWeight.Medium,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis,
-                            )
+                        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            if (totalOvertime == 0f && totalPermission == 0f) {
+                                Text("Orario regolare", color = TextSecondary, fontSize = 13.sp, fontWeight = FontWeight.Medium)
+                            } else {
+                                if (totalOvertime > 0f) {
+                                    Text(
+                                        "+${formatOvertime(totalOvertime)} · Straordinario",
+                                        color = panelOvertime,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                                if (totalPermission > 0f) {
+                                    Text(
+                                        "−${formatOvertime(totalPermission)} · Permesso",
+                                        color = permInk,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.Medium,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
                         }
                         Text(
                             text = "Azzera",
@@ -1213,18 +1468,26 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                             60 to "+1h",
                         )
                         steps.forEach { (stepMinutes, label) ->
-                            val isNegative = stepMinutes < 0
-                            val chipEnabled = if (isNegative) deltaOffsetMin > minDelta || !valid else deltaOffsetMin < maxDelta || !valid
-                            val baseTint = if (isNegative) permSurface else panelOvertimeSurface
+                            // Attacco: negative steps = early arrival (overtime/green), positive = late arrival (permission/amber)
+                            // Stacco: negative steps = early exit (permission/amber), positive = late exit (overtime/green)
+                            val isOvertimeStep = if (isAttacco) stepMinutes < 0 else stepMinutes > 0
+                            val chipEnabled = if (isAttacco) {
+                                if (stepMinutes < 0) startDeltaMin > minStartDelta || !startValid else startDeltaMin < maxStartDelta || !startValid
+                            } else {
+                                if (stepMinutes < 0) deltaOffsetMin > minDelta || !valid else deltaOffsetMin < maxDelta || !valid
+                            }
+                            val baseTint = if (isOvertimeStep) panelOvertimeSurface else permSurface
                             val chipFill = lerp(ObsidianSurface, baseTint, if (TurniThemeState.dark) 0.55f else 0.45f)
-                            val chipInk = readableInk(chipFill, if (isNegative) permInk else panelOvertimeInk)
+                            val chipInk = readableInk(chipFill, if (isOvertimeStep) panelOvertimeInk else permInk)
                             Box(
                                 Modifier
                                     .weight(1f)
                                     .height(42.dp)
                                     .clip(RoundedCornerShape(11.dp))
                                     .background(chipFill)
-                                    .bouncyClickable(enabled = chipEnabled) { applyStepMinutes(stepMinutes) }
+                                    .bouncyClickable(enabled = chipEnabled) {
+                                        if (isAttacco) applyStartStepMinutes(stepMinutes) else applyStepMinutes(stepMinutes)
+                                    }
                                     .padding(horizontal = 2.dp)
                                     .graphicsLayer { alpha = if (chipEnabled) 1f else 0.45f },
                                 contentAlignment = Alignment.Center,
@@ -1240,9 +1503,10 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                             }
                         }
                     }
-                    if (!valid) {
+                    if (!activeFieldValid) {
                         Text(
-                            "Controlla l’orario di stacco (HH:mm, massimo 16 ore dopo la fine prevista)",
+                            if (isAttacco) "Controlla l’orario di attacco (HH:mm, massimo 16 ore prima dell’inizio previsto)"
+                            else "Controlla l’orario di stacco (HH:mm, massimo 16 ore dopo la fine prevista)",
                             color = panelDanger,
                             fontSize = 11.sp,
                         )
@@ -1252,31 +1516,44 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
         }
         Spacer(Modifier.height(14.dp))
         PanelButton("Salva", "check", true, Modifier.fillMaxWidth(), 44.dp) {
-            if (valid) {
+            if (bothValid) {
                 focus.clearFocus(); keyboard?.hide()
+                val normalizedStart = runCatching {
+                    LocalTime.parse(actualStart.trim()).format(timeFormatter)
+                }.getOrDefault(actualStart.trim())
                 val normalizedEnd = runCatching {
                     LocalTime.parse(end.trim()).format(timeFormatter)
                 }.getOrDefault(end.trim())
                 ShiftRepository.setShiftExtraDetails(
                     date = date,
                     assignedShiftId = shift.id,
-                    actualEndTime = if (def.isAllDay || hours <= 0f) null else normalizedEnd,
-                    overtimeHours = if (def.isAllDay) 0f else hours,
+                    actualEndTime = if (def.isAllDay || (hours <= 0f && permHours <= 0f && normalizedEnd == baseEnd)) null else normalizedEnd,
+                    overtimeHours = if (def.isAllDay) 0f else totalOvertime,
                     notes = notes,
-                    permissionHours = if (def.isAllDay) 0f else permHours,
+                    permissionHours = if (def.isAllDay) 0f else totalPermission,
+                    actualStartTime = if (def.isAllDay || (startOtHours <= 0f && startPermHours <= 0f && normalizedStart == shiftStart)) null else normalizedStart,
+                    startOvertimeHours = if (def.isAllDay) 0f else startOtHours,
+                    startPermissionHours = if (def.isAllDay) 0f else startPermHours,
+                    endOvertimeHours = if (def.isAllDay) 0f else hours,
+                    endPermissionHours = if (def.isAllDay) 0f else permHours,
                 )
                 onFeedback(ActionFeedback("Informazioni salvate", false)); close()
-            } else onFeedback(ActionFeedback("Controlla l’orario di stacco", true))
+            } else onFeedback(ActionFeedback(if (!startValid) "Controlla l’orario di attacco" else "Controlla l’orario di stacco", true))
         }
     }
     if (showTimePicker) {
+        val pickerInitial = if (isAttacco) {
+            runCatching { LocalTime.parse(actualStart.trim()).format(timeFormatter) }.getOrDefault(shiftStart)
+        } else {
+            runCatching { LocalTime.parse(end.trim()).format(timeFormatter) }.getOrDefault(baseEnd)
+        }
         TurniTimePickerDialog(
-            title = "Stacco effettivo",
-            initialTime = runCatching { LocalTime.parse(end.trim()).format(timeFormatter) }.getOrDefault(baseEnd),
+            title = if (isAttacco) "Attacco effettivo" else "Stacco effettivo",
+            initialTime = pickerInitial,
             onDismiss = { showTimePicker = false },
             onConfirm = { chosen ->
                 showTimePicker = false
-                applyExitTime(chosen)
+                if (isAttacco) applyStartTime(chosen) else applyExitTime(chosen)
             },
         )
     }
@@ -1293,7 +1570,10 @@ internal fun NativeElementEraser(date: LocalDate, onClose: () -> Unit, onRemove:
             PanelIcon("x", "Chiudi senza altre modifiche", close, width = 36.dp, height = 36.dp, glyphSize = 18.dp)
         }
         Text("Rimuovi i singoli elementi. Gli altri turni e le note del giorno restano.", color = TextSecondary, fontSize = 11.sp, lineHeight = 16.sp, modifier = Modifier.padding(vertical = 10.dp))
-        val shifts = ShiftRepository.getShiftsForDate(date).filter { ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == ShiftRepository.activeWorkProfileId }
+        val defs = ShiftRepository.shiftDefinitions.associateBy { it.id }
+    val shifts = ShiftRepository.getShiftsForDate(date)
+        .filter { defs[it.shiftDefId]?.workProfileId == ShiftRepository.activeWorkProfileId }
+        .sortedChronologically(defs)
         shifts.forEach { shift ->
             val def = ShiftRepository.getShiftDefinition(shift.shiftDefId)
             Row(Modifier.fillMaxWidth().padding(bottom = 7.dp).clip(RoundedCornerShape(15.dp)).background(ObsidianSurfaceContainer).padding(10.dp),
@@ -1317,21 +1597,56 @@ internal fun NativeElementEraser(date: LocalDate, onClose: () -> Unit, onRemove:
 }
 
 @Composable
-internal fun NativeShiftChooser(onDismiss: () -> Unit, onChoose: (String) -> Unit) {
+internal fun NativeShiftChooser(onDismiss: () -> Unit, onChoose: (String) -> Unit, onNavigateToTurni: (Int) -> Unit = {}) {
     NativeBottomDialog(onDismiss) { close ->
         Row(verticalAlignment = Alignment.CenterVertically) {
             Text("Scegli turno", color = TextPrimary, fontSize = 20.sp, fontWeight = FontWeight.Bold, modifier = Modifier.weight(1f))
             PanelIcon("x", "Chiudi selezione", close, width = 36.dp, height = 36.dp, glyphSize = 18.dp)
         }
-        ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }.forEach { def ->
-            Row(Modifier.fillMaxWidth().padding(top = 7.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer)
-                .clickable { onChoose(def.id); close() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Box(Modifier.size(39.dp).clip(RoundedCornerShape(12.dp)).background(def.color), contentAlignment = Alignment.Center) {
-                    Text(def.shortCode, color = catalogInk(def.color), fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+        val activeShifts = ShiftRepository.shiftDefinitions
+            .filter { it.workProfileId == ShiftRepository.activeWorkProfileId }
+            .sortedChronologically()
+        if (activeShifts.isEmpty()) {
+            Column(
+                Modifier
+                    .fillMaxWidth()
+                    .padding(top = 12.dp)
+                    .clip(RoundedCornerShape(16.dp))
+                    .background(ObsidianSurfaceContainer)
+                    .padding(16.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                Text(
+                    "Nessun turno configurato in questo lavoro",
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    textAlign = TextAlign.Center,
+                )
+                Text(
+                    "Crea almeno un modello di turno per poterlo assegnare al calendario.",
+                    color = TextSecondary,
+                    fontSize = 12.sp,
+                    lineHeight = 17.sp,
+                    textAlign = TextAlign.Center,
+                )
+                PanelButton("Crea un turno", "circle-plus", primary = true, height = 40.dp) {
+                    close()
+                    onNavigateToTurni(0)
                 }
-                Column(Modifier.padding(start = 12.dp)) {
-                    Text(def.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
-                    Text(def.timeRangeFormatted, color = TextSecondary, fontSize = 12.sp)
+            }
+        } else {
+            activeShifts.forEach { def ->
+                Row(Modifier.fillMaxWidth().padding(top = 7.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianSurfaceContainer)
+                    .clickable { onChoose(def.id); close() }.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Box(Modifier.size(39.dp).clip(RoundedCornerShape(12.dp)).background(def.color), contentAlignment = Alignment.Center) {
+                        Text(def.shortCode, color = catalogInk(def.color), fontWeight = FontWeight.Bold, fontSize = 12.sp, maxLines = 2)
+                    }
+                    Column(Modifier.padding(start = 12.dp)) {
+                        Text(def.name, color = TextPrimary, fontSize = 14.sp, fontWeight = FontWeight.SemiBold)
+                        Text(def.timeRangeFormatted, color = TextSecondary, fontSize = 12.sp)
+                    }
                 }
             }
         }

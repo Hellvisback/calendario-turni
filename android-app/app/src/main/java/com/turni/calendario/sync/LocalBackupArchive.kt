@@ -23,10 +23,10 @@ object LocalBackupArchive {
                 val temp = File(versions, copy.name + ".tmp")
                 temp.outputStream().use { it.write(data); it.fd.sync() }
                 check(temp.renameTo(copy)) { "Impossibile conservare la copia precedente." }
-                copy.setLastModified(time)
+                if (time > 0L) copy.setLastModified(time)
             }
         }
-        if (previous != null) keep(previous, latest.lastModified())
+        if (previous != null) keep(previous, latest.lastModified().takeIf { it > 0L } ?: System.currentTimeMillis())
         keep(bytes, System.currentTimeMillis())
         val temp = File(folder, "latest.tmp")
         temp.outputStream().use { it.write(bytes); it.fd.sync() }

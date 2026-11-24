@@ -72,11 +72,15 @@ object WidgetUpdateManager {
     const val ACTION_NAV_RESET = "com.turni.calendario.widget.ACTION_NAV_RESET"
     private val executor = Executors.newSingleThreadExecutor { task -> Thread(task, "TurniSyncWidgets") }
 
-    fun getDaySummary(date: LocalDate, today: LocalDate = LocalDate.now()): DayShiftSummary {
+    fun getDaySummary(
+        date: LocalDate,
+        today: LocalDate = LocalDate.now(),
+        workProfileId: String = ShiftRepository.activeWorkProfileId
+    ): DayShiftSummary {
         // Match the selected work calendar, including all of its per-shift metadata.
         val shifts = ShiftRepository.getShiftsForDate(date).mapNotNull { assigned ->
             val definition = ShiftRepository.getShiftDefinition(assigned.shiftDefId) ?: return@mapNotNull null
-            if (definition.workProfileId != ShiftRepository.activeWorkProfileId) return@mapNotNull null
+            if (definition.workProfileId != workProfileId) return@mapNotNull null
             WidgetShift(assigned.id, definition,
                 if (definition.isAllDay) "— —" else assigned.customStartTime ?: definition.startTime,
                 assigned.overtimeHours, assigned.isTrasferta, assigned.notes)
@@ -87,7 +91,7 @@ object WidgetUpdateManager {
             date.dayOfMonth, date == today, first?.definition,
             first?.definition?.shortCode ?: "—", first?.definition?.name ?: "Nessun turno",
             first?.startTime ?: "", shifts.sumOf { it.overtimeHours.toDouble() }.toFloat(),
-            ShiftRepository.isOnCall(date), shifts.any { it.isTrasferta },
+            ShiftRepository.isOnCall(date, workProfileId), shifts.any { it.isTrasferta },
             shifts.map { it.notes }.filter { it.isNotBlank() }.joinToString(" • "),
             shifts.size > 1, shifts.drop(1).map { it.definition.colorHex.toInt() }, shifts, ShiftRepository.isHoliday(date)?.name)
     }
@@ -113,6 +117,45 @@ object WidgetUpdateManager {
         }
         return PendingIntent.getBroadcast(context, appWidgetId, intent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    fun createWorkProfilePendingIntent(context: Context, appWidgetId: Int): PendingIntent {
+        val intent = Intent(context, WidgetWorkProfileActivity::class.java).apply {
+            action = AppWidgetManager.ACTION_APPWIDGET_CONFIGURE
+            data = Uri.parse("turnisync://widget/profile/$appWidgetId")
+            putExtra(AppWidgetManager.EXTRA_APPWIDGET_ID, appWidgetId)
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+        }
+        return PendingIntent.getActivity(context, appWidgetId, intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE)
+    }
+
+    fun getWidgetWorkProfileId(context: Context, appWidgetId: Int): String? =
+        context.getSharedPreferences("widget_state", Context.MODE_PRIVATE)
+            .getString("work_profile_$appWidgetId", null)
+
+    fun setWidgetWorkProfileId(context: Context, appWidgetId: Int, profileId: String?) {
+        val editor = context.getSharedPreferences("widget_state", Context.MODE_PRIVATE).edit()
+        if (profileId.isNullOrBlank()) editor.remove("work_profile_$appWidgetId")
+        else editor.putString("work_profile_$appWidgetId", profileId)
+        editor.apply()
+    }
+
+    internal fun resolveWidgetWorkProfile(context: Context, appWidgetId: Int): com.turni.calendario.model.WorkProfile {
+        val storedId = getWidgetWorkProfileId(context, appWidgetId)
+        return if (storedId != null) {
+            ShiftRepository.workProfiles.find { it.id == storedId } ?: ShiftRepository.activeWorkProfile
+        } else {
+            ShiftRepository.activeWorkProfile
+        }
+    }
+
+    fun updateWidgetById(context: Context, appWidgetId: Int) {
+        val manager = AppWidgetManager.getInstance(context)
+        val providerName = manager.getAppWidgetInfo(appWidgetId)?.provider?.className
+        val kind = WidgetKind.values().firstOrNull { it.provider.name == providerName }
+        if (kind != null) enqueue(context, kind, intArrayOf(appWidgetId))
+        else updateAllWidgets(context)
     }
 
     fun getWidgetOffset(context: Context, appWidgetId: Int): Int =

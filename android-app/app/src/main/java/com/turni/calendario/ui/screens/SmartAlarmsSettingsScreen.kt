@@ -79,6 +79,7 @@ import com.turni.calendario.alarm.ShiftAlarmService
 import com.turni.calendario.model.ShiftAlarmRule
 import com.turni.calendario.model.ShiftCategory
 import com.turni.calendario.model.ShiftDefinition
+import com.turni.calendario.model.sortedChronologically
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
@@ -104,10 +105,15 @@ import java.time.format.DateTimeFormatter
 import java.util.Locale
 
 @Composable
-fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
+fun SmartAlarmsSettingsScreen(
+    onDismiss: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     val lifecycle = LocalLifecycleOwner.current
     val config = ShiftRepository.smartAlarmsConfig
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val hasActiveShifts = ShiftRepository.shiftDefinitions.any { it.workProfileId == activeProfileId }
     var refresh by remember { mutableIntStateOf(0) }
     var feedback by remember { mutableStateOf<String?>(null) }
     var feedbackType by remember { mutableStateOf(PopupType.INFO) }
@@ -128,9 +134,12 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
         if (config.isGlobalEnabled && exact && notifications) ShiftAlarmScheduler.getNextUpcomingAlarm(context) else null
     }
     val alarms = remember(config, refresh) { ShiftAlarmScheduler.getAllUpcomingAlarms(context, 30) }
-    val definitions = ShiftRepository.shiftDefinitions.filter {
-        (!it.isAllDay && it.category == ShiftCategory.LAVORO) || config.rules.any { rule -> rule.shiftDefId == it.id }
-    }
+    val definitions = ShiftRepository.shiftDefinitions
+        .filter {
+            it.workProfileId == activeProfileId &&
+                ((!it.isAllDay && it.category == ShiftCategory.LAVORO) || config.rules.any { rule -> rule.shiftDefId == it.id })
+        }
+        .sortedChronologically()
     val audio = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager
     val alarmVolume = remember(refresh) { audio.getStreamVolume(AudioManager.STREAM_ALARM) }
 
@@ -450,6 +459,23 @@ fun SmartAlarmsSettingsScreen(onDismiss: () -> Unit) {
                                         fontWeight = FontWeight.SemiBold,
                                         color = toggleAllInk,
                                     )
+                                }
+                            }
+                        }
+                        if (!hasActiveShifts) {
+                            item(key = "alarms-empty-shifts") {
+                                CloudCard(
+                                    title = "Nessun modello di turno",
+                                    subtitle = "Crea un turno nel lavoro attivo per impostare una sveglia automatica.",
+                                    accent = ExpressivePastel.SKY,
+                                ) {
+                                    if (onNavigateToTurni != null) {
+                                        CloudButton(
+                                            label = "Crea un turno",
+                                            icon = "plus",
+                                            onClick = onNavigateToTurni,
+                                        )
+                                    }
                                 }
                             }
                         }

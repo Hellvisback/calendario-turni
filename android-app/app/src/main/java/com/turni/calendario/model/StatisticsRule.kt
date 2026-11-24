@@ -5,7 +5,8 @@ data class StatisticsRule(
     val id: String,
     val displayedShiftId: String,
     val originalShiftIds: Set<String>,
-    val enabled: Boolean = true
+    val enabled: Boolean = true,
+    val workProfileId: String = "principale"
 )
 
 fun statisticsAssignment(shift: AssignedShift, definitions: Map<String, ShiftDefinition>, rules: List<StatisticsRule>): AssignedShift {

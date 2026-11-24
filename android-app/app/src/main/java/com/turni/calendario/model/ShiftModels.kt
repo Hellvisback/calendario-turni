@@ -70,6 +70,52 @@ data class ShiftDefinition(
         get() = if (isAllDay) "Tutto il giorno" else "$startTime - $endTime"
 }
 
+/** Minutes from 00:00 for chronological sorting; all-day shifts sort last. */
+fun ShiftDefinition.startSortMinutes(): Int {
+    if (isAllDay) return Int.MAX_VALUE
+    return try {
+        val parsed = LocalTime.parse(startTime.trim())
+        parsed.hour * 60 + parsed.minute
+    } catch (_: Exception) {
+        Int.MAX_VALUE - 1
+    }
+}
+
+/** Canonical chronological comparator: timed shifts ascending by start/end/name, then all-day shifts by name. */
+val ShiftChronologicalComparator: Comparator<ShiftDefinition> = Comparator { a, b ->
+    if (a.isAllDay != b.isAllDay) {
+        if (a.isAllDay) 1 else -1
+    } else if (!a.isAllDay) {
+        val startCmp = a.startSortMinutes().compareTo(b.startSortMinutes())
+        if (startCmp != 0) startCmp
+        else {
+            val endCmp = a.endTime.compareTo(b.endTime)
+            if (endCmp != 0) endCmp else a.name.compareTo(b.name, ignoreCase = true)
+        }
+    } else {
+        a.name.compareTo(b.name, ignoreCase = true)
+    }
+}
+
+fun List<ShiftDefinition>.sortedChronologically(): List<ShiftDefinition> =
+    sortedWith(ShiftChronologicalComparator)
+
+fun List<AssignedShift>.sortedChronologically(defs: Map<String, ShiftDefinition>): List<AssignedShift> =
+    sortedWith(
+        compareBy<AssignedShift, ShiftDefinition?>(nullsLast(ShiftChronologicalComparator)) { shift ->
+            defs[shift.shiftDefId]?.let { def ->
+                if (shift.customStartTime != null || shift.customEndTime != null) {
+                    def.copy(
+                        startTime = shift.customStartTime ?: def.startTime,
+                        endTime = shift.customEndTime ?: def.endTime
+                    )
+                } else {
+                    def
+                }
+            }
+        }.thenBy { it.id }
+    )
+
 /**
  * Singolo turno assegnato ad una data specifica.
  * Una singola data può contenere PIÙ turni (es. Smonto Notte + Giornaliero).
@@ -91,7 +137,12 @@ data class AssignedShift(
     val isTrasferta: Boolean = false,
     val isOnCallManual: Boolean? = null,
     val hideExShift: Boolean = false,
-    val permissionHours: Float = 0f
+    val permissionHours: Float = 0f,
+    val actualStartTime: String? = null,
+    val startOvertimeHours: Float = 0f,
+    val startPermissionHours: Float = 0f,
+    val endOvertimeHours: Float = 0f,
+    val endPermissionHours: Float = 0f
 )
 
 /**
@@ -126,15 +177,15 @@ data class SeasonalReperibilitaConfig(
     val winterStartDay: Int = 1,
     val winterEndMonth: Int = 5,      // 31 Maggio
     val winterEndDay: Int = 31,
-    val winterShiftIds: List<String> = listOf("pomeriggio"),
+    val winterShiftIds: List<String> = emptyList(),
     val summerCycleWorkWeeks: Int = 3,    // es. 3 settimane senza rep
     val summerCycleOnCallWeeks: Int = 1,  // 1 settimana di reperibilità
     val summerCycleReferenceDate: LocalDate = LocalDate.of(2026, 6, 1)
 )
 
 data class ReperibilitaConfig(
-    val mode: ReperibilitaMode = ReperibilitaMode.TURNO_SPECIFICO,
-    val shiftSpecificIds: List<String> = listOf("pomeriggio"),
+    val mode: ReperibilitaMode = ReperibilitaMode.MANUALE,
+    val shiftSpecificIds: List<String> = emptyList(),
     val seasonal: SeasonalReperibilitaConfig = SeasonalReperibilitaConfig(),
     val manualDates: Set<LocalDate> = emptySet()
 )
@@ -150,13 +201,8 @@ data class ShiftAlarmRule(
 )
 
 data class SmartAlarmsConfig(
-    val isGlobalEnabled: Boolean = true,
-    val rules: List<ShiftAlarmRule> = listOf(
-        ShiftAlarmRule("mattina", isEnabled = true, minutesBefore = 60),
-        ShiftAlarmRule("pomeriggio", isEnabled = false, minutesBefore = 90),
-        ShiftAlarmRule("notte", isEnabled = false, minutesBefore = 120),
-        ShiftAlarmRule("reperibilita", isEnabled = true, minutesBefore = 0, customTime = "20:00")
-    ),
+    val isGlobalEnabled: Boolean = false,
+    val rules: List<ShiftAlarmRule> = emptyList(),
     val disabledAlarmIds: Set<String> = emptySet()
 )
 
@@ -325,8 +371,8 @@ data class WorkProfile(
     val companyOrDepartment: String = "",
     val ccnlCode: String = "CCNL_MOBILITA_AF",
     val ccnlName: String = "CCNL Mobilità & Trasporti",
-    val weeklyHours: Int = 38,
-    val minRestHoursBetweenShifts: Int = 11,
+    val weeklyHours: Int = 0,
+    val minRestHoursBetweenShifts: Int = 0,
     val nightSurchargePercent: Int = 35,
     val holidaySurchargePercent: Int = 50,
     val nightHolidaySurchargePercent: Int = 65,
@@ -338,7 +384,7 @@ data class WorkProfile(
     val enableAdvancedCalc: Boolean = false,
     val ccnlDocumentName: String? = null,
     val ccnlDocumentUri: String? = null,
-    val maxConsecutiveWorkDays: Int = 6
+    val maxConsecutiveWorkDays: Int = 0
 ) {
     val linkedCcnl: CcnlDefinition
         get() = CcnlCatalog.findByCode(ccnlCode)
@@ -352,7 +398,8 @@ data class ShiftRotation(
     val name: String,
     val totalDays: Int,
     val daySequence: List<String>, // Lista di shiftDefId ordinati per giorno
-    val description: String = ""
+    val description: String = "",
+    val workProfileId: String = "principale"
 )
 
 /**
@@ -362,6 +409,12 @@ data class Holiday(
     val date: LocalDate,
     val name: String
 )
+
+enum class HolidayCategory {
+    NAZIONALE,
+    RICORRENZA,
+    PATRONO
+}
 
 data class HolidayItem(
     val id: String,
@@ -373,7 +426,12 @@ data class HolidayItem(
     val easterOffsetDays: Int = 0,
     val isCcnlExHoliday: Boolean = false,
     val isPatronSaint: Boolean = false,
-    val isDefaultEnabled: Boolean = true
+    val isDefaultEnabled: Boolean = true,
+    val category: HolidayCategory = when {
+        isPatronSaint -> HolidayCategory.PATRONO
+        isCcnlExHoliday -> HolidayCategory.RICORRENZA
+        else -> HolidayCategory.NAZIONALE
+    }
 ) {
     fun getDateForYear(year: Int): LocalDate {
         if (!isEasterDependent) {
@@ -405,33 +463,61 @@ data class HolidayItem(
 
 object HolidaysCatalog {
     val allHolidays: List<HolidayItem> = listOf(
-        HolidayItem("capodanno", "Capodanno", "es. 1 gen 2026", 1, 1, isDefaultEnabled = true),
-        HolidayItem("epifania", "Epifania", "es. 6 gen 2026", 1, 6, isDefaultEnabled = true),
-        HolidayItem("pasqua", "Pasqua", "es. 5 apr 2026", 4, 5, isEasterDependent = true, easterOffsetDays = 0, isDefaultEnabled = true),
-        HolidayItem("lunedi_pasqua", "Lunedì di Pasqua", "es. 6 apr 2026", 4, 6, isEasterDependent = true, easterOffsetDays = 1, isDefaultEnabled = true),
-        HolidayItem("liberazione", "Giorno della liberazione", "es. 25 apr 2026", 4, 25, isDefaultEnabled = true),
-        HolidayItem("san_marco", "San Marco", "es. 25 apr 2026", 4, 25, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("festa_lavoro", "Festa del Lavoro", "es. 1 mag 2026", 5, 1, isDefaultEnabled = true),
-        HolidayItem("pentecoste", "Lunedì di Pentecoste", "es. 25 mag 2026", 5, 25, isEasterDependent = true, easterOffsetDays = 50, isDefaultEnabled = false),
-        HolidayItem("repubblica", "Anniversario della Repubblica", "es. 2 giu 2026", 6, 2, isDefaultEnabled = true),
-        HolidayItem("san_giovanni", "San Giovanni", "es. 24 giu 2026", 6, 24, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("pietro_paolo", "Santi Pietro e Paolo", "es. 29 giu 2026", 6, 29, isCcnlExHoliday = true, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("santa_rosalia", "Santa Rosalia", "es. 15 lug 2026", 7, 15, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("ferragosto", "Ferragosto", "es. 15 ago 2026", 8, 15, isDefaultEnabled = true),
-        HolidayItem("san_gennaro", "San Gennaro", "es. 19 set 2026", 9, 19, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("san_francesco", "San Francesco", "es. 4 ott 2026", 10, 4, isPatronSaint = true, isDefaultEnabled = true),
-        HolidayItem("san_petronio", "San Petronio", "es. 4 ott 2026", 10, 4, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("ognissanti", "Ognissanti", "es. 1 nov 2026", 11, 1, isDefaultEnabled = true),
-        HolidayItem("unita_nazionale", "4 Novembre (Unità Nazionale)", "es. 4 nov 2026", 11, 4, isCcnlExHoliday = true, isDefaultEnabled = false),
-        HolidayItem("san_nicola", "San Nicola", "es. 6 dic 2026", 12, 6, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("sant_ambrogio", "Sant'Ambrogio", "es. 7 dic 2026", 12, 7, isPatronSaint = true, isDefaultEnabled = false),
-        HolidayItem("immacolata", "Immacolata Concezione", "es. 8 dic 2026", 12, 8, isDefaultEnabled = true),
-        HolidayItem("natale", "Natale", "es. 25 dic 2026", 12, 25, isDefaultEnabled = true),
-        HolidayItem("santo_stefano", "Santo Stefano", "es. 26 dic 2026", 12, 26, isDefaultEnabled = true),
-        // Ex-Festività religiose contrattuali soppresse (CCNL Mobilità/AF)
-        HolidayItem("san_giuseppe", "San Giuseppe (Ex-festività CCNL)", "es. 19 mar 2026", 3, 19, isCcnlExHoliday = true, isDefaultEnabled = false),
-        HolidayItem("ascensione", "Ascensione (Ex-festività CCNL)", "es. 14 mag 2026", 5, 14, isEasterDependent = true, easterOffsetDays = 39, isCcnlExHoliday = true, isDefaultEnabled = false),
-        HolidayItem("corpus_domini", "Corpus Domini (Ex-festività CCNL)", "es. 4 giu 2026", 6, 4, isEasterDependent = true, easterOffsetDays = 60, isCcnlExHoliday = true, isDefaultEnabled = false)
+        // 12 Festività nazionali italiane (attive di default)
+        HolidayItem("capodanno", "Capodanno", "es. 1 gen 2026", 1, 1, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("epifania", "Epifania", "es. 6 gen 2026", 1, 6, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("pasqua", "Pasqua", "es. 5 apr 2026", 4, 5, isEasterDependent = true, easterOffsetDays = 0, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("lunedi_pasqua", "Lunedì di Pasqua", "es. 6 apr 2026", 4, 6, isEasterDependent = true, easterOffsetDays = 1, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("liberazione", "Giorno della Liberazione", "es. 25 apr 2026", 4, 25, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("festa_lavoro", "Festa del Lavoro", "es. 1 mag 2026", 5, 1, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("repubblica", "Anniversario della Repubblica", "es. 2 giu 2026", 6, 2, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("ferragosto", "Ferragosto", "es. 15 ago 2026", 8, 15, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("ognissanti", "Ognissanti", "es. 1 nov 2026", 11, 1, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("immacolata", "Immacolata Concezione", "es. 8 dic 2026", 12, 8, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("natale", "Natale", "es. 25 dic 2026", 12, 25, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+        HolidayItem("santo_stefano", "Santo Stefano", "es. 26 dic 2026", 12, 26, isDefaultEnabled = true, category = HolidayCategory.NAZIONALE),
+
+        // Ricorrenze civili, religiose ed ex-festività CCNL
+        HolidayItem("martedi_grasso", "Martedì Grasso", "es. 17 feb 2026", 2, 17, isEasterDependent = true, easterOffsetDays = -47, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("san_giuseppe", "San Giuseppe (Ex-festività CCNL)", "es. 19 mar 2026", 3, 19, isCcnlExHoliday = true, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("venerdi_santo", "Venerdì Santo", "es. 3 apr 2026", 4, 3, isEasterDependent = true, easterOffsetDays = -2, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("ascensione", "Ascensione (Ex-festività CCNL)", "es. 14 mag 2026", 5, 14, isEasterDependent = true, easterOffsetDays = 39, isCcnlExHoliday = true, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("domenica_pentecoste", "Pentecoste", "es. 24 mag 2026", 5, 24, isEasterDependent = true, easterOffsetDays = 49, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("pentecoste", "Lunedì di Pentecoste", "es. 25 mag 2026", 5, 25, isEasterDependent = true, easterOffsetDays = 50, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("corpus_domini", "Corpus Domini (Ex-festività CCNL)", "es. 4 giu 2026", 6, 4, isEasterDependent = true, easterOffsetDays = 60, isCcnlExHoliday = true, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("san_francesco", "San Francesco d'Assisi", "es. 4 ott 2026", 10, 4, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("defunti", "Commemorazione dei Defunti", "es. 2 nov 2026", 11, 2, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("unita_nazionale", "4 Novembre (Unità Nazionale)", "es. 4 nov 2026", 11, 4, isCcnlExHoliday = true, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("vigilia_natale", "Vigilia di Natale", "es. 24 dic 2026", 12, 24, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+        HolidayItem("san_silvestro", "San Silvestro", "es. 31 dic 2026", 12, 31, isDefaultEnabled = false, category = HolidayCategory.RICORRENZA),
+
+        // Santi Patroni delle principali città italiane
+        HolidayItem("sant_ilario", "Sant'Ilario (Parma)", "es. 13 gen 2026", 1, 13, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_costanzo", "San Costanzo (Perugia)", "es. 29 gen 2026", 1, 29, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_geminiano", "San Geminiano (Modena)", "es. 31 gen 2026", 1, 31, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("sant_agata", "Sant'Agata (Catania)", "es. 5 feb 2026", 2, 5, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("santi_faustino_giovita", "Santi Faustino e Giovita (Brescia)", "es. 15 feb 2026", 2, 15, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_giorgio", "San Giorgio (Reggio Calabria, Campobasso)", "es. 23 apr 2026", 4, 23, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_marco", "San Marco (Venezia)", "es. 25 apr 2026", 4, 25, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_ciriaco", "San Ciriaco (Ancona)", "es. 4 mag 2026", 5, 4, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_zeno", "San Zeno (Verona)", "es. 21 mag 2026", 5, 21, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_gerardo", "San Gerardo (Potenza)", "es. 30 mag 2026", 5, 30, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("madonna_lettera", "Madonna della Lettera (Messina)", "es. 3 giu 2026", 6, 3, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_massimo", "San Massimo (L'Aquila)", "es. 10 giu 2026", 6, 10, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("sant_antonio_padova", "Sant'Antonio di Padova (Padova)", "es. 13 giu 2026", 6, 13, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_giovanni", "San Giovanni Battista (Torino, Firenze, Genova)", "es. 24 giu 2026", 6, 24, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_vigilio", "San Vigilio (Trento)", "es. 26 giu 2026", 6, 26, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("pietro_paolo", "Santi Pietro e Paolo (Roma)", "es. 29 giu 2026", 6, 29, isCcnlExHoliday = true, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("santa_rosalia", "Santa Rosalia (Palermo)", "es. 15 lug 2026", 7, 15, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("maria_assunta_bolzano", "Maria Assunta (Bolzano)", "es. 15 ago 2026", 8, 15, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("sant_alessandro", "Sant'Alessandro (Bergamo)", "es. 26 ago 2026", 8, 26, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_grato", "San Grato (Aosta)", "es. 7 set 2026", 9, 7, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_gennaro", "San Gennaro (Napoli)", "es. 19 set 2026", 9, 19, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_petronio", "San Petronio (Bologna)", "es. 4 ott 2026", 10, 4, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_saturnino", "San Saturnino (Cagliari)", "es. 30 ott 2026", 10, 30, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_giusto", "San Giusto (Trieste)", "es. 3 nov 2026", 11, 3, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("san_nicola", "San Nicola (Bari)", "es. 6 dic 2026", 12, 6, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO),
+        HolidayItem("sant_ambrogio", "Sant'Ambrogio (Milano)", "es. 7 dic 2026", 12, 7, isPatronSaint = true, isDefaultEnabled = false, category = HolidayCategory.PATRONO)
     )
 }
 

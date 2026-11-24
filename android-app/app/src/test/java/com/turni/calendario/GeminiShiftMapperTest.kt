@@ -29,6 +29,7 @@ class GeminiShiftMapperTest {
 
     @Before
     fun setUp() {
+        seedLegacyDemoRepository()
         ShiftRepository.calendarShifts.clear()
         ShiftRepository.dayExtraInfo.clear()
         SecurePreferencesManager.clear()

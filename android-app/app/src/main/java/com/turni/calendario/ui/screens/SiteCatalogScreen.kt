@@ -49,15 +49,39 @@ fun TurniModelsScreen(
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val editing = shift != null || cycle != null || work != null || creatingTag || editingTag != null
 
-    val definitions = ShiftRepository.shiftDefinitions.toList()
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val activeProfileName = ShiftRepository.activeWorkProfile.name
+    val allDefinitions = ShiftRepository.shiftDefinitions.toList()
+    val definitions = allDefinitions
+        .filter { it.workProfileId == activeProfileId }
+        .sortedChronologically()
     val profiles = ShiftRepository.workProfiles.toList()
-    val rotations = ShiftRepository.rotations.toList()
-    val dayTags = ShiftRepository.dayTags.toList()
+    val otherProfileGroups = profiles
+        .filter { it.id != activeProfileId }
+        .mapNotNull { profile ->
+            val profileShifts = allDefinitions
+                .filter { it.workProfileId == profile.id }
+                .sortedChronologically()
+            if (profileShifts.isNotEmpty()) profile to profileShifts else null
+        }
+    val rotations = ShiftRepository.getRotationsSortedByDefault(activeProfileId)
+    val dayTags = ShiftRepository.activeDayTags
     val (headerPastel, headerCountLabel) = when (tab) {
         0 -> ExpressivePastel.SKY to "${definitions.size} ${if (definitions.size == 1) "modello" else "modelli"}"
         1 -> ExpressivePastel.LAVENDER to "${profiles.size} ${if (profiles.size == 1) "lavoro" else "lavori"}"
         2 -> ExpressivePastel.AMBER to "${rotations.size} ${if (rotations.size == 1) "rotazione" else "rotazioni"}"
         else -> ExpressivePastel.MINT to "${dayTags.size} ${if (dayTags.size == 1) "etichetta" else "etichette"}"
+    }
+    fun startNewShift() {
+        if (ShiftRepository.shiftDefinitions.size < 150) {
+            shift = ShiftDefinition(
+                id = UUID.randomUUID().toString(),
+                name = "",
+                shortCode = "TUR",
+                colorHex = catalogPastelColors[4],
+                workProfileId = activeProfileId,
+            )
+        }
     }
 
     LaunchedEffect(editing) { onEditorActiveChanged?.invoke(editing) }
@@ -165,15 +189,43 @@ fun TurniModelsScreen(
                                     item(key = "shifts-empty") {
                                         CloudCard(
                                             title = "Nessun modello di turno",
+                                            subtitle = "Crea il primo turno per $activeProfileName.",
                                             accent = ExpressivePastel.SKY,
                                             modifier = Modifier.animateItem(),
-                                        ) {}
+                                        ) {
+                                            CloudButton(
+                                                label = "Nuovo modello",
+                                                icon = "plus",
+                                                onClick = ::startNewShift,
+                                            )
+                                        }
                                     }
                                 }
                                 items(definitions, key = { it.id }) { definition ->
                                     ShiftCatalogCard(
                                         definition = definition,
                                         onEdit = { shift = definition },
+                                        modifier = Modifier.animateItem(),
+                                    )
+                                }
+                                items(otherProfileGroups, key = { (profile, _) -> "other-${profile.id}" }) { (otherProfile, otherShifts) ->
+                                    OtherProfileShiftsCard(
+                                        profile = otherProfile,
+                                        shifts = otherShifts,
+                                        onDuplicateAll = {
+                                            val count = ShiftRepository.duplicateAllShiftsToProfile(otherProfile.id, activeProfileId)
+                                            feedback = ActionFeedback(
+                                                if (count > 0) "$count turni duplicati in $activeProfileName" else "Turni già presenti",
+                                                false,
+                                            )
+                                        },
+                                        onDuplicateOne = { definition ->
+                                            val duplicated = ShiftRepository.duplicateShiftToProfile(definition.id, activeProfileId)
+                                            feedback = ActionFeedback(
+                                                if (duplicated != null) "Turno duplicato: ${duplicated.name}" else "Impossibile duplicare il turno",
+                                                duplicated == null,
+                                            )
+                                        },
                                         modifier = Modifier.animateItem(),
                                     )
                                 }
@@ -233,15 +285,7 @@ fun TurniModelsScreen(
                     icon = "plus",
                     onClick = {
                         when (tab) {
-                            0 -> if (ShiftRepository.shiftDefinitions.size < 150) {
-                                shift = ShiftDefinition(
-                                    id = UUID.randomUUID().toString(),
-                                    name = "",
-                                    shortCode = "TUR",
-                                    colorHex = catalogPastelColors[4],
-                                    workProfileId = ShiftRepository.activeWorkProfileId,
-                                )
-                            }
+                            0 -> startNewShift()
                             1 -> if (ShiftRepository.workProfiles.size < 20) {
                                 work = WorkProfile(
                                     id = UUID.randomUUID().toString(),
@@ -254,9 +298,15 @@ fun TurniModelsScreen(
                                 ) to true
                             }
                             2 -> if (ShiftRepository.rotations.size < 50) {
-                                cycle = ShiftRotation(UUID.randomUUID().toString(), "", 7, List(7) { "" })
+                                cycle = ShiftRotation(
+                                    id = UUID.randomUUID().toString(),
+                                    name = "",
+                                    totalDays = 7,
+                                    daySequence = List(7) { "" },
+                                    workProfileId = activeProfileId,
+                                )
                             }
-                            3 -> if (ShiftRepository.dayTags.size < 500) {
+                            3 -> if (ShiftRepository.activeDayTags.size < 500) {
                                 creatingTag = true
                             }
                         }
@@ -448,6 +498,168 @@ private fun ShiftCatalogCard(
                 tint = BrandInk,
                 iconSize = 18.dp,
             )
+        }
+    }
+}
+
+@Composable
+private fun OtherProfileShiftsCard(
+    profile: WorkProfile,
+    shifts: List<ShiftDefinition>,
+    onDuplicateAll: () -> Unit,
+    onDuplicateOne: (ShiftDefinition) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    var expanded by remember(profile.id) { mutableStateOf(false) }
+    val chevronAngle by animateFloatAsState(
+        targetValue = if (expanded) 180f else 0f,
+        animationSpec = spring(0.85f, 380f),
+        label = "otherProfileChevron",
+    )
+    val cardShape = RoundedCornerShape(21.dp)
+
+    Surface(
+        color = ObsidianSurface,
+        shape = cardShape,
+        modifier = modifier
+            .fillMaxWidth()
+            .animateContentSize(
+                animationSpec = spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow,
+                ),
+            ),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(14.dp))
+                    .bouncyClickable { expanded = !expanded }
+                    .padding(vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                PastelBadge(
+                    color = Color(profile.colorHex),
+                    size = 36.dp,
+                    cornerRadius = 11.dp,
+                ) { ink ->
+                    CatalogWorkIcon(
+                        key = profile.iconKey,
+                        modifier = Modifier.size(18.dp),
+                        tint = ink,
+                    )
+                }
+                Column(modifier = Modifier.weight(1f)) {
+                    Text(
+                        text = "Turni di ${profile.name.ifBlank { "Altro lavoro" }} (${shifts.size})",
+                        color = TextPrimary,
+                        fontSize = 14.sp,
+                        lineHeight = 19.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(11.dp))
+                        .background(ObsidianPrimaryContainer)
+                        .bouncyClickable(onClick = onDuplicateAll)
+                        .padding(horizontal = 10.dp, vertical = 6.dp),
+                ) {
+                    Text(
+                        text = "Duplica tutti qui",
+                        fontSize = 11.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = BrandInk,
+                        maxLines = 1,
+                    )
+                }
+                SiteIcon(
+                    name = "chevron-down",
+                    contentDescription = if (expanded) "Comprimi" else "Espandi",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .graphicsLayer { rotationZ = chevronAngle },
+                    tint = TextSecondary,
+                )
+            }
+
+            AnimatedVisibility(
+                visible = expanded,
+                enter = expandVertically(spring(dampingRatio = Spring.DampingRatioNoBouncy, stiffness = Spring.StiffnessMediumLow)) + fadeIn(),
+                exit = shrinkVertically() + fadeOut(),
+            ) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    shifts.forEach { definition ->
+                        val badgeCode = definition.shortCode.ifBlank { definition.name.take(3).uppercase() }.take(4)
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clip(RoundedCornerShape(14.dp))
+                                .background(ObsidianSurfaceContainer)
+                                .padding(horizontal = 10.dp, vertical = 8.dp),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
+                            PastelBadge(
+                                color = Color(definition.colorHex),
+                                size = 36.dp,
+                                cornerRadius = 10.dp,
+                                definitionId = definition.id,
+                            ) { codeInk ->
+                                Text(
+                                    text = badgeCode,
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.Bold,
+                                    color = codeInk,
+                                    maxLines = 1,
+                                    softWrap = false,
+                                )
+                            }
+                            Column(modifier = Modifier.weight(1f)) {
+                                Text(
+                                    text = definition.name,
+                                    color = TextPrimary,
+                                    fontSize = 13.sp,
+                                    lineHeight = 18.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    maxLines = 1,
+                                    overflow = TextOverflow.Ellipsis,
+                                )
+                                Text(
+                                    text = if (definition.isAllDay) "Tutto il giorno" else "${definition.startTime} – ${definition.endTime}",
+                                    color = TextSecondary,
+                                    fontSize = 11.sp,
+                                    lineHeight = 15.sp,
+                                    maxLines = 1,
+                                )
+                            }
+                            Box(
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(10.dp))
+                                    .background(ObsidianSurface)
+                                    .bouncyClickable { onDuplicateOne(definition) }
+                                    .padding(horizontal = 10.dp, vertical = 6.dp),
+                            ) {
+                                Text(
+                                    text = "Duplica qui",
+                                    fontSize = 11.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = BrandInk,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
         }
     }
 }

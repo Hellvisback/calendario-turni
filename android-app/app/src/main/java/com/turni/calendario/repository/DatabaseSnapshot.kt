@@ -18,7 +18,12 @@ data class DatabaseSnapshot(
     val alarms: SmartAlarmsConfig,
     val holidayIds: Set<String>,
     val statisticsRules: List<StatisticsRule> = emptyList(),
-    val dayTags: List<DayTag> = emptyList()
+    val dayTags: List<DayTag> = emptyList(),
+    val extrasByProfile: Map<String, Map<LocalDate, DayExtraInfo>> = emptyMap(),
+    val onCallByProfile: Map<String, ReperibilitaConfig> = emptyMap(),
+    val alarmsByProfile: Map<String, SmartAlarmsConfig> = emptyMap(),
+    val activeRotationIdByProfile: Map<String, String> = emptyMap(),
+    val defaultRotationIdByProfile: Map<String, String> = emptyMap()
 ) {
     companion object {
         fun capture() = DatabaseSnapshot(
@@ -35,7 +40,12 @@ data class DatabaseSnapshot(
             ShiftRepository.smartAlarmsConfig,
             ShiftRepository.enabledHolidayIds.toSet(),
             ShiftRepository.statisticsRules.toList(),
-            ShiftRepository.dayTags.toList()
+            ShiftRepository.dayTags.toList(),
+            ShiftRepository.dayExtraInfoByProfile.mapValues { it.value.toMap() }.filterValues { it.isNotEmpty() },
+            ShiftRepository.reperibilitaByProfile.toMap(),
+            ShiftRepository.smartAlarmsByProfile.toMap(),
+            ShiftRepository.activeRotationIdByProfile.filterValues { it.isNotEmpty() },
+            ShiftRepository.defaultRotationIdByProfile.filterValues { it.isNotEmpty() }
         )
     }
 }

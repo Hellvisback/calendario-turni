@@ -40,6 +40,8 @@ fun MainScreen() {
     val editRequest = remember { mutableStateOf(0) }
     var subScreen by remember { mutableStateOf(false) }
     var rotation by remember { mutableStateOf<ShiftRotation?>(null) }
+    var turniInitialTab by remember { mutableStateOf(0) }
+    var turniTabKey by remember { mutableStateOf(0) }
     val savedScreens=rememberSaveableStateHolder()
     var reportVisited by remember { mutableStateOf(false) }
     if(route=="report")reportVisited=true
@@ -58,10 +60,12 @@ fun MainScreen() {
                 when (destination) {
                     "primary", "calendar" -> Unit
                     "report" -> Unit // Report composition is retained outside the transition tree.
-                    "turni" -> TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
-                        initialTab = if (rotation != null) 2 else 0, initialEditingRotation = rotation,
-                        onClearInitialRotation = { rotation = null },
-                        onDismiss = { route = "calendar"; subScreen = false })
+                    "turni" -> key(turniTabKey) {
+                        TurniModelsScreen(onEditorActiveChanged = { subScreen = it },
+                            initialTab = if (rotation != null) 2 else turniInitialTab, initialEditingRotation = rotation,
+                            onClearInitialRotation = { rotation = null },
+                            onDismiss = { route = "calendar"; subScreen = false })
+                    }
                     else -> SettingsScreen(onSubScreenActiveChanged = { subScreen = it },
                         onNavigateToTurni = { rotation = it; route = "turni"; subScreen = false },
                         onDismiss = { route = "calendar"; subScreen = false })
@@ -72,7 +76,8 @@ fun MainScreen() {
         RetainedDestination(visible=route=="calendar") {
             savedScreens.SaveableStateProvider("retained-calendar") {
                 CalendarDestination(active=route=="calendar",editRequest=editRequest,
-                    onEditModeActiveChanged={editMode.value=it;if(!it)editRequest.value=0},onOpenSettings={route="altro"})
+                    onEditModeActiveChanged={editMode.value=it;if(!it)editRequest.value=0},onOpenSettings={route="altro"},
+                    onNavigateToTurni={tab->turniInitialTab=tab;turniTabKey++;route="turni";subScreen=false;editMode.value=false;editRequest.value=0})
             }
         }
         if(reportVisited) {
@@ -104,8 +109,8 @@ fun MainScreen() {
 
 /** Editing state invalidates its destination and dock, never the root navigation tree. */
 @Composable
-private fun CalendarDestination(active:Boolean,editRequest:State<Int>,onEditModeActiveChanged:(Boolean)->Unit,onOpenSettings:()->Unit){
-    CalendarScreen(active=active,editRequest=editRequest.value,onEditModeActiveChanged=onEditModeActiveChanged,onOpenSettings=onOpenSettings)
+private fun CalendarDestination(active:Boolean,editRequest:State<Int>,onEditModeActiveChanged:(Boolean)->Unit,onOpenSettings:()->Unit,onNavigateToTurni:(Int)->Unit){
+    CalendarScreen(active=active,editRequest=editRequest.value,onEditModeActiveChanged=onEditModeActiveChanged,onOpenSettings=onOpenSettings,onNavigateToTurni=onNavigateToTurni)
 }
 @Composable
 private fun MainDockVisibility(visible:()->Boolean,enter:EnterTransition,exit:ExitTransition,modifier:Modifier,content:@Composable AnimatedVisibilityScope.()->Unit){

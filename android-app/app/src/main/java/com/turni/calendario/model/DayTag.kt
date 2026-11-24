@@ -8,7 +8,8 @@ data class DayTag(
     val name: String,
     val iconKey: String = "tag",
     val colorHex: Long = 0xFF94C4EF,
-    val archived: Boolean = false
+    val archived: Boolean = false,
+    val workProfileId: String = "principale"
 )
 
 val dayTagIcons = listOf("tag", "graduation-cap", "heart-pulse", "book-open", "smile", "flag")
@@ -18,7 +19,7 @@ fun validateDayTags(tags: List<DayTag>, extras: Map<LocalDate, DayExtraInfo>) {
     val ids = tags.map { it.id }.toSet()
     require(tags.size <= 500 && ids.size == tags.size && ids.none { it.isBlank() }) { "Etichette duplicate o non valide" }
     require(tags.all { it.name.isNotBlank() && it.name.length <= 40 && it.iconKey in dayTagIcons && it.colorHex in 0L..0xFFFFFFFFL }) { "Nome o icona etichetta non validi" }
-    require(tags.map { normalizedTagName(it.name) }.distinct().size == tags.size) { "Esiste già un’etichetta con questo nome" }
+    require(tags.map { it.workProfileId to normalizedTagName(it.name) }.distinct().size == tags.size) { "Esiste già un’etichetta con questo nome" }
     require(extras.values.all { extra -> extra.tagIds.distinct().size == extra.tagIds.size && extra.tagIds.all { it in ids } }) { "Etichetta del giorno non trovata" }
 }
 

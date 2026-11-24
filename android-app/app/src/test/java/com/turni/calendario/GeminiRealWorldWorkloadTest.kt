@@ -29,6 +29,7 @@ class GeminiRealWorldWorkloadTest {
     @Before
     fun setUp() {
         client = GeminiApiClient()
+        seedLegacyDemoRepository()
         ShiftRepository.calendarShifts.clear()
         ShiftRepository.dayExtraInfo.clear()
         SecurePreferencesManager.clear()

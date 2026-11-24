@@ -69,7 +69,12 @@ private val reportMuted get() = TextSecondary
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate: (LocalDate) -> Unit = {}) {
+fun ReportScreen(
+    active: Boolean = true,
+    onOpenSettings: () -> Unit = {},
+    onOpenDate: (LocalDate) -> Unit = {},
+    onOpenTurni: (() -> Unit)? = null,
+) {
     var mode by remember { mutableStateOf(ReportPeriodMode.MESE) }
     var month by remember { mutableStateOf(YearMonth.now()) }
     var year by remember { mutableStateOf(LocalDate.now().year) }
@@ -87,18 +92,29 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
     val start = when (mode) { ReportPeriodMode.MESE -> month.atDay(1); ReportPeriodMode.ANNO -> LocalDate.of(year, 1, 1); else -> from }
     val end = when (mode) { ReportPeriodMode.MESE -> month.atEndOfMonth(); ReportPeriodMode.ANNO -> LocalDate.of(year, 12, 31); else -> until }
     // Observe actual collections, not their size: replacing a shift must refresh every metric.
+    val activeProfileId = ShiftRepository.activeWorkProfileId
     val calendarSnapshot = ShiftRepository.calendarShifts.mapValues { it.value.toList() }
-    val extrasSnapshot = ShiftRepository.dayExtraInfo.toMap()
+    val extrasByProfileSnapshot = ShiftRepository.dayExtraInfoByProfile.mapValues { it.value.toMap() }
+    val extrasSnapshot = extrasByProfileSnapshot[activeProfileId] ?: ShiftRepository.dayExtraInfoMapFor(activeProfileId).toMap()
+    val reperibilitaByProfileSnapshot = ShiftRepository.reperibilitaByProfile.toMap()
+    val reperibilitaConfig = reperibilitaByProfileSnapshot[activeProfileId] ?: ShiftRepository.reperibilitaConfigFor(activeProfileId)
     val definitions = ShiftRepository.shiftDefinitions.toList()
-    val dayTags = ShiftRepository.dayTags.toList()
-    val tagMetrics = remember(start,end,extrasSnapshot,dayTags) { dayTagMetrics(dayTags,extrasSnapshot,start,end) }
-    val rules=ShiftRepository.statisticsRules.toList()
-    val assignments = remember(start, end, calendarSnapshot, definitions, rules, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds) {
-        val byId=definitions.associateBy { it.id }
-        calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten().mapNotNull { ShiftRepository.statisticsEntry(it,byId,rules) }
+    val activeDefinitions = remember(definitions, activeProfileId) { definitions.filter { it.workProfileId == activeProfileId } }
+    val dayTags = ShiftRepository.dayTagsFor(activeProfileId)
+    val tagMetrics = remember(start, end, extrasSnapshot, dayTags) { dayTagMetrics(dayTags, extrasSnapshot, start, end) }
+    val allRules = ShiftRepository.statisticsRules.toList()
+    val rules = ShiftRepository.statisticsRulesFor(activeProfileId)
+    val assignments = remember(start, end, calendarSnapshot, definitions, allRules, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds) {
+        val byId = definitions.associateBy { it.id }
+        val rulesByProfile = definitions.map { it.workProfileId }.distinct().associateWith { ShiftRepository.statisticsRulesFor(it) }
+        calendarSnapshot.filterKeys { !it.isBefore(start) && !it.isAfter(end) }.values.flatten().mapNotNull { assigned ->
+            val profileId = byId[assigned.shiftDefId]?.workProfileId
+            val profileRules = if (profileId != null) rulesByProfile[profileId] ?: emptyList() else rules
+            ShiftRepository.statisticsEntry(assigned, byId, profileRules)
+        }
     }
-    val computedStats by key(start, end, rules, calendarSnapshot, extrasSnapshot, definitions, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds,
-        ShiftRepository.reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationId) {
+    val computedStats by key(start, end, allRules, calendarSnapshot, extrasByProfileSnapshot, definitions, ShiftRepository.appPreferences, ShiftRepository.enabledHolidayIds,
+        reperibilitaByProfileSnapshot, reperibilitaConfig, ShiftRepository.rotations.toList(), ShiftRepository.activeRotationIdByProfile.toMap(), activeProfileId) {
         // A changed period gets its own loading state; never render the previous totals.
         produceState<com.turni.calendario.repository.ComprehensiveReportStats?>(null) {
         val snapshot=androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
@@ -112,7 +128,7 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
     val stats=computedStats?:com.turni.calendario.repository.ComprehensiveReportStats(0,0f,0f,0,0,0,0,0,0,emptyMap())
     val metrics = remember(assignments, definitions) { reportMetrics(assignments,definitions) }
     val profiles = ShiftRepository.workProfiles.toList()
-    val workSummaries = remember(assignments, definitions, metrics, profiles, extrasSnapshot, ShiftRepository.reperibilitaConfig) {
+    val workSummaries = remember(assignments, definitions, metrics, profiles, extrasByProfileSnapshot, reperibilitaByProfileSnapshot) {
         val byId = definitions.associateBy { it.id }
         val byWork = assignments.mapNotNull { assigned -> byId[assigned.shiftDefId]?.let { assigned to it } }
             .groupBy { it.second.workProfileId }
@@ -126,14 +142,13 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
                         startTime = assigned.customStartTime ?: def.startTime,
                         endTime = assigned.customEndTime ?: def.endTime,
                     ).durationHoursFloat
-                    val raw = if (assigned.permissionHours.isFinite()) assigned.permissionHours else 0f
-                    raw.coerceIn(0f, baseHours).toDouble()
+                    assigned.effectivePermissionHours().coerceIn(0f, baseHours).toDouble()
                 } else 0.0
             }.toFloat()
             WorkReportSummary(work, workMetrics, workMetrics.sumOf { it.hours.toDouble() }.toFloat(),
                 shifts.filter { it.second.category == ShiftCategory.LAVORO }.map { it.first.date }.distinct().size,
-                shifts.size, shifts.sumOf { it.first.overtimeHours.toDouble() }.toFloat(), permissionTotal,
-                shifts.count { it.first.isTrasferta }, shifts.map { it.first.date }.distinct().count { ShiftRepository.isOnCall(it) })
+                shifts.size, shifts.sumOf { it.first.effectiveOvertimeHours().toDouble() }.toFloat(), permissionTotal,
+                shifts.count { it.first.isTrasferta }, shifts.map { it.first.date }.distinct().count { ShiftRepository.isOnCall(it, work.id) })
         }
     }
     // Reset atomically with activation/data, before anything can be drawn. Resetting
@@ -219,7 +234,57 @@ fun ReportScreen(active:Boolean=true,onOpenSettings: () -> Unit = {}, onOpenDate
                 if(metricsPerRow==2)Spacer(Modifier.weight(1f))
             }
         }
-        if(metrics.isEmpty() && stats.countReperibilita==0) item("empty") {
+        if (activeDefinitions.isEmpty() && metrics.isEmpty() && stats.countReperibilita == 0) item("empty-models") {
+            Surface(shape = RoundedCornerShape(20.dp), color = ObsidianSurface, modifier = Modifier.fillMaxWidth()) {
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(20.dp),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.spacedBy(10.dp),
+                ) {
+                    Box(
+                        modifier = Modifier.size(44.dp).clip(RoundedCornerShape(14.dp)).background(ObsidianPrimaryContainer),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        SiteIcon("layers", null, Modifier.size(21.dp), tint = BrandInk)
+                    }
+                    Text(
+                        text = "Nessun modello di turno configurato",
+                        fontSize = 15.sp,
+                        fontWeight = FontWeight.SemiBold,
+                        color = reportInk,
+                        textAlign = TextAlign.Center,
+                    )
+                    Text(
+                        text = "Crea i tuoi primi modelli di turno per \"${ShiftRepository.activeWorkProfile.name}\" nella scheda Turni e inizia a registrarli nel calendario per vedere le statistiche.",
+                        fontSize = 12.sp,
+                        lineHeight = 18.sp,
+                        color = reportMuted,
+                        textAlign = TextAlign.Center,
+                    )
+                    if (onOpenTurni != null) {
+                        Surface(
+                            shape = RoundedCornerShape(14.dp),
+                            color = ObsidianPrimary,
+                            modifier = Modifier.padding(top = 4.dp).bouncyClickable(onClick = onOpenTurni),
+                        ) {
+                            Row(
+                                modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                            ) {
+                                SiteIcon("plus", null, Modifier.size(16.dp), tint = MaterialTheme.colorScheme.onPrimary)
+                                Text(
+                                    text = "Crea modelli di turno",
+                                    fontSize = 13.sp,
+                                    fontWeight = FontWeight.SemiBold,
+                                    color = MaterialTheme.colorScheme.onPrimary,
+                                )
+                            }
+                        }
+                    }
+                }
+            }
+        } else if (metrics.isEmpty() && stats.countReperibilita == 0) item("empty") {
             Surface(shape=RoundedCornerShape(18.dp),color=ObsidianSurface) {
                 Text("Nessun turno nel periodo selezionato",Modifier.fillMaxWidth().padding(20.dp),fontSize=12.sp,color=reportMuted,textAlign=TextAlign.Center)
             }
@@ -467,13 +532,29 @@ private fun ReportSegments(selected:ReportPeriodMode,onSelect:(ReportPeriodMode)
 private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Boolean,shape:String,index:Int,animation:ReportProgress,modifier:Modifier,onCall:Boolean=false) {
     val dark=TurniThemeState.dark
     val style=TurniThemeState.style
+    val palette=currentTurniPalette
     val tone=remember(color,dark,onCall,style){metricColorStyle(color,dark,onCall,style)}
-    val background=tone.fill
-    val face=remember(background,tone.ink) { Brush.linearGradient(
-        listOf(readableChartTint(background,Color.White,tone.ink,.07f),background,
-            readableChartTint(background,Color.Black,tone.ink,.06f)),
+    // Keep user-chosen shift colors soft, clean and legible on light backgrounds.
+    val background=remember(tone.fill,dark,onCall,palette) {
+        if (!dark && !onCall && tone.fill.luminance() < 0.52f) {
+            lerp(tone.fill, Color(palette.surface), 0.45f)
+        } else tone.fill
+    }
+    val ink=remember(background,tone.ink,tone.fill,palette) {
+        if (background != tone.fill) readableInk(background, Color(palette.text)) else tone.ink
+    }
+    val secondaryInk=remember(background,tone.secondaryInk,ink,tone.fill) {
+        if (background != tone.fill) ink else tone.secondaryInk
+    }
+    val face=remember(background,ink,dark) { Brush.linearGradient(
+        listOf(
+            readableChartTint(background, Color.White, ink, if (dark) .07f else .14f),
+            background,
+            if (dark) readableChartTint(background, Color.Black, ink, .06f)
+            else readableChartTint(background, ink, ink, .04f)
+        ),
         start=Offset(15f,5f),end=Offset(145f,155f)) }
-    val edge=remember(background,tone.ink) { readableChartTint(background,tone.ink,tone.ink,.16f) }
+    val edge=remember(background,ink,dark) { readableChartTint(background, ink, ink, if (dark) .16f else .11f) }
     val path=remember(shape){reportShapePath(shape)}
     Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.94f+.06f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-.8f else .8f)*(1-entrance)},contentAlignment=Alignment.Center) {
         Canvas(Modifier.matchParentSize()) {
@@ -483,10 +564,10 @@ private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Bo
             }
         }
         Column(Modifier.fillMaxWidth(.76f),horizontalAlignment=Alignment.CenterHorizontally,verticalArrangement=Arrangement.spacedBy(5.dp)) {
-            Text(name,color=tone.ink,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
-            ReportAnimatedValue(count.toFloat(),animation,fontSize=30.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1.3).sp,color=tone.ink)
-            if(onCall||allDay)Text(if(onCall)"giornate" else "Giornata intera",color=tone.secondaryInk,fontSize=11.sp,lineHeight=14.sp,fontWeight=FontWeight.Medium)
-            else ReportAnimatedValue(hours,animation,true," h",fontSize=11.sp,color=tone.secondaryInk,lineHeight=14.sp,fontWeight=FontWeight.Medium)
+            Text(name,color=ink,fontSize=12.sp,lineHeight=15.sp,fontWeight=FontWeight.SemiBold,maxLines=3,overflow=TextOverflow.Ellipsis,textAlign=TextAlign.Center)
+            ReportAnimatedValue(count.toFloat(),animation,fontSize=30.sp,lineHeight=30.sp,fontWeight=FontWeight.Bold,letterSpacing=(-1.3).sp,color=ink)
+            if(onCall||allDay)Text(if(onCall)"giornate" else "Giornata intera",color=secondaryInk,fontSize=11.sp,lineHeight=14.sp,fontWeight=FontWeight.Medium)
+            else ReportAnimatedValue(hours,animation,true," h",fontSize=11.sp,color=secondaryInk,lineHeight=14.sp,fontWeight=FontWeight.Medium)
         }
     }
 }

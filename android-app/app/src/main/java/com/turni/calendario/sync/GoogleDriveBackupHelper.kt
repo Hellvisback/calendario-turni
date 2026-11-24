@@ -30,16 +30,23 @@ object GoogleDriveBackupHelper {
      */
     fun exportDatabaseToJson(snapshot: DatabaseSnapshot = DatabaseSnapshot.capture()): String {
         val root = JSONObject()
-        root.put("version", 5)
+        root.put("version", 6)
         root.put("dayTags", JSONArray().apply { snapshot.dayTags.forEach { tag ->
             put(JSONObject().put("id", tag.id).put("name", tag.name).put("iconKey", tag.iconKey)
-                .put("colorHex", tag.colorHex).put("archived", tag.archived))
+                .put("colorHex", tag.colorHex).put("archived", tag.archived)
+                .put("workProfileId", tag.workProfileId))
         } })
-        root.put("statisticsRules", JSONArray().apply { snapshot.statisticsRules.forEach { rule -> put(JSONObject().put("id",rule.id).put("displayedShiftId",rule.displayedShiftId).put("originalShiftIds",JSONArray(rule.originalShiftIds.toList())).put("enabled",rule.enabled)) } })
+        root.put("statisticsRules", JSONArray().apply { snapshot.statisticsRules.forEach { rule ->
+            put(JSONObject().put("id", rule.id).put("displayedShiftId", rule.displayedShiftId)
+                .put("originalShiftIds", JSONArray(rule.originalShiftIds.toList()))
+                .put("enabled", rule.enabled).put("workProfileId", rule.workProfileId))
+        } })
         root.put("exportDate", LocalDate.now().toString())
         root.put("activeWorkProfileId", snapshot.activeWorkProfileId)
         root.put("activeRotationId", snapshot.activeRotationId)
         root.put("defaultRotationId", snapshot.defaultRotationId)
+        root.put("activeRotationIdByProfile", JSONObject(snapshot.activeRotationIdByProfile))
+        root.put("defaultRotationIdByProfile", JSONObject(snapshot.defaultRotationIdByProfile))
 
         // 1. Modelli Turno
         val modelsArray = JSONArray()
@@ -72,6 +79,7 @@ object GoogleDriveBackupHelper {
                 put("name", rot.name)
                 put("totalDays", rot.totalDays)
                 put("description", rot.description)
+                put("workProfileId", rot.workProfileId)
                 val seqArray = JSONArray()
                 rot.daySequence.forEach { seqArray.put(it) }
                 put("daySequence", seqArray)
@@ -93,11 +101,16 @@ object GoogleDriveBackupHelper {
                     put("isFromRotation", s.isFromRotation)
                     put("customStartTime", s.customStartTime ?: "")
                     put("customEndTime", s.customEndTime ?: "")
+                    put("actualStartTime", s.actualStartTime ?: "")
                     put("actualEndTime", s.actualEndTime ?: "")
                     put("notes", s.notes)
                     put("isOvertime", s.isOvertime)
                     put("overtimeHours", s.overtimeHours.toDouble())
                     put("permissionHours", s.permissionHours.toDouble())
+                    put("startOvertimeHours", s.startOvertimeHours.toDouble())
+                    put("startPermissionHours", s.startPermissionHours.toDouble())
+                    put("endOvertimeHours", s.endOvertimeHours.toDouble())
+                    put("endPermissionHours", s.endPermissionHours.toDouble())
                     put("isTrasferta", s.isTrasferta)
                     put("hideExShift", s.hideExShift)
                     put("tags", JSONArray(s.tags))
@@ -108,23 +121,30 @@ object GoogleDriveBackupHelper {
         }
         root.put("calendarShifts", shiftsArray)
 
+        fun serializeExtra(date: LocalDate, extra: DayExtraInfo): JSONObject = JSONObject().apply {
+            put("date", date.toString())
+            put("overtimeHours", extra.overtimeHours.toDouble())
+            put("isTrasferta", extra.isTrasferta)
+            put("hideExShift", extra.hideExShift)
+            put("rotationCleared", extra.rotationCleared)
+            put("notes", extra.notes)
+            put("tagIds", JSONArray(extra.tagIds))
+            put("actualEndTime", extra.actualEndTime ?: "")
+            put("isOnCallManual", extra.isOnCallManual ?: JSONObject.NULL)
+        }
+
         // 4. Extra Info per Giorno (straordinari, trasferte, note)
         val extraArray = JSONArray()
-        snapshot.extras.forEach { (date, extra) ->
-            val obj = JSONObject().apply {
-                put("date", date.toString())
-                put("overtimeHours", extra.overtimeHours.toDouble())
-                put("isTrasferta", extra.isTrasferta)
-                put("hideExShift", extra.hideExShift)
-                put("rotationCleared", extra.rotationCleared)
-                put("notes", extra.notes)
-                put("tagIds", JSONArray(extra.tagIds))
-                put("actualEndTime", extra.actualEndTime ?: "")
-                put("isOnCallManual", extra.isOnCallManual ?: JSONObject.NULL)
-            }
-            extraArray.put(obj)
-        }
+        snapshot.extras.forEach { (date, extra) -> extraArray.put(serializeExtra(date, extra)) }
         root.put("dayExtraInfo", extraArray)
+
+        val extraByProfileObj = JSONObject()
+        snapshot.extrasByProfile.forEach { (profileId, map) ->
+            val arr = JSONArray()
+            map.forEach { (date, extra) -> arr.put(serializeExtra(date, extra)) }
+            extraByProfileObj.put(profileId, arr)
+        }
+        root.put("dayExtraInfoByProfile", extraByProfileObj)
 
         // 5. Profili di Lavoro
         val profilesArray = JSONArray()
@@ -167,12 +187,12 @@ object GoogleDriveBackupHelper {
         }
         root.put("appPreferences", prefObj)
         root.put("enabledHolidayIds", JSONArray(snapshot.holidayIds.toList()))
-        root.put("reperibilitaConfig", JSONObject().apply {
-            put("mode", snapshot.onCall.mode.name)
-            put("shiftSpecificIds", JSONArray(snapshot.onCall.shiftSpecificIds))
-            put("manualDates", JSONArray(snapshot.onCall.manualDates.map { it.toString() }))
+        fun serializeOnCall(cfg: ReperibilitaConfig): JSONObject = JSONObject().apply {
+            put("mode", cfg.mode.name)
+            put("shiftSpecificIds", JSONArray(cfg.shiftSpecificIds))
+            put("manualDates", JSONArray(cfg.manualDates.map { it.toString() }))
             put("seasonal", JSONObject().apply {
-                val s = snapshot.onCall.seasonal
+                val s = cfg.seasonal
                 put("winterStartMonth", s.winterStartMonth); put("winterStartDay", s.winterStartDay)
                 put("winterEndMonth", s.winterEndMonth); put("winterEndDay", s.winterEndDay)
                 put("winterShiftIds", JSONArray(s.winterShiftIds))
@@ -180,16 +200,26 @@ object GoogleDriveBackupHelper {
                 put("summerCycleOnCallWeeks", s.summerCycleOnCallWeeks)
                 put("summerCycleReferenceDate", s.summerCycleReferenceDate.toString())
             })
-        })
-        root.put("smartAlarmsConfig", JSONObject().apply {
-            put("isGlobalEnabled", snapshot.alarms.isGlobalEnabled)
-            put("disabledAlarmIds", JSONArray(snapshot.alarms.disabledAlarmIds.toList()))
+        }
+
+        fun serializeAlarms(cfg: SmartAlarmsConfig): JSONObject = JSONObject().apply {
+            put("isGlobalEnabled", cfg.isGlobalEnabled)
+            put("disabledAlarmIds", JSONArray(cfg.disabledAlarmIds.toList()))
             put("rules", JSONArray().apply {
-                snapshot.alarms.rules.forEach { rule -> put(JSONObject().apply {
+                cfg.rules.forEach { rule -> put(JSONObject().apply {
                     put("shiftDefId", rule.shiftDefId); put("isEnabled", rule.isEnabled)
                     put("minutesBefore", rule.minutesBefore); put("customTime", rule.customTime ?: "")
                 }) }
             })
+        }
+
+        root.put("reperibilitaConfig", serializeOnCall(snapshot.onCall))
+        root.put("reperibilitaByProfile", JSONObject().apply {
+            snapshot.onCallByProfile.forEach { (pId, cfg) -> put(pId, serializeOnCall(cfg)) }
+        })
+        root.put("smartAlarmsConfig", serializeAlarms(snapshot.alarms))
+        root.put("smartAlarmsByProfile", JSONObject().apply {
+            snapshot.alarmsByProfile.forEach { (pId, cfg) -> put(pId, serializeAlarms(cfg)) }
         })
 
         return root.toString(2)
@@ -242,8 +272,10 @@ object GoogleDriveBackupHelper {
     fun getLocalBackupInfo(context: Context): String? {
         val file = File(File(context.filesDir, "cloud_backups"), "turni_cloud_backup_latest.json")
         if (!file.exists()) return null
+        val modified = file.lastModified()
+        if (modified <= 0L) return null
         return try {
-            val instant = java.time.Instant.ofEpochMilli(file.lastModified())
+            val instant = java.time.Instant.ofEpochMilli(modified)
             val dt = java.time.LocalDateTime.ofInstant(instant, java.time.ZoneId.systemDefault())
             dt.format(java.time.format.DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
         } catch (e: Exception) {

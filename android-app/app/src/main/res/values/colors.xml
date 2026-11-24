@@ -1,4 +1,26 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="ic_launcher_background">#0B0F17</color>
+
+    <!-- Adaptive GraphiteDay palette for widget previews -->
+    <color name="widget_surface">#FFFFFF</color>
+    <color name="widget_text">#182D3A</color>
+    <color name="widget_secondary_text">#455A6A</color>
+    <color name="widget_weekend">#E2E9EF</color>
+    <color name="widget_today">#C6D5FF</color>
+    <color name="widget_brand">#3456D5</color>
+    <color name="widget_brand_ink">#2C4BC3</color>
+    <color name="widget_on_brand">#FFFFFF</color>
+
+    <!-- Adaptive pastel shift tones (GraphiteDay) -->
+    <color name="widget_shift_morning_fill">#F2D18C</color>
+    <color name="widget_shift_morning_ink">#513B12</color>
+    <color name="widget_shift_afternoon_fill">#EDB8A8</color>
+    <color name="widget_shift_afternoon_ink">#5F3928</color>
+    <color name="widget_shift_night_fill">#BFCDF0</color>
+    <color name="widget_shift_night_ink">#35466D</color>
+    <color name="widget_shift_rest_fill">#CCD8E1</color>
+    <color name="widget_shift_rest_ink">#3A4B58</color>
+    <color name="widget_shift_daytime_fill">#AED5EC</color>
+    <color name="widget_shift_daytime_ink">#224C68</color>
 </resources>

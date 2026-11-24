@@ -46,13 +46,58 @@ object FirstRunStore {
             val base=DatabaseSnapshot.capture()
             com.turni.calendario.sync.DatabaseRestore.apply(base.copy(
                 definitions=emptyList(),rotations=emptyList(),shifts=emptyMap(),extras=emptyMap(),
-                profiles=listOf(WorkProfile("principale","Il mio lavoro",ccnlCode="CCNL_PERSONALIZZATO",ccnlName="Personalizzato",weeklyHours=40)),
+                profiles=listOf(WorkProfile("principale","Il mio lavoro",ccnlCode="CCNL_PERSONALIZZATO",ccnlName="Personalizzato",weeklyHours=0,minRestHoursBetweenShifts=0,maxConsecutiveWorkDays=0)),
                 activeWorkProfileId="principale",activeRotationId="",defaultRotationId="",
                 onCall=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE,shiftSpecificIds=emptyList()),
                 alarms=SmartAlarmsConfig(isGlobalEnabled=false,rules=emptyList()),
-                preferences=AppPreferences(autoBackupDaily=false),statisticsRules=emptyList(),dayTags=emptyList()))
+                preferences=AppPreferences(autoBackupDaily=false),statisticsRules=emptyList(),dayTags=emptyList(),
+                extrasByProfile=emptyMap(),onCallByProfile=emptyMap(),alarmsByProfile=emptyMap(),
+                activeRotationIdByProfile=emptyMap(),defaultRotationIdByProfile=emptyMap()))
         }
         prefs.edit().putString("state",if(required)"pending" else "complete").putInt("step",step).commit()
+    }
+    fun resetToTutorial(context:Context) {
+        val dbFile=File(context.filesDir,"turnisync-database-v3.json")
+        dbFile.delete()
+        File(dbFile.path+".bak").delete()
+        val cleanSnapshot=DatabaseSnapshot(
+            definitions=emptyList(),
+            rotations=emptyList(),
+            shifts=emptyMap(),
+            extras=emptyMap(),
+            profiles=listOf(
+                WorkProfile(
+                    id="principale",
+                    name="Il mio lavoro",
+                    ccnlCode="CCNL_PERSONALIZZATO",
+                    ccnlName="Personalizzato",
+                    weeklyHours=0,
+                    minRestHoursBetweenShifts=0,
+                    maxConsecutiveWorkDays=0
+                )
+            ),
+            activeWorkProfileId="principale",
+            activeRotationId="",
+            defaultRotationId="",
+            preferences=AppPreferences(autoBackupDaily=false),
+            onCall=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE,shiftSpecificIds=emptyList()),
+            alarms=SmartAlarmsConfig(isGlobalEnabled=false,rules=emptyList()),
+            holidayIds=HolidaysCatalog.allHolidays.filter{it.isDefaultEnabled}.map{it.id}.toSet(),
+            statisticsRules=emptyList(),
+            dayTags=emptyList()
+        )
+        LocalDatabaseStore.allowPersistenceAfterRestore()
+        com.turni.calendario.sync.DatabaseRestore.apply(cleanSnapshot)
+        runCatching {
+            val json=com.turni.calendario.sync.GoogleDriveBackupHelper.exportDatabaseToJson(cleanSnapshot)
+            dbFile.writeText(json,Charsets.UTF_8)
+        }
+        step=0
+        required=true
+        context.getSharedPreferences(PREFS,Context.MODE_PRIVATE).edit()
+            .putString("state","pending")
+            .putInt("step",0)
+            .commit()
     }
     fun goTo(context:Context,value:Int) {
         step=normalizeFirstRunStep(value)

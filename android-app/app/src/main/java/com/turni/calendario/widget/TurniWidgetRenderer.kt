@@ -50,7 +50,8 @@ internal object TurniWidgetRenderer {
         val height=options.getInt(if(portrait)AppWidgetManager.OPTION_APPWIDGET_MAX_HEIGHT else AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT,kind.defaultHeight).takeIf{it>0}?:kind.defaultHeight
         val dark=TurniThemeState.isDark(context)
         val style=TurniThemeState.storedStyle(context)
-        val content=collectContent(kind,LocalDate.now(),WidgetUpdateManager.getWidgetOffset(context,id))
+        val workProfile=WidgetUpdateManager.resolveWidgetWorkProfile(context,id)
+        val content=collectContent(kind,LocalDate.now(),WidgetUpdateManager.getWidgetOffset(context,id),workProfile)
         val sizes=if(Build.VERSION.SDK_INT>=31) options.getParcelableArrayList<SizeF>(AppWidgetManager.OPTION_APPWIDGET_SIZES)
             ?.filter{it.width.isFinite()&&it.height.isFinite()&&it.width in 80f..1000f&&it.height in 40f..1000f}?.distinct()?.take(4).orEmpty() else emptyList()
         val views=if(Build.VERSION.SDK_INT>=31&&sizes.isNotEmpty()) {
@@ -59,19 +60,27 @@ internal object TurniWidgetRenderer {
         manager.updateAppWidget(id,views)
     }
 
-    private fun collectContent(kind:WidgetKind,today:LocalDate,offset:Int):WidgetPresentation {
+    private fun collectContent(
+        kind: WidgetKind,
+        today: LocalDate,
+        offset: Int,
+        workProfile: com.turni.calendario.model.WorkProfile = ShiftRepository.activeWorkProfile
+    ): WidgetPresentation {
+        val weekStartMonday = ShiftRepository.appPreferences.weekStartMonday
+        val firstDayOfWeek = if (weekStartMonday) DayOfWeek.MONDAY else DayOfWeek.SUNDAY
         val month = YearMonth.from(today).plusMonths(offset.toLong())
         val start: LocalDate
         val rowCount: Int
         val columns: Int
         when (kind) {
             WidgetKind.TODAY -> { start = today; rowCount = 2; columns = 1 }
-            WidgetKind.WEEK -> { start = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(offset.toLong()); rowCount = 1; columns = 7 }
-            WidgetKind.PANORAMA -> { start = today.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY)).plusWeeks(offset.toLong()); rowCount = 2; columns = 7 }
+            WidgetKind.WEEK -> { start = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek)).plusWeeks(offset.toLong()); rowCount = 1; columns = 7 }
+            WidgetKind.PANORAMA -> { start = today.with(TemporalAdjusters.previousOrSame(firstDayOfWeek)).plusWeeks(offset.toLong()); rowCount = 2; columns = 7 }
             WidgetKind.MONTH -> {
                 val first = month.atDay(1)
-                start = first.minusDays((first.dayOfWeek.value - 1).toLong())
-                rowCount = ((first.dayOfWeek.value - 1 + month.lengthOfMonth() + 6) / 7)
+                val leading = if (weekStartMonday) first.dayOfWeek.value - 1 else first.dayOfWeek.value % 7
+                start = first.minusDays(leading.toLong())
+                rowCount = ((leading + month.lengthOfMonth() + 6) / 7)
                 columns = 7
             }
         }
@@ -80,8 +89,8 @@ internal object TurniWidgetRenderer {
             WidgetKind.MONTH -> month.format(monthFormat).replaceFirstChar { it.uppercase() }
             else -> "${start.format(shortMonthFormat)} – ${start.plusDays((rowCount * 7 - 1).toLong()).format(shortMonthFormat)}"
         }
-        return WidgetPresentation(title,ShiftRepository.activeWorkProfile.name,rowCount,columns,month,
-            (0 until rowCount*columns).map{WidgetUpdateManager.getDaySummary(start.plusDays(it.toLong()),today)},LocalDatabaseStore.loadError!=null)
+        return WidgetPresentation(title, workProfile.name, rowCount, columns, month,
+            (0 until rowCount * columns).map { WidgetUpdateManager.getDaySummary(start.plusDays(it.toLong()), today, workProfile.id) }, LocalDatabaseStore.loadError != null)
     }
 
     internal fun createViews(context:Context,kind:WidgetKind,id:Int,width:Int,height:Int,content:WidgetPresentation,dark:Boolean,
@@ -121,7 +130,7 @@ internal object TurniWidgetRenderer {
         views.setOnClickPendingIntent(R.id.widget_previous, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_PREV, kind.provider))
         views.setOnClickPendingIntent(R.id.widget_next, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_NEXT, kind.provider))
         views.setOnClickPendingIntent(R.id.widget_title, WidgetUpdateManager.createNavPendingIntent(context, id, WidgetUpdateManager.ACTION_NAV_RESET, kind.provider))
-        views.setOnClickPendingIntent(R.id.widget_profile, WidgetUpdateManager.createDayPendingIntent(context, content.days.first().date, id * 100 + 99))
+        views.setOnClickPendingIntent(R.id.widget_profile, WidgetUpdateManager.createWorkProfilePendingIntent(context, id))
         views.removeAllViews(R.id.widget_rows)
         val navigationHeight=if(kind==WidgetKind.PANORAMA)28f else 22f
         val headerHeight = navigationHeight+if(kind == WidgetKind.TODAY)0f else 10f
@@ -135,11 +144,29 @@ internal object TurniWidgetRenderer {
         val fontScale = context.resources.configuration.fontScale.coerceIn(1f, 1.2f)
         views.setViewVisibility(R.id.widget_weekdays, if(kind==WidgetKind.TODAY)View.GONE else View.VISIBLE)
         if(kind!=WidgetKind.TODAY){
-            val labels=Bitmap.createBitmap(ceil((width-16f)*density).toInt(),ceil(10f*density).toInt(),Bitmap.Config.ARGB_8888)
-            val c=Canvas(labels);c.scale(density,density)
-            val pen=Paint(Paint.ANTI_ALIAS_FLAG).apply { color=palette.muted;textSize=9f;typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL);textAlign=Paint.Align.CENTER }
-            listOf("LUN","MAR","MER","GIO","VEN","SAB","DOM").forEachIndexed{i,label->c.drawText(label,(i+.5f)*cellWidth,8.5f,pen)}
-            views.setImageViewBitmap(R.id.widget_weekdays,labels)
+            val weekStartMonday = ShiftRepository.appPreferences.weekStartMonday
+            val weekdayLabels = if (weekStartMonday) {
+                listOf("LUN", "MAR", "MER", "GIO", "VEN", "SAB", "DOM")
+            } else {
+                listOf("DOM", "LUN", "MAR", "MER", "GIO", "VEN", "SAB")
+            }
+            val labels = Bitmap.createBitmap(ceil((width - 16f) * density).toInt(), ceil(10f * density).toInt(), Bitmap.Config.ARGB_8888)
+            val c = Canvas(labels); c.scale(density, density)
+            val weekendBg = Paint().apply { color = palette.weekend }
+            val weekendInk = readableInk(Color(palette.weekend), Color(palette.muted)).toArgb()
+            val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.muted; textSize = 9f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); textAlign = Paint.Align.CENTER }
+            weekdayLabels.forEachIndexed { i, label ->
+                val isWeekend = content.days.getOrNull(i)?.date?.dayOfWeek?.value?.let { it >= 6 }
+                    ?: if (weekStartMonday) i >= 5 else (i == 0 || i == 6)
+                if (isWeekend) {
+                    c.drawRect(i * cellWidth, 0f, (i + 1) * cellWidth, 10f, weekendBg)
+                    pen.color = weekendInk
+                } else {
+                    pen.color = palette.muted
+                }
+                c.drawText(label, (i + .5f) * cellWidth, 8.5f, pen)
+            }
+            views.setImageViewBitmap(R.id.widget_weekdays, labels)
         }
         for (rowIndex in 0 until rowCount) {
             val row = RemoteViews(context.packageName, R.layout.widget_turnisync_row)
@@ -186,10 +213,12 @@ internal object TurniWidgetRenderer {
         canvas.scale(density, density)
         val paint = Paint(Paint.ANTI_ALIAS_FLAG)
         val medium = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        val sortedShifts = summary.shifts.sortedWith(compareBy<WidgetShift> { it.definition.isAllDay }.thenBy { it.startTime })
+        val isWeekend = !wide && summary.date.dayOfWeek.value >= 6
         val background = when {
             wide -> palette.surface // This layout does not paint a separate day surface.
             summary.isToday -> palette.today
-            summary.date.dayOfWeek.value >= 6 -> palette.weekend
+            isWeekend -> palette.weekend
             else -> palette.surface
         }
         val backdrop = Color(background)
@@ -267,13 +296,19 @@ internal object TurniWidgetRenderer {
             // Font ascent and advance width are not the visible bounds of digits (notably 1/27).
             canvas.drawText(value,centerX-glyphBounds.centerX(),centerY-glyphBounds.centerY(),paint)
         }
-        // The weekend surface remains distinct from adjacent-month chip emphasis.
-        if (!wide) rect(1f, 1f, width - 1f, height - 1f, 8f, background)
+        // Paint continuous weekend columns with no gaps between rows, matching the main calendar.
+        if (isWeekend) {
+            paint.color = palette.weekend
+            canvas.drawRect(0f, 0f, width, height, paint)
+            if (summary.isToday) rect(1f, 1f, width - 1f, height - 1f, 8f, palette.today)
+        } else if (!wide) {
+            rect(1f, 1f, width - 1f, height - 1f, 8f, background)
+        }
         if(compactWeek && height<34f) {
             val dateHeight=(height-18f).coerceIn(8f,13f)
             dayNumber(width/2f,10.5f,width-12f,RectF(width/2f-10f,0f,width/2f+10f,dateHeight))
             if(summary.isOnCall)drawBell(canvas,paint,width-5f,dateHeight/2f,7f,bellInk)
-            val shift=summary.shifts.firstOrNull()
+            val shift=sortedShifts.firstOrNull()
             if(shift!=null&&!invalidData){
                 val colors=colorsFor(shift)
                 val middle=(dateHeight+height-1f)/2f
@@ -291,14 +326,14 @@ internal object TurniWidgetRenderer {
             val baseline = height / 2f + 4f
             val numberX = 9f
             dayNumber(numberX,10.5f,17f,RectF(1f,height/2f-8f,18f,height/2f+8f))
-            val shift = summary.shifts.firstOrNull()
+            val shift = sortedShifts.firstOrNull()
             if (shift != null && !invalidData) {
                 val colors = colorsFor(shift)
                 shiftChip(19f, height / 2f - 8f, width - 1f, height / 2f + 8f, 3f, colors)
                 text(shift.definition.shortCode.take(4), (width + 18f) / 2f, baseline, 10f,
                     colors.codeInk.toArgb(), true, width - 21f)
-                if (summary.shifts.size > 1) {
-                    paint.color = shiftChartColor(Color(summary.shifts[1].definition.colorHex), palette.dark, summary.shifts[1].definition.id).toArgb()
+                if (sortedShifts.size > 1) {
+                    paint.color = shiftChartColor(Color(sortedShifts[1].definition.colorHex), palette.dark, sortedShifts[1].definition.id).toArgb()
                     canvas.drawCircle(width - 3f, height - 2f, 1.8f, paint)
                 }
             }
@@ -312,15 +347,15 @@ internal object TurniWidgetRenderer {
             dayNumber(width/2f,numberSize,22f,RectF(width/2f-11f,1f,width/2f+11f,numberBaseline+3f))
             if(showWeekday)text(summary.dayNameShort,1f,10f,8f,secondaryInk,maxWidth=8f)
             if (summary.isOnCall) drawBell(canvas, paint, width - 6f, 7f, 8f, bellInk)
-            val shift = summary.shifts.firstOrNull()
+            val shift = sortedShifts.firstOrNull()
             if (shift != null && !invalidData) {
                 val colors = colorsFor(shift)
                 val top = numberBaseline + 4f
                 shiftChip(2f, top, width - 2f, height - 1f, 3f, colors)
                 text(shift.definition.shortCode.take(4), width / 2f, height - 3f,
                     if (height < 25f) 9f else 10.5f, colors.codeInk.toArgb(), true, width - 6f)
-                if (summary.shifts.size > 1) {
-                    paint.color = shiftChartColor(Color(summary.shifts[1].definition.colorHex), palette.dark, summary.shifts[1].definition.id).toArgb()
+                if (sortedShifts.size > 1) {
+                    paint.color = shiftChartColor(Color(sortedShifts[1].definition.colorHex), palette.dark, sortedShifts[1].definition.id).toArgb()
                     canvas.drawCircle(3f, height - 3f, 1.6f, paint)
                 }
             }
@@ -342,16 +377,16 @@ internal object TurniWidgetRenderer {
         if (summary.isOnCall) drawBell(canvas, paint, width - (if (wide) 10f else 6f),
             headerHeight/2f, if (wide) 12f else 8f, bellInk)
         if (invalidData) { text("—", width / 2f, height / 2f + 9f, 12f, secondaryInk, true); return bitmap }
-        if (summary.shifts.isEmpty()) {
+        if (sortedShifts.isEmpty()) {
             if (wide) text("Nessun turno", 9f, headerHeight + 19f, 12f, secondaryInk, maxWidth = width - 18f)
             return bitmap
         }
         val gap = 3f
         val remaining = height - headerHeight - 4f
         if (wide) {
-            val count = min(summary.shifts.size, if (remaining >= 66f) 3 else if (remaining >= 40f) 2 else 1)
+            val count = min(sortedShifts.size, if (remaining >= 66f) 3 else if (remaining >= 40f) 2 else 1)
             val slotHeight = ((remaining - (count - 1) * gap) / count).coerceAtMost(50f)
-            summary.shifts.take(count).forEachIndexed { index, shift ->
+            sortedShifts.take(count).forEachIndexed { index, shift ->
                 val y = headerHeight + index * (slotHeight + gap)
                 val colors = colorsFor(shift)
                 val ink = colors.timeInk.toArgb()
@@ -373,15 +408,15 @@ internal object TurniWidgetRenderer {
 
 
             }
-            drawOverflow(canvas, paint, summary.shifts.drop(count), width - 20f, height - 4f, palette.dark)
+            drawOverflow(canvas, paint, sortedShifts.drop(count), width - 20f, height - 4f, palette.dark)
             return bitmap
         }
         val availableHeight=height-headerHeight-2f
-        val capacity=if(summary.shifts.size>1 && availableHeight>=58f)2 else 1
+        val capacity=if(sortedShifts.size>1 && availableHeight>=58f)2 else 1
         val baseChip=((availableHeight-(capacity-1)*gap)/capacity).coerceIn(17f,29f)
         var cursor = headerHeight
         var visible = 0
-        for (shift in summary.shifts) {
+        for (shift in sortedShifts) {
             if (height - cursor < baseChip + 2f) break
             val colors=colorsFor(shift)
             val codeBottom=if(baseChip>=26f)cursor+baseChip/2f+1f else null
@@ -391,7 +426,7 @@ internal object TurniWidgetRenderer {
             cursor += baseChip + gap
             visible++
         }
-        drawOverflow(canvas, paint, summary.shifts.drop(visible), width / 2f, height - 3f, palette.dark)
+        drawOverflow(canvas, paint, sortedShifts.drop(visible), width / 2f, height - 3f, palette.dark)
         return bitmap
     }
 

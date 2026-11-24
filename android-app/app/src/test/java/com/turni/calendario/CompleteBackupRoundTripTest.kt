@@ -22,20 +22,28 @@ class CompleteBackupRoundTripTest {
         val second=night.copy(id="second-job-model",workProfileId=other.id)
         val assignment=AssignedShift("shift-1",day,changed.id,night.id,true,true,"15:00","23:00","00:30",
             "Nota del turno è leggibile\nAltra riga",listOf("tag","secondo"),true,1.5f,true,true,false)
+        val extrasMap = mapOf(day to DayExtraInfo(day,1.5f,true,false,true,true,"Nota del giorno","00:30"))
+        val onCallCfg = ReperibilitaConfig(ReperibilitaMode.ALTERNATA_STAGIONALE,listOf(changed.id),
+            SeasonalReperibilitaConfig(11,2,4,29,listOf(night.id),4,2,day),setOf(day,day.plusDays(7)))
+        val alarmsCfg = SmartAlarmsConfig(false,listOf(ShiftAlarmRule(night.id,false,135,"20:15")),setOf("disabled-alarm"))
         return DatabaseSnapshot.capture().copy(
-            definitions=listOf(night,changed,rest,second),profiles=listOf(work,other),
-            rotations=listOf(ShiftRotation("cycle-a","Ciclo A",3,listOf(night.id,rest.id,""),"Descrizione A"),
-                ShiftRotation("cycle-b","Ciclo B",2,listOf(changed.id,night.id),"Descrizione B")),
+            definitions=listOf(changed,night,second,rest),profiles=listOf(work,other),
+            rotations=listOf(ShiftRotation("cycle-a","Ciclo A",3,listOf(night.id,rest.id,""),"Descrizione A", workProfileId = other.id),
+                ShiftRotation("cycle-b","Ciclo B",2,listOf(changed.id,night.id),"Descrizione B", workProfileId = other.id)),
             shifts=mapOf(day to listOf(assignment,AssignedShift("shift-2",day,rest.id,isOnCallManual=false,hideExShift=true)),
                 day.plusDays(1) to listOf(AssignedShift("shift-3",day.plusDays(1),second.id,isOnCallManual=null))),
-            extras=mapOf(day to DayExtraInfo(day,1.5f,true,false,true,true,"Nota del giorno","00:30")),
+            extras=extrasMap,
             activeWorkProfileId=other.id,activeRotationId="cycle-b",defaultRotationId="cycle-a",
             preferences=AppPreferences(false,false,false,false,false,true,setOf(changed.id)),
-            onCall=ReperibilitaConfig(ReperibilitaMode.ALTERNATA_STAGIONALE,listOf(changed.id),
-                SeasonalReperibilitaConfig(11,2,4,29,listOf(night.id),4,2,day),setOf(day,day.plusDays(7))),
-            alarms=SmartAlarmsConfig(false,listOf(ShiftAlarmRule(night.id,false,135,"20:15")),setOf("disabled-alarm")),
+            onCall=onCallCfg,
+            alarms=alarmsCfg,
             holidayIds=setOf("natale","capodanno"),
-            statisticsRules=listOf(StatisticsRule("rule",changed.id,setOf(night.id,rest.id),false))
+            statisticsRules=listOf(StatisticsRule("rule",changed.id,setOf(night.id,rest.id),false,workProfileId=work.id)),
+            extrasByProfile=mapOf(other.id to extrasMap),
+            onCallByProfile=mapOf(other.id to onCallCfg),
+            alarmsByProfile=mapOf(other.id to alarmsCfg),
+            activeRotationIdByProfile=mapOf(other.id to "cycle-b"),
+            defaultRotationIdByProfile=mapOf(other.id to "cycle-a")
         )
     }
 
@@ -72,7 +80,11 @@ class CompleteBackupRoundTripTest {
             overtimeHours=.75f,isTrasferta=false,notes="Seconda attività · città è più lontana")
         val extra=DayExtraInfo(day,overtimeHours=2f,isTrasferta=true,
             notes="Nota della giornata, distinta dalle due note dei turni",actualEndTime="06:45")
-        val expected=base.copy(shifts=mapOf(day to listOf(first,second)),extras=mapOf(day to extra))
+        val expected=base.copy(
+            shifts=mapOf(day to listOf(first,second)),
+            extras=mapOf(day to extra),
+            extrasByProfile=mapOf(base.activeWorkProfileId to mapOf(day to extra))
+        )
         val before=DatabaseSnapshot.capture()
         try {
             DatabaseRestore.apply(DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(expected),before))
@@ -89,7 +101,8 @@ class CompleteBackupRoundTripTest {
         val anotherDay=day.plusDays(1)
         val dayData=DayExtraInfo(anotherDay,overtimeHours=.5f,isTrasferta=true,
             notes="Informazioni della giornata senza un turno assegnato",actualEndTime="00:30")
-        val expected=base.copy(shifts=emptyMap(),extras=mapOf(day to notesOnly,anotherDay to dayData))
+        val extrasMap = mapOf(day to notesOnly,anotherDay to dayData)
+        val expected=base.copy(shifts=emptyMap(),extras=extrasMap,extrasByProfile=mapOf(base.activeWorkProfileId to extrasMap))
         val restored=DatabaseRestore.parse(GoogleDriveBackupHelper.exportDatabaseToJson(expected),
             base.copy(extras=emptyMap()))
         assertEquals(expected,restored)

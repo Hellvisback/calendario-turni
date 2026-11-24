@@ -181,7 +181,15 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
         val period=editing&&mode==CalendarEditMode.RANGE&&calendarPeriodContains(anchor,rangeEnd,day.date)
         val previewId=when{rotating->rotation!!.daySequence[(ChronoUnit.DAYS.between(anchor,day.date)%rotation.daySequence.size).toInt()];period&&brush!="eraser"->brush;else->null}
-        val shifts=if(previewId!=null)listOfNotNull(defs[previewId]?.let{AssignedShift("preview",day.date,previewId) to it})else actual.mapNotNull{s->defs[s.shiftDefId]?.let{s to it}}
+        val shifts=if(previewId!=null)listOfNotNull(defs[previewId]?.let{AssignedShift("preview",day.date,previewId) to it})
+            else actual.mapNotNull{s->defs[s.shiftDefId]?.let{s to it}}.sortedWith(
+                compareBy<Pair<AssignedShift,ShiftDefinition>>{(_,def)->def.isAllDay}
+                    .thenBy{(shift,def)->
+                        val raw=shift.customStartTime?:def.startTime
+                        runCatching{LocalTime.parse(raw)}.getOrNull()?:LocalTime.MAX
+                    }
+                    .thenBy{(shift,def)->shift.customStartTime?:def.startTime}
+            )
         val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&showExShifts&&previewId==null}
             ?.originalShiftDefId?.let{defs[it]?.shortCode}
         val extra=if(previewData!=null)previewData.extras[day.date] ?: DayExtraInfo(day.date) else ShiftRepository.getDayExtraInfo(day.date)
@@ -371,7 +379,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             }
             fun paintDestination(item:PaintedDay,index:Int,mark:CalendarCellPaint):Rect {
                 val x=index%7*cellWidth;val y=index/7*cellHeight
-                val bottom=y+cellHeight-dp(3f)-dp(if(item.info.date in alertDates)12f else 0f)
+                val bottom=y+cellHeight-dp(3f)
                 var cursor=y+dp(27f-2f*editReveal)
                 val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (bottom-cursor)/px)
@@ -521,8 +529,9 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val noteChanged=previousNotes.contains(date)!=hasAnnotation
                 val noteAlpha=if(noteChanged){if(hasAnnotation)noteProgress.value else 1f-noteProgress.value}else if(hasAnnotation)1f else 0f
                 if(noteAlpha>0f){
-                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)20.5f else 13f)
-                    val noteSize=dp(if(periodAnchor)7.5f else 10f)
+                    val compactNote=periodAnchor||cellAlert
+                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)20.5f else if(cellAlert)19.5f else 13f)
+                    val noteSize=dp(if(periodAnchor)7.5f else if(compactNote)8f else 10f)
                     val scale=noteSize/24f
                     drawContext.canvas.save();drawContext.canvas.translate(nx-noteSize/2,ny-noteSize/2);drawContext.canvas.scale(scale,scale)
                     drawPath(if(calendarAnnotationIcon(item.hasNotes,item.hasTags)=="tag")tagOutline else messageOutline,readableIndicator(annotationBackdrop,Color(palette.secondary)).copy(alpha=noteAlpha),style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round))
@@ -530,7 +539,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 }
                 val subdued=item.preview||!item.info.isCurrentMonth
                 var cursor=y+dp(27f-2f*editReveal);var shown=0
-                val assignmentBottom=contentBottom-dp(if(cellAlert)12f else 0f)
+                val assignmentBottom=contentBottom
                 val layout=calendarShiftLayout((assignmentBottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (assignmentBottom-cursor)/px)
                 item.shifts.take(layout.visibleCount).forEach{(shift,def)->
@@ -674,27 +683,36 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 if(item.original!=null&&cursor+dp(12f)<assignmentBottom-dp(7f)){label("ex ${item.original}",center,cursor+dp(6f),9f,readableInk(cellFill,muted));cursor+=dp(13f)}
                 if(item.shifts.size>shown) {
                     val hidden=item.shifts.drop(shown)
-                    val spacing=minOf(dp(6f),(cellWidth-dp(12f))/hidden.size.coerceAtLeast(1))
+                    val spacing=minOf(dp(6f),(cellWidth-dp(14f))/hidden.size.coerceAtLeast(1))
                     val radius=minOf(dp(1.8f),spacing*.3f)
+                    val pillY=assignmentBottom-dp(3f)
+                    val pillWidth=(hidden.size-1).coerceAtLeast(0)*spacing+radius*2f+dp(5f)
+                    val pillHeight=radius*2f+dp(2.4f)
+                    val pillTopLeft=Offset(center-pillWidth/2f,pillY-pillHeight/2f)
+                    val pillSize=Size(pillWidth,pillHeight)
+                    val pillRadius=CornerRadius(pillHeight/2f)
+                    // Neutral halo keeps overflow dots legible over painted cells in light edit mode.
+                    drawRoundRect(surface.copy(alpha=.92f),pillTopLeft,pillSize,pillRadius)
+                    drawRoundRect(line.copy(alpha=.85f),pillTopLeft,pillSize,pillRadius,style=Stroke(dp(.55f)))
                     hidden.forEachIndexed { i, (_,def) ->
-                        val marker=Offset(center+(i-(hidden.size-1)/2f)*spacing,assignmentBottom-dp(3f))
+                        val marker=Offset(center+(i-(hidden.size-1)/2f)*spacing,pillY)
                         // Preserve the actual chosen color; the outline separates pale dots.
                         drawCircle(def.color,radius,marker)
-                        drawCircle(line,radius,marker,style=Stroke(minOf(dp(.35f),radius*.2f)))
+                        drawCircle(readableIndicator(surface,line),radius,marker,style=Stroke(minOf(dp(.4f),radius*.22f)))
                     }
                 }
                 if(cellAlert){
-                    // Dedicated status lane, inset from selection and separate from date metadata.
-                    val warningCenter=Offset(center,contentBottom-dp(5f))
+                    // Top-left date lane keeps the warning visible above the floating bottom dock.
+                    val warningCenter=Offset(x+dp(9f),y+dp(8.5f))
                     val warningPath=Path().apply {
-                        moveTo(warningCenter.x,warningCenter.y-dp(4.5f))
-                        lineTo(warningCenter.x+dp(5f),warningCenter.y+dp(4f))
-                        lineTo(warningCenter.x-dp(5f),warningCenter.y+dp(4f));close()
+                        moveTo(warningCenter.x,warningCenter.y-dp(4f))
+                        lineTo(warningCenter.x+dp(4.5f),warningCenter.y+dp(3.5f))
+                        lineTo(warningCenter.x-dp(4.5f),warningCenter.y+dp(3.5f));close()
                     }
                     val fill=Color(palette.warning.fill)
                     drawPath(warningPath,fill)
                     drawPath(warningPath,readableIndicator(cellFill,Color(palette.warning.ink)),style=Stroke(dp(.65f),join=StrokeJoin.Round))
-                    label("!",warningCenter.x,warningCenter.y+dp(.6f),7f,Color(palette.warning.ink),true,optical=true)
+                    label("!",warningCenter.x,warningCenter.y+dp(.5f),6.5f,Color(palette.warning.ink),true,optical=true)
                 }
             }
             if(editReveal<1f)for(row in 1 until days.size/7)drawLine(line.copy(alpha=.45f*(1-editReveal)),Offset(0f,row*cellHeight),Offset(size.width,row*cellHeight),dp(.5f))

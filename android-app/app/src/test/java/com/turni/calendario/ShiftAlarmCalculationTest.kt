@@ -24,11 +24,12 @@ class ShiftAlarmCalculationTest {
             rotation.daySequence.all { it.isBlank() || it in modelIds }
         })
         DatabaseRestore.apply(original)
+        seedLegacyDemoRepository()
         Repository.calendarShifts.clear()
         Repository.dayExtraInfo.clear()
         Repository.activeWorkProfileId = "principale"
         Repository.reperibilitaConfig = ReperibilitaConfig(mode = ReperibilitaMode.MANUALE)
-        Repository.smartAlarmsConfig = SmartAlarmsConfig(rules = listOf(ShiftAlarmRule("mattina"), ShiftAlarmRule("notte")))
+        Repository.smartAlarmsConfig = SmartAlarmsConfig(isGlobalEnabled = true, rules = listOf(ShiftAlarmRule("mattina"), ShiftAlarmRule("notte")))
     }
 
     @After fun restore() { DatabaseRestore.apply(original) }

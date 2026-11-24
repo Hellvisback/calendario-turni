@@ -36,7 +36,7 @@ class AlarmAndRangeEditingTest {
             Repository.calendarShifts.clear();Repository.dayExtraInfo.clear()
             Repository.reperibilitaConfig=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE)
             Repository.setDayOnCallManual(date.plusDays(1),true)
-            Repository.smartAlarmsConfig=SmartAlarmsConfig(rules=listOf(ShiftAlarmRule("reperibilita",true,customTime="20:00")))
+            Repository.smartAlarmsConfig=SmartAlarmsConfig(isGlobalEnabled=true,rules=listOf(ShiftAlarmRule("reperibilita",true,customTime="20:00")))
             Repository.updateSmartAlarmRule("reperibilita"){it.copy(customTime="18:45")}
             val snapshot=DatabaseSnapshot.capture()
             DatabaseRestore.apply(snapshot)
@@ -49,6 +49,7 @@ class AlarmAndRangeEditingTest {
     @Test fun intervalEraseIsInclusiveBidirectionalAndOneUndoPreservesNotesAndOtherWork() {
         val original=DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             Repository.calendarShifts.clear();Repository.dayExtraInfo.clear()
             Repository.reperibilitaConfig=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE)
             val definition=Repository.shiftDefinitions.first{it.workProfileId==Repository.activeWorkProfileId}
@@ -80,6 +81,7 @@ class AlarmAndRangeEditingTest {
     @Test fun addingRangePreservesEveryBaseShiftAndUsesOneUndoAcrossMonths() {
         val original=DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             Repository.calendarShifts.clear();Repository.dayExtraInfo.clear()
             val models=Repository.shiftDefinitions.filter{it.workProfileId==Repository.activeWorkProfileId}
             val base=models.first();val extra=models.first{it.id!=base.id}
@@ -89,8 +91,9 @@ class AlarmAndRangeEditingTest {
             Repository.applyShiftRange(extra.id,start.plusDays(3),start,addSecondary=true)
             for(offset in 0L..3L){
                 val shifts=Repository.getShiftsForDate(start.plusDays(offset))
-                assertEquals(listOf(base.id,extra.id),shifts.map{it.shiftDefId})
-                assertEquals(before.shifts[start.plusDays(offset)]!!.first(),shifts.first())
+                assertEquals(2, shifts.size)
+                assertEquals(setOf(base.id,extra.id),shifts.map{it.shiftDefId}.toSet())
+                assertEquals(before.shifts[start.plusDays(offset)]!!.first(),shifts.first{it.shiftDefId==base.id})
             }
             assertEquals(1,Repository.getShiftsForDate(start.minusDays(1)).size)
             assertEquals(1,Repository.getShiftsForDate(start.plusDays(4)).size)

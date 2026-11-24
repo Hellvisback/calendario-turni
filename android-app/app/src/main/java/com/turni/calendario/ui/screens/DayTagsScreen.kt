@@ -124,7 +124,7 @@ internal fun DayTagChip(
 }
 
 internal fun dayTagMutationFeedback(savedTag: DayTag): ActionFeedback {
-    val removed = ShiftRepository.dayTags.none { tag -> tag.id == savedTag.id }
+    val removed = ShiftRepository.activeDayTags.none { tag -> tag.id == savedTag.id }
     val message = when {
         removed -> "Etichetta eliminata"
         savedTag.archived -> "Etichetta archiviata"
@@ -140,10 +140,13 @@ internal fun DayTagsCatalogContent(
     modifier: Modifier = Modifier,
     onEditTag: (DayTag) -> Unit,
     onFeedback: (ActionFeedback) -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
 ) {
     var showArchived by remember { mutableStateOf(false) }
     var pendingDelete by remember { mutableStateOf<DayTag?>(null) }
-    val tags = ShiftRepository.dayTags.toList()
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val hasActiveShifts = ShiftRepository.shiftDefinitions.any { it.workProfileId == activeProfileId }
+    val tags = ShiftRepository.activeDayTags
     val activeTags = tags.filter { !it.archived }
     val archivedTags = tags.filter { it.archived }
     val chevronAngle by animateFloatAsState(
@@ -183,6 +186,22 @@ internal fun DayTagsCatalogContent(
         verticalArrangement = Arrangement.spacedBy(10.dp),
         contentPadding = PaddingValues(bottom = 12.dp),
     ) {
+        if (!hasActiveShifts && onNavigateToTurni != null) {
+            item(key = "tags-no-shifts", contentType = "tags-no-shifts") {
+                CloudCard(
+                    title = "Nessun modello di turno",
+                    subtitle = "Crea un turno nel lavoro attivo per iniziare a pianificare il calendario.",
+                    accent = ExpressivePastel.SKY,
+                    modifier = Modifier.animateItem(),
+                ) {
+                    CloudButton(
+                        label = "Crea un turno",
+                        icon = "plus",
+                        onClick = onNavigateToTurni,
+                    )
+                }
+            }
+        }
         if (activeTags.isEmpty()) {
             item(key = "tags-empty", contentType = "tags-empty") {
                 CloudCard(
@@ -292,11 +311,14 @@ internal fun DayTagsCatalogContent(
 }
 
 @Composable
-internal fun DayTagsSettingsScreen(onDismiss: () -> Unit) {
+internal fun DayTagsSettingsScreen(
+    onDismiss: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
+) {
     var editing by remember { mutableStateOf<DayTag?>(null) }
     var creating by remember { mutableStateOf(false) }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
-    val tagsCount = ShiftRepository.dayTags.size
+    val tagsCount = ShiftRepository.activeDayTags.size
 
     Box(Modifier.fillMaxSize()) {
         CloudFeatureScaffold(
@@ -324,6 +346,7 @@ internal fun DayTagsSettingsScreen(onDismiss: () -> Unit) {
                 showHeaderCard = true,
                 onEditTag = { editing = it },
                 onFeedback = { feedback = it },
+                onNavigateToTurni = onNavigateToTurni,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -503,7 +526,14 @@ internal fun DayTagEditor(
     val editor: @Composable ColumnScope.(() -> Unit) -> Unit = { close ->
         fun save(archived: Boolean) {
             if (savedTag != null) return
-            val tag = DayTag(original?.id ?: UUID.randomUUID().toString(), name.trim(), icon, color, archived)
+            val tag = DayTag(
+                id = original?.id ?: UUID.randomUUID().toString(),
+                name = name.trim(),
+                iconKey = icon,
+                colorHex = color,
+                archived = archived,
+                workProfileId = original?.workProfileId ?: ShiftRepository.activeWorkProfileId,
+            )
             try {
                 ShiftRepository.saveDayTag(tag)
                 focus.clearFocus()
@@ -965,7 +995,7 @@ internal fun ColumnScope.DayAnnotationsContent(date:LocalDate,maxHeight:Dp,onBac
     } else {
         TagSheetHeading("Note ed etichette",onClose,onBack)
         Column(Modifier.weight(1f,fill=false).verticalScroll(rememberScrollState()),verticalArrangement=Arrangement.spacedBy(10.dp)) {
-            val tags=ShiftRepository.dayTags.filter { !it.archived || it.id in selected }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER){it.name})
+            val tags=ShiftRepository.activeDayTags.filter { !it.archived || it.id in selected }.sortedWith(compareBy(String.CASE_INSENSITIVE_ORDER){it.name})
             Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically) {
                 Text("Etichette della giornata",Modifier.weight(1f),color=TextSecondary,fontSize=12.sp)
                 if(selected.isNotEmpty())Text("${selected.size} ${if(selected.size==1)"selezionata" else "selezionate"}",color=BrandInk,fontSize=11.sp)
@@ -993,7 +1023,7 @@ internal fun ColumnScope.DayAnnotationsContent(date:LocalDate,maxHeight:Dp,onBac
                 ShiftRepository.saveDayAnnotations(date,notes,selected)
                 focus.clearFocus();keyboard?.hide();onFeedback(ActionFeedback("Note ed etichette salvate"));onBack()
             }catch(problem:IllegalArgumentException) {
-                selected=selected.filter { id -> ShiftRepository.dayTags.any { it.id==id } }
+                selected=selected.filter { id -> ShiftRepository.activeDayTags.any { it.id==id } }
                 onFeedback(ActionFeedback("Le etichette sono cambiate: ricontrolla e salva",true))
             }
         })

@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.LocalTextStyle
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -45,6 +46,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.hapticfeedback.HapticFeedbackType
 import androidx.compose.ui.platform.LocalHapticFeedback
@@ -52,13 +54,16 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.heading
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.TextStyle as ComposeTextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.turni.calendario.model.HolidayCategory
 import com.turni.calendario.model.HolidayItem
 import com.turni.calendario.model.HolidaysCatalog
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
+import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.components.SiteIconMotion
 import com.turni.calendario.ui.components.bouncyClickable
 import com.turni.calendario.ui.theme.BrandInk
@@ -83,15 +88,11 @@ private val fullDate = DateTimeFormatter.ofPattern("EEEE d MMMM uuuu", Locale.IT
 fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
     val year = LocalDate.now().year
     val enabledIds = ShiftRepository.enabledHolidayIds
-    val sections = remember(year) {
-        val catalog = HolidaysCatalog.allHolidays.sortedBy { it.getDateForYear(year) }
-        listOf(
-            "Festività nazionali e civili" to catalog.filter { !it.isCcnlExHoliday && !it.isPatronSaint },
-            "Santi patroni" to catalog.filter { !it.isCcnlExHoliday && it.isPatronSaint },
-            "Ex festività CCNL e giorni speciali" to catalog.filter { it.isCcnlExHoliday },
-        )
+    val catalog = remember(year) {
+        HolidaysCatalog.allHolidays.sortedBy { it.getDateForYear(year) }
     }
     var sectionIndex by rememberSaveable { mutableIntStateOf(0) }
+    var searchQuery by rememberSaveable { mutableStateOf("") }
     var feedback by remember { mutableStateOf<ActionFeedback?>(null) }
     val scope = rememberCoroutineScope()
     val heroBadgeMotion = remember { Animatable(0f) }
@@ -255,13 +256,90 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
 
         SlidingSegmentBar(
             items = listOf(
+                "Tutte" to "calendar",
                 "Nazionali" to "flag",
+                "Ricorrenze" to "calendar-heart",
                 "Patroni" to "star",
-                "CCNL" to "briefcase",
             ),
             selectedIndex = sectionIndex,
             onSelect = { sectionIndex = it },
         )
+
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(16.dp))
+                .background(ObsidianSurface)
+                .padding(horizontal = 14.dp, vertical = 11.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SiteIcon(
+                name = "search",
+                contentDescription = null,
+                modifier = Modifier.size(17.dp),
+                tint = TextSecondary,
+            )
+            Box(
+                modifier = Modifier.weight(1f),
+                contentAlignment = Alignment.CenterStart,
+            ) {
+                if (searchQuery.isEmpty()) {
+                    Text(
+                        text = "Cerca festività o città patrono…",
+                        color = TextMuted,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                    )
+                }
+                BasicTextField(
+                    value = searchQuery,
+                    onValueChange = { searchQuery = it },
+                    singleLine = true,
+                    textStyle = ComposeTextStyle(
+                        color = TextPrimary,
+                        fontSize = 13.sp,
+                        lineHeight = 18.sp,
+                        fontWeight = FontWeight.Medium,
+                    ),
+                    cursorBrush = SolidColor(BrandInk),
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            if (searchQuery.isNotEmpty()) {
+                TonalIconButton(
+                    icon = "x",
+                    contentDescription = "Cancella ricerca",
+                    onClick = { searchQuery = "" },
+                    size = 26.dp,
+                    cornerRadius = 9.dp,
+                    fill = ObsidianSurfaceContainer,
+                    tint = TextSecondary,
+                    iconSize = 13.dp,
+                )
+            }
+        }
+
+        val normalizedQuery = searchQuery.trim()
+        val categoryTitle = when (sectionIndex) {
+            1 -> "Festività nazionali"
+            2 -> "Ricorrenze"
+            3 -> "Santi patroni"
+            else -> "Tutte le festività"
+        }
+        val filteredHolidays = remember(catalog, sectionIndex, normalizedQuery) {
+            catalog.filter { holiday ->
+                val matchesCategory = when (sectionIndex) {
+                    1 -> holiday.category == HolidayCategory.NAZIONALE
+                    2 -> holiday.category == HolidayCategory.RICORRENZA
+                    3 -> holiday.category == HolidayCategory.PATRONO
+                    else -> true
+                }
+                val matchesSearch = normalizedQuery.isEmpty() ||
+                    holiday.name.contains(normalizedQuery, ignoreCase = true)
+                matchesCategory && matchesSearch
+            }
+        }
 
         AnimatedContent(
             targetState = sectionIndex,
@@ -274,9 +352,20 @@ fun HolidaysSettingsScreen(onDismiss: () -> Unit) {
                 } + fadeOut(tween(180)))
             },
             label = "holidaySectionContent",
-        ) { currentIndex ->
-            val (title, holidays) = sections[currentIndex]
-            HolidaySection(title, holidays, enabledIds, year)
+        ) { _ ->
+            if (filteredHolidays.isEmpty()) {
+                CloudCard(
+                    title = "Nessuna festività trovata",
+                    subtitle = if (normalizedQuery.isNotEmpty()) {
+                        "Prova con un altro nome o città"
+                    } else {
+                        "Nessuna festività in questa categoria"
+                    },
+                    accent = ExpressivePastel.CORAL,
+                ) {}
+            } else {
+                HolidaySection(categoryTitle, filteredHolidays, enabledIds, year)
+            }
         }
     }
 }

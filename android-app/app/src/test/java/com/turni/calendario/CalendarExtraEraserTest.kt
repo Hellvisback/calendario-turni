@@ -22,6 +22,7 @@ class CalendarExtraEraserTest {
     @Test fun selectiveEraseRemovesOnCallPreservesOtherDetailsAndCanBeUndone() {
         val original=DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             ShiftRepository.calendarShifts.clear()
             ShiftRepository.dayExtraInfo.clear()
             ShiftRepository.reperibilitaConfig=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE)

@@ -79,6 +79,7 @@ import com.turni.calendario.BuildConfig
 import com.turni.calendario.alarm.ShiftAlarmScheduler
 import com.turni.calendario.model.ReperibilitaMode
 import com.turni.calendario.model.ShiftRotation
+import com.turni.calendario.repository.FirstRunStore
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.AnimatedStatusPopup
 import com.turni.calendario.ui.components.PopupType
@@ -182,7 +183,13 @@ fun SettingsScreen(
             Box(Modifier.fillMaxSize().background(ObsidianBackground)) {
                 when (destination) {
                     SettingsSubScreen.CLOUD_BACKUP -> CloudBackupScreen(onDismiss = close)
-                    SettingsSubScreen.STATISTICS_RULES -> StatisticsRulesScreen(onDismiss = close)
+                    SettingsSubScreen.STATISTICS_RULES -> StatisticsRulesScreen(
+                        onDismiss = close,
+                        onNavigateToTurni = {
+                            close()
+                            onNavigateToTurni(null)
+                        },
+                    )
                     SettingsSubScreen.GOOGLE_CALENDAR_SYNC -> GoogleCalendarSyncScreen(onDismiss = close)
                     SettingsSubScreen.IMPORT_SHIFTS -> GeminiShiftImportScreen(
                         onDismiss = close,
@@ -192,8 +199,20 @@ fun SettingsScreen(
                         },
                     )
                     SettingsSubScreen.PDF_EXPORT -> PdfExportScreen(onDismiss = close)
-                    SettingsSubScreen.REPERIBILITA -> ReperibilitaSettingsScreen(onDismiss = close)
-                    SettingsSubScreen.SMART_ALARMS -> SmartAlarmsSettingsScreen(onDismiss = close)
+                    SettingsSubScreen.REPERIBILITA -> ReperibilitaSettingsScreen(
+                        onDismiss = close,
+                        onNavigateToTurni = {
+                            close()
+                            onNavigateToTurni(null)
+                        },
+                    )
+                    SettingsSubScreen.SMART_ALARMS -> SmartAlarmsSettingsScreen(
+                        onDismiss = close,
+                        onNavigateToTurni = {
+                            close()
+                            onNavigateToTurni(null)
+                        },
+                    )
                     SettingsSubScreen.HOLIDAYS -> HolidaysSettingsScreen(onDismiss = close)
                     SettingsSubScreen.APPEARANCE -> CloudFeatureScaffold(
                         title = "Aspetto e calendario",
@@ -375,10 +394,15 @@ fun SettingsScreen(
                 step = deleteStep,
                 onClose = { deleteStep = 0 },
                 onContinue = { deleteStep = 2 },
-                onDelete = {
-                    ShiftRepository.clearAllShifts()
-                    deleteStep = 0
-                    message = "Turni eliminati"
+                onDelete = { resetToTutorial ->
+                    if (resetToTutorial) {
+                        FirstRunStore.resetToTutorial(context)
+                        deleteStep = 0
+                    } else {
+                        ShiftRepository.clearAllShifts()
+                        deleteStep = 0
+                        message = "Turni eliminati"
+                    }
                 },
             )
         }
@@ -900,23 +924,35 @@ private fun PreferenceDeleteDialog(
     step: Int,
     onClose: () -> Unit,
     onContinue: () -> Unit,
-    onDelete: () -> Unit,
+    onDelete: (resetToTutorial: Boolean) -> Unit,
 ) {
     var acknowledged by remember { mutableStateOf(false) }
+    var resetToTutorial by remember { mutableStateOf(false) }
+    var countdownSeconds by remember(step) { mutableIntStateOf(if (step == 2) 5 else 0) }
     val trashMotion = remember { Animatable(0f) }
     val haptic = LocalHapticFeedback.current
     val palette = currentTurniPalette
-    val canContinue = step == 1 || acknowledged
+    val canContinue = step == 1 || (acknowledged && countdownSeconds == 0)
     val targetActionFill = if (canContinue) Color(palette.destructive) else ObsidianSurfaceHigh
     val targetActionInk = if (canContinue) Color(palette.onDestructive) else TextMuted
     val actionFill by animateColorAsState(targetActionFill, tween(180), label = "deleteActionFill")
     val actionInk by animateColorAsState(targetActionInk, tween(180), label = "deleteActionInk")
 
     LaunchedEffect(step) {
-        if (step == 1) acknowledged = false
+        if (step == 1) {
+            acknowledged = false
+            resetToTutorial = false
+        }
         trashMotion.snapTo(0f)
         trashMotion.animateTo(1f, tween(480, easing = FastOutSlowInEasing))
         trashMotion.snapTo(0f)
+        if (step == 2) {
+            countdownSeconds = 5
+            while (countdownSeconds > 0) {
+                delay(1000L)
+                countdownSeconds--
+            }
+        }
     }
 
     TurniSafeBottomDialog(
@@ -1060,6 +1096,81 @@ private fun PreferenceDeleteDialog(
                             modifier = Modifier.weight(1f),
                         )
                     }
+                    val targetResetFill = if (resetToTutorial) Color(palette.danger.fill) else ObsidianSurfaceContainer
+                    val resetFill by animateColorAsState(targetResetFill, tween(180), label = "resetTutorialFill")
+                    val resetBoxFill by animateColorAsState(
+                        targetValue = if (resetToTutorial) Color(palette.destructive) else ObsidianSurfaceHighest,
+                        animationSpec = tween(180),
+                        label = "resetTutorialBoxFill",
+                    )
+                    val resetInk = if (resetToTutorial) {
+                        readableInk(targetResetFill, Color(palette.danger.ink))
+                    } else {
+                        TextPrimary
+                    }
+                    Row(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clip(RoundedCornerShape(16.dp))
+                            .background(resetFill)
+                            .toggleable(
+                                value = resetToTutorial,
+                                interactionSource = remember { MutableInteractionSource() },
+                                indication = null,
+                                role = Role.Checkbox,
+                                onValueChange = { next ->
+                                    try {
+                                        haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove)
+                                    } catch (_: Exception) {
+                                    }
+                                    resetToTutorial = next
+                                },
+                            )
+                            .padding(14.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(22.dp)
+                                .clip(RoundedCornerShape(7.dp))
+                                .background(resetBoxFill),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            androidx.compose.animation.AnimatedVisibility(
+                                visible = resetToTutorial,
+                                enter = fadeIn(tween(150)) + scaleIn(tween(180), initialScale = 0.6f),
+                                exit = fadeOut(tween(120)) + scaleOut(tween(120), targetScale = 0.6f),
+                            ) {
+                                SiteIcon(
+                                    name = "check",
+                                    contentDescription = null,
+                                    modifier = Modifier.size(14.dp),
+                                    tint = Color(palette.onDestructive),
+                                )
+                            }
+                        }
+                        Column(
+                            modifier = Modifier.weight(1f),
+                            verticalArrangement = Arrangement.spacedBy(2.dp),
+                        ) {
+                            Text(
+                                text = "Elimina tutto e ricomincia dal tutorial iniziale",
+                                fontSize = 12.sp,
+                                lineHeight = 18.sp,
+                                fontWeight = if (resetToTutorial) FontWeight.SemiBold else FontWeight.Medium,
+                                color = resetInk,
+                            )
+                            if (resetToTutorial) {
+                                Text(
+                                    text = "Verranno azzerati anche lavori, modelli di turno, rotazioni e impostazioni.",
+                                    fontSize = 11.sp,
+                                    lineHeight = 16.sp,
+                                    color = resetInk.copy(alpha = 0.85f),
+                                )
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1077,12 +1188,16 @@ private fun PreferenceDeleteDialog(
                     .background(actionFill)
                     .bouncyClickable(enabled = canContinue) {
                         if (step == 1) onContinue()
-                        else finish(onDelete)
+                        else finish { onDelete(resetToTutorial) }
                     },
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
-                    text = if (step == 1) "Continua" else "Conferma eliminazione",
+                    text = when {
+                        step == 1 -> "Continua"
+                        countdownSeconds > 0 -> "Attendi ${countdownSeconds}s…"
+                        else -> "Conferma eliminazione"
+                    },
                     fontSize = 13.sp,
                     fontWeight = FontWeight.SemiBold,
                     color = actionInk,

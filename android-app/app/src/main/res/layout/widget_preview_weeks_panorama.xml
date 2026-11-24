@@ -1,0 +1,204 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="@drawable/bg_widget_preview_container"
+    android:orientation="vertical"
+    android:paddingStart="8dp"
+    android:paddingTop="4dp"
+    android:paddingEnd="8dp"
+    android:paddingBottom="4dp">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="26dp"
+        android:gravity="center_vertical"
+        android:orientation="horizontal">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="match_parent"
+            android:contentDescription="Periodo precedente"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_chevron_left"
+            android:tint="@color/widget_brand_ink" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="match_parent"
+            android:ellipsize="end"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center_vertical"
+            android:includeFontPadding="false"
+            android:singleLine="true"
+            android:text="18 nov – 1 dic"
+            android:textColor="@color/widget_text"
+            android:textSize="14sp" />
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="match_parent"
+            android:contentDescription="Periodo successivo"
+            android:padding="5dp"
+            android:scaleType="fitCenter"
+            android:src="@drawable/widget_chevron_right"
+            android:tint="@color/widget_brand_ink" />
+
+        <TextView
+            android:layout_width="0dp"
+            android:layout_height="match_parent"
+            android:layout_weight="1"
+            android:ellipsize="end"
+            android:gravity="end|center_vertical"
+            android:includeFontPadding="false"
+            android:paddingStart="8dp"
+            android:singleLine="true"
+            android:text="Principale"
+            android:textColor="@color/widget_secondary_text"
+            android:textSize="11sp" />
+    </LinearLayout>
+
+    <!-- Weekday headers with continuous weekend background -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="12dp"
+        android:orientation="horizontal">
+
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="LUN" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="MAR" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="MER" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="GIO" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="VEN" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="SAB" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="DOM" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+    </LinearLayout>
+
+    <!-- Week 1 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="18" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_morning" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="MAT" android:textColor="@color/widget_shift_morning_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="06:00" android:textColor="@color/widget_shift_morning_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="19" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_morning" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="MAT" android:textColor="@color/widget_shift_morning_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="06:00" android:textColor="@color/widget_shift_morning_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_widget_preview_today_cell" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="18dp" android:layout_height="14dp" android:layout_marginBottom="1dp" android:background="@drawable/bg_widget_preview_today_badge" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="20" android:textColor="@color/widget_on_brand" android:textSize="10sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_afternoon" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="POM" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="14:00" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="21" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_afternoon" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="POM" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="14:00" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="22" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_night" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="NOT" android:textColor="@color/widget_shift_night_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="22:00" android:textColor="@color/widget_shift_night_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="23" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="— —" android:textColor="@color/widget_shift_rest_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="24" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="— —" android:textColor="@color/widget_shift_rest_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+
+    <!-- Week 2 -->
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="0dp"
+        android:layout_weight="1"
+        android:orientation="horizontal">
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="25" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_daytime" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="GIO" android:textColor="@color/widget_shift_daytime_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="08:00" android:textColor="@color/widget_shift_daytime_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="26" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_daytime" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="GIO" android:textColor="@color/widget_shift_daytime_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="08:00" android:textColor="@color/widget_shift_daytime_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="27" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_morning" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="MAT" android:textColor="@color/widget_shift_morning_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="06:00" android:textColor="@color/widget_shift_morning_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="28" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_afternoon" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="POM" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="14:00" android:textColor="@color/widget_shift_afternoon_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="29" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_night" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="NOT" android:textColor="@color/widget_shift_night_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="22:00" android:textColor="@color/widget_shift_night_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="30" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="— —" android:textColor="@color/widget_shift_rest_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+            <TextView android:layout_width="wrap_content" android:layout_height="15dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="1" android:textColor="@color/widget_text" android:textSize="11sp" />
+            <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />
+                <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:includeFontPadding="false" android:text="— —" android:textColor="@color/widget_shift_rest_ink" android:textSize="9sp" />
+            </LinearLayout>
+        </LinearLayout>
+    </LinearLayout>
+</LinearLayout>

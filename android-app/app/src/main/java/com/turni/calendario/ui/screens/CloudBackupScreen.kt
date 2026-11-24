@@ -484,12 +484,15 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                         SettingsDivider()
                     }
                     importRecovery?.let { recovery ->
-                        Text(
-                            text = "Prima dell’ultima importazione · ${formatBackupInstant(recovery.lastModified())}",
-                            color = TextSecondary,
-                            fontSize = 11.sp,
-                            lineHeight = 15.sp,
-                        )
+                        val recoveryTimeLabel = formatBackupInstant(recovery.lastModified())
+                        if (recoveryTimeLabel != null) {
+                            Text(
+                                text = "Prima dell’ultima importazione · $recoveryTimeLabel",
+                                color = TextSecondary,
+                                fontSize = 11.sp,
+                                lineHeight = 15.sp,
+                            )
+                        }
                         CloudButton(
                             label = "Ripristina prima dell’importazione",
                             icon = "undo",
@@ -820,13 +823,14 @@ fun CloudBackupScreen(onDismiss:()->Unit,restoreOnly:Boolean=false,onRestored:()
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 localHistory.forEachIndexed { index, copy ->
+                    val copyLabel = formatBackupInstant(copy.lastModified()) ?: "Copia locale"
                     CloudButton(
-                        label = "${if (index == 0) "Ultima · " else ""}${formatBackupInstant(copy.lastModified())}",
+                        label = "${if (index == 0) "Ultima · " else ""}$copyLabel",
                         icon = "database-backup",
                         onClick = {
                             finish {
                                 localHistory = emptyList()
-                                prepareRestore("Copia locale · ${formatBackupInstant(copy.lastModified())}") {
+                                prepareRestore("Copia locale · $copyLabel") {
                                     check(copy.length() in 1..16L * 1024 * 1024) { "Copia locale non valida." }
                                     copy.readText(Charsets.UTF_8)
                                 }
@@ -1002,4 +1006,6 @@ private fun readBackupDocument(context:android.content.Context,uri:Uri):String{
 }
 private fun formatBackupTime(value:String):String=runCatching{Instant.parse(value).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))}.getOrDefault("appena salvato")
 
-private fun formatBackupInstant(value:Long):String=Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))
+private fun formatBackupInstant(value: Long): String? =
+    if (value <= 0L) null
+    else Instant.ofEpochMilli(value).atZone(ZoneId.systemDefault()).format(DateTimeFormatter.ofPattern("dd/MM/yyyy HH:mm"))

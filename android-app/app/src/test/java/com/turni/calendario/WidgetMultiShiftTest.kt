@@ -84,7 +84,7 @@ class WidgetMultiShiftTest {
         val date = LocalDate.of(2026, 10, 17)
         val profileId = ShiftRepository.activeWorkProfileId
         val first = ShiftDefinition("widget_own_1", "Primo", "UNO", startTime = "06:00", workProfileId = profileId)
-        val second = ShiftDefinition("widget_own_2", "Secondo", "DUE", workProfileId = profileId)
+        val second = ShiftDefinition("widget_own_2", "Secondo", "DUE", startTime = "08:00", workProfileId = profileId)
         ShiftRepository.addWorkProfile(com.turni.calendario.model.WorkProfile("widget_other_work", "Altro lavoro", isDefault = false))
         val foreign = ShiftDefinition("widget_foreign", "Altro lavoro", "ALT", workProfileId = "widget_other_work")
         listOf(first, second, foreign).forEach { ShiftRepository.saveShiftDefinition(it) }

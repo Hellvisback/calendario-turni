@@ -178,6 +178,7 @@ class ConsecutiveShiftAndPermissionTest {
     fun repositoryStatsExtraDetailsAndConsecutiveAlertsWorkEndToEnd() {
         val before = DatabaseSnapshot.capture()
         try {
+            seedLegacyDemoRepository()
             ShiftRepository.calendarShifts.clear()
             ShiftRepository.dayExtraInfo.clear()
             ShiftRepository.statisticsRules.clear()
@@ -257,42 +258,56 @@ class ConsecutiveShiftAndPermissionTest {
 
     @Test
     fun backupRoundTripAndLegacyDefaultsPreservePermissionAndMaxConsecutiveDays() {
-        val baseline = DatabaseSnapshot.capture()
-        val work = WorkProfile("job-perm", "Lavoro", maxConsecutiveWorkDays = 5)
-        val def = baseline.definitions.first().copy(workProfileId = work.id)
-        val models = baseline.definitions.map { if (it.id == def.id) def else it.copy(workProfileId = work.id) }
-        val assigned = AssignedShift("perm-shift", baseDate, def.id, permissionHours = 1.75f)
-        val expected = baseline.copy(
-            definitions = models,
-            profiles = listOf(work),
-            activeWorkProfileId = work.id,
-            shifts = mapOf(baseDate to listOf(assigned)),
-            extras = emptyMap(),
-        )
+        val prev = DatabaseSnapshot.capture()
+        try {
+            seedLegacyDemoRepository()
+            val baseline = DatabaseSnapshot.capture()
+            val work = WorkProfile("job-perm", "Lavoro", maxConsecutiveWorkDays = 5)
+            val def = baseline.definitions.first().copy(workProfileId = work.id)
+            val models = baseline.definitions.map { if (it.id == def.id) def else it.copy(workProfileId = work.id) }
+            val assigned = AssignedShift("perm-shift", baseDate, def.id, permissionHours = 1.75f)
+            val expected = baseline.copy(
+                definitions = models,
+                rotations = emptyList(),
+                profiles = listOf(work),
+                activeWorkProfileId = work.id,
+                activeRotationId = "",
+                defaultRotationId = "",
+                shifts = mapOf(baseDate to listOf(assigned)),
+                extras = emptyMap(),
+                extrasByProfile = emptyMap(),
+                onCallByProfile = emptyMap(),
+                alarmsByProfile = emptyMap(),
+                activeRotationIdByProfile = emptyMap(),
+                defaultRotationIdByProfile = emptyMap(),
+            )
 
-        val json = GoogleDriveBackupHelper.exportDatabaseToJson(expected)
-        val parsed = DatabaseRestore.parse(json, baseline)
-        assertEquals(expected, parsed)
-        assertEquals(1.75f, parsed.shifts.getValue(baseDate).single().permissionHours, 0.001f)
-        assertEquals(5, parsed.profiles.single().maxConsecutiveWorkDays)
+            val json = GoogleDriveBackupHelper.exportDatabaseToJson(expected)
+            val parsed = DatabaseRestore.parse(json, baseline)
+            assertEquals(expected, parsed)
+            assertEquals(1.75f, parsed.shifts.getValue(baseDate).single().permissionHours, 0.001f)
+            assertEquals(5, parsed.profiles.single().maxConsecutiveWorkDays)
 
-        // Legacy backup without permissionHours or maxConsecutiveWorkDays defaults seamlessly
-        val legacyRoot = JSONObject(json)
-        legacyRoot.getJSONArray("calendarShifts").getJSONObject(0).remove("permissionHours")
-        legacyRoot.getJSONArray("workProfiles").getJSONObject(0).remove("maxConsecutiveWorkDays")
-        val legacyParsed = DatabaseRestore.parse(legacyRoot.toString(), baseline)
-        assertEquals(0f, legacyParsed.shifts.getValue(baseDate).single().permissionHours, 0.001f)
-        assertEquals(6, legacyParsed.profiles.single().maxConsecutiveWorkDays)
+            // Legacy backup without permissionHours or maxConsecutiveWorkDays defaults seamlessly
+            val legacyRoot = JSONObject(json)
+            legacyRoot.getJSONArray("calendarShifts").getJSONObject(0).remove("permissionHours")
+            legacyRoot.getJSONArray("workProfiles").getJSONObject(0).remove("maxConsecutiveWorkDays")
+            val legacyParsed = DatabaseRestore.parse(legacyRoot.toString(), baseline)
+            assertEquals(0f, legacyParsed.shifts.getValue(baseDate).single().permissionHours, 0.001f)
+            assertEquals(6, legacyParsed.profiles.single().maxConsecutiveWorkDays)
 
-        // Out-of-range maxConsecutiveWorkDays is clamped to 0..31; negative permissionHours is rejected
-        val clampedRoot = JSONObject(json)
-        clampedRoot.getJSONArray("workProfiles").getJSONObject(0).put("maxConsecutiveWorkDays", 99)
-        assertEquals(31, DatabaseRestore.parse(clampedRoot.toString(), baseline).profiles.single().maxConsecutiveWorkDays)
+            // Out-of-range maxConsecutiveWorkDays is clamped to 0..31; negative permissionHours is rejected
+            val clampedRoot = JSONObject(json)
+            clampedRoot.getJSONArray("workProfiles").getJSONObject(0).put("maxConsecutiveWorkDays", 99)
+            assertEquals(31, DatabaseRestore.parse(clampedRoot.toString(), baseline).profiles.single().maxConsecutiveWorkDays)
 
-        val invalidRoot = JSONObject(json)
-        invalidRoot.getJSONArray("calendarShifts").getJSONObject(0).put("permissionHours", -1.0)
-        assertThrows(IllegalArgumentException::class.java) {
-            DatabaseRestore.parse(invalidRoot.toString(), baseline)
+            val invalidRoot = JSONObject(json)
+            invalidRoot.getJSONArray("calendarShifts").getJSONObject(0).put("permissionHours", -1.0)
+            assertThrows(IllegalArgumentException::class.java) {
+                DatabaseRestore.parse(invalidRoot.toString(), baseline)
+            }
+        } finally {
+            DatabaseRestore.apply(prev)
         }
     }
 }

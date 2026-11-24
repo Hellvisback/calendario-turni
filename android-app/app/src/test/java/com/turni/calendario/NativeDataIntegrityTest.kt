@@ -16,6 +16,7 @@ class NativeDataIntegrityTest {
 
     @Before fun clearCalendar() {
         original=DatabaseSnapshot.capture()
+        seedLegacyDemoRepository()
         Repository.calendarShifts.clear()
         Repository.dayExtraInfo.clear()
         Repository.reperibilitaConfig = ReperibilitaConfig(mode = ReperibilitaMode.MANUALE)

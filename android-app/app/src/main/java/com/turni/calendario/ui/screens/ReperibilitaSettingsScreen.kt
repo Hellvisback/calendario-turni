@@ -74,6 +74,7 @@ import com.turni.calendario.model.ReperibilitaConfig
 import com.turni.calendario.model.ReperibilitaMode
 import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.model.WorkProfile
+import com.turni.calendario.model.sortedChronologically
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.SiteIcon
 import com.turni.calendario.ui.components.SiteIconMotion
@@ -117,8 +118,13 @@ internal fun onCallStatusSummary(config: ReperibilitaConfig): String = when (con
 }
 
 @Composable
-fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
+fun ReperibilitaSettingsScreen(
+    onDismiss: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
+) {
     val config = ShiftRepository.reperibilitaConfig
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val hasActiveShifts = ShiftRepository.shiftDefinitions.any { it.workProfileId == activeProfileId }
     val enabled = config.mode != ReperibilitaMode.MANUALE
     var lastAutoModeName by rememberSaveable {
         mutableStateOf(visibleOnCallMode(config.mode).name)
@@ -229,6 +235,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                     onChange = { ids ->
                                         updateConfig { it.copy(shiftSpecificIds = ids) }
                                     },
+                                    onCreateShift = onNavigateToTurni,
                                 )
                             }
 
@@ -283,6 +290,7 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                                                 it.copy(seasonal = it.seasonal.copy(winterShiftIds = ids))
                                             }
                                         },
+                                        onCreateShift = onNavigateToTurni,
                                     )
                                 }
 
@@ -359,6 +367,20 @@ fun ReperibilitaSettingsScreen(onDismiss: () -> Unit) {
                         }
                     }
                 }
+            }
+        }
+
+        if (!hasActiveShifts && onNavigateToTurni != null) {
+            CloudCard(
+                title = "Nessun modello di turno",
+                subtitle = "Crea un turno nel lavoro attivo per associarlo alla reperibilità.",
+                accent = ExpressivePastel.AMBER,
+            ) {
+                CloudButton(
+                    label = "Crea un turno",
+                    icon = "plus",
+                    onClick = onNavigateToTurni,
+                )
             }
         }
 
@@ -495,8 +517,12 @@ private fun safeOnCallWorkIcon(iconKey: String?): String = when (iconKey) {
 private fun OnCallWorkGroupedCards(
     selected: List<String>,
     onChange: (List<String>) -> Unit,
+    onCreateShift: (() -> Unit)? = null,
 ) {
-    val all = ShiftRepository.shiftDefinitions.toList()
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val all = ShiftRepository.shiftDefinitions
+        .filter { it.workProfileId == activeProfileId }
+        .sortedChronologically()
     val profiles = ShiftRepository.workProfiles.toList()
 
     if (all.isEmpty()) {
@@ -504,7 +530,7 @@ private fun OnCallWorkGroupedCards(
             title = "Modelli di turno",
             accent = ExpressivePastel.AMBER,
         ) {
-            OnCallEmptyModelsNotice()
+            OnCallEmptyModelsNotice(onCreateShift = onCreateShift)
         }
         return
     }
@@ -593,28 +619,37 @@ private fun OnCallWorkGroupHeader(
 }
 
 @Composable
-private fun OnCallEmptyModelsNotice() {
-    Row(
-        modifier = Modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(15.dp))
-            .background(ObsidianSurfaceContainer)
-            .padding(14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        SiteIcon(
-            name = "clock",
-            contentDescription = null,
-            modifier = Modifier.size(18.dp),
-            tint = TextSecondary,
-        )
-        Text(
-            text = "Nessun modello di turno disponibile.",
-            fontSize = 12.sp,
-            lineHeight = 18.sp,
-            color = TextSecondary,
-        )
+private fun OnCallEmptyModelsNotice(onCreateShift: (() -> Unit)? = null) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .clip(RoundedCornerShape(15.dp))
+                .background(ObsidianSurfaceContainer)
+                .padding(14.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            SiteIcon(
+                name = "clock",
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+                tint = TextSecondary,
+            )
+            Text(
+                text = "Nessun modello di turno disponibile.",
+                fontSize = 12.sp,
+                lineHeight = 18.sp,
+                color = TextSecondary,
+            )
+        }
+        if (onCreateShift != null) {
+            CloudButton(
+                label = "Crea un turno",
+                icon = "plus",
+                onClick = onCreateShift,
+            )
+        }
     }
 }
 
@@ -622,12 +657,16 @@ private fun OnCallEmptyModelsNotice() {
 private fun OnCallModelChoices(
     selected: List<String>,
     onChange: (List<String>) -> Unit,
+    onCreateShift: (() -> Unit)? = null,
 ) {
-    val all = ShiftRepository.shiftDefinitions.toList()
+    val activeProfileId = ShiftRepository.activeWorkProfileId
+    val all = ShiftRepository.shiftDefinitions
+        .filter { it.workProfileId == activeProfileId }
+        .sortedChronologically()
     val profiles = ShiftRepository.workProfiles.toList()
 
     if (all.isEmpty()) {
-        OnCallEmptyModelsNotice()
+        OnCallEmptyModelsNotice(onCreateShift = onCreateShift)
         return
     }
 

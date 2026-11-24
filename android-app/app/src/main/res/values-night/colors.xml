@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Adaptive GraphiteNight palette for widget previews -->
+    <color name="widget_surface">#192229</color>
+    <color name="widget_text">#F3F6F8</color>
+    <color name="widget_secondary_text">#B2C0CB</color>
+    <color name="widget_weekend">#202A32</color>
+    <color name="widget_today">#233666</color>
+    <color name="widget_brand">#4668EC</color>
+    <color name="widget_brand_ink">#A8BBFF</color>
+    <color name="widget_on_brand">#FFFFFF</color>
+
+    <!-- Adaptive pastel shift tones (GraphiteNight) -->
+    <color name="widget_shift_morning_fill">#DBC38E</color>
+    <color name="widget_shift_morning_ink">#302611</color>
+    <color name="widget_shift_afternoon_fill">#D9AE9B</color>
+    <color name="widget_shift_afternoon_ink">#38241B</color>
+    <color name="widget_shift_night_fill">#AEBCE4</color>
+    <color name="widget_shift_night_ink">#202A43</color>
+    <color name="widget_shift_rest_fill">#B8C1C8</color>
+    <color name="widget_shift_rest_ink">#28313A</color>
+    <color name="widget_shift_daytime_fill">#9EC4DE</color>
+    <color name="widget_shift_daytime_ink">#163247</color>
+</resources>

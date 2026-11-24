@@ -11,6 +11,7 @@ class ShiftRepositoryTest {
 
     @Before
     fun setup() {
+        seedLegacyDemoRepository()
         ShiftRepository.statisticsRules.clear()
         ShiftRepository.dayExtraInfo.clear()
         ShiftRepository.calendarShifts.clear()

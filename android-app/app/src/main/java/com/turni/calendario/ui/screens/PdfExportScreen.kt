@@ -54,6 +54,7 @@ import com.turni.calendario.export.PdfExportPlan
 import com.turni.calendario.export.PdfGenerator
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
+import com.turni.calendario.model.sortedChronologically
 import com.turni.calendario.repository.ShiftRepository
 import com.turni.calendario.ui.components.ActionFeedback
 import com.turni.calendario.ui.components.SiteIcon
@@ -72,7 +73,10 @@ import java.time.temporal.ChronoUnit
 import java.util.Locale
 
 @Composable
-fun PdfExportScreen(onDismiss: () -> Unit) {
+fun PdfExportScreen(
+    onDismiss: () -> Unit,
+    onNavigateToTurni: (() -> Unit)? = null,
+) {
     val context = LocalContext.current
     var options by remember { mutableStateOf(ShiftRepository.pdfExportOptions) }
     var dateDialog by remember { mutableStateOf(false) }
@@ -83,10 +87,16 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
     var previewLoading by remember { mutableStateOf(true) }
     var previewError by remember { mutableStateOf<String?>(null) }
     var zoom by remember { mutableStateOf(false) }
+    val activeProfileId = ShiftRepository.activeWorkProfileId
     val calendar by remember { derivedStateOf { ShiftRepository.calendarShifts.mapValues { it.value.toList() } } }
-    val extras by remember { derivedStateOf { ShiftRepository.dayExtraInfo.toMap() } }
+    val extras by remember { derivedStateOf { ShiftRepository.dayExtraInfoMapFor(activeProfileId).toMap() } }
     val definitions by remember { derivedStateOf { ShiftRepository.shiftDefinitions.toList() } }
-    LaunchedEffect(options, ShiftRepository.activeWorkProfileId, calendar, extras, definitions) {
+    val activeDefinitions = remember(definitions, activeProfileId) {
+        definitions.filter { it.workProfileId == activeProfileId }.sortedChronologically()
+    }
+    val reperibilita by remember { derivedStateOf { ShiftRepository.reperibilitaConfigFor(activeProfileId) } }
+    val dayTags by remember { derivedStateOf { ShiftRepository.dayTagsFor(activeProfileId) } }
+    LaunchedEffect(options, activeProfileId, calendar, extras, definitions, reperibilita, dayTags) {
         previewLoading = true
         previewError = null
         try {
@@ -189,6 +199,25 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
             )
         },
     ) {
+        if (activeDefinitions.isEmpty()) {
+            CloudCard(title = "Nessun modello di turno") {
+                Text(
+                    text = "Non hai ancora creato modelli di turno per \"${ShiftRepository.activeWorkProfile.name}\". Crea prima i tuoi turni nella sezione Turni per poterli assegnare ed esportare nel prospetto PDF.",
+                    color = TextSecondary,
+                    fontSize = 13.sp,
+                    lineHeight = 19.sp,
+                )
+                if (onNavigateToTurni != null) {
+                    CloudButton(
+                        label = "Crea modelli di turno",
+                        icon = "plus",
+                        onClick = onNavigateToTurni,
+                        secondary = true,
+                    )
+                }
+            }
+        }
+
         CloudCard {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
@@ -524,7 +553,9 @@ fun PdfExportScreen(onDismiss: () -> Unit) {
                     tint = Color(dialogPalette.danger.ink),
                 )
             }
-            val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == ShiftRepository.activeWorkProfileId }
+            val models = ShiftRepository.shiftDefinitions
+                .filter { it.workProfileId == ShiftRepository.activeWorkProfileId }
+                .sortedChronologically()
             val entries = listOf(null to "Tutti i turni") + models.map { it.id to it.name }
             Column(
                 modifier = Modifier

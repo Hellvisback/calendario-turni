@@ -29,7 +29,10 @@ abstract class TurniWidgetProvider : AppWidgetProvider() {
 
     override fun onDeleted(context: Context, ids: IntArray) {
         val editor = context.getSharedPreferences("widget_state", Context.MODE_PRIVATE).edit()
-        ids.forEach { editor.remove("offset_$it") }
+        ids.forEach {
+            editor.remove("offset_$it")
+            editor.remove("work_profile_$it")
+        }
         editor.apply()
     }
 

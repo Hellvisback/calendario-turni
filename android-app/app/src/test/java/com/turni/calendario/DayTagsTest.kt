@@ -12,9 +12,18 @@ class DayTagsTest {
     private val day=LocalDate.of(2026,11,13)
     private val training=DayTag("training","Formazione","graduation-cap")
     private val health=DayTag("health","Visita medica","heart-pulse",0xFF83CDB7)
-    private fun fixture()=DatabaseSnapshot.capture().copy(dayTags=listOf(training,health),extras=mapOf(
-        day to DayExtraInfo(day,1.5f,true,true,true,true,"Corso sicurezza","18:30",listOf(training.id,health.id)),
-        day.plusDays(1) to DayExtraInfo(day.plusDays(1),tagIds=listOf(training.id))))
+    private fun fixture(): DatabaseSnapshot {
+        val extrasMap = mapOf(
+            day to DayExtraInfo(day, 1.5f, true, true, true, true, "Corso sicurezza", "18:30", listOf(training.id, health.id)),
+            day.plusDays(1) to DayExtraInfo(day.plusDays(1), tagIds = listOf(training.id))
+        )
+        val snap = DatabaseSnapshot.capture()
+        return snap.copy(
+            dayTags = listOf(training, health),
+            extras = extrasMap,
+            extrasByProfile = mapOf(snap.activeWorkProfileId to extrasMap)
+        )
+    }
 
     @Test fun labelsAndTheirDatesSurviveCompleteBackup() {
         val expected=fixture()
@@ -33,6 +42,11 @@ class DayTagsTest {
         val before=DatabaseSnapshot.capture()
         val json=JSONObject(GoogleDriveBackupHelper.exportDatabaseToJson(fixture()))
         json.getJSONArray("dayExtraInfo").getJSONObject(0).getJSONArray("tagIds").put("missing")
+        json.optJSONObject("dayExtraInfoByProfile")?.let { byProfile ->
+            byProfile.keys().asSequence().firstOrNull()?.let { pId ->
+                byProfile.getJSONArray(pId).getJSONObject(0).getJSONArray("tagIds").put("missing")
+            }
+        }
         assertThrows(IllegalArgumentException::class.java) { DatabaseRestore.parse(json.toString()) }
         assertEquals(before,DatabaseSnapshot.capture())
     }

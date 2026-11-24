@@ -152,6 +152,7 @@ class NgeniaTurniParserTest {
 
     @Test
     fun testImportWithoutDuplicates() {
+        seedLegacyDemoRepository()
         val initialDefinitionsCount = ShiftRepository.shiftDefinitions.size
         val result = NgeniaTurniParser.parseDocumentText(RFI_EXAMPLE_TABELLONE)
 

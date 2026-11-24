@@ -18,6 +18,7 @@ import com.turni.calendario.ui.theme.shiftChartColor
 import com.turni.calendario.ui.theme.shiftColorStyle
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
+import com.turni.calendario.model.sortedChronologically
 import com.turni.calendario.repository.ShiftRepository
 import java.io.File
 import java.time.LocalDate
@@ -35,20 +36,33 @@ data class PdfExportSnapshot(val work: String, val options: PdfExportOptions, va
 object PdfGenerator {
     fun capture(options: PdfExportOptions): PdfExportSnapshot {
         val work = ShiftRepository.activeWorkProfile
+        val defsById = ShiftRepository.shiftDefinitions.associateBy { it.id }
+        val profileTags = ShiftRepository.dayTagsFor(work.id)
         val days = PdfExportPlan.dates(options).map { date ->
-            val source = ShiftRepository.getShiftsForDate(date)
-            val all = source.filter {
-                ShiftRepository.getShiftDefinition(it.shiftDefId)?.workProfileId == work.id
-            }
-            val extra = ShiftRepository.getDayExtraInfo(date)
+            val all = ShiftRepository.getShiftsForDate(date, work.id).sortedChronologically(defsById)
+            val extra = ShiftRepository.getDayExtraInfo(date, work.id)
             val rows = all.mapNotNull { shift ->
-                val def = ShiftRepository.getShiftDefinition(shift.shiftDefId) ?: return@mapNotNull null
+                val def = defsById[shift.shiftDefId] ?: return@mapNotNull null
                 if (options.filterShiftId != null && def.id != options.filterShiftId) return@mapNotNull null
-                val legacyPrimary = source.firstOrNull()?.id == shift.id
-                val overtime = if (shift.overtimeHours > 0) shift.overtimeHours else if (legacyPrimary) extra.overtimeHours else 0f
+                val legacyPrimary = all.firstOrNull()?.id == shift.id
+                val splitOt = (if (shift.startOvertimeHours.isFinite()) shift.startOvertimeHours.coerceAtLeast(0f) else 0f) +
+                    (if (shift.endOvertimeHours.isFinite()) shift.endOvertimeHours.coerceAtLeast(0f) else 0f)
+                val shiftOt = maxOf(
+                    if (shift.overtimeHours.isFinite()) shift.overtimeHours.coerceAtLeast(0f) else 0f,
+                    splitOt,
+                )
+                val overtime = if (shiftOt > 0f) shiftOt else if (legacyPrimary) extra.overtimeHours else 0f
+                val actualStart = shift.actualStartTime
                 val actualEnd = shift.actualEndTime ?: if (legacyPrimary) extra.actualEndTime else null
+                val splitPerm = (if (shift.startPermissionHours.isFinite()) shift.startPermissionHours.coerceAtLeast(0f) else 0f) +
+                    (if (shift.endPermissionHours.isFinite()) shift.endPermissionHours.coerceAtLeast(0f) else 0f)
+                val totalPerm = maxOf(
+                    if (shift.permissionHours.isFinite()) shift.permissionHours.coerceAtLeast(0f) else 0f,
+                    splitPerm,
+                )
                 val lines = buildList {
                     if (options.includeTime) add(if (def.isAllDay) "Tutto il giorno" else "${shift.customStartTime ?: def.startTime} - ${shift.customEndTime ?: def.endTime}")
+                    if (actualStart != null && options.includeTime) add("Ingresso effettivo: $actualStart")
                     if (actualEnd != null && options.includeTime) add("Stacco effettivo: $actualEnd")
                     if (options.includeDuration && !def.isAllDay) {
                         val start = LocalTime.parse(shift.customStartTime ?: def.startTime)
@@ -59,7 +73,7 @@ object PdfGenerator {
                     }
                     if (options.includeBreak && def.breakMinutes > 0) add("Pausa: ${def.breakMinutes} min${def.breakStartTime?.let { " dalle $it" } ?: ""}")
                     if (overtime > 0) add("Straordinario: ${formatMinutes((overtime * 60).roundToInt())}")
-                    val permMinutes = if (shift.permissionHours.isFinite() && shift.permissionHours > 0f) (shift.permissionHours * 60).roundToInt() else 0
+                    val permMinutes = if (totalPerm > 0f) (totalPerm * 60).roundToInt() else 0
                     if (permMinutes > 0) add("Permesso: −${formatMinutes(permMinutes)}")
                     if (options.includeLocation && (shift.isTrasferta || (legacyPrimary && extra.isTrasferta))) add("Trasferta")
                     if (options.includeNotes && shift.notes.isNotBlank()) add(shift.notes)
@@ -68,10 +82,10 @@ object PdfGenerator {
                 PdfShiftRow(def.shortCode, if (options.includeTitle) def.name else "", def.colorHex.toInt(), if (options.includeTime && !def.isAllDay) shift.customStartTime ?: def.startTime else null, lines)
             }
             val dayLines = buildList {
-                if (ShiftRepository.isOnCall(date)) add("Reperibilità")
+                if (ShiftRepository.isOnCall(date, work.id)) add("Reperibilità")
                 if (options.includeEvents) ShiftRepository.isHoliday(date)?.let { add(it.name) }
                 if (options.includeNotes && extra.notes.isNotBlank()) add(extra.notes)
-                if (options.includeNotes) extra.tagIds.mapNotNull { id -> ShiftRepository.dayTags.firstOrNull { it.id == id }?.name }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(" · ")) }
+                if (options.includeNotes) extra.tagIds.mapNotNull { id -> profileTags.firstOrNull { it.id == id }?.name }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(" · ")) }
             }
             PdfDayRow(date, rows, dayLines, options.includeEvents && ShiftRepository.isHoliday(date)!=null)
         }
