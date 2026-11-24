@@ -101,4 +101,34 @@ class WidgetVisualPolicyTest {
         assertEquals("Ospedale ▾", formatWidgetWorkProfileLabel("  Ospedale  ", invalidData = false))
         assertEquals("Dati da ripristinare · Apri TurniSync", formatWidgetWorkProfileLabel("Dati da ripristinare · Apri TurniSync", invalidData = true))
     }
+
+    @Test fun widgetLayoutsOnlyUseRemoteViewAllowedTags() {
+        val allowedTags = setOf(
+            "LinearLayout", "FrameLayout", "RelativeLayout", "TextView", "ImageView",
+            "Button", "CheckBox", "ProgressBar", "ViewFlipper", "ListView", "GridView",
+            "StackView", "AdapterViewFlipper", "Chronometer", "AnalogClock", "TextClock"
+        )
+        val candidates = listOf(
+            java.io.File("app/src/main/res/layout"),
+            java.io.File("src/main/res/layout"),
+            java.io.File("android-app/app/src/main/res/layout")
+        )
+        val layoutDir = candidates.firstOrNull { it.isDirectory }
+            ?: error("Widget layout directory not found from ${java.io.File(".").absolutePath}")
+        val widgetLayouts = layoutDir.listFiles { _, name ->
+            name.startsWith("widget_") && name.endsWith(".xml")
+        }?.toList().orEmpty()
+        assertTrue("Expected widget layouts to inspect", widgetLayouts.size >= 8)
+
+        val tagRegex = Regex("<([A-Za-z0-9_.]+)")
+        widgetLayouts.forEach { file ->
+            val xml = file.readText()
+            val tags = tagRegex.findAll(xml)
+                .map { it.groupValues[1] }
+                .filterNot { it.startsWith("?") }
+                .toSet()
+            val unsupported = tags - allowedTags
+            assertTrue("Non-RemoteView tag(s) in ${file.name}: $unsupported", unsupported.isEmpty())
+        }
+    }
 }

@@ -24,6 +24,7 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.role
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.text.PlatformTextStyle
@@ -695,8 +696,8 @@ private fun NativeShiftExtraChips(
                     Color(warning.ink),
                     Color(warning.fill),
                 )
-                displayStartTime?.let { DetailPill("Attacco $it", BrandInk, ObsidianSurface) }
-                displayExitTime?.let { DetailPill("Stacco $it", BrandInk, ObsidianSurface) }
+                displayStartTime?.let { DetailPill("Inizio $it", BrandInk, ObsidianSurface) }
+                displayExitTime?.let { DetailPill("Fine $it", BrandInk, ObsidianSurface) }
             }
             if (vertical) Column(verticalArrangement = Arrangement.spacedBy(3.dp)) { contents() }
             else FlowRow(Modifier.padding(top = 6.dp), horizontalArrangement = Arrangement.spacedBy(5.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) { contents() }
@@ -1353,14 +1354,87 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                         lineHeight = 17.sp,
                     )
                 } else {
-                    SlidingSegmentBar(
-                        items = listOf("Attacco" to null, "Stacco" to null),
-                        selectedIndex = timeSegment,
-                        onSelect = { timeSegment = it },
-                        height = 38.dp,
-                        pillColor = ObsidianPrimary,
-                        pillInk = OnBrand,
-                    )
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        val segmentOptions = listOf(
+                            Triple(0, "Inizio", if (startValid) actualStart else shiftStart),
+                            Triple(1, "Fine", if (valid) end else baseEnd),
+                        )
+                        segmentOptions.forEach { (idx, title, timeLabel) ->
+                            val selectedSeg = timeSegment == idx
+                            val segHasOt = if (idx == 0) startOtHours > 0f else hours > 0f
+                            val segHasPerm = if (idx == 0) startPermHours > 0f else permHours > 0f
+                            val fillColor by animateColorAsState(
+                                targetValue = if (selectedSeg) ObsidianPrimary else ObsidianSurface,
+                                animationSpec = tween(180),
+                                label = "timeBoundaryButtonFill",
+                            )
+                            val borderColor by animateColorAsState(
+                                targetValue = if (selectedSeg) ObsidianPrimary else ObsidianBorder,
+                                animationSpec = tween(180),
+                                label = "timeBoundaryButtonBorder",
+                            )
+                            val titleColor = if (selectedSeg) OnBrand else TextPrimary
+                            val subColor = when {
+                                selectedSeg -> OnBrand.copy(alpha = 0.86f)
+                                segHasOt -> panelOvertime
+                                segHasPerm -> permInk
+                                else -> TextSecondary
+                            }
+                            Surface(
+                                shape = RoundedCornerShape(14.dp),
+                                color = fillColor,
+                                border = BorderStroke(1.2.dp, borderColor),
+                                modifier = Modifier
+                                    .weight(1f)
+                                    .heightIn(min = 48.dp)
+                                    .clip(RoundedCornerShape(14.dp))
+                                    .bouncyClickable { timeSegment = idx }
+                                    .semantics {
+                                        role = Role.Button
+                                        selected = selectedSeg
+                                    },
+                            ) {
+                                Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 12.dp, vertical = 9.dp),
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.SpaceBetween,
+                                ) {
+                                    Text(
+                                        text = title,
+                                        color = titleColor,
+                                        fontSize = 13.sp,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically,
+                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                    ) {
+                                        if (segHasOt || segHasPerm) {
+                                            val dotColor = if (selectedSeg) OnBrand else if (segHasOt) panelOvertime else permInk
+                                            Box(
+                                                Modifier
+                                                    .size(6.dp)
+                                                    .clip(RoundedCornerShape(3.dp))
+                                                    .background(dotColor),
+                                            )
+                                        }
+                                        Text(
+                                            text = timeLabel,
+                                            color = subColor,
+                                            fontSize = 12.sp,
+                                            fontWeight = FontWeight.Medium,
+                                            style = TextStyle(fontFeatureSettings = "tnum"),
+                                        )
+                                    }
+                                }
+                            }
+                        }
+                    }
                     Row(
                         Modifier.fillMaxWidth(),
                         verticalAlignment = Alignment.CenterVertically,
@@ -1377,7 +1451,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                             )
                         }
                         Column(Modifier.weight(1.25f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
-                            Text(if (isAttacco) "Attacco effettivo" else "Stacco effettivo", color = TextSecondary, fontSize = 11.sp)
+                            Text(if (isAttacco) "Inizio effettivo" else "Fine effettiva", color = TextSecondary, fontSize = 11.sp)
                             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                                 BasicTextField(
                                     value = if (isAttacco) actualStart else end,
@@ -1401,7 +1475,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                                 )
                                 PanelIcon(
                                     name = "clock",
-                                    label = if (isAttacco) "Scegli attacco effettivo" else "Scegli stacco effettivo",
+                                    label = if (isAttacco) "Scegli inizio effettivo" else "Scegli fine effettiva",
                                     onClick = {
                                         focus.clearFocus()
                                         keyboard?.hide()
@@ -1505,8 +1579,8 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                     }
                     if (!activeFieldValid) {
                         Text(
-                            if (isAttacco) "Controlla l’orario di attacco (HH:mm, massimo 16 ore prima dell’inizio previsto)"
-                            else "Controlla l’orario di stacco (HH:mm, massimo 16 ore dopo la fine prevista)",
+                            if (isAttacco) "Controlla l’orario di inizio (HH:mm, massimo 16 ore prima dell’inizio previsto)"
+                            else "Controlla l’orario di fine (HH:mm, massimo 16 ore dopo la fine prevista)",
                             color = panelDanger,
                             fontSize = 11.sp,
                         )
@@ -1538,7 +1612,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
                     endPermissionHours = if (def.isAllDay) 0f else permHours,
                 )
                 onFeedback(ActionFeedback("Informazioni salvate", false)); close()
-            } else onFeedback(ActionFeedback(if (!startValid) "Controlla l’orario di attacco" else "Controlla l’orario di stacco", true))
+            } else onFeedback(ActionFeedback(if (!startValid) "Controlla l’orario di inizio" else "Controlla l’orario di fine", true))
         }
     }
     if (showTimePicker) {
@@ -1548,7 +1622,7 @@ private fun NativeShiftDetails(date: LocalDate, shift: AssignedShift, onClose: (
             runCatching { LocalTime.parse(end.trim()).format(timeFormatter) }.getOrDefault(baseEnd)
         }
         TurniTimePickerDialog(
-            title = if (isAttacco) "Attacco effettivo" else "Stacco effettivo",
+            title = if (isAttacco) "Inizio effettivo" else "Fine effettiva",
             initialTime = pickerInitial,
             onDismiss = { showTimePicker = false },
             onConfirm = { chosen ->

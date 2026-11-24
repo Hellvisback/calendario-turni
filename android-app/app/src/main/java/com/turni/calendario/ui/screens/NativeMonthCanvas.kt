@@ -352,12 +352,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             fun baseCellBackground(item:PaintedDay):Color {
                 val date=item.info.date
                 val weekendCol=date.dayOfWeek.value>=6
-                val base=when {
-                    !item.info.isCurrentMonth&&!dark&&weekendCol->lerp(weekend,surface,.35f)
-                    !item.info.isCurrentMonth&&!dark->lerp(surface,Color(palette.background),.65f)
-                    weekendCol->weekend
-                    else->surface
-                }
+                val base=if(weekendCol)weekend else surface
                 return when {
                     date==todayDate->todayFill
                     date==selection||date==anchor->lerp(base,brand,.1f)

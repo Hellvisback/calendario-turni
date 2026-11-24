@@ -45,10 +45,11 @@
             android:src="@drawable/widget_chevron_right"
             android:tint="@color/widget_brand_ink" />
 
-        <Space
+        <LinearLayout
             android:layout_width="0dp"
             android:layout_height="1dp"
-            android:layout_weight="1" />
+            android:layout_weight="1"
+            android:orientation="horizontal" />
 
         <TextView
             android:layout_width="wrap_content"
