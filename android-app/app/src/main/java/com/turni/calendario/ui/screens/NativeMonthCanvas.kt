@@ -183,7 +183,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             else ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
         val period=editing&&mode==CalendarEditMode.RANGE&&calendarPeriodContains(anchor,rangeEnd,day.date)
-        val previewId=when{rotating->rotation!!.daySequence[(ChronoUnit.DAYS.between(anchor,day.date)%rotation.daySequence.size).toInt()];period&&brush!="eraser"->brush;else->null}
+        val previewId=when{rotating->rotation!!.daySequence[(ChronoUnit.DAYS.between(anchor,day.date)%rotation.daySequence.size).toInt()];period&&brush!="eraser"&&brush!="bell"->brush;else->null}
         val shifts=if(previewId!=null)listOfNotNull(defs[previewId]?.let{AssignedShift("preview",day.date,previewId) to it})
             else actual.mapNotNull{s->defs[s.shiftDefId]?.let{s to it}}.sortedWith(
                 compareBy<Pair<AssignedShift,ShiftDefinition>>{(_,def)->def.isAllDay}
@@ -456,9 +456,12 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val dateCenter=if(cycle!=null)center-dp(2f)else center
                 val periodAnchor=editing&&mode==CalendarEditMode.RANGE&&date==anchor
                 val erasingAnchor=periodAnchor&&brush=="eraser"
+                val bellAnchorCue=periodAnchor&&brush=="bell"
                 val eraseCueFill=Color(palette.danger.fill)
                 val eraseCueInk=readableInk(eraseCueFill,Color(palette.danger.ink))
-                val anchorInk=if(erasingAnchor)eraseCueInk else brandInk
+                val bellCueFill=Color(palette.onCall.fill)
+                val bellCueInk=readableInk(bellCueFill,Color(palette.onCall.ink))
+                val anchorInk=when{erasingAnchor->eraseCueInk;bellAnchorCue->bellCueInk;else->brandInk}
                 val inset=dp(1.5f)*editReveal
                 val contentBottom=y+cellHeight-rowBottomInset(row)
                 val paintColor=cellPaint(item)
@@ -468,7 +471,11 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     // Stroke sits fully inside the rounded cell, with the same gap on every side.
                     val focusInset=inset+dp(2.4f)
                     val focusRadius=dp(7.6f-2f*editReveal)
-                    val focusInk=if(erasingAnchor)readablePigment(cellFill,ColorNegative)else readableIndicator(cellFill,brandInk)
+                    val focusInk=when{
+                        erasingAnchor -> readablePigment(cellFill,ColorNegative)
+                        bellAnchorCue -> readablePigment(cellFill,Color(palette.onCall.ink))
+                        else -> readableIndicator(cellFill,brandInk)
+                    }
                     drawRoundRect(focusInk,Offset(x+focusInset,y+focusInset),
                         Size(cellWidth-focusInset*2,cellHeight-focusInset*2),CornerRadius(focusRadius),
                         style=Stroke(dp(if(erasingAnchor)1f else 1.15f)))
@@ -477,8 +484,19 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 if(periodAnchor){
                     // A compact date badge replaces the full-width destructive banner.
                     val cue=anchorReveal.value
-                    drawRoundRect((if(erasingAnchor)eraseCueFill else brand).copy(alpha=cue),
+                    val cueFill=when{erasingAnchor->eraseCueFill;bellAnchorCue->bellCueFill;else->brand}
+                    drawRoundRect(cueFill.copy(alpha=cue),
                         Offset(dateCenter-dp(8f),y+dp(6f)),Size(dp(16f),dp(16f)),CornerRadius(dp(4f)))
+                }
+                val onCallActive=item.onCall||previousBells.contains(date)
+                val changed=previousBells.contains(date)!=item.onCall
+                val bellWeight=if(changed){if(item.onCall)bellProgress.value else 1f-bellProgress.value}else if(item.onCall)1f else 0f
+                val showOnCallDateTone=!erasingAnchor&&!today&&!periodAnchor&&onCallActive&&bellWeight>0f
+                val needsOnCallPill=showOnCallDateTone&&(paintColor!=null||contrastRatio(cellFill,amber)<3.2f)
+                if(needsOnCallPill){
+                    val pillTopLeft=if(item.holidayName!=null)Offset(dateCenter-dp(9f),y+dp(4f)) else Offset(dateCenter-dp(9.5f),y+dp(3.5f))
+                    val pillSize=if(item.holidayName!=null)Size(dp(18f),dp(18f)) else Size(dp(19f),dp(19f))
+                    drawRoundRect(Color(palette.onCall.fill).copy(alpha=0.90f*bellWeight),pillTopLeft,pillSize,CornerRadius(dp(5f)))
                 }
                 if(item.holidayName!=null){
                     // Keep the holiday mark around the date, separate from full-cell selection.
@@ -487,22 +505,36 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     val corner=CornerRadius(dp(5f))
                     // No outer halo: it could collide with the adjacent on-call bell.
                     val dateBackdrop=when {
-                        periodAnchor -> if(erasingAnchor)eraseCueFill else brand.copy(alpha=anchorReveal.value).compositeOver(cellFill)
+                        periodAnchor -> when {
+                            erasingAnchor -> eraseCueFill
+                            bellAnchorCue -> bellCueFill.copy(alpha=anchorReveal.value).compositeOver(cellFill)
+                            else -> brand.copy(alpha=anchorReveal.value).compositeOver(cellFill)
+                        }
                         today -> brand
+                        needsOnCallPill -> Color(palette.onCall.fill).copy(alpha=0.90f*bellWeight).compositeOver(cellFill)
                         else -> cellFill
                     }
                     val holidayInk=Color(holidayDayColor(dark))
                     drawRoundRect(readablePigment(dateBackdrop,holidayInk),dateBox,dateSize,corner,style=Stroke(dp(1.1f)))
                 }
                 val outOfMonthAlpha=if(!item.info.isCurrentMonth)if(dark).72f else .58f else 1f
-                val dateInk=when {
-                    erasingAnchor -> lerp(readableInk(cellFill,text),eraseCueInk,anchorReveal.value)
-                    today -> onBrand
-                    periodAnchor -> lerp(text,onBrand,anchorReveal.value)
+                val baseDateInk=when {
                     paintColor!=null -> catalogInk(cellFill)
-                    item.onCall||previousBells.contains(date) -> lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f).let{if(item.info.isCurrentMonth||dark)it else it.copy(alpha=.70f)}
                     item.info.isCurrentMonth -> text
                     else -> muted.copy(alpha=outOfMonthAlpha)
+                }
+                val targetAmber=Color(palette.onCall.ink)
+                val dateInk=when {
+                    erasingAnchor -> lerp(readableInk(cellFill,text),eraseCueInk,anchorReveal.value)
+                    bellAnchorCue -> lerp(readableInk(cellFill,text),bellCueInk,anchorReveal.value)
+                    today -> onBrand
+                    periodAnchor -> lerp(text,onBrand,anchorReveal.value)
+                    showOnCallDateTone -> if(needsOnCallPill){
+                        lerp(baseDateInk,readableInk(Color(palette.onCall.fill),targetAmber),bellWeight)
+                    }else{
+                        lerp(baseDateInk,readablePigment(cellFill,amber),bellWeight).let{if(item.info.isCurrentMonth||dark)it else it.copy(alpha=.70f)}
+                    }
+                    else -> baseDateInk
                 }
                 label(date.dayOfMonth.toString(),dateCenter,y+dp(if(periodAnchor)14f else 13f),if(periodAnchor)11.5f else 12.5f,dateInk,true,maxWidth=if(periodAnchor)14f else 18f,maxHeight=if(periodAnchor)14f else 18f,optical=true)
                 if(periodAnchor){
@@ -511,7 +543,11 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     val middle=y+dp(14f)
                     val left=x+dp(7.5f);val right=x+cellWidth-dp(7.5f)
                     val travel=dp(1f)*(1f-cue)
-                    val ink=(if(erasingAnchor)readableIndicator(cellFill,ColorNegative) else readableIndicator(cellFill,anchorInk)).copy(alpha=cue)
+                    val ink=when{
+                        erasingAnchor -> readableIndicator(cellFill,ColorNegative)
+                        bellAnchorCue -> readableIndicator(cellFill,Color(palette.onCall.ink))
+                        else -> readableIndicator(cellFill,anchorInk)
+                    }.copy(alpha=cue)
                     val stroke=dp(.85f)
                     fun arrow(tip:Float,direction:Float){
                         val shaft=tip+direction*dp(4f)
@@ -533,14 +569,21 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     val fit=(dp(8f)/paint.measureText(digits)).coerceAtMost(1f)
                     label(digits,markerX,markerY,8f*fit,brandInk,true,optical=true)
                 }
-                val changed=previousBells.contains(date)!=item.onCall
-                val bellAlpha=if(changed){if(item.onCall)bellProgress.value else 1-bellProgress.value}else if(item.onCall)1f else 0f
+                val bellAlpha=bellWeight
                 if(bellAlpha>0){
                     val compactBell=periodAnchor||cycle!=null||(editing&&mode==CalendarEditMode.ROTATION)
                     val bellSize=dp(if(periodAnchor)7.5f else if(compactBell)8f else 10f)
                     val bx=center+dp(if(periodAnchor)16f else 18f)
                     val by=y+dp(if(periodAnchor)20.5f else if(compactBell)19.5f else 13f)
-                    val color=readableIndicator(annotationBackdrop,amber).copy(alpha=bellAlpha)
+                    val needsBellBacking=contrastRatio(annotationBackdrop,amber)<3.0f
+                    if(needsBellBacking){
+                        drawCircle(Color(palette.onCall.fill).copy(alpha=0.90f*bellAlpha),bellSize*0.72f,Offset(bx,by))
+                    }
+                    val color=if(needsBellBacking){
+                        Color(palette.onCall.ink).copy(alpha=bellAlpha)
+                    }else{
+                        readableIndicator(annotationBackdrop,amber).copy(alpha=bellAlpha)
+                    }
                     val scale=bellSize/24f
                     drawContext.canvas.save();drawContext.canvas.translate(bx-bellSize/2,by-bellSize/2);drawContext.canvas.scale(scale,scale)
                     drawPath(bellOutline,color,style=Stroke(1.7f,cap=StrokeCap.Round,join=StrokeJoin.Round));drawContext.canvas.restore()

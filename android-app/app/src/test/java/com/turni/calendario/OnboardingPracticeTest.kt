@@ -145,11 +145,16 @@ class OnboardingPracticeTest {
         val l2s2Range = evaluatePracticeCoach(2, 2, CalendarEditMode.ADD, null, "starter-afternoon", 3, ids, names, dates)
         assertEquals(6, l2s2Range.target.dayIndex)
 
-        // Lesson 3: Step 0 highlights bell tool, Step 1 highlights day 5 (and falls back to step 0 if bell toggled off)
+        // Lesson 3: Step 0 highlights bell tool, Step 1 highlights day 5 (or end day if long-press anchor set) and falls back if bell toggled off
         val l3s0 = evaluatePracticeCoach(3, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals("bell", l3s0.target.tool)
         val l3s1 = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, "bell", "starter-afternoon", null, ids, names, dates)
         assertEquals(5, l3s1.target.dayIndex)
+        assertEquals(PracticeTargetAction.TAP, l3s1.target.action)
+        val l3s1Range = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, "bell", "starter-afternoon", 5, ids, names, dates)
+        assertEquals(7, l3s1Range.target.dayIndex)
+        assertEquals(PracticeTargetAction.TAP, l3s1Range.target.action)
+        assertTrue(l3s1Range.instruction.contains("reperibili"))
         val l3s1Off = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals("bell", l3s1Off.target.tool)
 
@@ -161,7 +166,7 @@ class OnboardingPracticeTest {
         val l4s2 = evaluatePracticeCoach(4, 2, CalendarEditMode.ROTATION, null, "starter-afternoon", 7, ids, names, dates)
         assertEquals(13, l4s2.target.dayIndex)
 
-        // Lesson 5: Step 0 highlights eraser, Step 1 highlights day (or end day if long-press anchor set), Step 2 highlights undo
+        // Lesson 5: Step 0 highlights eraser, Step 1 highlights LONG_PRESS on day (or TAP end day if anchor set), Step 2 highlights undo
         val l5s0 = evaluatePracticeCoach(5, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals("eraser", l5s0.target.tool)
         val l5s1Desync = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
@@ -169,12 +174,28 @@ class OnboardingPracticeTest {
         val l5s1 = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates, preferredEraseDay = 2)
         assertEquals(1, l5s1.subStepIndex)
         assertEquals(2, l5s1.target.dayIndex)
+        assertEquals(PracticeTargetAction.LONG_PRESS, l5s1.target.action)
         val l5s1Range = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", 2, ids, names, dates)
+        assertEquals(1, l5s1Range.subStepIndex)
         assertEquals(5, l5s1Range.target.dayIndex)
+        assertEquals(PracticeTargetAction.TAP, l5s1Range.target.action)
         val l5s2 = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates, canUndo = true)
         assertEquals("undo", l5s2.target.tool)
         val l5s2NoUndo = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates, canUndo = false)
         assertEquals("eraser", l5s2NoUndo.target.tool)
+    }
+
+    @Test fun applyBellPracticeRangeTogglesIntervalsCleanly() {
+        val initial = initialCalendarPractice(listOf("morning", "afternoon", "rest"))
+        val (enabledState, enabled) = applyBellPracticeRange(initial, 4, 6)
+        assertTrue(enabled)
+        assertTrue((4..6).all { it in enabledState.bells })
+        assertTrue(9 in enabledState.bells)
+
+        val (disabledState, enabledAfter) = applyBellPracticeRange(enabledState, 6, 4)
+        assertFalse(enabledAfter)
+        assertTrue((4..6).none { it in disabledState.bells })
+        assertTrue(9 in disabledState.bells)
     }
 
     @Test fun multiShiftStackingAndEraserIntervalWorkCleanlyInRehearsal() {

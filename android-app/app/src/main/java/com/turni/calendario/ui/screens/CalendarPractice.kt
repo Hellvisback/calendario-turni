@@ -30,6 +30,8 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.window.Dialog
+import androidx.compose.ui.window.DialogProperties
 import com.turni.calendario.model.*
 import com.turni.calendario.repository.*
 import com.turni.calendario.ui.components.*
@@ -60,7 +62,12 @@ private val practiceLessons = listOf(
 
 /** The production calendar canvas and toolbar, supplied only with local rehearsal data. */
 @Composable
-internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = showGuide, compactPreview: Boolean = false) {
+internal fun GesturePractice(
+    showGuide: Boolean = true,
+    interactive: Boolean = showGuide,
+    compactPreview: Boolean = false,
+    onTutorialCompleted: () -> Unit = {}
+) {
     val work = ShiftRepository.activeWorkProfileId
     val models = ShiftRepository.shiftDefinitions.filter { it.workProfileId == work }.ifEmpty { starterShiftDefinitions(work) }
     val defs = models.associateBy { it.id }
@@ -85,6 +92,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
     var isSuccessBanner by remember { mutableStateOf(false) }
     var isAdvancing by remember { mutableStateOf(false) }
     var idleHintActive by remember { mutableStateOf(false) }
+    var showCompletionDialog by remember { mutableStateOf(false) }
     var advanceJob by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
     val haptic = LocalHapticFeedback.current
@@ -118,11 +126,11 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         )
     }
 
-    // Idle timer: if the user stays still for 2.6s on a step, activate prominent beacon hint
+    // Idle timer: if the user stays still for 2.2s on a step, activate prominent beacon hint
     LaunchedEffect(lesson, coach.subStepIndex, mode, tool, brush, anchor, isAdvancing, editing) {
         idleHintActive = false
         if (showGuide && editing && !isAdvancing) {
-            delay(2600L)
+            delay(2200L)
             idleHintActive = true
         }
     }
@@ -183,6 +191,8 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         isAdvancing = false
         isSuccessBanner = false
         idleHintActive = false
+        paintRequest = null
+        editSession++
         lesson = next.coerceIn(0, practiceLessons.lastIndex)
         subStep = 0
         anchor = null
@@ -197,11 +207,15 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
             1 -> {
                 mode = CalendarEditMode.REPLACE
                 tool = null
+                val currentDay3 = state.days.getOrNull(3)?.firstOrNull()
+                brush = modelIds.firstOrNull { it != currentDay3 } ?: modelIds.first()
             }
             2 -> {
                 // Start in REPLACE so the user interactively taps "Più turni" as Step 1!
                 mode = CalendarEditMode.REPLACE
                 tool = null
+                val currentDay4 = state.days.getOrNull(4)?.firstOrNull()
+                brush = modelIds.firstOrNull { it != currentDay4 } ?: modelIds.first()
             }
             3 -> {
                 // Start with tool = null so the user interactively taps the Bell icon as Step 1!
@@ -221,7 +235,6 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         }
         if (!editing) {
             editing = true
-            editSession++
         }
     }
 
@@ -234,20 +247,25 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         advanceJob?.cancel()
         isAdvancing = true
         advanceJob = scope.launch {
-            delay(1350L)
+            delay(800L)
             isAdvancing = false
             isSuccessBanner = false
             val nextUninitialized = (0..practiceLessons.lastIndex).firstOrNull {
                 val candidate = (completedIdx + 1 + it) % practiceLessons.size
                 candidate !in completedLessons
             }
-            if (completedIdx < practiceLessons.lastIndex) {
+            if (completedLessons.size == practiceLessons.size) {
+                isSuccessBanner = true
+                message = "Perfetto! Hai finito il tutorial"
+                showCompletionDialog = true
+            } else if (completedIdx < practiceLessons.lastIndex) {
                 prepareLesson(completedIdx + 1)
             } else if (nextUninitialized != null) {
                 prepareLesson(nextUninitialized)
             } else {
-                message = "Ottimo lavoro! Hai provato tutte le funzioni di modifica. Ora puoi premere Continua."
                 isSuccessBanner = true
+                message = "Perfetto! Hai finito il tutorial"
+                showCompletionDialog = true
             }
         }
     }
@@ -256,13 +274,12 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         advanceJob?.cancel()
         isAdvancing = false
         isSuccessBanner = false
+        showCompletionDialog = false
         state = initial
         history = emptyList()
         completedLessons = emptySet()
         anchor = null
         eraseChoice = null
-        paintRequest = null
-        editSession++
         prepareLesson(0)
         message = "Esempio ripristinato: ripartiamo dal primo passo."
     }
@@ -312,14 +329,31 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         }
 
         if (tool == "bell") {
-            val enabled = index !in state.bells
-            change(state.copy(bells = if (enabled) state.bells + index else state.bells - index))
-            if (lesson == 3) {
-                celebrateAndAdvance(3, "Perfetto! Reperibilità ${if (enabled) "attivata" else "aggiornata"} sul giorno ${dates[index].dayOfMonth}. Passiamo alle rotazioni!")
+            val first = anchor
+            if (first != null) {
+                val (nextState, enabled) = applyBellPracticeRange(state, first, index)
+                change(nextState)
+                anchor = null
+                eraseChoice = null
+                paintRequest = null
+                val count = kotlin.math.abs(index - first) + 1
+                if (lesson == 3) {
+                    celebrateAndAdvance(3, "Reperibilità applicata su $count giorni!")
+                } else {
+                    completedLessons = completedLessons + 3
+                    isSuccessBanner = true
+                    message = if (enabled) "Reperibilità applicata su $count giorni!" else "Reperibilità rimossa su $count giorni."
+                }
             } else {
-                completedLessons = completedLessons + 3
-                isSuccessBanner = true
-                message = if (enabled) "Reperibilità attivata sul giorno ${dates[index].dayOfMonth}." else "Reperibilità rimossa."
+                val enabled = index !in state.bells
+                change(state.copy(bells = if (enabled) state.bells + index else state.bells - index))
+                if (lesson == 3) {
+                    celebrateAndAdvance(3, "Reperibilità ${if (enabled) "attivata" else "aggiornata"} sul giorno ${dates[index].dayOfMonth}!")
+                } else {
+                    completedLessons = completedLessons + 3
+                    isSuccessBanner = true
+                    message = if (enabled) "Reperibilità attivata sul giorno ${dates[index].dayOfMonth}." else "Reperibilità rimossa."
+                }
             }
             return
         }
@@ -356,7 +390,8 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         val first = anchor ?: index
         val erased = tool == "eraser"
         val nextState = applyCalendarPractice(state, first, index, brush, mode, erased, cycle.daySequence)
-        if (lesson == 5 && erased && anchor == null && nextState == state) {
+        if (lesson == 5 && erased && nextState == state) {
+            anchor = null
             isSuccessBanner = false
             idleHintActive = true
             message = "Il giorno ${dates[index].dayOfMonth} è già vuoto! Tocca un giorno con un turno (es. ${dates[preferredEraseDay].dayOfMonth})."
@@ -410,9 +445,9 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                 subStep = 2
                 isSuccessBanner = true
                 message = if (count > 1) {
-                    "$count giorni svuotati con la gomma! Ora tocca il tasto Annulla che lampeggia per recuperarli."
+                    "$count giorni eliminati! Ora tocca Annulla in alto."
                 } else {
-                    "Giorno ${dates[index].dayOfMonth} svuotato con la gomma! Ora tocca Annulla che lampeggia per recuperarlo."
+                    "Giorno ${dates[index].dayOfMonth} eliminato! Ora tocca Annulla in alto."
                 }
             }
             else -> {
@@ -601,8 +636,8 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                 Box(Modifier.fillMaxWidth().height(gridHeight)) {
                     NativeMonthGrid(
                         month = YearMonth.from(firstDate), selection = null, editing = editing,
-                        mode = if (anchor != null && (tool == "eraser" || mode != CalendarEditMode.ROTATION)) CalendarEditMode.RANGE else mode,
-                        brush = if (tool == "eraser") "eraser" else brush, rotationId = cycle.id,
+                        mode = if (anchor != null && (tool == "eraser" || tool == "bell" || mode != CalendarEditMode.ROTATION)) CalendarEditMode.RANGE else mode,
+                        brush = when (tool) { "eraser" -> "eraser"; "bell" -> "bell"; else -> brush }, rotationId = cycle.id,
                         anchor = anchor?.let { dates[it] }, rangeEnd = null,
                         modifier = Modifier.fillMaxSize().then(if (!editing) Modifier.clearAndSetSemantics { contentDescription = "Anteprima del calendario con turni, riposi e ferie" } else Modifier),
                         paintRequest = paintRequest, animate = interactive,
@@ -610,7 +645,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                         onPaintConsumed = { paintRequest = null },
                         onClick = { val idx = dates.indexOf(it); if (idx >= 0) apply(idx) },
                         onPreview = {},
-                        longPressEnabled = editing && tool != "bell" && (tool == "eraser" || mode != CalendarEditMode.ROTATION),
+                        longPressEnabled = editing && (tool == "eraser" || tool == "bell" || mode != CalendarEditMode.ROTATION),
                         onLongClick = { date ->
                             if (isAdvancing) return@NativeMonthGrid
                             val idx = dates.indexOf(date)
@@ -629,10 +664,10 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                                             message = "Prima tocca «Più turni» che lampeggia nella barra modalità."
                                             return@NativeMonthGrid
                                         }
-                                        lesson == 3 -> {
+                                        lesson == 3 && tool != "bell" -> {
                                             isSuccessBanner = false
                                             idleHintActive = true
-                                            message = if (tool == "bell") "Tocca il giorno evidenziato per inserire la reperibilità." else "Prima tocca la campanella (Reperibilità) in alto nella barra."
+                                            message = "Prima tocca la campanella (Reperibilità) in alto nella barra."
                                             return@NativeMonthGrid
                                         }
                                         lesson == 4 && mode != CalendarEditMode.ROTATION -> {
@@ -653,12 +688,18 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                                 anchor = idx
                                 eraseChoice = null
                                 when {
+                                    tool == "bell" -> {
+                                        lesson = 3
+                                        subStep = 1
+                                        isSuccessBanner = true
+                                        message = "Inizio reperibilità · tocca la fine"
+                                    }
                                     tool == "eraser" -> {
                                         lesson = 5
                                         subStep = 1
                                         isSuccessBanner = true
                                         val endIdx = if (idx <= 4) 5 else (idx - 2).coerceAtLeast(0)
-                                        message = "Inizio gomma fissato sul ${date.dayOfMonth}! Ora tocca il giorno ${dates[endIdx].dayOfMonth} per svuotare l’intervallo."
+                                        message = "Inizio gomma sul ${date.dayOfMonth}: tocca il giorno ${dates[endIdx].dayOfMonth}."
                                     }
                                     mode == CalendarEditMode.ADD -> {
                                         lesson = 2
@@ -713,7 +754,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                             lesson = 3
                             subStep = 1
                             isSuccessBanner = true
-                            message = "Campanella attiva! Ora tocca il giorno ${dates[5].dayOfMonth} che lampeggia sul calendario."
+                            message = "Campanella attiva! Tocca il giorno ${dates[5].dayOfMonth} o tieni premuto per più giorni."
                         }
                         nextTool == "eraser" -> {
                             lesson = 5
@@ -722,7 +763,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                             message = if (subStep >= 2) {
                                 "Gomma attiva! Oppure tocca Annulla in alto per recuperare la modifica precedente."
                             } else {
-                                "Gomma attiva! Tocca il giorno ${dates[preferredEraseDay].dayOfMonth} per svuotarlo (o tieni premuto per un intervallo)."
+                                "Gomma attiva! Tieni premuto sul giorno ${dates[preferredEraseDay].dayOfMonth} per un intervallo (o tocca un giorno)."
                             }
                         }
                         else -> {
@@ -802,7 +843,19 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                         paintRequest = null
                         editSession++
                         if (lesson == 5 && subStep >= 2) {
-                            celebrateAndAdvance(5, "Perfetto! Hai recuperato subito con Annulla. Tutte le lezioni completate!")
+                            runCatching { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
+                            completedLessons = completedLessons + 5
+                            isSuccessBanner = true
+                            message = "Perfetto! Hai finito il tutorial"
+                            if (showGuide) {
+                                advanceJob?.cancel()
+                                isAdvancing = true
+                                advanceJob = scope.launch {
+                                    delay(420L)
+                                    isAdvancing = false
+                                    showCompletionDialog = true
+                                }
+                            }
                         } else if (lesson == 5) {
                             isSuccessBanner = true
                             message = "Modifica annullata. Ora prova la gomma: tocca Gomma e poi un giorno."
@@ -823,7 +876,6 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                     anchor = null
                     eraseChoice = null
                     message = ""
-                    completedLessons = completedLessons + 5
                 },
                 catalogOverride = models,
                 rotationsOverride = listOf(cycle)
@@ -886,6 +938,22 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                 TextButton(onClick = ::resetPractice) { Text("Ripristina", color = BrandInk, fontSize = 11.sp) }
             }
         }
+    }
+
+    if (showCompletionDialog) {
+        TutorialCompletionDialog(
+            onContinue = {
+                showCompletionDialog = false
+                onTutorialCompleted()
+            },
+            onRetry = {
+                showCompletionDialog = false
+                resetPractice()
+            },
+            onDismiss = {
+                showCompletionDialog = false
+            }
+        )
     }
 }
 
@@ -1119,6 +1187,116 @@ private fun PracticeGridTargetOverlay(
                     maxLines = 1,
                     textAlign = TextAlign.Center
                 )
+            }
+        }
+    }
+}
+
+@Composable
+private fun TutorialCompletionDialog(
+    onContinue: () -> Unit,
+    onRetry: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    val palette = currentTurniPalette
+    var visible by remember { mutableStateOf(false) }
+    var closing by remember { mutableStateOf(false) }
+    val scope = rememberCoroutineScope()
+
+    fun finish(action: () -> Unit) {
+        if (!closing) {
+            closing = true
+            scope.launch {
+                visible = false
+                delay(180L)
+                action()
+            }
+        }
+    }
+
+    LaunchedEffect(Unit) { visible = true }
+
+    Dialog(
+        onDismissRequest = { finish(onDismiss) },
+        properties = DialogProperties(usePlatformDefaultWidth = false)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 24.dp)
+                .navigationBarsPadding(),
+            contentAlignment = Alignment.Center
+        ) {
+            AnimatedVisibility(
+                visible = visible,
+                enter = fadeIn(tween(220)) + scaleIn(
+                    animationSpec = spring(dampingRatio = 0.78f, stiffness = 380f),
+                    initialScale = 0.88f
+                ),
+                exit = fadeOut(tween(160)) + scaleOut(tween(180), targetScale = 0.94f)
+            ) {
+                Surface(
+                    shape = RoundedCornerShape(28.dp),
+                    color = ObsidianSurface,
+                    tonalElevation = 6.dp,
+                    shadowElevation = 12.dp,
+                    modifier = Modifier
+                        .widthIn(max = 360.dp)
+                        .fillMaxWidth()
+                ) {
+                    Column(
+                        modifier = Modifier.padding(22.dp),
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(14.dp)
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(56.dp)
+                                .clip(RoundedCornerShape(18.dp))
+                                .background(Color(palette.success.fill))
+                                .border(
+                                    1.5.dp,
+                                    Color(palette.success.ink).copy(alpha = 0.28f),
+                                    RoundedCornerShape(18.dp)
+                                ),
+                            contentAlignment = Alignment.Center
+                        ) {
+                            SiteIcon("check", null, Modifier.size(28.dp), Color(palette.success.ink))
+                        }
+                        Text(
+                            text = "Hai finito il tutorial!",
+                            color = TextPrimary,
+                            fontSize = 21.sp,
+                            fontWeight = FontWeight.Bold,
+                            textAlign = TextAlign.Center
+                        )
+                        Text(
+                            text = "A posto! Ora sai cambiare, aggiungere, segnare la reperibilità ed eliminare i turni.",
+                            color = TextSecondary,
+                            fontSize = 13.5.sp,
+                            lineHeight = 19.sp,
+                            textAlign = TextAlign.Center
+                        )
+                        Column(
+                            modifier = Modifier.fillMaxWidth(),
+                            verticalArrangement = Arrangement.spacedBy(8.dp)
+                        ) {
+                            CloudButton(
+                                label = "A posto · Continua",
+                                icon = "arrow-right",
+                                onClick = { finish(onContinue) },
+                                enabled = !closing
+                            )
+                            CloudButton(
+                                label = "Riprova",
+                                icon = "rotate-ccw",
+                                onClick = { finish(onRetry) },
+                                enabled = !closing,
+                                secondary = true
+                            )
+                        }
+                    }
+                }
             }
         }
     }

@@ -6,6 +6,10 @@ L'utente richiede che dopo ogni modifica dell'app venga pubblicato un APK scaric
 
 Aggiornato il 24 novembre 2026. Questo documento è il punto di ingresso del progetto; prevale sulle vecchie intestazioni e sulle indicazioni di percorso nei documenti storici.
 
+## Tutorial snello con popup finale, intervalli Gomma/Reperibilità e colore campana/giorno beta.38
+
+La beta.38 personale (83) completa l'intervallo a pressione prolungata anche per la **Reperibilità** (`setDayOnCallRange` + `bellAnchor` in `CalendarScreen.kt`/`NativeMonthCanvas.kt` con singolo `undo()`), corregge il colore di giorno e campanella reperibile affinché virino sempre in ambra ben leggibile anche sopra celle colorate in modifica, snellisce e velocizza le 6 lezioni della guida interattiva di primo avvio (mostrando chiaramente ogni cambio turno, gomma long-press su più giorni insieme e reperibilità su intervallo) e introduce il popup animato finale `"Hai finito il tutorial!"` dopo *Annulla* (`CalendarPractice.kt`, `FirstRunScreen.kt`). [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.38.md).
+
 ## Fix caricamento Widget, pulsanti Inizio/Fine su orario e sfondo weekend costante in Light beta.37
 
 La beta.37 personale (82) corregge l'errore di caricamento dei widget rimuovendo `<Space>` (non `@RemoteView`) da tutti i 7 layout widget/anteprima XML con test anti-regressione in `WidgetVisualPolicyTest`, rinomina *Attacco/Stacco* in **Inizio/Fine** dotando la finestra orario/straordinari di due veri riquadri pulsante bordati Material 3 Expressive (`NativeCalendarPanels.kt`), e mantiene invariato lo sfondo della colonna Sabato/Domenica anche sui giorni appartenenti ai mesi adiacenti in tema Chiaro lasciando schiariti solo turni e numeri (`NativeMonthCanvas.kt`). [Verifica Android e dettagli](VERIFICA_v1.8.0-beta.37.md).

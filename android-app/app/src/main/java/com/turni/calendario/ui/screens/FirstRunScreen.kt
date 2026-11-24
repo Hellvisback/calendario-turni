@@ -201,7 +201,7 @@ fun FirstRunScreen() {
                                             fontWeight = FontWeight.Bold,
                                             letterSpacing = (-.4).sp
                                         )
-                                        GesturePractice()
+                                        GesturePractice(onTutorialCompleted = { if (!finishing && step == 3) FirstRunStore.goTo(context, step + 1) })
                                     }
                                     else -> {
                                         SetupTitle("Tutto pronto","Puoi aprire subito il calendario, oppure rifinire ora le opzioni qui sotto.")

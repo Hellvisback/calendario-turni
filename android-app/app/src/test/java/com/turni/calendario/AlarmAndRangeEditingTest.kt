@@ -102,5 +102,34 @@ class AlarmAndRangeEditingTest {
         }finally{DatabaseRestore.apply(original)}
     }
 
+    @Test fun onCallRangeLongPressAppliesAndUndoesInOneStep() {
+        val original=DatabaseSnapshot.capture()
+        try {
+            seedLegacyDemoRepository()
+            Repository.calendarShifts.clear();Repository.dayExtraInfo.clear()
+            Repository.reperibilitaConfig=ReperibilitaConfig(mode=ReperibilitaMode.MANUALE)
+            val start=LocalDate.of(2030,1,30)
+            val end=start.plusDays(4)
+            Repository.setDayOnCallManual(start.minusDays(1),false)
+            Repository.setDayOnCallManual(end.plusDays(1),false)
+
+            Repository.setDayOnCallRange(start,end,true)
+            for(offset in 0L..4L)assertTrue(Repository.isOnCall(start.plusDays(offset)))
+            assertFalse(Repository.isOnCall(start.minusDays(1)))
+            assertFalse(Repository.isOnCall(end.plusDays(1)))
+
+            assertTrue(Repository.undo())
+            for(offset in 0L..4L)assertFalse(Repository.isOnCall(start.plusDays(offset)))
+
+            Repository.setDayOnCallRange(end,start,true)
+            for(offset in 0L..4L)assertTrue(Repository.isOnCall(start.plusDays(offset)))
+            assertFalse(Repository.isOnCall(start.minusDays(1)))
+            assertFalse(Repository.isOnCall(end.plusDays(1)))
+
+            assertTrue(Repository.undo())
+            for(offset in 0L..4L)assertFalse(Repository.isOnCall(start.plusDays(offset)))
+        } finally { DatabaseRestore.apply(original) }
+    }
+
 }
 

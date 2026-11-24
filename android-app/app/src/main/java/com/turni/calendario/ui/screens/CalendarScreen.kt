@@ -92,6 +92,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     var editTool by remember{mutableStateOf<String?>(null)}
     var rangeGesture by remember{mutableStateOf<CalendarEditMode?>(null)}
     var eraseAnchor by remember{mutableStateOf<LocalDate?>(null)}
+    var bellAnchor by remember{mutableStateOf<LocalDate?>(null)}
     var eraseDate by remember{mutableStateOf<LocalDate?>(null)}
     var selectShift by remember{mutableStateOf<LocalDate?>(null)}
     var addSecondary by remember{mutableStateOf(false)}
@@ -108,7 +109,7 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
     val density=LocalDensity.current.density
     LaunchedEffect(editRequest){if(editRequest>0){if(!editing){editSession+=1L;paintRequest=null};editing=true;selectedDate=null}}
     LaunchedEffect(editing,active){onEditModeActiveChanged(active&&editing)}
-    LaunchedEffect(active){if(!active){selectedDate=null;workMenu=false;anchor=null;rangeEnd=null;rangeGesture=null;eraseAnchor=null}}
+    LaunchedEffect(active){if(!active){selectedDate=null;workMenu=false;anchor=null;rangeEnd=null;rangeGesture=null;eraseAnchor=null;bellAnchor=null}}
     DisposableEffect(Unit){onDispose{onEditModeActiveChanged(false)}}
     LaunchedEffect(active,ShiftRepository.selectedDateFromWidget){if(active)ShiftRepository.selectedDateFromWidget?.let{
         monthKey=YearMonth.from(it).toString();lastDate=it;selectedDate=it;ShiftRepository.selectedDateFromWidget=null
@@ -138,8 +139,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             lastBrushProfileId = currentProfileId
         }
     }
-    fun closeEditor(){editing=false;paintRequest=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null}
-    BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};rangeGesture!=null->{rangeGesture=null;anchor=null;rangeEnd=null;feedback=null};else->closeEditor()}}
+    fun closeEditor(){editing=false;paintRequest=null;anchor=null;rangeEnd=null;eraseAnchor=null;bellAnchor=null;rangeGesture=null}
+    BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};bellAnchor!=null->{bellAnchor=null;feedback=null};rangeGesture!=null->{rangeGesture=null;anchor=null;rangeEnd=null;feedback=null};else->closeEditor()}}
     fun changeMonth(direction:Int){
         motion?.cancel()
         if(direction!=0)Snapshot.withMutableSnapshot {
@@ -174,9 +175,17 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             return
         }
         if(editTool=="bell"){
-            val wasOnCall=ShiftRepository.isOnCall(date)
-            ShiftRepository.setDayOnCallManual(date,!wasOnCall)
-            feedback=ActionFeedback(if(wasOnCall)"Reperibilità rimossa" else "Reperibilità attivata",wasOnCall)
+            val first=bellAnchor
+            if(first!=null){
+                val target=!ShiftRepository.isOnCall(first)
+                ShiftRepository.setDayOnCallRange(first,date,target)
+                bellAnchor=null
+                feedback=ActionFeedback(if(target)"Reperibilità attivata sul periodo" else "Reperibilità rimossa dal periodo",!target)
+            }else{
+                val wasOnCall=ShiftRepository.isOnCall(date)
+                ShiftRepository.setDayOnCallManual(date,!wasOnCall)
+                feedback=ActionFeedback(if(wasOnCall)"Reperibilità rimossa" else "Reperibilità attivata",wasOnCall)
+            }
             return
         }
         if(rangeGesture!=null&&anchor!=null){
@@ -293,15 +302,18 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
                             }
                         }
                         // Keep the callback present: nullable branches here replace the page and its wave state.
-                        NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,if(eraseAnchor!=null||rangeGesture!=null)CalendarEditMode.RANGE else mode,if(eraseAnchor!=null)"eraser" else brush,rotationId,eraseAnchor?:anchor,if(eraseAnchor!=null)null else rangeEnd,
+                        NativeMonthGrid(month.plusMonths(delta.toLong()),selectedDate,editing,if(eraseAnchor!=null||bellAnchor!=null||rangeGesture!=null)CalendarEditMode.RANGE else mode,when{eraseAnchor!=null->"eraser";bellAnchor!=null->"bell";else->brush},rotationId,eraseAnchor?:bellAnchor?:anchor,if(eraseAnchor!=null||bellAnchor!=null)null else rangeEnd,
                             Modifier.weight(1f).fillMaxWidth(),
-                            paintRequest=paintRequest,editSession=editSession,editProgress=editProgress,animate=delta==0,onPaintConsumed={sequence->if(paintRequest?.sequence==sequence)paintRequest=null},onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null&&editTool!="eraser")rangeEnd=it},
-                            longPressEnabled=editing&&editTool!="bell"&&(editTool=="eraser"||mode==CalendarEditMode.REPLACE||mode==CalendarEditMode.ADD),onLongClick={date->
+                            paintRequest=paintRequest,editSession=editSession,editProgress=editProgress,animate=delta==0,onPaintConsumed={sequence->if(paintRequest?.sequence==sequence)paintRequest=null},onClick={dayClick(it)},onPreview={if(editing&&mode==CalendarEditMode.RANGE&&anchor!=null&&editTool!="eraser"&&editTool!="bell")rangeEnd=it},
+                            longPressEnabled=editing&&(editTool=="eraser"||editTool=="bell"||mode==CalendarEditMode.REPLACE||mode==CalendarEditMode.ADD),onLongClick={date->
                                 if(editTool=="eraser"){
-                                    eraseAnchor=date;anchor=null;rangeEnd=null;rangeGesture=null
+                                    eraseAnchor=date;bellAnchor=null;anchor=null;rangeEnd=null;rangeGesture=null
                                     feedback=ActionFeedback("Inizio selezionato · tocca l’ultimo giorno da cancellare")
+                                }else if(editTool=="bell"){
+                                    bellAnchor=date;eraseAnchor=null;anchor=null;rangeEnd=null;rangeGesture=null
+                                    feedback=ActionFeedback("Inizio reperibilità · tocca l’ultimo giorno")
                                 }else{
-                                    rangeGesture=mode;anchor=date;rangeEnd=null;eraseAnchor=null
+                                    rangeGesture=mode;anchor=date;rangeEnd=null;eraseAnchor=null;bellAnchor=null
                                     feedback=ActionFeedback(if(mode==CalendarEditMode.ADD)"Inizio selezionato · aggiungi turni fino all’ultimo giorno" else "Inizio selezionato · tocca l’ultimo giorno del periodo")
                                 }
                             })
@@ -319,8 +331,8 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
         AnimatedVisibility(editing,enter=slideInVertically(spring(.95f,380f)){it}+fadeIn(),
             exit=slideOutVertically(spring(1f,420f)){it}+fadeOut(),
             modifier=Modifier.align(Alignment.BottomCenter).navigationBarsPadding().padding(horizontal=8.dp).padding(bottom=6.dp)) {
-            NativeEditToolbar(mode,brush,rotationId,editTool,onTool={editTool=if(editTool==it)null else it;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onMode={mode=it;editTool=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null},onBrush={brush=it;editTool=null;eraseAnchor=null;rangeGesture=null;anchor=null;rangeEnd=null},
-                onRotation={rotationId=it;editTool=null;eraseAnchor=null;rangeGesture=null},onUndo={if(ShiftRepository.undo()){rangeGesture=null;eraseAnchor=null;anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()},onNavigateToTurni=onNavigateToTurni)
+            NativeEditToolbar(mode,brush,rotationId,editTool,onTool={editTool=if(editTool==it)null else it;anchor=null;rangeEnd=null;eraseAnchor=null;bellAnchor=null;rangeGesture=null},onMode={mode=it;editTool=null;anchor=null;rangeEnd=null;eraseAnchor=null;bellAnchor=null;rangeGesture=null},onBrush={brush=it;editTool=null;eraseAnchor=null;bellAnchor=null;rangeGesture=null;anchor=null;rangeEnd=null},
+                onRotation={rotationId=it;editTool=null;eraseAnchor=null;bellAnchor=null;rangeGesture=null},onUndo={if(ShiftRepository.undo()){rangeGesture=null;eraseAnchor=null;bellAnchor=null;anchor=null;rangeEnd=null;feedback=ActionFeedback("Modifica annullata",false)}},onClose={closeEditor()},onNavigateToTurni=onNavigateToTurni)
         }
         MagicalActionFeedbackHUD(feedback,onDismiss={feedback=null},modifier=Modifier.align(Alignment.TopCenter).statusBarsPadding().padding(top=8.dp))
         eraseDate?.let{date->

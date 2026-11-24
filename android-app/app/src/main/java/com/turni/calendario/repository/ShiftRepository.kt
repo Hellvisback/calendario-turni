@@ -1405,6 +1405,18 @@ object ShiftRepository {
         notifyDataChanged()
     }
 
+    /** One undo operation for an inclusive manual on-call interval. */
+    fun setDayOnCallRange(first: LocalDate, last: LocalDate, isOnCall: Boolean, profileId: String = activeWorkProfileId) {
+        saveSnapshot()
+        var date = minOf(first, last)
+        val end = maxOf(first, last)
+        while (!date.isAfter(end)) {
+            dayExtraInfoMapFor(profileId)[date] = getDayExtraInfo(date, profileId).copy(isOnCallManual = isOnCall)
+            date = date.plusDays(1)
+        }
+        notifyDataChanged()
+    }
+
     fun setDayHideExShift(date: LocalDate, hide: Boolean) {
         val current = getDayExtraInfo(date)
         dayExtraInfo[date] = current.copy(hideExShift = hide)
