@@ -16,9 +16,10 @@ import com.turni.calendario.ui.theme.readableIndicator
 import com.turni.calendario.ui.theme.readableInk
 import com.turni.calendario.ui.theme.shiftChartColor
 import com.turni.calendario.ui.theme.shiftColorStyle
+import com.turni.calendario.model.AssignedShift
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
-import com.turni.calendario.model.sortedChronologically
+import com.turni.calendario.model.ShiftDefinition
 import com.turni.calendario.repository.ShiftRepository
 import java.io.File
 import java.time.LocalDate
@@ -28,8 +29,23 @@ import java.util.Locale
 import java.time.LocalTime
 import kotlin.math.roundToInt
 
-data class PdfShiftRow(val code: String, val name: String, val color: Int, val time: String?, val details: List<String>)
-data class PdfDayRow(val date: LocalDate, val shifts: List<PdfShiftRow>, val details: List<String>, val holiday: Boolean = false)
+data class PdfShiftRow(
+    val code: String,
+    val name: String,
+    val color: Int,
+    val time: String?,
+    val details: List<String>,
+    val isAllDay: Boolean = false,
+    val startTime: String? = time,
+    val endTime: String? = null,
+)
+data class PdfDayRow(
+    val date: LocalDate,
+    val shifts: List<PdfShiftRow>,
+    val details: List<String>,
+    val holiday: Boolean = false,
+    val onCall: Boolean = false,
+)
 data class PdfExportSnapshot(val work: String, val options: PdfExportOptions, val days: List<PdfDayRow>)
 
 /** Capture repository state on the UI thread; render this immutable snapshot on IO. */
@@ -39,7 +55,10 @@ object PdfGenerator {
         val defsById = ShiftRepository.shiftDefinitions.associateBy { it.id }
         val profileTags = ShiftRepository.dayTagsFor(work.id)
         val days = PdfExportPlan.dates(options).map { date ->
-            val all = ShiftRepository.getShiftsForDate(date, work.id).sortedChronologically(defsById)
+            val all = sortAssignedShiftsChronologically(
+                shifts = ShiftRepository.getShiftsForDate(date, work.id),
+                defsById = defsById,
+            )
             val extra = ShiftRepository.getDayExtraInfo(date, work.id)
             val rows = all.mapNotNull { shift ->
                 val def = defsById[shift.shiftDefId] ?: return@mapNotNull null
@@ -60,13 +79,15 @@ object PdfGenerator {
                     if (shift.permissionHours.isFinite()) shift.permissionHours.coerceAtLeast(0f) else 0f,
                     splitPerm,
                 )
+                val effectiveStart = if (def.isAllDay) null else (shift.customStartTime ?: def.startTime)
+                val effectiveEnd = if (def.isAllDay) null else (shift.customEndTime ?: def.endTime)
                 val lines = buildList {
-                    if (options.includeTime) add(if (def.isAllDay) "Tutto il giorno" else "${shift.customStartTime ?: def.startTime} - ${shift.customEndTime ?: def.endTime}")
+                    if (options.includeTime) add(if (def.isAllDay) "Tutto il giorno" else "$effectiveStart - $effectiveEnd")
                     if (actualStart != null && options.includeTime) add("Ingresso effettivo: $actualStart")
                     if (actualEnd != null && options.includeTime) add("Stacco effettivo: $actualEnd")
                     if (options.includeDuration && !def.isAllDay) {
-                        val start = LocalTime.parse(shift.customStartTime ?: def.startTime)
-                        val end = LocalTime.parse(shift.customEndTime ?: def.endTime)
+                        val start = LocalTime.parse(effectiveStart)
+                        val end = LocalTime.parse(effectiveEnd)
                         val elapsed = (java.time.Duration.between(start, end).toMinutes() + 1440) % 1440
                         val minutes = ((if (elapsed == 0L) 1440 else elapsed) - def.breakMinutes).coerceAtLeast(0)
                         add("Durata prevista: ${formatMinutes(minutes.toInt())}")
@@ -79,15 +100,30 @@ object PdfGenerator {
                     if (options.includeNotes && shift.notes.isNotBlank()) add(shift.notes)
                     if (options.includeNotes && shift.tags.isNotEmpty()) add(shift.tags.joinToString(" · "))
                 }
-                PdfShiftRow(def.shortCode, if (options.includeTitle) def.name else "", def.colorHex.toInt(), if (options.includeTime && !def.isAllDay) shift.customStartTime ?: def.startTime else null, lines)
+                PdfShiftRow(
+                    code = def.shortCode,
+                    name = if (options.includeTitle) def.name else "",
+                    color = def.colorHex.toInt(),
+                    time = if (options.includeTime && !def.isAllDay) effectiveStart else null,
+                    details = lines,
+                    isAllDay = def.isAllDay,
+                    startTime = effectiveStart,
+                    endTime = effectiveEnd,
+                )
             }
+            val onCall = ShiftRepository.isOnCall(date, work.id)
             val dayLines = buildList {
-                if (ShiftRepository.isOnCall(date, work.id)) add("Reperibilità")
                 if (options.includeEvents) ShiftRepository.isHoliday(date)?.let { add(it.name) }
                 if (options.includeNotes && extra.notes.isNotBlank()) add(extra.notes)
                 if (options.includeNotes) extra.tagIds.mapNotNull { id -> profileTags.firstOrNull { it.id == id }?.name }.takeIf { it.isNotEmpty() }?.let { add(it.joinToString(" · ")) }
             }
-            PdfDayRow(date, rows, dayLines, options.includeEvents && ShiftRepository.isHoliday(date)!=null)
+            PdfDayRow(
+                date = date,
+                shifts = rows,
+                details = dayLines,
+                holiday = options.includeEvents && ShiftRepository.isHoliday(date) != null,
+                onCall = onCall,
+            )
         }
         return PdfExportSnapshot(work.name, options, days)
     }
@@ -96,10 +132,15 @@ object PdfGenerator {
         val output = File.createTempFile("turnisync-", ".pdf", context.cacheDir)
         val presentation = PdfExportPlan.presentation(snapshot.options)
         val months = snapshot.days.map { YearMonth.from(it.date) }.distinct().size
-        val papers = when (presentation) {
-            PdfPresentation.OVERVIEW -> overviewPaperSizes(months)
-            PdfPresentation.MONTHS -> if (months > 1) listOf(595 to 842, 1191 to 1684) else listOf(595 to 842)
-            PdfPresentation.LIST -> listOf(595 to 842, 842 to 1191)
+        val papers = when {
+            presentation == PdfPresentation.LIST -> listOf(595 to 842, 842 to 1191)
+            presentation == PdfPresentation.MONTHS -> if (months > 1) listOf(595 to 842, 1191 to 1684) else listOf(595 to 842)
+            snapshot.options.mode == PdfExportMode.PERSONALIZZATO -> when (resolveCustomPeriodLayout(snapshot.days.size, months)) {
+                CustomPeriodLayout.SHORT_DETAILED -> listOf(595 to 842, 842 to 1191)
+                CustomPeriodLayout.MEDIUM_TWO_COLUMN -> overviewPaperSizes(2)
+                CustomPeriodLayout.EXTENDED_OVERVIEW -> overviewPaperSizes(months)
+            }
+            else -> overviewPaperSizes(months)
         }
         var lastError:IllegalArgumentException?=null
         for((width,height) in papers.distinct()) {
@@ -261,18 +302,30 @@ object PdfGenerator {
         }
 
         private fun detailTone(detail: String, isHoliday: Boolean = false): Pair<Int, Boolean> = when {
-            detail.startsWith("Straordinario:") || detail.startsWith("Extra:") -> overtimeInk to false
-            detail.startsWith("Permesso:") || detail.startsWith("Perm:") -> warningInk to false
+            detail.startsWith("Straordinario:") || detail.startsWith("Extra:") || detail.startsWith("+") -> overtimeInk to false
+            detail.startsWith("Permesso:") || detail.startsWith("Perm:") || detail.startsWith("−") -> warningInk to false
             detail == "Reperibilità" || detail == "REP" -> warningInk to true
-            detail == "Trasferta" -> accentInk to false
+            detail == "Trasferta" || detail == "TR" -> accentInk to false
             isHoliday -> holidayInk to true
             else -> muted to false
+        }
+
+        private fun drawOnCallPill(x: Float, baseline: Float, font: Float): Float {
+            val pillW = measure("REP", font, bold = true) + 8f
+            val pillH = font + 3.2f
+            val pillTop = baseline - font * 0.86f - 0.8f
+            box(x, pillTop, pillW, pillH, warningFill, 3.2f)
+            text("REP", x + 4f, baseline - 0.2f, font, warningInk, bold = true)
+            return pillW
         }
 
         fun render() {
             val months = data.days.map { YearMonth.from(it.date) }.distinct()
             val presentation = PdfExportPlan.presentation(data.options)
-            val calendar = presentation != PdfPresentation.LIST
+            val customLayout = if (data.options.mode == PdfExportMode.PERSONALIZZATO) {
+                resolveCustomPeriodLayout(data.days.size, months.size)
+            } else null
+            val calendar = presentation != PdfPresentation.LIST && customLayout != CustomPeriodLayout.SHORT_DETAILED
             val page = doc.startPage(PdfDocument.PageInfo.Builder(width.toInt(), height.toInt(), 1).create())
             try {
                 canvas = page.canvas
@@ -292,10 +345,10 @@ object PdfGenerator {
                 val assignments = data.days.sumOf { it.shifts.size }
                 val activeDays = data.days.count { it.shifts.isNotEmpty() }
                 val extraCount = data.days.sumOf { d ->
-                    d.shifts.count { s -> s.details.any { it.startsWith("Straordinario:") } }
+                    d.shifts.count { s -> s.details.any { it.startsWith("Straordinario:") || it.startsWith("+") } }
                 }
                 val permCount = data.days.sumOf { d ->
-                    d.shifts.count { s -> s.details.any { it.startsWith("Permesso:") } }
+                    d.shifts.count { s -> s.details.any { it.startsWith("Permesso:") || it.startsWith("−") } }
                 }
 
                 val pills = buildList {
@@ -375,10 +428,12 @@ object PdfGenerator {
                 top += 10f
                 require(top < height - 100f) { crowded }
 
-                when (presentation) {
-                    PdfPresentation.LIST -> list(top)
-                    PdfPresentation.MONTHS -> calendars(months, top)
-                    PdfPresentation.OVERVIEW -> overview(months, top)
+                when {
+                    presentation == PdfPresentation.LIST || customLayout == CustomPeriodLayout.SHORT_DETAILED -> list(top)
+                    presentation == PdfPresentation.MONTHS -> calendars(months, top)
+                    customLayout == CustomPeriodLayout.MEDIUM_TWO_COLUMN && months.size == 1 ->
+                        overviewSplitTwoColumns(months.first(), top)
+                    else -> overview(months, top)
                 }
 
                 box(margin, height - 30f, contentW, 0.7f, footerRule, 0f)
@@ -396,78 +451,166 @@ object PdfGenerator {
             val color: Int?,
             val titleLines: List<String>,
             val time: String,
-            val timeInline: Boolean,
-            val detailLines: List<String>,
+            val timeInlineOnLastTitleLine: Boolean,
+            val timeOnNewLine: Boolean,
+            val metaLines: List<List<String>>,
+            val noteLines: List<String>,
         ) {
+            val headLines: Int
+                get() = maxOf(1, titleLines.size + (if (timeOnNewLine) 1 else 0))
+
             val lineCount: Int
-                get() {
-                    val headLines = if (titleLines.isNotEmpty()) {
-                        titleLines.size + (if (!timeInline && time.isNotBlank()) 1 else 0)
-                    } else {
-                        if (time.isNotBlank()) 1 else 0
-                    }
-                    return maxOf(1, headLines + detailLines.size)
-                }
+                get() = maxOf(1, headLines + metaLines.size + noteLines.size)
         }
 
         private data class ListDayBlock(
             val shifts: List<ListShiftBlock>,
+            val onCall: Boolean,
+            val repInlineOnFirstShift: Boolean,
+            val repExtraLine: Boolean,
             val dayDetails: List<String>,
             val isEmptyDay: Boolean,
         )
 
+        private fun wrapMetaSegments(segments: List<String>, maxWidth: Float, size: Float): List<List<String>> {
+            if (segments.isEmpty()) return emptyList()
+            val sepW = measure(" · ", size)
+            val result = mutableListOf<MutableList<String>>()
+            var current = mutableListOf<String>()
+            var used = 0f
+            segments.forEach { seg ->
+                val segW = measure(seg, size)
+                val needed = if (current.isEmpty()) segW else sepW + segW
+                if (current.isNotEmpty() && used + needed > maxWidth) {
+                    result.add(current)
+                    current = mutableListOf(seg)
+                    used = segW
+                } else {
+                    current.add(seg)
+                    used += needed
+                }
+            }
+            if (current.isNotEmpty()) result.add(current)
+            return result
+        }
+
         private fun list(top: Float) {
-            val days = data.days.filter { data.options.includeEmptyRows || it.shifts.isNotEmpty() || it.details.isNotEmpty() }
+            val days = data.days.filter {
+                data.options.includeEmptyRows ||
+                    it.shifts.isNotEmpty() ||
+                    it.onCall ||
+                    it.details.isNotEmpty()
+            }
             if (days.isEmpty()) {
                 text("Nessun turno nel periodo e nel filtro scelti.", margin, top + 15f, 9.5f, muted)
                 return
             }
+            val dayDates = days.map { it.date }
+            val distinctMonths = dayDates.map { YearMonth.from(it) }.distinct()
+            val columnOrder = preferredListColumns(days.size, distinctMonths.size)
             val available = height - top - 38f - 18f
-            for (font in listOf(10f, 9.5f, 9f, 8.5f, 8f, 7.5f, 7f)) {
-                for (columns in 1..3) {
+
+            for (font in listOf(10f, 9.5f, 9f, 8.5f, 8f, 7.5f, 7f, 6.5f)) {
+                for (columns in columnOrder) {
                     val gap = 14f
                     val columnWidth = (width - 2 * margin - gap * (columns - 1)) / columns
                     val dateBadgeW = 40f + font * 1.4f
                     val hasCodes = days.any { d -> d.shifts.any { it.code.isNotBlank() } }
-                    val codeFont = (font - 1.2f).coerceAtLeast(6f)
+                    val codeFont = (font - 1.2f).coerceAtLeast(5.8f)
                     val maxCodeW = if (hasCodes) {
                         days.flatMap { it.shifts }.maxOfOrNull { measure(it.code, codeFont, bold = true) } ?: 0f
                     } else 0f
                     val codeBadgeW = if (hasCodes) minOf(maxOf(font * 2.9f, maxCodeW + 11f), font * 4.2f) else 0f
                     val entryOffset = dateBadgeW + 7f
-                    val shiftTextOffset = if (hasCodes) entryOffset + codeBadgeW + 7f else entryOffset
+                    val shiftTextOffset = if (hasCodes) entryOffset + codeBadgeW + 6.5f else entryOffset
                     val shiftContentW = columnWidth - shiftTextOffset - 4f
-                    if (shiftContentW < 62f) continue
+                    if (shiftContentW < 60f) continue
 
-                    val leading = font + 2.6f
-                    val timeFont = (font - 1.4f).coerceAtLeast(6f)
-                    val detailFont = (font - 0.7f).coerceAtLeast(6.2f)
+                    val leading = font + 2.5f
+                    val timeFont = (font - 1.4f).coerceAtLeast(5.8f)
+                    val repFont = (font - 1.6f).coerceAtLeast(5.6f)
+                    val detailFont = (font - 0.8f).coerceAtLeast(6f)
                     val dayDetailW = columnWidth - entryOffset - 4f
+                    val repPillW = measure("REP", repFont, bold = true) + 8f
 
                     val blocks = days.map { day ->
+                        val dayHasLegacyRep = day.details.any { it == "Reperibilità" || it == "REP" }
+                        val isOnCall = day.onCall || dayHasLegacyRep
+                        val filteredDayDetails = day.details.filterNot { it == "Reperibilità" || it == "REP" }
+
                         val shiftBlocks = day.shifts.map { shift ->
-                            val time = if (data.options.includeTime) shift.details.firstOrNull().orEmpty() else ""
-                            val detail = if (data.options.includeTime) shift.details.drop(1) else shift.details
-                            val timePillW = if (time.isNotBlank()) measure(time, timeFont) + 10f else 0f
-                            val titleRoomWithTime = shiftContentW - timePillW - 7f
-                            val timeInline = time.isNotBlank() && (shift.name.isBlank() || titleRoomWithTime >= 52f)
-                            val titleAvail = if (timeInline && shift.name.isNotBlank()) titleRoomWithTime else shiftContentW
-                            val titleLines = if (shift.name.isNotBlank()) lines(shift.name, titleAvail, font, true) else emptyList()
-                            val detailLines = detail.flatMap { lines(it, shiftContentW, detailFont) }
+                            val rawTime = if (data.options.includeTime) shift.details.firstOrNull().orEmpty() else ""
+                            val time = if (rawTime.isNotBlank()) formatPdfDetail(rawTime, compact = false) else ""
+                            val remainingDetails = if (data.options.includeTime) shift.details.drop(1) else shift.details
+                            val metaSegments = remainingDetails
+                                .filter(::isCompactMetaDetail)
+                                .map { formatPdfDetail(it, compact = false) }
+                            val noteSegments = remainingDetails
+                                .filterNot(::isCompactMetaDetail)
+                                .map { formatPdfDetail(it, compact = false) }
+
+                            val timeW = if (time.isNotBlank()) measure(time, timeFont) + 9f else 0f
+                            val titleLines: List<String>
+                            val timeInlineOnLastTitleLine: Boolean
+                            val timeOnNewLine: Boolean
+                            if (shift.name.isBlank()) {
+                                titleLines = emptyList()
+                                timeInlineOnLastTitleLine = false
+                                timeOnNewLine = false
+                            } else {
+                                val singleW = measure(shift.name, font, bold = true)
+                                if (time.isNotBlank() && singleW + 5.5f + timeW <= shiftContentW) {
+                                    titleLines = listOf(shift.name)
+                                    timeInlineOnLastTitleLine = true
+                                    timeOnNewLine = false
+                                } else {
+                                    titleLines = lines(shift.name, shiftContentW, font, bold = true)
+                                    val lastW = measure(titleLines.last(), font, bold = true)
+                                    if (time.isNotBlank() && lastW + 5.5f + timeW <= shiftContentW) {
+                                        timeInlineOnLastTitleLine = true
+                                        timeOnNewLine = false
+                                    } else {
+                                        timeInlineOnLastTitleLine = false
+                                        timeOnNewLine = time.isNotBlank()
+                                    }
+                                }
+                            }
                             ListShiftBlock(
                                 code = shift.code,
                                 color = shift.color.takeIf { data.options.includeIcon },
                                 titleLines = titleLines,
                                 time = time,
-                                timeInline = timeInline,
-                                detailLines = detailLines,
+                                timeInlineOnLastTitleLine = timeInlineOnLastTitleLine,
+                                timeOnNewLine = timeOnNewLine,
+                                metaLines = wrapMetaSegments(metaSegments, shiftContentW, detailFont),
+                                noteLines = noteSegments.flatMap { lines(it, shiftContentW, detailFont) },
                             )
                         }
-                        val dayDetails = day.details.flatMap { lines(it, dayDetailW, detailFont) }
+
+                        val repInlineOnFirstShift = if (isOnCall && shiftBlocks.isNotEmpty()) {
+                            val first = shiftBlocks.first()
+                            val firstTimeW = if (first.time.isNotBlank()) measure(first.time, timeFont) + 9f else 0f
+                            val usedLine1 = when {
+                                first.titleLines.isEmpty() -> firstTimeW
+                                first.titleLines.size == 1 -> {
+                                    measure(first.titleLines[0], font, bold = true) +
+                                        (if (first.timeInlineOnLastTitleLine && first.time.isNotBlank()) 5.5f + firstTimeW else 0f)
+                                }
+                                else -> measure(first.titleLines[0], font, bold = true)
+                            }
+                            shiftContentW - usedLine1 >= repPillW + 5f
+                        } else {
+                            false
+                        }
+                        val repExtraLine = isOnCall && shiftBlocks.isNotEmpty() && !repInlineOnFirstShift
+                        val dayDetails = filteredDayDetails.flatMap { lines(it, dayDetailW, detailFont) }
                         ListDayBlock(
                             shifts = shiftBlocks,
+                            onCall = isOnCall,
+                            repInlineOnFirstShift = repInlineOnFirstShift,
+                            repExtraLine = repExtraLine,
                             dayDetails = dayDetails,
-                            isEmptyDay = shiftBlocks.isEmpty() && dayDetails.isEmpty(),
+                            isEmptyDay = shiftBlocks.isEmpty() && !isOnCall && dayDetails.isEmpty(),
                         )
                     }
 
@@ -475,12 +618,23 @@ object PdfGenerator {
                         if (block.isEmptyDay) {
                             leading + 6f
                         } else {
-                            val totalLines = block.shifts.sumOf { it.lineCount } + block.dayDetails.size
+                            val shiftLines = block.shifts.sumOf { it.lineCount }
+                            val onCallLines = when {
+                                block.shifts.isEmpty() && block.onCall -> 1
+                                block.repExtraLine -> 1
+                                else -> 0
+                            }
+                            val totalLines = maxOf(1, shiftLines + onCallLines + block.dayDetails.size)
                             val shiftGap = (block.shifts.size - 1).coerceAtLeast(0) * 2f
                             totalLines * leading + shiftGap + 6f
                         }
                     }
-                    val packed = packPdfColumns(heights, columns, available) ?: continue
+                    val packed = planListColumns(dayDates, heights, columns, available) ?: continue
+
+                    val splitByMonth = columns == 2 && distinctMonths.size == 2 &&
+                        packed.size == 2 &&
+                        packed[0].all { YearMonth.from(days[it].date) == distinctMonths[0] } &&
+                        packed[1].all { YearMonth.from(days[it].date) == distinctMonths[1] }
 
                     packed.forEachIndexed { column, indexes ->
                         val x = margin + column * (columnWidth + gap)
@@ -488,10 +642,11 @@ object PdfGenerator {
                         val shiftTextX = x + shiftTextOffset
                         box(x, top, columnWidth, 17f, slateSoft, 4f)
                         text("GIORNO", x + 5f, top + 11.2f, 7.2f, accentInk, true)
-                        text("TURNO", entryX, top + 11.2f, 7.2f, accentInk, true)
-                        if (data.options.includeTime && blocks.any { b -> b.shifts.any { it.timeInline && it.time.isNotBlank() } }) {
-                            val orarioLabel = "ORARIO"
-                            text(orarioLabel, x + columnWidth - 4f - measure(orarioLabel, 7.2f, true), top + 11.2f, 7.2f, accentInk, true)
+                        val rightColHeader = if (data.options.includeTime) "TURNO · ORARIO" else "TURNO"
+                        text(rightColHeader, entryX, top + 11.2f, 7.2f, accentInk, true)
+                        if (splitByMonth && column in distinctMonths.indices) {
+                            val monthTag = formatItalianMonthHeader(distinctMonths[column], monthShortYearFormat).uppercase(Locale.ITALIAN)
+                            text(monthTag, x + columnWidth - 5f - measure(monthTag, 7f, true), top + 11.2f, 7f, muted, true)
                         }
                         var y = top + 18f
                         indexes.forEach { index ->
@@ -530,6 +685,10 @@ object PdfGenerator {
                                 box(entryX + 7f, midY - 0.4f, 22f, 0.8f, rule, 0.4f)
                             } else {
                                 var baseline = firstBaseline
+                                if (block.shifts.isEmpty() && block.onCall) {
+                                    drawOnCallPill(entryX, baseline, repFont)
+                                    baseline += leading
+                                }
                                 block.shifts.forEachIndexed { sIdx, s ->
                                     if (sIdx > 0) baseline += 2f
                                     if (s.code.isNotBlank()) {
@@ -557,37 +716,68 @@ object PdfGenerator {
                                     }
 
                                     val shiftStartBaseline = baseline
+                                    var line1RightEnd = shiftTextX
                                     if (s.titleLines.isEmpty()) {
                                         if (s.time.isNotBlank()) {
-                                            val timeW = measure(s.time, timeFont) + 10f
+                                            val timeW = measure(s.time, timeFont) + 9f
                                             box(shiftTextX, shiftStartBaseline - font + 0.6f, timeW, font + 2.4f, slateSoft, 3.5f)
-                                            text(s.time, shiftTextX + 5f, shiftStartBaseline - 0.3f, timeFont, muted)
-                                            baseline += leading
-                                        } else if (s.detailLines.isEmpty()) {
-                                            baseline += leading
+                                            text(s.time, shiftTextX + 4.5f, shiftStartBaseline - 0.3f, timeFont, muted)
+                                            line1RightEnd = shiftTextX + timeW
                                         }
+                                        baseline += leading
                                     } else {
-                                        s.titleLines.forEach { titleLine ->
+                                        s.titleLines.forEachIndexed { tIdx, titleLine ->
                                             text(titleLine, shiftTextX, baseline, font, ink, true)
+                                            val lineEnd = shiftTextX + measure(titleLine, font, true)
+                                            if (tIdx == 0) line1RightEnd = lineEnd
+                                            if (tIdx == s.titleLines.lastIndex && s.timeInlineOnLastTitleLine && s.time.isNotBlank()) {
+                                                val timeW = measure(s.time, timeFont) + 9f
+                                                val pillX = lineEnd + 5.5f
+                                                box(pillX, baseline - font + 0.6f, timeW, font + 2.4f, slateSoft, 3.5f)
+                                                text(s.time, pillX + 4.5f, baseline - 0.3f, timeFont, muted)
+                                                if (tIdx == 0) line1RightEnd = pillX + timeW
+                                            }
                                             baseline += leading
                                         }
-                                        if (s.time.isNotBlank()) {
-                                            if (s.timeInline) {
-                                                val timeW = measure(s.time, timeFont) + 10f
-                                                val pillX = x + columnWidth - 4f - timeW
-                                                box(pillX, shiftStartBaseline - font + 0.6f, timeW, font + 2.4f, slateSoft, 3.5f)
-                                                text(s.time, pillX + 5f, shiftStartBaseline - 0.3f, timeFont, muted)
-                                            } else {
-                                                text(s.time, shiftTextX, baseline, timeFont, muted)
-                                                baseline += leading
+                                        if (s.timeOnNewLine && s.time.isNotBlank()) {
+                                            val timeW = measure(s.time, timeFont) + 9f
+                                            box(shiftTextX, baseline - font + 0.6f, timeW, font + 2.4f, slateSoft, 3.5f)
+                                            text(s.time, shiftTextX + 4.5f, baseline - 0.3f, timeFont, muted)
+                                            baseline += leading
+                                        }
+                                    }
+
+                                    if (sIdx == 0 && block.repInlineOnFirstShift) {
+                                        drawOnCallPill(line1RightEnd + 5f, shiftStartBaseline, repFont)
+                                    }
+
+                                    s.metaLines.forEach { segments ->
+                                        if (segments.size == 1) {
+                                            val seg = segments[0]
+                                            val (dColor, dBold) = detailTone(seg)
+                                            fittedText(seg, shiftTextX, baseline, detailFont, shiftContentW, dColor, dBold)
+                                        } else {
+                                            var segX = shiftTextX
+                                            segments.forEachIndexed { segIdx, seg ->
+                                                if (segIdx > 0) {
+                                                    text(" · ", segX, baseline, detailFont, softMuted)
+                                                    segX += measure(" · ", detailFont)
+                                                }
+                                                val (dColor, dBold) = detailTone(seg)
+                                                text(seg, segX, baseline, detailFont, dColor, dBold)
+                                                segX += measure(seg, detailFont, dBold)
                                             }
                                         }
-                                    }
-                                    s.detailLines.forEach { dLine ->
-                                        val (dColor, dBold) = detailTone(dLine)
-                                        text(dLine, shiftTextX, baseline, detailFont, dColor, dBold)
                                         baseline += leading
                                     }
+                                    s.noteLines.forEach { nLine ->
+                                        text(nLine, shiftTextX, baseline, detailFont, muted)
+                                        baseline += leading
+                                    }
+                                }
+                                if (block.repExtraLine) {
+                                    drawOnCallPill(entryX, baseline, repFont)
+                                    baseline += leading
                                 }
                                 block.dayDetails.forEach { dLine ->
                                     val (dColor, dBold) = detailTone(dLine, day.holiday)
@@ -618,7 +808,10 @@ object PdfGenerator {
             val color: Int? = null,
             val bold: Boolean = false,
             val isShiftBadge: Boolean = false,
+            val badgeGroupSize: Int = 1,
+            val badgeLineIndex: Int = 0,
             val isHolidayDetail: Boolean = false,
+            val isOnCallPill: Boolean = false,
         )
 
         private fun buildOverviewLines(
@@ -630,16 +823,27 @@ object PdfGenerator {
             day.shifts.forEach { shift ->
                 val badgeColor = shift.color.takeIf { data.options.includeIcon }
                 if (shift.name.isNotBlank()) {
-                    lines(shift.name, textAvailW, font, true).forEach { label ->
-                        add(OverviewLine(label, badgeColor, bold = true, isShiftBadge = true))
+                    val titleLines = lines(shift.name, textAvailW, font, true)
+                    titleLines.forEachIndexed { idx, label ->
+                        add(
+                            OverviewLine(
+                                label = label,
+                                color = badgeColor,
+                                bold = true,
+                                isShiftBadge = true,
+                                badgeGroupSize = titleLines.size,
+                                badgeLineIndex = idx,
+                            ),
+                        )
                     }
                 }
                 val markFirstDetail = shift.name.isBlank()
                 val firstDetailIdx = size
                 shift.details.forEach { detail ->
-                    val compact = compactCalendarDetail(detail).replace("Tutto il giorno", "Intera giornata")
+                    val compact = formatPdfDetail(detail, compact = true)
                     val avail = if (markFirstDetail && size == firstDetailIdx) textAvailW else pillW - 2f
-                    lines(compact, avail, font).forEach { label ->
+                    val wrapped = lines(compact, avail, font)
+                    wrapped.forEachIndexed { idx, label ->
                         val asBadge = markFirstDetail && size == firstDetailIdx
                         add(
                             OverviewLine(
@@ -647,6 +851,8 @@ object PdfGenerator {
                                 color = badgeColor.takeIf { asBadge },
                                 bold = asBadge,
                                 isShiftBadge = asBadge,
+                                badgeGroupSize = if (asBadge) wrapped.size else 1,
+                                badgeLineIndex = if (asBadge) idx else 0,
                             ),
                         )
                     }
@@ -655,11 +861,75 @@ object PdfGenerator {
                     add(OverviewLine(shift.code, badgeColor, bold = true, isShiftBadge = true))
                 }
             }
-            day.details.forEach { detail ->
+            val hasLegacyRep = day.details.any { it == "Reperibilità" || it == "REP" }
+            if (day.onCall || hasLegacyRep) {
+                add(OverviewLine("REP", bold = true, isOnCallPill = true))
+            }
+            day.details.filterNot { it == "Reperibilità" || it == "REP" }.forEach { detail ->
                 lines(detail, pillW - 2f, font).forEach {
                     add(OverviewLine(it, isHolidayDetail = day.holiday))
                 }
             }
+        }
+
+        private fun overviewSplitTwoColumns(month: YearMonth, top: Float) {
+            if (data.days.isEmpty()) return
+            val sortedDays = data.days.sortedBy { it.date }
+            val split = (sortedDays.size + 1) / 2
+            val leftDates = sortedDays.take(split).map { it.date }
+            val rightDates = sortedDays.drop(split).map { it.date }
+            val gap = 10f
+            val columnWidth = (width - 2 * margin - gap) / 2f
+            val gridTop = top + 22f
+            val availableHeight = height - 42f - gridTop
+            val badgeXOffset = 25f
+            val pillW = (columnWidth - badgeXOffset - 2f).coerceAtLeast(20f)
+            val textAvailW = (pillW - 6.5f).coerceAtLeast(14f)
+            val byDate = data.days.associateBy { it.date }
+
+            for (font in overviewFontCandidates(2)) {
+                val leading = font + 2.2f
+                val baseRowHeight = if (font >= 9f) 18.5f else 16f
+                val contents = data.days.associate { day ->
+                    day.date to buildOverviewLines(day, pillW, textAvailW, font)
+                }
+                fun minH(d: LocalDate): Float = maxOf(baseRowHeight, contents.getValue(d).size * leading + 3.5f)
+                val leftMins = leftDates.map(::minH)
+                val rightMins = rightDates.map(::minH)
+                if (leftMins.sum() > availableHeight || rightMins.sum() > availableHeight) continue
+                val maxRows = maxOf(leftMins.size, rightMins.size, 1)
+                val minSpare = minOf(availableHeight - leftMins.sum(), availableHeight - rightMins.sum())
+                val extraPerRow = (minSpare / maxRows).coerceAtLeast(0f)
+
+                val columnGroups = listOf(leftDates to leftMins, rightDates to rightMins)
+                columnGroups.forEachIndexed { colIdx, (colDates, mins) ->
+                    if (colDates.isEmpty()) return@forEachIndexed
+                    val x = margin + colIdx * (columnWidth + gap)
+                    val heights = mins.map { capOverviewRowHeight(it, extraPerRow) }
+                    val tops = heights.runningFold(gridTop, Float::plus)
+                    val slots = colDates.mapIndexed { rowIndex, date -> OverviewSlot(rowIndex, date) }
+                    val plan = OverviewColumnPlan(month, slots, heights, tops)
+                    val headerText = "${formatItalianMonthHeader(month, monthFullYearFormat)} (${colDates.first().dayOfMonth}–${colDates.last().dayOfMonth})"
+                    drawOverviewHeaderBox(x, top, columnWidth, headerText, 9.5f)
+                    drawOverviewColumnRows(
+                        x = x,
+                        columnWidth = columnWidth,
+                        plan = plan,
+                        byDate = byDate,
+                        contents = contents,
+                        font = font,
+                        leading = leading,
+                        baseRowHeight = baseRowHeight,
+                        badgeXOffset = badgeXOffset,
+                        pillW = pillW,
+                        textAvailW = textAvailW,
+                        numSize = if (font >= 9f) 8.5f else 7.5f,
+                        wdSize = if (font >= 9f) 5.8f else 5.2f,
+                    )
+                }
+                return
+            }
+            throw IllegalArgumentException(crowded)
         }
 
         private fun overview(months: List<YearMonth>, top: Float) {
@@ -728,6 +998,15 @@ object PdfGenerator {
             throw IllegalArgumentException(crowded)
         }
 
+        private fun drawOverviewHeaderBox(x: Float, top: Float, columnWidth: Float, headerText: String, hSize: Float) {
+            box(x, top, columnWidth, 19f, accentTint, 4f)
+            box(x + 1f, top, columnWidth - 2f, 2.2f, accent, 1.1f)
+            val hTextW = measure(headerText, hSize, bold = true)
+            val drawW = minOf(hTextW, columnWidth - 8f)
+            val hx = x + ((columnWidth - drawW) / 2f).coerceAtLeast(4f)
+            fittedText(headerText, hx, top + 13.5f, hSize, columnWidth - 8f, accentInk, bold = true)
+        }
+
         private fun drawOverviewColumnHeader(
             x: Float,
             top: Float,
@@ -736,15 +1015,10 @@ object PdfGenerator {
             monthCount: Int,
             hSize: Float,
         ) {
-            box(x, top, columnWidth, 19f, accentTint, 4f)
-            box(x + 1f, top, columnWidth - 2f, 2.2f, accent, 1.1f)
             val fullCandidate = formatItalianMonthHeader(month, monthFullYearFormat)
             val fitsFull = measure(fullCandidate, hSize, bold = true) <= columnWidth - 8f
             val headerText = overviewColumnHeaderText(month, data.options.mode, monthCount, fitsFull)
-            val hTextW = measure(headerText, hSize, bold = true)
-            val drawW = minOf(hTextW, columnWidth - 8f)
-            val hx = x + ((columnWidth - drawW) / 2f).coerceAtLeast(4f)
-            fittedText(headerText, hx, top + 13.5f, hSize, columnWidth - 8f, accentInk, bold = true)
+            drawOverviewHeaderBox(x, top, columnWidth, headerText, hSize)
         }
 
         private fun drawOverviewColumnRows(
@@ -810,15 +1084,28 @@ object PdfGenerator {
                 val labelX = x + badgeXOffset
                 linesForDate.forEachIndexed { lineIndex, line ->
                     val baseline = y + topPad + font + 1.2f + lineIndex * leading
-                    if (line.isShiftBadge && line.color != null) {
+                    if (line.isOnCallPill) {
+                        val repFont = (font - 0.8f).coerceAtLeast(5.5f)
+                        val repW = minOf(pillW, measure("REP", repFont, bold = true) + 7f)
+                        val pTop = baseline - font * 0.84f
+                        val pH = font * 1.08f
+                        box(labelX, pTop, repW, pH, warningFill, 2.4f)
+                        fittedText("REP", labelX + 3.5f, baseline - 0.2f, repFont, repW - 7f, warningInk, bold = true)
+                    } else if (line.isShiftBadge && line.color != null) {
                         val resolved = resolveShiftPaint(line.color)
-                        val pTop = baseline - font * 0.88f
-                        val pH = font * 1.14f
-                        box(labelX, pTop, pillW, pH, resolved.fill, 2.4f)
-                        box(labelX + 1.2f, pTop + 1.2f, 1.6f, (pH - 2.4f).coerceAtLeast(2f), resolved.accentBar, 0.8f)
+                        if (line.badgeLineIndex == 0) {
+                            val pTop = baseline - font * 0.88f
+                            val pH = (line.badgeGroupSize - 1) * leading + font * 1.14f
+                            box(labelX, pTop, pillW, pH, resolved.fill, 2.4f)
+                            box(labelX + 1.2f, pTop + 1.2f, 1.6f, (pH - 2.4f).coerceAtLeast(2f), resolved.accentBar, 0.8f)
+                        }
                         fittedText(line.label, labelX + 4.5f, baseline, font, textAvailW, resolved.ink, bold = true)
                     } else if (line.isShiftBadge) {
-                        box(labelX, baseline - font * 0.88f, pillW, font * 1.14f, slateSoft, 2.4f)
+                        if (line.badgeLineIndex == 0) {
+                            val pTop = baseline - font * 0.88f
+                            val pH = (line.badgeGroupSize - 1) * leading + font * 1.14f
+                            box(labelX, pTop, pillW, pH, slateSoft, 2.4f)
+                        }
                         fittedText(line.label, labelX + 3f, baseline, font, pillW - 5f, ink, bold = true)
                     } else {
                         val (dColor, dBold) = detailTone(line.label, line.isHolidayDetail)
@@ -831,12 +1118,6 @@ object PdfGenerator {
                     box(x, y + rowH - 0.4f, columnWidth, 0.4f, gridRule, 0f)
                 }
             }
-        }
-
-        private fun compactCalendarDetail(value: String): String {
-            val range = Regex("^(\\d{2}):(\\d{2}) - (\\d{2}):(\\d{2})$").matchEntire(value) ?: return value
-            fun clock(h: String, m: String) = if (m == "00") h else "$h:$m"
-            return clock(range.groupValues[1], range.groupValues[2]) + "–" + clock(range.groupValues[3], range.groupValues[4])
         }
 
         private fun calendars(months: List<YearMonth>, top: Float) {
@@ -853,13 +1134,13 @@ object PdfGenerator {
 
             data class LegendItem(val label: String, val color: Int?, val width: Float)
             val legendRows: List<List<LegendItem>> = if (months.size > 1 && data.options.includeTitle) {
-                val rawItems = data.days.flatMap { it.shifts }
-                    .distinctBy { it.code to it.name }
-                    .map { shift ->
-                        val label = "${shift.code}: ${shift.name}"
-                        val swatchW = if (data.options.includeIcon) 14f else 0f
-                        LegendItem(label, shift.color.takeIf { data.options.includeIcon }, swatchW + measure(label, 7f) + 12f)
-                    } + listOf(
+                val rawItems = sortShiftRowsChronologically(
+                    data.days.flatMap { it.shifts }.distinctBy { it.code to it.name },
+                ).map { shift ->
+                    val label = "${shift.code}: ${shift.name}"
+                    val swatchW = if (data.options.includeIcon) 14f else 0f
+                    LegendItem(label, shift.color.takeIf { data.options.includeIcon }, swatchW + measure(label, 7f) + 12f)
+                } + listOf(
                     LegendItem("TG: giornata intera", null, measure("TG: giornata intera", 7f) + 12f),
                     LegendItem("REP: reperibilità", null, measure("REP: reperibilità", 7f) + 12f),
                 )
@@ -940,6 +1221,7 @@ object PdfGenerator {
 
                 val offset = month.atDay(1).dayOfWeek.value - 1
                 val compact = months.size > 1
+                val headerHasRepSlot = cellW >= 54f
                 for (day in 1..month.lengthOfMonth()) {
                     val date = month.atDay(day)
                     val position = offset + day - 1
@@ -977,90 +1259,344 @@ object PdfGenerator {
                     }
 
                     if (row == null) continue
-                    var selected: List<Pair<String, PdfShiftRow?>>? = null
-                    var font = if (compact) 8f else 11f
-                    while (font >= if (compact) 6.5f else 8f) {
-                        val content = buildList<Pair<String, PdfShiftRow?>> {
-                            row.shifts.forEach { shift ->
-                                val titleLine = if (compact || shift.name.isBlank()) shift.code else shift.name
-                                lines(titleLine, cellW - 8f, font, true).forEach { add(it to shift) }
-                                shift.details.forEach { detail ->
-                                    val formatted = if (compact) compactCalendarDetail(detail)
-                                        .replace("Durata prevista:", "Dur:")
-                                        .replace(" - ", "-")
-                                        .replace("Stacco effettivo:", "Stacco:")
-                                        .replace("Straordinario:", "Extra:")
-                                        .replace("Permesso:", "Perm:")
-                                        .replace("Durata:", "Dur:")
-                                        .replace("Pausa:", "P:")
-                                        .replace("Tutto il giorno", "TG")
-                                        .replace("Reperibilità", "REP")
-                                    else detail
-                                    lines(formatted, cellW - 8f, font).forEach { add(it to null) }
-                                }
-                            }
-                            row.details.forEach { detail ->
-                                val formatted = if (compact) compactCalendarDetail(detail)
-                                    .replace("Durata prevista:", "Dur:")
-                                    .replace(" - ", "-")
-                                    .replace("Stacco effettivo:", "Stacco:")
-                                    .replace("Straordinario:", "Extra:")
-                                    .replace("Permesso:", "Perm:")
-                                    .replace("Durata:", "Dur:")
-                                    .replace("Pausa:", "P:")
-                                    .replace("Tutto il giorno", "TG")
-                                    .replace("Reperibilità", "REP")
-                                else detail
-                                lines(formatted, cellW - 8f, font).forEach { add(it to null) }
+                    val rowHasOnCall = row.onCall || row.details.any { it == "Reperibilità" || it == "REP" }
+                    val showHeaderRep = rowHasOnCall && headerHasRepSlot
+                    if (showHeaderRep) {
+                        val repSize = if (compact) 5.5f else 6.3f
+                        val repPillW = measure("REP", repSize, bold = true) + 5.5f
+                        val repPillH = repSize + 3.2f
+                        val repX = cardX + cardW - repPillW - 2f
+                        val repTop = cellTop + 1.8f
+                        box(repX, repTop, repPillW, repPillH, warningFill, 2.5f)
+                        text("REP", repX + 2.75f, repTop + repSize + 0.8f, repSize, warningInk, bold = true)
+                    }
+
+                    var selected: List<CalendarCellElement>? = null
+                    var selectedFont = if (compact) 8f else 11f
+                    val minFont = 6.5f
+                    val badgeW = cellW - 6f
+                    val stripeW = if (compact) 1.3f else 1.8f
+                    val badgeTextAvail = (badgeW - (1.3f + stripeW + 4f)).coerceAtLeast(12f)
+                    while (selectedFont >= minFont) {
+                        val f = selectedFont
+                        val content = buildCalendarCellElements(
+                            row = row,
+                            compact = compact,
+                            includeHeaderOnCall = showHeaderRep,
+                            wrapBadgeTitle = { title ->
+                                if (compact || title.isBlank()) listOf(title)
+                                else lines(title, badgeTextAvail, f, true)
+                            },
+                            wrapDetail = { detail ->
+                                lines(detail, cellW - 9f, f)
+                            },
+                        )
+                        val totalLines = content.sumOf { el ->
+                            when (el) {
+                                is CalendarCellElement.ShiftBadge -> el.lines.size
+                                is CalendarCellElement.OnCallPill -> 1
+                                is CalendarCellElement.DetailLine -> 1
                             }
                         }
-                        if (content.size * (font + 2.2f) <= cellH - if (compact) 18.5f else 23f) {
+                        if (totalLines * (f + 2.2f) <= cellH - if (compact) 18.5f else 23f) {
                             selected = content
                             break
                         }
-                        font -= 0.5f
+                        selectedFont -= 0.5f
                     }
                     require(selected != null) { crowded }
 
+                    val lineStep = selectedFont + 2.2f
                     var cursor = cellTop + if (compact) 14.5f else 18.5f
-                    selected.forEach { (value, shift) ->
-                        val textBaseline = cursor + font * 0.86f
-                        if (shift != null) {
-                            val badgeX = left + 3f
-                            val badgeW = cellW - 6f
-                            val badgeTop = cursor - 0.2f
-                            val badgeH = font + 1.4f
-                            val badgeRadius = if (compact) 2.5f else 3.5f
-                            if (data.options.includeIcon) {
-                                val resolved = resolveShiftPaint(shift.color)
-                                box(badgeX, badgeTop, badgeW, badgeH, resolved.fill, badgeRadius)
-                                val stripeW = if (compact) 1.3f else 1.8f
-                                box(badgeX + 1.3f, badgeTop + 1.1f, stripeW, (badgeH - 2.2f).coerceAtLeast(3f), resolved.accentBar, stripeW / 2f)
-                                val textStart = badgeX + 1.3f + stripeW + 2.2f
-                                fittedText(
-                                    value = value,
-                                    x = textStart,
-                                    y = textBaseline,
-                                    size = font,
-                                    maxWidth = badgeW - (1.3f + stripeW + 4f),
-                                    color = resolved.ink,
-                                    bold = true,
-                                )
-                            } else {
-                                box(badgeX, badgeTop, badgeW, badgeH, slateSoft, badgeRadius)
-                                fittedText(value, badgeX + 3f, textBaseline, font, badgeW - 6f, ink, bold = true)
+                    selected.forEach { element ->
+                        when (element) {
+                            is CalendarCellElement.ShiftBadge -> {
+                                val badgeX = left + 3f
+                                val badgeTop = cursor - 0.2f
+                                val lineCount = element.lines.size.coerceAtLeast(1)
+                                val badgeH = (lineCount - 1) * lineStep + selectedFont + 1.6f
+                                val badgeRadius = if (compact) 2.5f else 3.5f
+                                if (data.options.includeIcon) {
+                                    val resolved = resolveShiftPaint(element.shift.color)
+                                    box(badgeX, badgeTop, badgeW, badgeH, resolved.fill, badgeRadius)
+                                    box(
+                                        x = badgeX + 1.3f,
+                                        y = badgeTop + 1.1f,
+                                        w = stripeW,
+                                        h = (badgeH - 2.2f).coerceAtLeast(3f),
+                                        color = resolved.accentBar,
+                                        radius = stripeW / 2f,
+                                    )
+                                    val textStart = badgeX + 1.3f + stripeW + 2.2f
+                                    element.lines.forEachIndexed { lineIdx, label ->
+                                        val baseline = cursor + lineIdx * lineStep + selectedFont * 0.86f
+                                        fittedText(
+                                            value = label,
+                                            x = textStart,
+                                            y = baseline,
+                                            size = selectedFont,
+                                            maxWidth = badgeTextAvail,
+                                            color = resolved.ink,
+                                            bold = true,
+                                        )
+                                    }
+                                } else {
+                                    box(badgeX, badgeTop, badgeW, badgeH, slateSoft, badgeRadius)
+                                    element.lines.forEachIndexed { lineIdx, label ->
+                                        val baseline = cursor + lineIdx * lineStep + selectedFont * 0.86f
+                                        fittedText(label, badgeX + 3f, baseline, selectedFont, badgeW - 6f, ink, bold = true)
+                                    }
+                                }
+                                cursor += lineCount * lineStep
                             }
-                        } else {
-                            val (dColor, dBold) = detailTone(value, isHoliday && value in row.details)
-                            fittedText(value, left + 4.5f, textBaseline, font, cellW - 9f, dColor, dBold)
+                            is CalendarCellElement.OnCallPill -> {
+                                val textBaseline = cursor + selectedFont * 0.86f
+                                val repFont = (selectedFont - 0.6f).coerceAtLeast(5.4f)
+                                val repW = minOf(cellW - 8f, measure("REP", repFont, bold = true) + 6f)
+                                box(left + 4f, cursor - 0.1f, repW, selectedFont + 1.3f, warningFill, 2.4f)
+                                fittedText("REP", left + 7f, textBaseline, repFont, repW - 4f, warningInk, bold = true)
+                                cursor += lineStep
+                            }
+                            is CalendarCellElement.DetailLine -> {
+                                val textBaseline = cursor + selectedFont * 0.86f
+                                val (dColor, dBold) = detailTone(element.text, element.isHolidayDetail)
+                                fittedText(element.text, left + 4.5f, textBaseline, selectedFont, cellW - 9f, dColor, dBold)
+                                cursor += lineStep
+                            }
                         }
-                        cursor += font + 2.2f
                     }
                 }
             }
         }
     }
 
+}
+
+internal enum class CustomPeriodLayout {
+    SHORT_DETAILED,
+    MEDIUM_TWO_COLUMN,
+    EXTENDED_OVERVIEW,
+}
+
+internal fun resolveCustomPeriodLayout(dayCount: Int, monthCount: Int): CustomPeriodLayout = when {
+    dayCount <= 14 -> CustomPeriodLayout.SHORT_DETAILED
+    dayCount in 15..62 && monthCount <= 2 -> CustomPeriodLayout.MEDIUM_TWO_COLUMN
+    else -> CustomPeriodLayout.EXTENDED_OVERVIEW
+}
+
+internal fun parsePdfTimeOrNull(raw: String?): LocalTime? {
+    val trimmed = raw?.trim().orEmpty()
+    if (trimmed.isEmpty()) return null
+    return runCatching { LocalTime.parse(trimmed) }.getOrElse {
+        val parts = trimmed.split(':')
+        if (parts.size == 2 && parts[0].length == 1) {
+            runCatching { LocalTime.parse("0${parts[0]}:${parts[1]}") }.getOrNull()
+        } else null
+    }
+}
+
+internal fun sortAssignedShiftsChronologically(
+    shifts: List<AssignedShift>,
+    defsById: Map<String, ShiftDefinition>,
+): List<AssignedShift> = shifts.sortedWith(
+    Comparator { a, b ->
+        val defA = defsById[a.shiftDefId]
+        val defB = defsById[b.shiftDefId]
+        if (defA == null || defB == null) {
+            return@Comparator when {
+                defA == null && defB == null -> a.id.compareTo(b.id)
+                defA == null -> 1
+                else -> -1
+            }
+        }
+        val allDayCmp = defA.isAllDay.compareTo(defB.isAllDay)
+        if (allDayCmp != 0) return@Comparator allDayCmp
+        if (!defA.isAllDay) {
+            val startA = parsePdfTimeOrNull(a.customStartTime ?: defA.startTime)
+            val startB = parsePdfTimeOrNull(b.customStartTime ?: defB.startTime)
+            val startCmp = compareValuesBy(startA, startB) { it }
+            if (startCmp != 0) return@Comparator startCmp
+            val endA = parsePdfTimeOrNull(a.customEndTime ?: defA.endTime)
+            val endB = parsePdfTimeOrNull(b.customEndTime ?: defB.endTime)
+            val endCmp = compareValuesBy(endA, endB) { it }
+            if (endCmp != 0) return@Comparator endCmp
+        }
+        val nameCmp = defA.name.compareTo(defB.name, ignoreCase = true)
+        if (nameCmp != 0) nameCmp else a.id.compareTo(b.id)
+    },
+)
+
+internal fun sortShiftRowsChronologically(rows: List<PdfShiftRow>): List<PdfShiftRow> = rows.sortedWith(
+    Comparator { a, b ->
+        val allDayCmp = a.isAllDay.compareTo(b.isAllDay)
+        if (allDayCmp != 0) return@Comparator allDayCmp
+        if (!a.isAllDay) {
+            val startA = parsePdfTimeOrNull(a.startTime ?: a.time)
+            val startB = parsePdfTimeOrNull(b.startTime ?: b.time)
+            val startCmp = when {
+                startA != null && startB != null -> startA.compareTo(startB)
+                startA != null -> -1
+                startB != null -> 1
+                else -> 0
+            }
+            if (startCmp != 0) return@Comparator startCmp
+            val endA = parsePdfTimeOrNull(a.endTime)
+            val endB = parsePdfTimeOrNull(b.endTime)
+            val endCmp = when {
+                endA != null && endB != null -> endA.compareTo(endB)
+                endA != null -> -1
+                endB != null -> 1
+                else -> 0
+            }
+            if (endCmp != 0) return@Comparator endCmp
+        }
+        val labelA = a.name.ifBlank { a.code }
+        val labelB = b.name.ifBlank { b.code }
+        labelA.compareTo(labelB, ignoreCase = true)
+    },
+)
+
+internal fun isCompactMetaDetail(rawDetail: String): Boolean =
+    rawDetail.startsWith("Ingresso effettivo:") ||
+        rawDetail.startsWith("Stacco effettivo:") ||
+        rawDetail.startsWith("Durata prevista:") ||
+        rawDetail.startsWith("Pausa:") ||
+        rawDetail.startsWith("Straordinario:") ||
+        rawDetail.startsWith("Permesso:") ||
+        rawDetail == "Trasferta"
+
+private val timeRangeRegex = Regex("^(\\d{2}):(\\d{2}) - (\\d{2}):(\\d{2})$")
+private val hoursMinutesRegex = Regex("(\\d+) h (\\d+) min")
+
+private fun formatCompactDuration(hours: Int, mins: Int): String = when {
+    hours > 0 && mins > 0 -> "${hours}h${mins.toString().padStart(2, '0')}"
+    hours > 0 -> "${hours}h"
+    else -> "${mins}m"
+}
+
+internal fun formatPdfDetail(detail: String, compact: Boolean): String {
+    timeRangeRegex.matchEntire(detail)?.let { match ->
+        return if (compact) {
+            fun shortClock(h: String, m: String) = if (m == "00") h else "$h:$m"
+            shortClock(match.groupValues[1], match.groupValues[2]) +
+                "–" +
+                shortClock(match.groupValues[3], match.groupValues[4])
+        } else {
+            "${match.groupValues[1]}:${match.groupValues[2]}–${match.groupValues[3]}:${match.groupValues[4]}"
+        }
+    }
+    return when {
+        detail == "Tutto il giorno" -> if (compact) "TG" else "Tutto il giorno"
+        detail == "Reperibilità" -> "REP"
+        detail == "Trasferta" -> if (compact) "TR" else "Trasferta"
+        detail.startsWith("Ingresso effettivo:") -> {
+            val time = detail.removePrefix("Ingresso effettivo:").trim()
+            if (compact) "Att. $time" else "Attacco $time"
+        }
+        detail.startsWith("Stacco effettivo:") -> {
+            val time = detail.removePrefix("Stacco effettivo:").trim()
+            "Stacco $time"
+        }
+        detail.startsWith("Durata prevista:") -> {
+            val hm = hoursMinutesRegex.find(detail)
+            if (hm != null) {
+                val h = hm.groupValues[1].toInt()
+                val m = hm.groupValues[2].toInt()
+                "Dur. ${formatCompactDuration(h, m)}"
+            } else {
+                detail.replace("Durata prevista:", "Dur.")
+            }
+        }
+        detail.startsWith("Pausa:") -> {
+            val rest = detail.removePrefix("Pausa:").trim()
+            val match = Regex("^(\\d+) min(?: dalle (\\d{2}:\\d{2}))?$").matchEntire(rest)
+            if (match != null) {
+                val mins = match.groupValues[1]
+                val at = match.groupValues[2]
+                val prefix = if (compact) "P." else "Pausa"
+                if (at.isNotEmpty()) "$prefix ${mins}m ($at)" else "$prefix ${mins}m"
+            } else {
+                detail
+            }
+        }
+        detail.startsWith("Straordinario:") -> {
+            val hm = hoursMinutesRegex.find(detail)
+            if (hm != null) {
+                "+${formatCompactDuration(hm.groupValues[1].toInt(), hm.groupValues[2].toInt())}"
+            } else {
+                detail.replace("Straordinario:", "+")
+            }
+        }
+        detail.startsWith("Permesso:") -> {
+            val hm = hoursMinutesRegex.find(detail)
+            if (hm != null) {
+                "−${formatCompactDuration(hm.groupValues[1].toInt(), hm.groupValues[2].toInt())}"
+            } else {
+                detail.replace("Permesso:", "Perm.")
+            }
+        }
+        else -> detail
+    }
+}
+
+internal fun preferredListColumns(dayCount: Int, monthCount: Int): List<Int> =
+    if (dayCount >= 16 || monthCount >= 2) listOf(2, 3, 1) else listOf(1, 2, 3)
+
+internal fun planListColumns(
+    dates: List<LocalDate>,
+    heights: List<Float>,
+    columns: Int,
+    available: Float,
+): List<List<Int>>? {
+    if (columns == 2 && dates.size == heights.size) {
+        val months = dates.map(YearMonth::from).distinct()
+        if (months.size == 2) {
+            val left = dates.indices.filter { YearMonth.from(dates[it]) == months[0] }
+            val right = dates.indices.filter { YearMonth.from(dates[it]) == months[1] }
+            val leftH = left.sumOf { heights[it].toDouble() }.toFloat()
+            val rightH = right.sumOf { heights[it].toDouble() }.toFloat()
+            if (left.isNotEmpty() && right.isNotEmpty() && leftH <= available && rightH <= available) {
+                return listOf(left, right)
+            }
+        }
+    }
+    return packPdfColumns(heights, columns, available)
+}
+
+internal sealed interface CalendarCellElement {
+    data class ShiftBadge(val shift: PdfShiftRow, val lines: List<String>) : CalendarCellElement
+    data object OnCallPill : CalendarCellElement
+    data class DetailLine(val text: String, val isHolidayDetail: Boolean = false) : CalendarCellElement
+}
+
+internal fun buildCalendarCellElements(
+    row: PdfDayRow,
+    compact: Boolean,
+    includeHeaderOnCall: Boolean,
+    wrapBadgeTitle: (String) -> List<String>,
+    wrapDetail: (String) -> List<String>,
+): List<CalendarCellElement> = buildList {
+    row.shifts.forEach { shift ->
+        val rawTitle = if (compact || shift.name.isBlank()) shift.code else shift.name
+        val badgeLines = if (compact || shift.name.isBlank()) {
+            listOf(rawTitle.ifBlank { "-" })
+        } else {
+            wrapBadgeTitle(rawTitle).ifEmpty { listOf(rawTitle) }
+        }
+        add(CalendarCellElement.ShiftBadge(shift, badgeLines))
+        shift.details.forEach { detail ->
+            val formatted = formatPdfDetail(detail, compact = compact)
+            wrapDetail(formatted).forEach { add(CalendarCellElement.DetailLine(it)) }
+        }
+    }
+    val hasLegacyRep = row.details.any { it == "Reperibilità" || it == "REP" }
+    if ((row.onCall || hasLegacyRep) && !includeHeaderOnCall) {
+        add(CalendarCellElement.OnCallPill)
+    }
+    row.details.filterNot { it == "Reperibilità" || it == "REP" }.forEach { detail ->
+        val formatted = formatPdfDetail(detail, compact = compact)
+        wrapDetail(formatted).forEach { add(CalendarCellElement.DetailLine(it, isHolidayDetail = row.holiday)) }
+    }
 }
 
 internal enum class OverviewRowLayout {

@@ -127,6 +127,17 @@ fun CalendarScreen(active:Boolean=true,onEditModeActiveChanged:(Boolean)->Unit={
             rotationId = activeRotations.firstOrNull()?.id.orEmpty()
         }
     }
+    var lastBrushProfileId by remember { mutableStateOf(ShiftRepository.activeWorkProfileId) }
+    LaunchedEffect(ShiftRepository.activeWorkProfileId, ShiftRepository.shiftDefinitions.size) {
+        val currentProfileId = ShiftRepository.activeWorkProfileId
+        val activeDefs = ShiftRepository.shiftDefinitions
+            .filter { it.workProfileId == currentProfileId }
+            .sortedChronologically()
+        if (lastBrushProfileId != currentProfileId || (brush != "eraser" && (brush.isBlank() || activeDefs.none { it.id == brush }))) {
+            brush = activeDefs.firstOrNull()?.id ?: ""
+            lastBrushProfileId = currentProfileId
+        }
+    }
     fun closeEditor(){editing=false;paintRequest=null;anchor=null;rangeEnd=null;eraseAnchor=null;rangeGesture=null}
     BackHandler(active&&(editing||selectedDate!=null||workMenu)){when{workMenu->workMenu=false;selectedDate!=null->selectedDate=null;eraseAnchor!=null->{eraseAnchor=null;feedback=null};rangeGesture!=null->{rangeGesture=null;anchor=null;rangeEnd=null;feedback=null};else->closeEditor()}}
     fun changeMonth(direction:Int){

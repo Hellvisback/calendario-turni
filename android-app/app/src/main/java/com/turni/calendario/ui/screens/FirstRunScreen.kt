@@ -181,7 +181,7 @@ fun FirstRunScreen() {
                                                 }
                                             }
                                         } else {
-                                            val rotCount=ShiftRepository.rotations.size
+                                            val rotCount=ShiftRepository.rotations.count { it.workProfileId==activeWorkId }
                                             CloudCard(
                                                 "${profileModels.size} ${if(profileModels.size==1)"modello pronto" else "modelli pronti"}",
                                                 if(rotCount==0)"Puoi già usarli o aggiungere una rotazione." else "$rotCount ${if(rotCount==1)"rotazione configurata" else "rotazioni configurate"}."
@@ -190,7 +190,7 @@ fun FirstRunScreen() {
                                                 CloudButton("Modifica modelli e rotazioni","clock",{persistWorkName();page="models"},secondary=true)
                                             }
                                         }
-                                        SetupLink("ai","scan-text","Hai già un prospetto turni?","Importa gratis con la tua AI (nessuna API key): copi il prompt, incolli la risposta e controlli prima di salvare."){persistWorkName();page=it}
+                                        SetupLink("ai","scan-text","Hai già un prospetto turni?","Copia il prompt per la tua AI, incolla la risposta e controlla i turni prima di salvare (senza API key)."){persistWorkName();page=it}
                                     }
                                     3 -> {
                                         Text(
@@ -420,9 +420,9 @@ private data class SetupOptionItem(val id:String,val icon:String,val title:Strin
 @Composable private fun SetupOptions(localBackupInfo:String?,driveAutoEnabled:Boolean,onOpen:(String)->Unit) {
     val prefs=ShiftRepository.appPreferences
     val holidayStatus=if(!prefs.showHolidays)"Disattivate nel calendario" else "${ShiftRepository.enabledHolidayIds.size} attive · Nazionali, Patroni e CCNL"
-    val tagCount=ShiftRepository.dayTags.size
+    val tagCount=ShiftRepository.activeDayTags.size
     val labelsStatus=if(tagCount==0)"Nessuna etichetta · es. Formazione, Visita" else "$tagCount ${if(tagCount==1)"etichetta pronta" else "etichette pronte"}"
-    val rulesCount=ShiftRepository.statisticsRules.count { it.enabled }
+    val rulesCount=ShiftRepository.activeStatisticsRules.count { it.enabled }
     val exStatus=if(prefs.showExShifts)"mostra ex turno" else "ex turno nascosto"
     val rulesStatus=if(rulesCount==0)"Standard · $exStatus" else "$rulesCount ${if(rulesCount==1)"regola attiva" else "regole attive"} · $exStatus"
     val onCallStatus=reperibilitaSetupSummary(ShiftRepository.reperibilitaConfig)

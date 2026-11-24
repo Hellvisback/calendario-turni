@@ -11,6 +11,8 @@
     <color name="widget_brand">#3456D5</color>
     <color name="widget_brand_ink">#2C4BC3</color>
     <color name="widget_on_brand">#FFFFFF</color>
+    <color name="widget_chip_fill">#EDF1FF</color>
+    <color name="widget_chip_stroke">#C3D0EE</color>
 
     <!-- Adaptive pastel shift tones (GraphiteDay) -->
     <color name="widget_shift_morning_fill">#F2D18C</color>

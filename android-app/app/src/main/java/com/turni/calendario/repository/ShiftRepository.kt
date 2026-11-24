@@ -56,6 +56,8 @@ object ShiftRepository {
             val p = workProfiles[i]
             workProfiles[i] = p.copy(isDefault = p.id == profileId)
         }
+        dayExtraInfoMapFor(profileId)
+        notifyDataChanged()
     }
 
     fun addWorkProfile(profile: WorkProfile) {
@@ -126,6 +128,9 @@ object ShiftRepository {
     // Per-profile day extra info (overtime, travel, on-call override, notes, hide ex-shift)
     val dayExtraInfoByProfile = mutableStateMapOf<String, androidx.compose.runtime.snapshots.SnapshotStateMap<LocalDate, DayExtraInfo>>()
 
+    fun dayExtraInfoReadOnly(profileId: String = activeWorkProfileId): Map<LocalDate, DayExtraInfo> =
+        dayExtraInfoByProfile[profileId] ?: emptyMap()
+
     fun dayExtraInfoMapFor(profileId: String = activeWorkProfileId): androidx.compose.runtime.snapshots.SnapshotStateMap<LocalDate, DayExtraInfo> =
         dayExtraInfoByProfile.getOrPut(profileId) { mutableStateMapOf() }
 
@@ -192,6 +197,42 @@ object ShiftRepository {
 
     fun setReperibilitaConfigFor(profileId: String, config: ReperibilitaConfig) {
         reperibilitaByProfile[profileId] = config
+    }
+
+    fun updateReperibilitaConfig(
+        profileId: String = activeWorkProfileId,
+        update: (ReperibilitaConfig) -> ReperibilitaConfig
+    ) {
+        val current = reperibilitaConfigFor(profileId)
+        val updated = update(current)
+        if (updated == current) return
+
+        val autoShiftIds: Set<String> = when (updated.mode) {
+            ReperibilitaMode.TURNO_SPECIFICO -> updated.shiftSpecificIds.toSet()
+            ReperibilitaMode.ALTERNATA_STAGIONALE -> updated.seasonal.winterShiftIds.toSet()
+            ReperibilitaMode.MANUALE -> emptySet()
+        }
+
+        if (autoShiftIds.isNotEmpty()) {
+            val extrasMap = dayExtraInfoByProfile[profileId]
+            if (extrasMap != null) {
+                val defsById = shiftDefinitions.associateBy { it.id }
+                for ((date, assignedList) in calendarShifts) {
+                    val extra = extrasMap[date] ?: continue
+                    if (extra.isOnCallManual != false) continue
+                    val matchesAutoShift = assignedList.any { assigned ->
+                        defsById[assigned.shiftDefId]?.workProfileId == profileId &&
+                            assigned.shiftDefId in autoShiftIds
+                    }
+                    if (matchesAutoShift) {
+                        extrasMap[date] = extra.copy(isOnCallManual = null)
+                    }
+                }
+            }
+        }
+
+        reperibilitaByProfile[profileId] = updated
+        notifyDataChanged()
     }
 
     // Per-profile smart alarms configuration
@@ -558,7 +599,7 @@ object ShiftRepository {
         val profileId = getShiftDefinition(shiftDefId)?.workProfileId ?: activeWorkProfileId
         val ownShifts = currentList.filter { getShiftDefinition(it.shiftDefId)?.workProfileId == profileId }
         val prev = ownShifts.firstOrNull()
-        val isCleared = dayExtraInfo[date]?.rotationCleared == true
+        val isCleared = dayExtraInfoReadOnly(profileId)[date]?.rotationCleared == true
         val isFromRotationOrigin = !isCleared && (isFromRotation || (prev != null && (prev.isFromRotation || prev.isModifiedFromRotation)))
 
         val origId: String?
@@ -607,6 +648,12 @@ object ShiftRepository {
         newList.add(newEntry)
         val sorted = sortShiftsForDate(newList)
         calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(sorted) }
+        if (shiftDefId.isNotBlank() && shiftDefId != "empty" && shiftDefId != "eraser" && getShiftDefinition(shiftDefId) != null) {
+            val currentExtra = getDayExtraInfo(date, profileId)
+            if (currentExtra.isOnCallManual == false) {
+                dayExtraInfoMapFor(profileId)[date] = currentExtra.copy(isOnCallManual = null)
+            }
+        }
         notifyDataChanged()
     }
 
@@ -621,6 +668,8 @@ object ShiftRepository {
     }
 
     private fun addSecondaryWithoutSnapshot(date: LocalDate, shiftDefId: String, notes: String = "") {
+        val definition = getShiftDefinition(shiftDefId) ?: return
+        val profileId = definition.workProfileId
         val currentList = calendarShifts[date]?.toList() ?: emptyList()
         val newList = mutableListOf<AssignedShift>()
         newList.addAll(currentList)
@@ -635,6 +684,10 @@ object ShiftRepository {
         newList.add(newEntry)
         val sorted = sortShiftsForDate(newList)
         calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(sorted) }
+        val currentExtra = getDayExtraInfo(date, profileId)
+        if (currentExtra.isOnCallManual == false) {
+            dayExtraInfoMapFor(profileId)[date] = currentExtra.copy(isOnCallManual = null)
+        }
     }
 
     /**
@@ -652,8 +705,9 @@ object ShiftRepository {
 
     private fun replacePrimaryWithoutSnapshot(date: LocalDate, newShiftDefId: String) {
         val definition = getShiftDefinition(newShiftDefId) ?: return
+        val profileId = definition.workProfileId
         val current = getShiftsForDate(date).toList()
-        val primaryIndex = current.indexOfFirst { getShiftDefinition(it.shiftDefId)?.workProfileId == definition.workProfileId }
+        val primaryIndex = current.indexOfFirst { getShiftDefinition(it.shiftDefId)?.workProfileId == profileId }
         val previous = current.getOrNull(primaryIndex)
         val original = previous?.takeIf { it.isFromRotation || it.isModifiedFromRotation }?.let { it.originalShiftDefId ?: it.shiftDefId }
         val replacement = AssignedShift(
@@ -666,8 +720,12 @@ object ShiftRepository {
         if (primaryIndex < 0) updated.add(replacement) else updated[primaryIndex] = replacement
         val sorted = sortShiftsForDate(updated)
         calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(sorted) }
-        dayExtraInfo[date] = getDayExtraInfo(date).copy(hideExShift = false)
-        synchronizeAssignmentExtras(date)
+        val currentExtra = getDayExtraInfo(date, profileId)
+        dayExtraInfoMapFor(profileId)[date] = currentExtra.copy(
+            hideExShift = false,
+            isOnCallManual = if (currentExtra.isOnCallManual == false) null else currentExtra.isOnCallManual
+        )
+        synchronizeAssignmentExtras(date, profileId)
     }
 
     /**
@@ -912,12 +970,12 @@ object ShiftRepository {
     }
 
     fun hasTrasfertaForDate(date: LocalDate): Boolean {
-        return calendarShifts[date]?.any { it.isTrasferta } == true || dayExtraInfo[date]?.isTrasferta == true
+        return calendarShifts[date]?.any { it.isTrasferta } == true || dayExtraInfoReadOnly()[date]?.isTrasferta == true
     }
 
-    private fun synchronizeAssignmentExtras(date: LocalDate) {
+    private fun synchronizeAssignmentExtras(date: LocalDate, profileId: String = activeWorkProfileId) {
         val shifts = getShiftsForDate(date)
-        dayExtraInfo[date] = getDayExtraInfo(date).copy(
+        dayExtraInfoMapFor(profileId)[date] = getDayExtraInfo(date, profileId).copy(
             overtimeHours = shifts.sumOf { it.overtimeHours.toDouble() }.toFloat(),
             isTrasferta = shifts.any { it.isTrasferta },
             actualEndTime = shifts.firstOrNull()?.actualEndTime
@@ -933,7 +991,7 @@ object ShiftRepository {
     fun clearWorkDayShifts(date: LocalDate, profileId: String = activeWorkProfileId, clearOnCall: Boolean = false) {
         saveSnapshot()
         clearWorkDayWithoutSnapshot(date, profileId)
-        if (clearOnCall) dayExtraInfo[date] = getDayExtraInfo(date).copy(isOnCallManual = false)
+        if (clearOnCall) dayExtraInfoMapFor(profileId)[date] = getDayExtraInfo(date, profileId).copy(isOnCallManual = false)
         notifyDataChanged()
     }
 
@@ -944,7 +1002,7 @@ object ShiftRepository {
         val end = maxOf(first, last)
         while (!date.isAfter(end)) {
             clearWorkDayWithoutSnapshot(date, profileId)
-            dayExtraInfo[date] = getDayExtraInfo(date).copy(isOnCallManual = false)
+            dayExtraInfoMapFor(profileId)[date] = getDayExtraInfo(date, profileId).copy(isOnCallManual = false)
             date = date.plusDays(1)
         }
         notifyDataChanged()
@@ -953,12 +1011,13 @@ object ShiftRepository {
     private fun clearWorkDayWithoutSnapshot(date: LocalDate, profileId: String) {
         val remaining = getShiftsForDate(date).filter { getShiftDefinition(it.shiftDefId)?.workProfileId != profileId }
         calendarShifts[date] = mutableStateListOf<AssignedShift>().apply { addAll(remaining) }
-        val extra = getDayExtraInfo(date)
-        dayExtraInfo[date] = extra.copy(
-            rotationCleared = remaining.isEmpty(),
-            hideExShift = if (remaining.isEmpty()) true else extra.hideExShift
+        val extra = getDayExtraInfo(date, profileId)
+        val profileRemaining = remaining.filter { getShiftDefinition(it.shiftDefId)?.workProfileId == profileId }
+        dayExtraInfoMapFor(profileId)[date] = extra.copy(
+            rotationCleared = profileRemaining.isEmpty(),
+            hideExShift = if (profileRemaining.isEmpty()) true else extra.hideExShift
         )
-        synchronizeAssignmentExtras(date)
+        synchronizeAssignmentExtras(date, profileId)
     }
 
     private fun clearDayShiftsWithoutSnapshot(date: LocalDate) {
@@ -990,7 +1049,8 @@ object ShiftRepository {
             val otherWorkShifts = list.filter { getShiftDefinition(it.shiftDefId)?.workProfileId != profileId }
             list.clear()
             list.addAll(otherWorkShifts)
-            if (defId.isNotBlank() && defId != "empty" && defId != "eraser" && getShiftDefinition(defId) != null) list.add(
+            val hasAssignedShift = defId.isNotBlank() && defId != "empty" && defId != "eraser" && definition != null
+            if (hasAssignedShift) list.add(
                 AssignedShift(
                     id = UUID.randomUUID().toString(),
                     date = curr,
@@ -1004,10 +1064,14 @@ object ShiftRepository {
             list.clear()
             list.addAll(sorted)
             val extra = getDayExtraInfo(curr, profileId)
+            val profileList = list.filter { getShiftDefinition(it.shiftDefId)?.workProfileId == profileId }
             dayExtraInfoMapFor(profileId)[curr] = extra.copy(
-                rotationCleared = false, hideExShift = false,
-                overtimeHours = list.sumOf { it.overtimeHours.toDouble() }.toFloat(),
-                actualEndTime = list.firstOrNull()?.actualEndTime, isTrasferta = list.any { it.isTrasferta }
+                rotationCleared = false,
+                hideExShift = false,
+                isOnCallManual = if (hasAssignedShift && extra.isOnCallManual == false) null else extra.isOnCallManual,
+                overtimeHours = profileList.sumOf { it.overtimeHours.toDouble() }.toFloat(),
+                actualEndTime = profileList.firstOrNull()?.actualEndTime,
+                isTrasferta = profileList.any { it.isTrasferta }
             )
             curr = curr.plusDays(1)
         }
@@ -1274,7 +1338,7 @@ object ShiftRepository {
 
     // Gestione Informazioni Extra del Giorno (Ore straordinario, Trasferte, Note, Reperibilità)
     fun getDayExtraInfo(date: LocalDate, profileId: String = activeWorkProfileId): DayExtraInfo {
-        return dayExtraInfoByProfile[profileId]?.get(date) ?: DayExtraInfo(date = date)
+        return dayExtraInfoReadOnly(profileId)[date] ?: DayExtraInfo(date = date)
     }
 
     fun updateDayExtraInfo(date: LocalDate, profileId: String = activeWorkProfileId, update: (DayExtraInfo) -> DayExtraInfo) {
@@ -1348,7 +1412,7 @@ object ShiftRepository {
     }
 
     fun isRotationCleared(date: LocalDate): Boolean {
-        return dayExtraInfo[date]?.rotationCleared == true
+        return dayExtraInfoReadOnly()[date]?.rotationCleared == true
     }
 
     fun setRotationCleared(date: LocalDate, cleared: Boolean) {
@@ -1457,7 +1521,7 @@ object ShiftRepository {
         val countRules=statisticsRules.toList()
         var curr = start
         while (!curr.isAfter(end)) {
-            val extra = dayExtraInfo[curr]
+            val extra = dayExtraInfoReadOnly()[curr]
             val dayShifts = getShiftsForDate(curr).mapNotNull { statisticsEntry(it, statisticsModels, countRules) }
             val shiftOvertime = dayShifts.sumOf { it.overtimeHours.toDouble() }.toFloat()
             val overtime = if (dayShifts.any { it.isOvertime || it.overtimeHours > 0f || it.actualEndTime != null }) {

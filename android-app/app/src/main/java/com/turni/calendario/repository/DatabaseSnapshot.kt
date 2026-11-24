@@ -30,7 +30,7 @@ data class DatabaseSnapshot(
             ShiftRepository.shiftDefinitions.toList(),
             ShiftRepository.rotations.toList(),
             ShiftRepository.calendarShifts.mapValues { it.value.toList() },
-            ShiftRepository.dayExtraInfo.toMap(),
+            ShiftRepository.dayExtraInfoReadOnly().toMap(),
             ShiftRepository.workProfiles.toList(),
             ShiftRepository.activeWorkProfileId,
             ShiftRepository.activeRotationId,

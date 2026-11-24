@@ -38,6 +38,46 @@ import kotlin.math.ceil
 import kotlin.math.min
 import kotlin.math.sqrt
 
+internal data class WeekendCornerRadii(
+    val topLeft: Float,
+    val topRight: Float,
+    val bottomRight: Float,
+    val bottomLeft: Float
+) {
+    fun toFloatArray(): FloatArray = floatArrayOf(
+        topLeft, topLeft,
+        topRight, topRight,
+        bottomRight, bottomRight,
+        bottomLeft, bottomLeft
+    )
+}
+
+internal fun widgetWeekendHeaderRadii(
+    prevColWeekend: Boolean,
+    nextColWeekend: Boolean,
+    radius: Float = 8f
+): WeekendCornerRadii = WeekendCornerRadii(
+    topLeft = if (prevColWeekend) 0f else radius,
+    topRight = if (nextColWeekend) 0f else radius,
+    bottomRight = 0f,
+    bottomLeft = 0f
+)
+
+internal fun widgetWeekendCellRadii(
+    isLastRow: Boolean,
+    prevColWeekend: Boolean,
+    nextColWeekend: Boolean,
+    radius: Float = 8f
+): WeekendCornerRadii = WeekendCornerRadii(
+    topLeft = 0f,
+    topRight = 0f,
+    bottomRight = if (isLastRow && !nextColWeekend) radius else 0f,
+    bottomLeft = if (isLastRow && !prevColWeekend) radius else 0f
+)
+
+internal fun formatWidgetWorkProfileLabel(workName: String, invalidData: Boolean): String =
+    if (invalidData) workName else "${workName.trim()} ▾"
+
 /** Static rasterization keeps RemoteViews crisp at native density within a bounded bitmap budget. */
 internal object TurniWidgetRenderer {
     private val monthFormat = DateTimeFormatter.ofPattern("MMMM yyyy", Locale.ITALIAN)
@@ -106,22 +146,48 @@ internal object TurniWidgetRenderer {
         val title = content.title
         views.setTextViewText(R.id.widget_title, title)
         views.setTextColor(R.id.widget_title, palette.text)
-        if(kind==WidgetKind.TODAY){
-            val metrics=context.resources.displayMetrics
-            val titlePaint=Paint(Paint.ANTI_ALIAS_FLAG).apply {
-                textSize=13f*metrics.scaledDensity
-                typeface=Typeface.create("sans-serif-medium",Typeface.NORMAL)
+        val metrics = context.resources.displayMetrics
+        val titleTextSp = if (kind == WidgetKind.TODAY) {
+            val titlePaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                textSize = 13f * metrics.scaledDensity
+                typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
             }
-            val available=header.titleMaxWidthDp*metrics.density
-            val fittedSp=13f*min(1f,available/titlePaint.measureText(title).coerceAtLeast(1f))
-            views.setTextViewTextSize(R.id.widget_title,android.util.TypedValue.COMPLEX_UNIT_SP,fittedSp)
+            val available = header.titleMaxWidthDp * metrics.density
+            val fittedSp = 13f * min(1f, available / titlePaint.measureText(title).coerceAtLeast(1f))
+            views.setTextViewTextSize(R.id.widget_title, android.util.TypedValue.COMPLEX_UNIT_SP, fittedSp)
+            fittedSp
+        } else if (kind == WidgetKind.PANORAMA) 15f else 13f
+        val titleMaxPx = header.titleMaxWidthDp * metrics.density
+        val titleMeasurePaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = titleTextSp * metrics.scaledDensity
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
         }
-        views.setTextViewText(R.id.widget_profile, if(content.invalidData) "Dati da ripristinare · Apri TurniSync" else content.workName)
-        val profileInk = if (content.invalidData) readableInk(Color(palette.surface), Color(palette.danger)).toArgb() else palette.muted
+        val titleUsedPx = min(titleMeasurePaint.measureText(title), titleMaxPx)
+        val contentPx = (width - 16f).coerceAtLeast(1f) * metrics.density
+        val navPx = (if (kind == WidgetKind.TODAY) 0f else 64f) * metrics.density
+        val chipMaxPx = (contentPx - navPx - titleUsedPx - 4f * metrics.density).coerceAtLeast(36f * metrics.density)
+        val chipPaint = android.text.TextPaint(Paint.ANTI_ALIAS_FLAG).apply {
+            textSize = 10.5f * metrics.scaledDensity
+            typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL)
+        }
+        val chipChromePx = 15f * metrics.density + (if (content.invalidData) 0f else chipPaint.measureText(" ▾"))
+        val rawProfileLabel = if (content.invalidData) "Dati da ripristinare · Apri TurniSync" else content.workName
+        val clippedProfileLabel = TextUtils.ellipsize(
+            rawProfileLabel,
+            chipPaint,
+            (chipMaxPx - chipChromePx).coerceAtLeast(12f * metrics.density),
+            TextUtils.TruncateAt.END
+        ).toString()
+        val profileChipText = formatWidgetWorkProfileLabel(clippedProfileLabel, content.invalidData)
+        val chipBackground = if (dark) R.drawable.bg_widget_work_chip_dark else R.drawable.bg_widget_work_chip_light
+        val profileInk = if (content.invalidData) readableInk(Color(palette.surface), Color(palette.danger)).toArgb() else palette.brandInk
+        views.setInt(R.id.widget_profile, "setBackgroundResource", chipBackground)
+        views.setTextViewText(R.id.widget_profile, profileChipText)
         views.setTextColor(R.id.widget_profile, profileInk)
+        views.setInt(R.id.widget_profile, "setMaxWidth", chipMaxPx.toInt())
         views.setViewVisibility(R.id.widget_profile, if (header.showWork) View.VISIBLE else View.GONE)
-        views.setInt(R.id.widget_title, "setMaxWidth", (header.titleMaxWidthDp * context.resources.displayMetrics.density).toInt())
-        views.setContentDescription(R.id.widget_profile, content.workName)
+        views.setInt(R.id.widget_title, "setMaxWidth", titleMaxPx.toInt())
+        views.setContentDescription(R.id.widget_profile, "${content.workName}, cambia lavoro widget")
         views.setContentDescription(R.id.widget_title, title)
         views.setInt(R.id.widget_previous, "setColorFilter", palette.brandInk)
         views.setInt(R.id.widget_next, "setColorFilter", palette.brandInk)
@@ -152,14 +218,20 @@ internal object TurniWidgetRenderer {
             }
             val labels = Bitmap.createBitmap(ceil((width - 16f) * density).toInt(), ceil(10f * density).toInt(), Bitmap.Config.ARGB_8888)
             val c = Canvas(labels); c.scale(density, density)
-            val weekendBg = Paint().apply { color = palette.weekend }
+            val weekendBg = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.weekend }
             val weekendInk = readableInk(Color(palette.weekend), Color(palette.muted)).toArgb()
             val pen = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = palette.muted; textSize = 9f; typeface = Typeface.create("sans-serif-medium", Typeface.NORMAL); textAlign = Paint.Align.CENTER }
+            fun isWeekendCol(col: Int): Boolean =
+                if (col !in 0 until columns) false
+                else content.days.getOrNull(col)?.date?.dayOfWeek?.value?.let { it >= 6 }
+                    ?: if (weekStartMonday) col >= 5 else (col == 0 || col == 6)
             weekdayLabels.forEachIndexed { i, label ->
-                val isWeekend = content.days.getOrNull(i)?.date?.dayOfWeek?.value?.let { it >= 6 }
-                    ?: if (weekStartMonday) i >= 5 else (i == 0 || i == 6)
-                if (isWeekend) {
-                    c.drawRect(i * cellWidth, 0f, (i + 1) * cellWidth, 10f, weekendBg)
+                if (isWeekendCol(i)) {
+                    val radii = widgetWeekendHeaderRadii(isWeekendCol(i - 1), isWeekendCol(i + 1))
+                    val bandPath = Path().apply {
+                        addRoundRect(RectF(i * cellWidth, 0f, (i + 1) * cellWidth, 10f), radii.toFloatArray(), Path.Direction.CW)
+                    }
+                    c.drawPath(bandPath, weekendBg)
                     pen.color = weekendInk
                 } else {
                     pen.color = palette.muted
@@ -170,15 +242,19 @@ internal object TurniWidgetRenderer {
         }
         for (rowIndex in 0 until rowCount) {
             val row = RemoteViews(context.packageName, R.layout.widget_turnisync_row)
+            val isLastRow = rowIndex == rowCount - 1
             for (column in 0 until columns) {
                 val index = rowIndex * columns + column
                 val summary = content.days[index]
                 val day = summary.date
+                val prevColWeekend = kind != WidgetKind.TODAY && column > 0 && content.days[index - 1].date.dayOfWeek.value >= 6
+                val nextColWeekend = kind != WidgetKind.TODAY && column + 1 < columns && content.days[index + 1].date.dayOfWeek.value >= 6
                 val cell = RemoteViews(context.packageName, R.layout.widget_turnisync_cell)
                 cell.setImageViewBitmap(R.id.widget_day,
                     renderDay(summary, cellWidth, cellHeight, density, fontScale, palette,
                         kind == WidgetKind.TODAY, kind == WidgetKind.MONTH && YearMonth.from(day) != content.month,
-                        content.invalidData, showWeekday = false, compactWeek = kind==WidgetKind.WEEK))
+                        content.invalidData, showWeekday = false, compactWeek = kind==WidgetKind.WEEK,
+                        isLastRow = isLastRow, prevColWeekend = prevColWeekend, nextColWeekend = nextColWeekend))
                 cell.setContentDescription(R.id.widget_day, summary.accessibilityLabel)
                 cell.setOnClickPendingIntent(R.id.widget_day, WidgetUpdateManager.createDayPendingIntent(context, day, id * 100 + index))
                 row.addView(R.id.widget_row, cell)
@@ -206,7 +282,8 @@ internal object TurniWidgetRenderer {
     }
 
     private fun renderDay(summary: DayShiftSummary, width: Float, height: Float, density: Float,
-        fontScale: Float, palette: Palette, wide: Boolean, faded: Boolean, invalidData: Boolean, showWeekday: Boolean, compactWeek:Boolean): Bitmap {
+        fontScale: Float, palette: Palette, wide: Boolean, faded: Boolean, invalidData: Boolean, showWeekday: Boolean, compactWeek:Boolean,
+        isLastRow: Boolean = true, prevColWeekend: Boolean = false, nextColWeekend: Boolean = false): Bitmap {
         val bitmap = Bitmap.createBitmap(ceil(width * density).toInt().coerceAtLeast(1),
             ceil(height * density).toInt().coerceAtLeast(1), Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
@@ -296,10 +373,14 @@ internal object TurniWidgetRenderer {
             // Font ascent and advance width are not the visible bounds of digits (notably 1/27).
             canvas.drawText(value,centerX-glyphBounds.centerX(),centerY-glyphBounds.centerY(),paint)
         }
-        // Paint continuous weekend columns with no gaps between rows, matching the main calendar.
+        // Paint continuous weekend columns with no gaps between rows and rounded outer corners.
         if (isWeekend) {
+            val radii = widgetWeekendCellRadii(isLastRow, prevColWeekend, nextColWeekend)
+            val weekendPath = Path().apply {
+                addRoundRect(RectF(0f, 0f, width, height), radii.toFloatArray(), Path.Direction.CW)
+            }
             paint.color = palette.weekend
-            canvas.drawRect(0f, 0f, width, height, paint)
+            canvas.drawPath(weekendPath, paint)
             if (summary.isToday) rect(1f, 1f, width - 1f, height - 1f, 8f, palette.today)
         } else if (!wide) {
             rect(1f, 1f, width - 1f, height - 1f, 8f, background)

@@ -30,15 +30,18 @@
 
         <TextView
             android:layout_width="wrap_content"
-            android:layout_height="match_parent"
-            android:fontFamily="sans-serif"
-            android:gravity="end|center_vertical"
+            android:layout_height="20dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_widget_preview_work_chip"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
             android:includeFontPadding="false"
-            android:paddingStart="6dp"
+            android:paddingStart="8dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
-            android:text="Principale"
-            android:textColor="@color/widget_secondary_text"
-            android:textSize="11sp" />
+            android:text="Principale ▾"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="10.5sp" />
     </LinearLayout>
 
     <!-- Oggi -->

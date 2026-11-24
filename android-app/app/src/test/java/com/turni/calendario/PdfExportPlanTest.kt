@@ -1,7 +1,13 @@
 package com.turni.calendario.export
 
+import androidx.compose.runtime.mutableStateListOf
+import com.turni.calendario.model.AssignedShift
 import com.turni.calendario.model.PdfExportMode
 import com.turni.calendario.model.PdfExportOptions
+import com.turni.calendario.model.ShiftDefinition
+import com.turni.calendario.repository.DatabaseSnapshot
+import com.turni.calendario.repository.ShiftRepository
+import com.turni.calendario.sync.DatabaseRestore
 import org.junit.Assert.*
 import org.junit.Test
 import java.time.LocalDate
@@ -204,5 +210,167 @@ class PdfExportPlanTest {
 
         assertEquals(plans[0].rowTops[14], plans[1].rowTops[14], 0.001f)
         assertEquals(plans[1].rowTops[14], plans[2].rowTops[14], 0.001f)
+    }
+
+    @Test fun dynamicCustomPeriodLayoutAdaptsByDayAndMonthSpan() {
+        assertEquals(CustomPeriodLayout.SHORT_DETAILED, resolveCustomPeriodLayout(dayCount = 1, monthCount = 1))
+        assertEquals(CustomPeriodLayout.SHORT_DETAILED, resolveCustomPeriodLayout(dayCount = 14, monthCount = 2))
+        assertEquals(CustomPeriodLayout.MEDIUM_TWO_COLUMN, resolveCustomPeriodLayout(dayCount = 15, monthCount = 1))
+        assertEquals(CustomPeriodLayout.MEDIUM_TWO_COLUMN, resolveCustomPeriodLayout(dayCount = 31, monthCount = 1))
+        assertEquals(CustomPeriodLayout.MEDIUM_TWO_COLUMN, resolveCustomPeriodLayout(dayCount = 61, monthCount = 2))
+        assertEquals(CustomPeriodLayout.EXTENDED_OVERVIEW, resolveCustomPeriodLayout(dayCount = 90, monthCount = 3))
+        assertEquals(CustomPeriodLayout.EXTENDED_OVERVIEW, resolveCustomPeriodLayout(dayCount = 365, monthCount = 12))
+    }
+
+    @Test fun listLayoutPrefersTwoColumnsForSixteenOrMoreDaysOrTwoMonths() {
+        assertEquals(listOf(1, 2, 3), preferredListColumns(dayCount = 15, monthCount = 1))
+        assertEquals(listOf(2, 3, 1), preferredListColumns(dayCount = 16, monthCount = 1))
+        assertEquals(listOf(2, 3, 1), preferredListColumns(dayCount = 10, monthCount = 2))
+
+        val nov = (1..15).map { LocalDate.of(2026, 11, it) }
+        val dec = (1..15).map { LocalDate.of(2026, 12, it) }
+        val dates = nov + dec
+        val heights = List(dates.size) { 20f }
+        val cols = planListColumns(dates, heights, columns = 2, available = 400f)!!
+        assertEquals(2, cols.size)
+        assertEquals((0..14).toList(), cols[0])
+        assertEquals((15..29).toList(), cols[1])
+    }
+
+    @Test fun smontoNotteProducesSingleUnifiedCalendarBadge() {
+        val smonto = PdfShiftRow(
+            code = "SN",
+            name = "Smonto Notte",
+            color = 0xFF5B8DEF.toInt(),
+            time = "22:00",
+            details = listOf("22:00 - 06:00", "Durata prevista: 8 h 0 min"),
+        )
+        val day = PdfDayRow(
+            date = LocalDate.of(2026, 11, 10),
+            shifts = listOf(smonto),
+            details = emptyList(),
+            onCall = true,
+        )
+
+        val fullElements = buildCalendarCellElements(
+            row = day,
+            compact = false,
+            includeHeaderOnCall = true,
+            wrapBadgeTitle = { title -> title.split(' ') },
+            wrapDetail = { listOf(it) },
+        )
+        val badges = fullElements.filterIsInstance<CalendarCellElement.ShiftBadge>()
+        assertEquals(1, badges.size)
+        assertEquals(listOf("Smonto", "Notte"), badges.single().lines)
+        assertTrue(fullElements.none { it is CalendarCellElement.OnCallPill })
+        assertTrue(fullElements.filterIsInstance<CalendarCellElement.DetailLine>().any { it.text == "22:00–06:00" })
+        assertTrue(fullElements.filterIsInstance<CalendarCellElement.DetailLine>().any { it.text == "Dur. 8h" })
+
+        val compactElements = buildCalendarCellElements(
+            row = day,
+            compact = true,
+            includeHeaderOnCall = false,
+            wrapBadgeTitle = { listOf(it) },
+            wrapDetail = { listOf(it) },
+        )
+        val compactBadges = compactElements.filterIsInstance<CalendarCellElement.ShiftBadge>()
+        assertEquals(1, compactBadges.size)
+        assertEquals(listOf("SN"), compactBadges.single().lines)
+        assertEquals(1, compactElements.filterIsInstance<CalendarCellElement.OnCallPill>().size)
+    }
+
+    @Test fun conciseDetailFormattingCompactsAllOptionsCleanly() {
+        assertEquals("06:00–14:00", formatPdfDetail("06:00 - 14:00", compact = false))
+        assertEquals("06–14", formatPdfDetail("06:00 - 14:00", compact = true))
+        assertEquals("Tutto il giorno", formatPdfDetail("Tutto il giorno", compact = false))
+        assertEquals("TG", formatPdfDetail("Tutto il giorno", compact = true))
+        assertEquals("Attacco 05:30", formatPdfDetail("Ingresso effettivo: 05:30", compact = false))
+        assertEquals("Stacco 14:30", formatPdfDetail("Stacco effettivo: 14:30", compact = false))
+        assertEquals("Dur. 8h", formatPdfDetail("Durata prevista: 8 h 0 min", compact = false))
+        assertEquals("Dur. 7h30", formatPdfDetail("Durata prevista: 7 h 30 min", compact = false))
+        assertEquals("Pausa 20m (02:00)", formatPdfDetail("Pausa: 20 min dalle 02:00", compact = false))
+        assertEquals("P. 30m", formatPdfDetail("Pausa: 30 min", compact = true))
+        assertEquals("+1h30", formatPdfDetail("Straordinario: 1 h 30 min", compact = false))
+        assertEquals("−1h", formatPdfDetail("Permesso: −1 h 0 min", compact = false))
+        assertEquals("Trasferta", formatPdfDetail("Trasferta", compact = false))
+        assertEquals("TR", formatPdfDetail("Trasferta", compact = true))
+    }
+
+    @Test fun captureAndLegendSortShiftsChronologicallyWithAllDayAlwaysLast() {
+        val before = DatabaseSnapshot.capture()
+        try {
+            val profileId = ShiftRepository.activeWorkProfileId
+            val day = LocalDate.of(2026, 11, 12)
+            val ferie = ShiftDefinition(
+                id = "pdf-sort-ferie",
+                name = "Ferie",
+                shortCode = "FE",
+                startTime = "00:00",
+                endTime = "23:59",
+                isAllDay = true,
+                colorHex = 0xFFAAAAAA,
+                workProfileId = profileId,
+            )
+            val notte = ShiftDefinition(
+                id = "pdf-sort-notte",
+                name = "Notte",
+                shortCode = "N",
+                startTime = "22:00",
+                endTime = "06:00",
+                colorHex = 0xFF334455,
+                workProfileId = profileId,
+            )
+            val mattina = ShiftDefinition(
+                id = "pdf-sort-mattina",
+                name = "Mattina",
+                shortCode = "M",
+                startTime = "06:00",
+                endTime = "14:00",
+                colorHex = 0xFF55AA77,
+                workProfileId = profileId,
+            )
+            val mattinaLunga = ShiftDefinition(
+                id = "pdf-sort-mattina-l",
+                name = "Mattina Lunga",
+                shortCode = "ML",
+                startTime = "06:00",
+                endTime = "16:00",
+                colorHex = 0xFF66BB88,
+                workProfileId = profileId,
+            )
+            ShiftRepository.shiftDefinitions.addAll(listOf(ferie, notte, mattinaLunga, mattina))
+            ShiftRepository.calendarShifts[day] = mutableStateListOf(
+                AssignedShift("a-ferie", day, ferie.id),
+                AssignedShift("a-notte", day, notte.id),
+                AssignedShift("a-ml", day, mattinaLunga.id),
+                AssignedShift("a-m", day, mattina.id),
+            )
+            ShiftRepository.setDayOnCallManual(day, true)
+
+            listOf(
+                PdfExportMode.ELENCO,
+                PdfExportMode.MESE,
+                PdfExportMode.ANNO,
+                PdfExportMode.PERSONALIZZATO,
+            ).forEach { mode ->
+                val snapshot = PdfGenerator.capture(
+                    PdfExportOptions(
+                        mode = mode,
+                        startDate = day,
+                        endDate = day,
+                        selectedYear = 2026,
+                    ),
+                )
+                val dayRow = snapshot.days.first { it.date == day }
+                assertEquals(listOf("M", "ML", "N", "FE"), dayRow.shifts.map { it.code })
+                assertTrue(dayRow.onCall)
+                assertFalse(dayRow.details.contains("Reperibilità"))
+
+                val legendSorted = sortShiftRowsChronologically(dayRow.shifts.reversed())
+                assertEquals(listOf("M", "ML", "N", "FE"), legendSorted.map { it.code })
+            }
+        } finally {
+            DatabaseRestore.apply(before)
+        }
     }
 }

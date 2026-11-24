@@ -45,18 +45,26 @@
             android:src="@drawable/widget_chevron_right"
             android:tint="@color/widget_brand_ink" />
 
-        <TextView
+        <Space
             android:layout_width="0dp"
-            android:layout_height="match_parent"
-            android:layout_weight="1"
+            android:layout_height="1dp"
+            android:layout_weight="1" />
+
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="20dp"
+            android:layout_marginStart="4dp"
+            android:background="@drawable/bg_widget_preview_work_chip"
             android:ellipsize="end"
-            android:gravity="end|center_vertical"
+            android:fontFamily="sans-serif-medium"
+            android:gravity="center"
             android:includeFontPadding="false"
             android:paddingStart="8dp"
+            android:paddingEnd="7dp"
             android:singleLine="true"
-            android:text="Principale"
-            android:textColor="@color/widget_secondary_text"
-            android:textSize="11sp" />
+            android:text="Principale ▾"
+            android:textColor="@color/widget_brand_ink"
+            android:textSize="10.5sp" />
     </LinearLayout>
 
     <!-- Weekday headers with continuous weekend background -->
@@ -70,8 +78,8 @@
         <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="MER" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
         <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="GIO" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
         <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="VEN" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
-        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="SAB" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
-        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="DOM" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_widget_preview_weekend_top_left" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="SAB" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
+        <TextView android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_widget_preview_weekend_top_right" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="DOM" android:textColor="@color/widget_secondary_text" android:textSize="9sp" />
     </LinearLayout>
 
     <!-- Week row -->
@@ -127,7 +135,7 @@
         </LinearLayout>
 
         <!-- Sat 23 (Weekend) -->
-        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_widget_preview_weekend_bottom_left" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
             <TextView android:layout_width="wrap_content" android:layout_height="16dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="23" android:textColor="@color/widget_text" android:textSize="11sp" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />
@@ -136,7 +144,7 @@
         </LinearLayout>
 
         <!-- Sun 24 (Weekend) -->
-        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/widget_weekend" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
+        <LinearLayout android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@drawable/bg_widget_preview_weekend_bottom_right" android:gravity="center_horizontal" android:orientation="vertical" android:padding="2dp">
             <TextView android:layout_width="wrap_content" android:layout_height="16dp" android:fontFamily="sans-serif-medium" android:gravity="center" android:includeFontPadding="false" android:text="24" android:textColor="@color/widget_text" android:textSize="11sp" />
             <LinearLayout android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1" android:background="@drawable/bg_widget_preview_pill_rest" android:gravity="center" android:orientation="vertical">
                 <TextView android:layout_width="wrap_content" android:layout_height="wrap_content" android:fontFamily="sans-serif-medium" android:includeFontPadding="false" android:text="RIP" android:textColor="@color/widget_shift_rest_ink" android:textSize="10sp" />

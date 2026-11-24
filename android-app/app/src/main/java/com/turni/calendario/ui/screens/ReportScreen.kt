@@ -2,8 +2,10 @@ package com.turni.calendario.ui.screens
 
 import androidx.compose.animation.*
 import androidx.compose.animation.core.*
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
@@ -89,13 +91,32 @@ fun ReportScreen(
     LaunchedEffect(active) { if(!active)picking=null }
     val density = LocalDensity.current
     val scope = rememberCoroutineScope()
+    val screenWidthDp = LocalConfiguration.current.screenWidthDp.dp
+    val pickerWidth = minOf(280, LocalConfiguration.current.screenWidthDp - 32).dp
+    val leftPickerX = 16.dp
+    val rightPickerX = (screenWidthDp - pickerWidth - 16.dp).coerceAtLeast(16.dp)
+    val pickerX = remember { Animatable(leftPickerX, Dp.VectorConverter) }
+    var wasPickingOpen by remember { mutableStateOf(false) }
+    LaunchedEffect(picking, pickerField, rightPickerX) {
+        val target = if (pickerField == 0) leftPickerX else rightPickerX
+        if (picking != null) {
+            if (!wasPickingOpen) {
+                pickerX.snapTo(target)
+            } else {
+                pickerX.animateTo(target, spring(1f, 380f))
+            }
+            wasPickingOpen = true
+        } else {
+            wasPickingOpen = false
+        }
+    }
     val start = when (mode) { ReportPeriodMode.MESE -> month.atDay(1); ReportPeriodMode.ANNO -> LocalDate.of(year, 1, 1); else -> from }
     val end = when (mode) { ReportPeriodMode.MESE -> month.atEndOfMonth(); ReportPeriodMode.ANNO -> LocalDate.of(year, 12, 31); else -> until }
     // Observe actual collections, not their size: replacing a shift must refresh every metric.
     val activeProfileId = ShiftRepository.activeWorkProfileId
     val calendarSnapshot = ShiftRepository.calendarShifts.mapValues { it.value.toList() }
     val extrasByProfileSnapshot = ShiftRepository.dayExtraInfoByProfile.mapValues { it.value.toMap() }
-    val extrasSnapshot = extrasByProfileSnapshot[activeProfileId] ?: ShiftRepository.dayExtraInfoMapFor(activeProfileId).toMap()
+    val extrasSnapshot = extrasByProfileSnapshot[activeProfileId].orEmpty()
     val reperibilitaByProfileSnapshot = ShiftRepository.reperibilitaByProfile.toMap()
     val reperibilitaConfig = reperibilitaByProfileSnapshot[activeProfileId] ?: ShiftRepository.reperibilitaConfigFor(activeProfileId)
     val definitions = ShiftRepository.shiftDefinitions.toList()
@@ -178,7 +199,18 @@ fun ReportScreen(
                         val iconMotion=remember { Animatable(0f) }
                         Column(Modifier.weight(1f)) {
                             Text(if(index==0) "Dal" else "Al",Modifier.padding(start=4.dp,bottom=5.dp),fontSize=11.sp,color=reportMuted)
-                            Surface(shape=RoundedCornerShape(13.dp),color=if(picking==index) ObsidianSurfaceHigh else ObsidianSurface,modifier=Modifier.fillMaxWidth().bouncyClickable { pickerField=index;picking=if(picking==index)null else index;scope.launch { iconMotion.snapTo(0f);iconMotion.animateTo(1f,tween(560));iconMotion.snapTo(0f) } }) {
+                            Surface(shape=RoundedCornerShape(13.dp),color=if(picking==index) ObsidianSurfaceHigh else ObsidianSurface,modifier=Modifier.fillMaxWidth().bouncyClickable {
+                                val wasClosed = picking == null
+                                pickerField = index
+                                val nextPicking = if (picking == index) null else index
+                                if (wasClosed && nextPicking != null) {
+                                    scope.launch(start = kotlinx.coroutines.CoroutineStart.UNDISPATCHED) {
+                                        pickerX.snapTo(if (index == 0) leftPickerX else rightPickerX)
+                                    }
+                                }
+                                picking = nextPicking
+                                scope.launch { iconMotion.snapTo(0f);iconMotion.animateTo(1f,tween(560));iconMotion.snapTo(0f) }
+                            }) {
                                 Row(Modifier.padding(horizontal=9.dp,vertical=10.dp),verticalAlignment=Alignment.CenterVertically) {
                                     Text(date.format(DateTimeFormatter.ofPattern("dd/MM/yyyy")),Modifier.weight(1f),fontSize=12.sp,color=reportInk)
                                     SiteIcon("calendar-days",null,Modifier.size(14.dp),tint=reportInk,progress=iconMotion.value)
@@ -187,8 +219,32 @@ fun ReportScreen(
                         }
                     }
                 }
-                Box(Modifier.fillMaxWidth().height(34.dp).bouncyClickable { from=draftFrom;until=draftUntil;picking=null },contentAlignment=Alignment.Center) {
-                    Row(verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(6.dp)) { SiteIcon("check",null,Modifier.size(15.dp),tint=BrandInk);Text("Applica periodo",fontSize=11.sp,color=BrandInk) }
+                val hasPendingRange = draftFrom != from || draftUntil != until
+                val applyContentColor = if (hasPendingRange) OnBrand else Color(currentTurniPalette.onPrimaryContainer)
+                Spacer(Modifier.height(10.dp))
+                Surface(
+                    shape = RoundedCornerShape(14.dp),
+                    color = if (hasPendingRange) ObsidianPrimary else ObsidianPrimaryContainer,
+                    border = if (hasPendingRange) null else BorderStroke(1.dp, ObsidianBorder),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(42.dp)
+                        .bouncyClickable { from = draftFrom; until = draftUntil; picking = null }
+                ) {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(7.dp)
+                        ) {
+                            SiteIcon("check", null, Modifier.size(16.dp), tint = applyContentColor)
+                            Text(
+                                "Applica periodo",
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                color = applyContentColor
+                            )
+                        }
+                    }
                 }
             }
         }
@@ -217,7 +273,7 @@ fun ReportScreen(
                     key(metric.definition.id) {
                     ReportMetric(metric.definition.name,metric.definition.color,metric.count,metric.hours,
                         metric.definition.isAllDay && metric.hours==0f,shapePlan[rowIndex*metricsPerRow+column],
-                        rowIndex*metricsPerRow+column,progress,Modifier.weight(1f))
+                        rowIndex*metricsPerRow+column,progress,Modifier.weight(1f),definitionId=metric.definition.id)
                     }
                 }
                 if(row.size==1 && metricsPerRow==2) {
@@ -308,9 +364,7 @@ fun ReportScreen(
         if(dayTags.isNotEmpty())dayTagReport(tagMetrics,periodKey,onOpenDate)
         item("dock-clearance") { Spacer(Modifier.height(118.dp)) }
     }
-    val pickerWidth=minOf(280,LocalConfiguration.current.screenWidthDp-32).dp
-    val pickerX by animateDpAsState(if(pickerField==0)16.dp else (LocalConfiguration.current.screenWidthDp.dp-pickerWidth-16.dp),spring(1f,380f))
-    AnimatedVisibility(picking!=null,modifier=Modifier.zIndex(10f).offset { IntOffset(pickerX.roundToPx(),dateBottom.roundToInt()) }.width(pickerWidth),
+    AnimatedVisibility(picking!=null,modifier=Modifier.zIndex(10f).offset { IntOffset(pickerX.value.roundToPx(),dateBottom.roundToInt()) }.width(pickerWidth),
         enter=fadeIn(tween(260))+scaleIn(tween(420,easing=CubicBezierEasing(.16f,1f,.3f,1f)),initialScale=.32f,transformOrigin=TransformOrigin(if(pickerField==0).25f else .75f,0f))+slideInVertically(tween(380)){ -it/6 },
         exit=fadeOut(tween(170))+scaleOut(tween(240,easing=FastOutSlowInEasing),targetScale=.35f,transformOrigin=TransformOrigin(if(pickerField==0).25f else .75f,0f))) {
         ReportDatePicker(if(pickerField==0)draftFrom else draftUntil,{picking=null}) { date -> if(pickerField==0){draftFrom=date;if(draftUntil<date)draftUntil=date}else{draftUntil=date;if(draftFrom>date)draftFrom=date};picking=null }
@@ -382,8 +436,19 @@ private fun ReportWorkSection(summary:WorkReportSummary,index:Int,lastIndex:Int,
                 ReportWorkTotal(summary.count.toFloat(),"Turni",animation,Modifier.weight(1f))
             }
             Column(Modifier.padding(top=10.dp,bottom=14.dp),verticalArrangement=Arrangement.spacedBy(9.dp)) {
+                val dark = TurniThemeState.dark
+                val cardSurface = ObsidianSurface
+                val hairlineColor = Color(currentTurniPalette.outline).copy(alpha = 0.28f)
                 summary.metrics.forEach { metric -> Row(Modifier.fillMaxWidth(),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                    Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(shiftChartColor(metric.definition.color)))
+                    val swatchColor = shiftDisplayColor(metric.definition.color, dark, metric.definition.id)
+                    val swatchShape = RoundedCornerShape(3.dp)
+                    Box(
+                        Modifier
+                            .size(9.dp)
+                            .clip(swatchShape)
+                            .background(swatchColor)
+                            .then(if (contrastRatio(cardSurface, swatchColor) < 1.35f) Modifier.border(0.6.dp, hairlineColor, swatchShape) else Modifier)
+                    )
                     Text(metric.definition.name,Modifier.weight(1f),fontSize=11.sp,color=reportInk)
                     Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=reportInk)
                     Text(if(metric.definition.isAllDay && metric.hours==0f) "—" else hourLabel(metric.hours),Modifier.width(48.dp),fontSize=11.sp,color=reportMuted,textAlign=TextAlign.End)
@@ -406,7 +471,9 @@ private data class DialSector(val start: Float, val end: Float, val outline: Pat
 private fun ReportDistributionDial(metrics:List<ShiftMetric>,colors:List<Color>,total:Int,animation:ReportProgress) {
     val sweep = 270f
     val sectors = remember(metrics) { reportRingBoundaries(metrics.map { it.count }, 0f, sweep, 0f) }
-    val track = ObsidianBorderSubtle
+    val track = ObsidianBorderSubtle.copy(alpha = 0.55f)
+    val cardSurface = ObsidianSurface
+    val hairlineColor = Color(currentTurniPalette.outline).copy(alpha = 0.28f)
     Column(horizontalAlignment=Alignment.CenterHorizontally) {
         Box(Modifier.size(106.dp,92.dp),contentAlignment=Alignment.Center) {
             Spacer(Modifier.matchParentSize().drawWithCache {
@@ -458,7 +525,11 @@ private fun ReportDistributionDial(metrics:List<ShiftMetric>,colors:List<Color>,
                         if (head <= slice.start) break
                         val visible = if (head >= slice.end) slice.outline else
                             outline(startAngle+slice.start,head-slice.start,partial)
-                        drawPath(visible,colors[index])
+                        val sectorColor = colors[index]
+                        drawPath(visible, sectorColor)
+                        if (contrastRatio(cardSurface, sectorColor) < 1.35f) {
+                            drawPath(visible, hairlineColor, style = Stroke(0.6.dp.toPx()))
+                        }
                     }
                 }
             })
@@ -471,13 +542,15 @@ private fun ReportDistributionDial(metrics:List<ShiftMetric>,colors:List<Color>,
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,permission:Float,metrics:List<ShiftMetric>,animation:ReportProgress) {
+    val dark = TurniThemeState.dark
     val palette=currentTurniPalette
     val largeText=LocalDensity.current.fontScale>1.3f
     val fill=Color(palette.surface)
     val titleInk=Color(palette.text)
     val detailInk=Color(palette.text)
+    val hairlineColor = Color(palette.outline).copy(alpha = 0.28f)
     val distribution=metrics
-    val pigments=remember(metrics,fill) { metrics.map { readablePigment(fill,it.definition.color) } }
+    val pigments=remember(metrics,dark) { metrics.map { shiftDisplayColor(it.definition.color, dark, it.definition.id) } }
     Surface(shape=RoundedCornerShape(23.dp),color=fill,modifier=Modifier.fillMaxWidth().graphicsLayer { alpha=animation.value;translationY=(1-animation.value)*12;scaleX=.98f+.02f*animation.value;scaleY=scaleX }) {
         Box {
             Column(Modifier.padding(start=16.dp,end=16.dp,top=16.dp,bottom=12.dp)) {
@@ -501,8 +574,17 @@ private fun ReportHero(hours:Float,days:Int,assignments:Int,overtime:Float,permi
                 Divider(color=ObsidianBorderSubtle)
                 distribution.chunked(if(largeText)1 else 2).forEach { row -> Row(Modifier.fillMaxWidth().padding(top=6.dp),horizontalArrangement=Arrangement.spacedBy(12.dp)) {
                     row.forEach { metric -> Row(Modifier.weight(1f).heightIn(min=27.dp),verticalAlignment=Alignment.CenterVertically,horizontalArrangement=Arrangement.spacedBy(5.dp)) {
-                        val legendColor = remember(fill, metric.definition.color) { readablePigment(fill, metric.definition.color) }
-                        Box(Modifier.size(8.dp).clip(RoundedCornerShape(3.dp)).background(legendColor))
+                        val legendColor = remember(dark, metric.definition.color, metric.definition.id) {
+                            shiftDisplayColor(metric.definition.color, dark, metric.definition.id)
+                        }
+                        val swatchShape = RoundedCornerShape(3.dp)
+                        Box(
+                            Modifier
+                                .size(9.dp)
+                                .clip(swatchShape)
+                                .background(legendColor)
+                                .then(if (contrastRatio(fill, legendColor) < 1.35f) Modifier.border(0.6.dp, hairlineColor, swatchShape) else Modifier)
+                        )
                         Text(metric.definition.name,Modifier.weight(1f),fontSize=10.sp,color=detailInk,maxLines=2)
                         Text("${metric.count}",fontSize=11.sp,fontWeight=FontWeight.SemiBold,color=titleInk)
                     } };if(row.size==1&&!largeText)Spacer(Modifier.weight(1f))
@@ -529,37 +611,26 @@ private fun ReportSegments(selected:ReportPeriodMode,onSelect:(ReportPeriodMode)
 }
 
 @Composable
-private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Boolean,shape:String,index:Int,animation:ReportProgress,modifier:Modifier,onCall:Boolean=false) {
+private fun ReportMetric(name:String,color:Color,count:Int,hours:Float,allDay:Boolean,shape:String,index:Int,animation:ReportProgress,modifier:Modifier,onCall:Boolean=false,definitionId:String?=null) {
     val dark=TurniThemeState.dark
     val style=TurniThemeState.style
-    val palette=currentTurniPalette
-    val tone=remember(color,dark,onCall,style){metricColorStyle(color,dark,onCall,style)}
-    // Keep user-chosen shift colors soft, clean and legible on light backgrounds.
-    val background=remember(tone.fill,dark,onCall,palette) {
-        if (!dark && !onCall && tone.fill.luminance() < 0.52f) {
-            lerp(tone.fill, Color(palette.surface), 0.45f)
-        } else tone.fill
-    }
-    val ink=remember(background,tone.ink,tone.fill,palette) {
-        if (background != tone.fill) readableInk(background, Color(palette.text)) else tone.ink
-    }
-    val secondaryInk=remember(background,tone.secondaryInk,ink,tone.fill) {
-        if (background != tone.fill) ink else tone.secondaryInk
-    }
+    val tone=remember(color,dark,onCall,style,definitionId){metricColorStyle(color,dark,onCall,style,definitionId)}
+    val background=tone.fill
+    val ink=tone.ink
+    val secondaryInk=tone.secondaryInk
     val face=remember(background,ink,dark) { Brush.linearGradient(
         listOf(
-            readableChartTint(background, Color.White, ink, if (dark) .07f else .14f),
+            readableChartTint(background, Color.White, ink, if (dark) .06f else .10f),
             background,
-            if (dark) readableChartTint(background, Color.Black, ink, .06f)
-            else readableChartTint(background, ink, ink, .04f)
+            if (dark) readableChartTint(background, Color.Black, ink, .05f)
+            else readableChartTint(background, ink, ink, .03f)
         ),
         start=Offset(15f,5f),end=Offset(145f,155f)) }
-    val edge=remember(background,ink,dark) { readableChartTint(background, ink, ink, if (dark) .16f else .11f) }
     val path=remember(shape){reportShapePath(shape)}
     Box(modifier.aspectRatio(1f).graphicsLayer{val entrance=reportEntranceProgress(animation.value,index);alpha=entrance;translationY=(1-entrance)*12;scaleX=.94f+.06f*entrance;scaleY=scaleX;rotationZ=(if(index%2==0)-.8f else .8f)*(1-entrance)},contentAlignment=Alignment.Center) {
         Canvas(Modifier.matchParentSize()) {
             scale(size.width/160f,size.height/160f,pivot=Offset.Zero) {
-                fun drawFace() { drawPath(path,face);drawPath(path,edge,style=Stroke(.85f)) }
+                fun drawFace() { drawPath(path,face) }
                 if(shape=="cushion")rotate(-12f,Offset(80f,80f)){drawFace()} else drawFace()
             }
         }

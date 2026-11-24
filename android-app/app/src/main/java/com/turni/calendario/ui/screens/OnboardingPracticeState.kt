@@ -119,11 +119,14 @@ internal fun evaluatePracticeCoach(
     modelIds: List<String>,
     modelNames: Map<String, String>,
     dates: List<LocalDate>,
-    rotationId: String = "practice"
+    rotationId: String = "practice",
+    canUndo: Boolean = true,
+    preferredEraseDay: Int = 2
 ): PracticeCoachEvaluation {
     val safeLesson = lesson.coerceIn(0, 5)
     val targetBrush = recommendedPracticeBrushId(modelIds.ifEmpty { listOf(brush) })
     val targetBrushName = modelNames[targetBrush]?.ifBlank { "Pomeriggio" } ?: "Pomeriggio"
+    val activeBrushName = modelNames[brush]?.ifBlank { targetBrushName } ?: targetBrushName
     fun dayLabel(idx: Int): String = dates.getOrNull(idx)?.dayOfMonth?.toString() ?: "${idx + 1}"
 
     return when (safeLesson) {
@@ -147,7 +150,7 @@ internal fun evaluatePracticeCoach(
                     subStepIndex = 1,
                     totalSubSteps = 2,
                     subStepTitle = "Passo 2 di 2 · Applica al giorno",
-                    instruction = "Ora tocca il giorno ${dayLabel(targetDay)} lampeggiante sul calendario per inserire $targetBrushName.",
+                    instruction = "Ora tocca il giorno ${dayLabel(targetDay)} lampeggiante sul calendario per inserire $activeBrushName.",
                     hintInstruction = "Tocca la casella lampeggiante del giorno ${dayLabel(targetDay)} sul calendario (o un altro giorno).",
                     target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
                 )
@@ -163,8 +166,8 @@ internal fun evaluatePracticeCoach(
                     subStepIndex = 0,
                     totalSubSteps = 2,
                     subStepTitle = "Passo 1 di 2 · Tieni premuto l’inizio",
-                    instruction = "Tieni premuto (pressione prolungata) sul giorno ${dayLabel(startDay)} che lampeggia per aprire l’intervallo.",
-                    hintInstruction = "Non fare un tocco rapido: tieni il dito premuto sul giorno ${dayLabel(startDay)} finché non compare l’indicatore.",
+                    instruction = "Tieni premuto sul giorno ${dayLabel(startDay)} che lampeggia finché non si apre l’intervallo.",
+                    hintInstruction = "Non fare un tocco rapido: tieni il dito premuto sul giorno ${dayLabel(startDay)} finché non compaiono le frecce.",
                     target = PracticeHighlightTarget(dayIndex = startDay, action = PracticeTargetAction.LONG_PRESS)
                 )
             } else {
@@ -173,36 +176,61 @@ internal fun evaluatePracticeCoach(
                     subStepIndex = 1,
                     totalSubSteps = 2,
                     subStepTitle = "Passo 2 di 2 · Chiudi l’intervallo",
-                    instruction = "Perfetto! Ora tocca il giorno ${dayLabel(endDay)} lampeggiante per colorare tutti i giorni fino a lì.",
+                    instruction = "Inizio fissato sul ${dayLabel(anchor)}! Ora tocca il giorno ${dayLabel(endDay)} per colorare tutto l’intervallo.",
                     hintInstruction = "Tocca il giorno ${dayLabel(endDay)} che lampeggia sul calendario per completare l’intervallo.",
                     target = PracticeHighlightTarget(dayIndex = endDay, action = PracticeTargetAction.TAP)
                 )
             }
         }
         2 -> {
-            // Lesson 2: Aggiungi più turni (2 sub-steps: 0 = tap mode ADD "Più turni", 1 = tap day 4 to add second shift)
-            val effectiveSub = if (mode == CalendarEditMode.ADD && tool == null && subStep >= 1) 1 else 0
-            if (effectiveSub == 0) {
-                PracticeCoachEvaluation(
-                    lessonIndex = 2,
-                    subStepIndex = 0,
-                    totalSubSteps = 2,
-                    subStepTitle = "Passo 1 di 2 · Modalità Più turni",
-                    instruction = "Tocca il pulsante «Più turni» che lampeggia al centro della barra strumenti.",
-                    hintInstruction = "Guarda al centro della barra: tocca «Più turni» per aggiungere un secondo turno nello stesso giorno.",
-                    target = PracticeHighlightTarget(mode = CalendarEditMode.ADD)
-                )
-            } else {
-                val targetDay = 4
-                PracticeCoachEvaluation(
-                    lessonIndex = 2,
-                    subStepIndex = 1,
-                    totalSubSteps = 2,
-                    subStepTitle = "Passo 2 di 2 · Doppio turno nello stesso giorno",
-                    instruction = "Ora tocca il giorno ${dayLabel(targetDay)} lampeggiante per aggiungere un secondo turno senza cancellare quello presente.",
-                    hintInstruction = "Tocca la casella del giorno ${dayLabel(targetDay)} che lampeggia sul calendario.",
-                    target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
-                )
+            // Lesson 2: Aggiungi più turni (3 sub-steps: 0 = tap mode ADD, 1 = tap day 4 for 2nd shift, 2 = tap again for 3rd shift & • •)
+            val targetDay = 4
+            when {
+                mode != CalendarEditMode.ADD || tool != null || subStep == 0 -> {
+                    PracticeCoachEvaluation(
+                        lessonIndex = 2,
+                        subStepIndex = 0,
+                        totalSubSteps = 3,
+                        subStepTitle = "Passo 1 di 3 · Modalità Più turni",
+                        instruction = "Tocca «Più turni» che lampeggia al centro della barra: aggiunge turni senza sostituire.",
+                        hintInstruction = "Guarda al centro della barra: tocca «Più turni» per aggiungere più turni nello stesso giorno.",
+                        target = PracticeHighlightTarget(mode = CalendarEditMode.ADD)
+                    )
+                }
+                anchor != null -> {
+                    val endDay = if (anchor == 6) 4 else 6
+                    PracticeCoachEvaluation(
+                        lessonIndex = 2,
+                        subStepIndex = 2,
+                        totalSubSteps = 3,
+                        subStepTitle = "Passo 3 di 3 · Chiudi l’intervallo",
+                        instruction = "Inizio sul ${dayLabel(anchor)}! Tocca il giorno ${dayLabel(endDay)} per aggiungere il turno su più giorni.",
+                        hintInstruction = "Tocca il giorno ${dayLabel(endDay)} lampeggiante per completare l’intervallo in Più turni.",
+                        target = PracticeHighlightTarget(dayIndex = endDay, action = PracticeTargetAction.TAP)
+                    )
+                }
+                subStep == 1 -> {
+                    PracticeCoachEvaluation(
+                        lessonIndex = 2,
+                        subStepIndex = 1,
+                        totalSubSteps = 3,
+                        subStepTitle = "Passo 2 di 3 · Aggiungi un 2° turno",
+                        instruction = "Tocca il giorno ${dayLabel(targetDay)} lampeggiante per aggiungere un 2° turno nello stesso giorno.",
+                        hintInstruction = "Tocca la casella del giorno ${dayLabel(targetDay)} per affiancare un secondo turno.",
+                        target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
+                    )
+                }
+                else -> {
+                    PracticeCoachEvaluation(
+                        lessonIndex = 2,
+                        subStepIndex = 2,
+                        totalSubSteps = 3,
+                        subStepTitle = "Passo 3 di 3 · Più turni e pallini • •",
+                        instruction = "Tocca di nuovo il giorno ${dayLabel(targetDay)} per un 3° turno: i turni extra diventano pallini (• •) sotto il riquadro.",
+                        hintInstruction = "Tocca ancora il giorno ${dayLabel(targetDay)} (o tieni premuto per un intervallo) per vedere i pallini • •.",
+                        target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
+                    )
+                }
             }
         }
         3 -> {
@@ -259,7 +287,7 @@ internal fun evaluatePracticeCoach(
                     )
                 }
                 else -> {
-                    val targetEnd = if (anchor < endDay) endDay else (anchor + 3).coerceAtMost(13)
+                    val targetEnd = if (anchor < endDay) endDay else 13
                     PracticeCoachEvaluation(
                         lessonIndex = 4,
                         subStepIndex = 2,
@@ -273,9 +301,21 @@ internal fun evaluatePracticeCoach(
             }
         }
         else -> {
-            // Lesson 5: Gomma e Annulla (2 sub-steps: 0 = tap eraser or day to clear, 1 = tap undo to recover)
+            // Lesson 5: Gomma e Annulla (3 sub-steps: 0 = pick eraser, 1 = tap or long-press+tap to erase, 2 = tap undo)
+            val targetDay = preferredEraseDay.coerceIn(0, (dates.size - 1).coerceAtLeast(0))
             when {
-                subStep == 0 && tool != "eraser" -> {
+                subStep >= 2 && canUndo -> {
+                    PracticeCoachEvaluation(
+                        lessonIndex = 5,
+                        subStepIndex = 2,
+                        totalSubSteps = 3,
+                        subStepTitle = "Passo 3 di 3 · Annulla l’errore",
+                        instruction = "Turno cancellato! Ora tocca Annulla (freccia indietro) che lampeggia in alto per recuperarlo.",
+                        hintInstruction = "Tocca la freccia Annulla lampeggiante in alto nella barra di modifica.",
+                        target = PracticeHighlightTarget(tool = "undo")
+                    )
+                }
+                tool != "eraser" -> {
                     PracticeCoachEvaluation(
                         lessonIndex = 5,
                         subStepIndex = 0,
@@ -286,27 +326,27 @@ internal fun evaluatePracticeCoach(
                         target = PracticeHighlightTarget(tool = "eraser")
                     )
                 }
-                subStep <= 1 -> {
-                    val targetDay = 2
+                anchor != null -> {
+                    val endDay = if (anchor <= 4) 5 else (anchor - 2).coerceAtLeast(0)
                     PracticeCoachEvaluation(
                         lessonIndex = 5,
                         subStepIndex = 1,
                         totalSubSteps = 3,
-                        subStepTitle = "Passo 2 di 3 · Cancella un turno",
-                        instruction = "Ora tocca il giorno ${dayLabel(targetDay)} lampeggiante sul calendario per svuotarlo con la gomma.",
-                        hintInstruction = "Tocca il giorno ${dayLabel(targetDay)} sul calendario per provare a cancellare il turno.",
-                        target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
+                        subStepTitle = "Passo 2 di 3 · Chiudi intervallo gomma",
+                        instruction = "Inizio gomma sul ${dayLabel(anchor)}! Tocca il giorno ${dayLabel(endDay)} lampeggiante per svuotare tutto l’intervallo.",
+                        hintInstruction = "Tocca il giorno ${dayLabel(endDay)} sul calendario per cancellare i giorni selezionati.",
+                        target = PracticeHighlightTarget(dayIndex = endDay, action = PracticeTargetAction.TAP)
                     )
                 }
                 else -> {
                     PracticeCoachEvaluation(
                         lessonIndex = 5,
-                        subStepIndex = 2,
+                        subStepIndex = 1,
                         totalSubSteps = 3,
-                        subStepTitle = "Passo 3 di 3 · Annulla l’errore",
-                        instruction = "Hai cancellato per sbaglio? Tocca il tasto Annulla (freccia indietro) che lampeggia per recuperare subito il turno!",
-                        hintInstruction = "Tocca la freccia Annulla lampeggiante in alto nella barra di modifica.",
-                        target = PracticeHighlightTarget(tool = "undo")
+                        subStepTitle = "Passo 2 di 3 · Cancella uno o più giorni",
+                        instruction = "Tocca il giorno ${dayLabel(targetDay)} per svuotarlo, oppure tieni premuto per cancellare un intervallo.",
+                        hintInstruction = "Tocca il giorno ${dayLabel(targetDay)} (o tieni premuto e poi tocca la fine) per cancellare.",
+                        target = PracticeHighlightTarget(dayIndex = targetDay, action = PracticeTargetAction.TAP)
                     )
                 }
             }

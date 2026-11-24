@@ -100,7 +100,7 @@ class OnboardingPracticeTest {
 
         assertEquals("starter-afternoon", recommendedPracticeBrushId(ids))
 
-        // Lesson 0: Step 0 highlights Pomeriggio brush, Step 1 highlights day 1 with TAP
+        // Lesson 0: Step 0 highlights Pomeriggio brush, Step 1 highlights day 1 with TAP and reflects selected brush
         val l0s0 = evaluatePracticeCoach(0, 0, CalendarEditMode.REPLACE, null, "starter-morning", null, ids, names, dates)
         assertEquals(0, l0s0.subStepIndex)
         assertEquals("starter-afternoon", l0s0.target.brushId)
@@ -110,8 +110,13 @@ class OnboardingPracticeTest {
         assertEquals(1, l0s1.subStepIndex)
         assertEquals(1, l0s1.target.dayIndex)
         assertEquals(PracticeTargetAction.TAP, l0s1.target.action)
+        assertTrue(l0s1.instruction.contains("Pomeriggio"))
 
-        // Lesson 1: Step 0 highlights day 3 with LONG_PRESS, Step 1 highlights day 6 with TAP
+        val l0s1Custom = evaluatePracticeCoach(0, 1, CalendarEditMode.REPLACE, null, "starter-night", null, ids, names, dates)
+        assertEquals(1, l0s1Custom.subStepIndex)
+        assertTrue(l0s1Custom.instruction.contains("Notte"))
+
+        // Lesson 1: Step 0 highlights day 3 with LONG_PRESS, Step 1 highlights day 6 with TAP (or day 4 if anchor == 6)
         val l1s0 = evaluatePracticeCoach(1, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals(0, l1s0.subStepIndex)
         assertEquals(3, l1s0.target.dayIndex)
@@ -122,17 +127,31 @@ class OnboardingPracticeTest {
         assertEquals(6, l1s1.target.dayIndex)
         assertEquals(PracticeTargetAction.TAP, l1s1.target.action)
 
-        // Lesson 2: Step 0 highlights mode ADD, Step 1 highlights day 4
+        val l1s1Alt = evaluatePracticeCoach(1, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", 6, ids, names, dates)
+        assertEquals(4, l1s1Alt.target.dayIndex)
+
+        // Lesson 2: 3-step multi-shift guide (ADD mode -> 2nd shift -> 3rd shift with overflow dots • •, plus interval anchor)
         val l2s0 = evaluatePracticeCoach(2, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(0, l2s0.subStepIndex)
+        assertEquals(3, l2s0.totalSubSteps)
         assertEquals(CalendarEditMode.ADD, l2s0.target.mode)
         val l2s1 = evaluatePracticeCoach(2, 1, CalendarEditMode.ADD, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(1, l2s1.subStepIndex)
         assertEquals(4, l2s1.target.dayIndex)
+        val l2s2 = evaluatePracticeCoach(2, 2, CalendarEditMode.ADD, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals(2, l2s2.subStepIndex)
+        assertEquals(4, l2s2.target.dayIndex)
+        assertTrue(l2s2.instruction.contains("• •"))
+        val l2s2Range = evaluatePracticeCoach(2, 2, CalendarEditMode.ADD, null, "starter-afternoon", 3, ids, names, dates)
+        assertEquals(6, l2s2Range.target.dayIndex)
 
-        // Lesson 3: Step 0 highlights bell tool, Step 1 highlights day 5
+        // Lesson 3: Step 0 highlights bell tool, Step 1 highlights day 5 (and falls back to step 0 if bell toggled off)
         val l3s0 = evaluatePracticeCoach(3, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals("bell", l3s0.target.tool)
         val l3s1 = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, "bell", "starter-afternoon", null, ids, names, dates)
         assertEquals(5, l3s1.target.dayIndex)
+        val l3s1Off = evaluatePracticeCoach(3, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals("bell", l3s1Off.target.tool)
 
         // Lesson 4: Step 0 highlights mode ROTATION, Step 1 highlights start day 7, Step 2 highlights end day 13
         val l4s0 = evaluatePracticeCoach(4, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
@@ -142,12 +161,35 @@ class OnboardingPracticeTest {
         val l4s2 = evaluatePracticeCoach(4, 2, CalendarEditMode.ROTATION, null, "starter-afternoon", 7, ids, names, dates)
         assertEquals(13, l4s2.target.dayIndex)
 
-        // Lesson 5: Step 0 highlights eraser, Step 1 highlights day 2, Step 2 highlights undo
+        // Lesson 5: Step 0 highlights eraser, Step 1 highlights day (or end day if long-press anchor set), Step 2 highlights undo
         val l5s0 = evaluatePracticeCoach(5, 0, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
         assertEquals("eraser", l5s0.target.tool)
-        val l5s1 = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates)
+        val l5s1Desync = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates)
+        assertEquals("eraser", l5s1Desync.target.tool)
+        val l5s1 = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates, preferredEraseDay = 2)
+        assertEquals(1, l5s1.subStepIndex)
         assertEquals(2, l5s1.target.dayIndex)
-        val l5s2 = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates)
+        val l5s1Range = evaluatePracticeCoach(5, 1, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", 2, ids, names, dates)
+        assertEquals(5, l5s1Range.target.dayIndex)
+        val l5s2 = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, "eraser", "starter-afternoon", null, ids, names, dates, canUndo = true)
         assertEquals("undo", l5s2.target.tool)
+        val l5s2NoUndo = evaluatePracticeCoach(5, 2, CalendarEditMode.REPLACE, null, "starter-afternoon", null, ids, names, dates, canUndo = false)
+        assertEquals("eraser", l5s2NoUndo.target.tool)
+    }
+
+    @Test fun multiShiftStackingAndEraserIntervalWorkCleanlyInRehearsal() {
+        val ids = listOf("starter-morning", "starter-afternoon", "starter-night", "starter-rest")
+        val initial = initialCalendarPractice(ids)
+        val secondAdded = applyCalendarPractice(initial, 4, 4, "starter-afternoon", CalendarEditMode.ADD, false, emptyList())
+        assertEquals(2, secondAdded.days[4].size)
+        val thirdAdded = applyCalendarPractice(secondAdded, 4, 4, "starter-morning", CalendarEditMode.ADD, false, emptyList())
+        assertEquals(3, thirdAdded.days[4].size)
+
+        // Long-press interval erase clears range and bells/overtime/travel inside the range without touching other days
+        val erasedRange = applyCalendarPractice(thirdAdded, 7, 9, "", CalendarEditMode.REPLACE, true, emptyList())
+        assertTrue((7..9).all { erasedRange.days[it].isEmpty() })
+        assertFalse(7 in erasedRange.overtime)
+        assertFalse(9 in erasedRange.bells)
+        assertEquals(thirdAdded.days[4], erasedRange.days[4])
     }
 }

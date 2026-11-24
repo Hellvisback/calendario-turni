@@ -73,7 +73,9 @@ class TurniExpressiveColorTest {
             for (base in listOf(weekday, weekend)) {
                 val active = shiftColorStyle(Color(source), false, base)
                 val preview = shiftColorStyle(Color(source), false, base, subdued=true)
-                assertTrue("preview retains visible color", distanceSquared(preview.codeFill, base) > distanceSquared(active.codeFill, base) * .25)
+                val previewRatio = distanceSquared(preview.codeFill, base) / distanceSquared(active.codeFill, base)
+                assertTrue("preview retains visible color ($previewRatio)", previewRatio > .05)
+                assertTrue("preview recedes unmistakably in light mode ($previewRatio)", previewRatio < .15)
                 assertContrast("preview ink", preview.codeInk, preview.codeFill)
             }
         }

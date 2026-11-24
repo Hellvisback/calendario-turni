@@ -175,7 +175,10 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
         .map { it.date }
         .toSet()
     val alertDates = restDates + consecutiveAlertDates
-    val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs,previewData,showExShifts){derivedStateOf{days.map{day->
+    val data by remember(days,editing,mode,brush,rotation,anchor,rangeEnd,profile,defs,previewData,showExShifts){derivedStateOf{
+        val activeRepConfig=if(previewData==null&&profile!=null)ShiftRepository.reperibilitaByProfile[profile] else null
+        val activeProfileExtras=if(previewData==null&&profile!=null)ShiftRepository.dayExtraInfoByProfile[profile] else null
+        days.map{day->
         val actual=if(previewData!=null)previewData.assignments.filter{it.date==day.date}
             else ShiftRepository.getShiftsForDate(day.date).filter{defs[it.shiftDefId]?.workProfileId==profile}
         val rotating=editing&&anchor!=null&&mode==CalendarEditMode.ROTATION&&!day.date.isBefore(anchor)&&rotation?.daySequence?.isNotEmpty()==true
@@ -192,8 +195,11 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             )
         val original=actual.firstOrNull()?.takeIf{it.isModifiedFromRotation&&showExShifts&&previewId==null}
             ?.originalShiftDefId?.let{defs[it]?.shortCode}
-        val extra=if(previewData!=null)previewData.extras[day.date] ?: DayExtraInfo(day.date) else ShiftRepository.getDayExtraInfo(day.date)
-        val onCall=if(previewData!=null)day.date in previewData.onCallDates else ShiftRepository.isOnCall(day.date)
+        val extra=if(previewData!=null)previewData.extras[day.date] ?: DayExtraInfo(day.date) else activeProfileExtras?.get(day.date) ?: ShiftRepository.getDayExtraInfo(day.date)
+        val onCall=if(previewData!=null)day.date in previewData.onCallDates else {
+            @Suppress("UNUSED_VARIABLE") val repSnapshot=activeRepConfig
+            ShiftRepository.isOnCall(day.date)
+        }
         val holidayName=if(previewData!=null)previewData.holidays[day.date] else ShiftRepository.isHoliday(day.date)?.name
         PaintedDay(day,shifts,previewId!=null,onCall,original,holidayName,calendarHasNotes(extra.notes,actual),extra.tagIds.isNotEmpty())
     }}}
@@ -292,13 +298,15 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
         Canvas(Modifier.fillMaxSize()) {
             val cellWidth=size.width/7
             val gridHeight=(size.height-editingBottomInset.toPx()*editReveal).coerceAtLeast(1f)
-            val cellHeight=gridHeight/(days.size/7)
+            val totalRows=(days.size/7).coerceAtLeast(1)
+            val cellHeight=gridHeight/totalRows
             val radius=20.dp.toPx()
             viewport.reset()
             viewport.apply{moveTo(0f,0f);lineTo(size.width,0f);lineTo(size.width,gridHeight-radius);quadraticBezierTo(size.width,gridHeight,size.width-radius,gridHeight);lineTo(radius,gridHeight);quadraticBezierTo(0f,gridHeight,0f,gridHeight-radius);close()}
             drawContext.canvas.save();drawContext.canvas.clipPath(viewport);drawRect(surface)
             val px=density.density;val fontScale=density.fontScale
             fun dp(value:Float)=value*px
+            fun rowBottomInset(rowIndex:Int):Float=dp(if(rowIndex==totalRows-1&&editingBottomInset>0.dp) 3f+15f*(1f-editReveal) else 3f)
             fun label(value:String,x:Float,y:Float,font:Float,color:Color,bold:Boolean=false,alpha:Float=1f,maxWidth:Float=Float.MAX_VALUE,maxHeight:Float=Float.MAX_VALUE,optical:Boolean=false){
                 paint.color=color.copy(alpha=color.alpha*alpha).toArgb();paint.textSize=dp(font)*fontScale
                 paint.typeface=if(bold)Typeface.DEFAULT_BOLD else mediumTypeface
@@ -343,7 +351,13 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             }
             fun baseCellBackground(item:PaintedDay):Color {
                 val date=item.info.date
-                val base=if(date.dayOfWeek.value>=6)weekend else surface
+                val weekendCol=date.dayOfWeek.value>=6
+                val base=when {
+                    !item.info.isCurrentMonth&&!dark&&weekendCol->lerp(weekend,surface,.35f)
+                    !item.info.isCurrentMonth&&!dark->lerp(surface,Color(palette.background),.65f)
+                    weekendCol->weekend
+                    else->surface
+                }
                 return when {
                     date==todayDate->todayFill
                     date==selection||date==anchor->lerp(base,brand,.1f)
@@ -379,7 +393,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
             }
             fun paintDestination(item:PaintedDay,index:Int,mark:CalendarCellPaint):Rect {
                 val x=index%7*cellWidth;val y=index/7*cellHeight
-                val bottom=y+cellHeight-dp(3f)
+                val bottom=y+cellHeight-rowBottomInset(index/7)
                 var cursor=y+dp(27f-2f*editReveal)
                 val layout=calendarShiftLayout((bottom-cursor)/px,item.shifts.size,fontScale)
                 val footer = footerHeight(item, layout, (bottom-cursor)/px)
@@ -437,7 +451,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 }
             }
             data.forEachIndexed{index,item->
-                val x=index%7*cellWidth;val y=index/7*cellHeight;val center=x+cellWidth/2
+                val row=index/7;val isBottomRow=row==totalRows-1
+                val x=index%7*cellWidth;val y=row*cellHeight;val center=x+cellWidth/2
                 val cellAlert=item.info.date in alertDates
                 val hasAnnotation=item.hasNotes||item.hasTags
                 val date=item.info.date;val today=date==todayDate;val chosen=date==selection||date==anchor
@@ -450,7 +465,7 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val eraseCueInk=readableInk(eraseCueFill,Color(palette.danger.ink))
                 val anchorInk=if(erasingAnchor)eraseCueInk else brandInk
                 val inset=dp(1.5f)*editReveal
-                val contentBottom=y+cellHeight-dp(3f)
+                val contentBottom=y+cellHeight-rowBottomInset(row)
                 val paintColor=cellPaint(item)
                 val cellFill=cellBackground(item)
                 val annotationBackdrop=cellFill
@@ -484,7 +499,16 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     val holidayInk=Color(holidayDayColor(dark))
                     drawRoundRect(readablePigment(dateBackdrop,holidayInk),dateBox,dateSize,corner,style=Stroke(dp(1.1f)))
                 }
-                val dateInk=if(erasingAnchor)lerp(readableInk(cellFill,text),eraseCueInk,anchorReveal.value) else if(today)onBrand else if(periodAnchor)lerp(text,onBrand,anchorReveal.value) else if(paintColor!=null)catalogInk(cellFill) else if(item.onCall||previousBells.contains(date))lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f)else if(item.info.isCurrentMonth)text else muted
+                val outOfMonthAlpha=if(!item.info.isCurrentMonth)if(dark).72f else .58f else 1f
+                val dateInk=when {
+                    erasingAnchor -> lerp(readableInk(cellFill,text),eraseCueInk,anchorReveal.value)
+                    today -> onBrand
+                    periodAnchor -> lerp(text,onBrand,anchorReveal.value)
+                    paintColor!=null -> catalogInk(cellFill)
+                    item.onCall||previousBells.contains(date) -> lerp(text,amber,if(previousBells.contains(date)!=item.onCall){if(item.onCall)bellProgress.value else 1-bellProgress.value}else 1f).let{if(item.info.isCurrentMonth||dark)it else it.copy(alpha=.70f)}
+                    item.info.isCurrentMonth -> text
+                    else -> muted.copy(alpha=outOfMonthAlpha)
+                }
                 label(date.dayOfMonth.toString(),dateCenter,y+dp(if(periodAnchor)14f else 13f),if(periodAnchor)11.5f else 12.5f,dateInk,true,maxWidth=if(periodAnchor)14f else 18f,maxHeight=if(periodAnchor)14f else 18f,optical=true)
                 if(periodAnchor){
                     val cue=anchorReveal.value
@@ -529,8 +553,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                 val noteChanged=previousNotes.contains(date)!=hasAnnotation
                 val noteAlpha=if(noteChanged){if(hasAnnotation)noteProgress.value else 1f-noteProgress.value}else if(hasAnnotation)1f else 0f
                 if(noteAlpha>0f){
-                    val compactNote=periodAnchor||cellAlert
-                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)20.5f else if(cellAlert)19.5f else 13f)
+                    val compactNote=periodAnchor||(cellAlert&&isBottomRow)
+                    val nx=center-dp(if(periodAnchor)16f else 18f);val ny=y+dp(if(periodAnchor)20.5f else if(compactNote)19.5f else 13f)
                     val noteSize=dp(if(periodAnchor)7.5f else if(compactNote)8f else 10f)
                     val scale=noteSize/24f
                     drawContext.canvas.save();drawContext.canvas.translate(nx-noteSize/2,ny-noteSize/2);drawContext.canvas.scale(scale,scale)
@@ -702,8 +726,8 @@ internal fun NativeMonthGrid(month:YearMonth,selection:LocalDate?,editing:Boolea
                     }
                 }
                 if(cellAlert){
-                    // Top-left date lane keeps the warning visible above the floating bottom dock.
-                    val warningCenter=Offset(x+dp(9f),y+dp(8.5f))
+                    // Classic bottom-left corner on normal rows; lift to top-left date lane on bottom row so the floating dock never hides it.
+                    val warningCenter=if(isBottomRow) Offset(x+dp(9f),y+dp(8.5f)) else Offset(x+dp(9f),y+cellHeight-dp(9.5f))
                     val warningPath=Path().apply {
                         moveTo(warningCenter.x,warningCenter.y-dp(4f))
                         lineTo(warningCenter.x+dp(4.5f),warningCenter.y+dp(3.5f))

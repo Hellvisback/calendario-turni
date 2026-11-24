@@ -108,4 +108,102 @@ class WorkProfileIsolationTest {
         val sorted = listOf(allDay, late, early).sortedChronologically()
         assertEquals(listOf("early", "late", "rest"), sorted.map { it.id })
     }
+
+    @Test
+    fun switchingProfileAllowsReadOnlySnapshotReadsWithoutMutationCrash() {
+        val date = LocalDate.of(2026, 11, 15)
+        val extraProfile = WorkProfile("terzo", "Terzo Lavoro", isDefault = false)
+        ShiftRepository.addWorkProfile(extraProfile)
+        ShiftRepository.saveShiftDefinition(
+            ShiftDefinition("p3", "Pomeriggio", "POM", "14:00", "22:00", workProfileId = extraProfile.id)
+        )
+        ShiftRepository.setActiveWorkProfile(extraProfile.id)
+        ShiftRepository.replaceShift(date, "p3")
+
+        // Switch to another profile whose extras map has never been written to
+        val fourthProfile = WorkProfile("quarto", "Quarto Lavoro", isDefault = false)
+        ShiftRepository.addWorkProfile(fourthProfile)
+        ShiftRepository.setActiveWorkProfile(fourthProfile.id)
+
+        val snapshot = androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
+        try {
+            val stats = snapshot.enter {
+                ShiftRepository.isRotationCleared(date)
+                ShiftRepository.hasTrasfertaForDate(date)
+                ShiftRepository.getDayExtraInfo(date)
+                ShiftRepository.getComprehensiveReportStats(date.withDayOfMonth(1), date.withDayOfMonth(28))
+            }
+            val captured = snapshot.enter { DatabaseSnapshot.capture() }
+            assertEquals(1, stats.workedDays)
+            assertEquals(fourthProfile.id, captured.activeWorkProfileId)
+        } finally {
+            snapshot.dispose()
+        }
+
+        // Also verify read-only snapshot reads when dayExtraInfoByProfile has no entry for activeWorkProfileId
+        val fifthProfile = WorkProfile("quinto", "Quinto Lavoro", isDefault = false)
+        DatabaseRestore.apply(
+            DatabaseSnapshot.capture().copy(
+                profiles = ShiftRepository.workProfiles.toList() + fifthProfile,
+                activeWorkProfileId = fifthProfile.id,
+                extras = emptyMap(),
+                extrasByProfile = emptyMap()
+            )
+        )
+        val restoredSnapshot = androidx.compose.runtime.snapshots.Snapshot.takeSnapshot()
+        try {
+            val stats = restoredSnapshot.enter {
+                ShiftRepository.isRotationCleared(date)
+                ShiftRepository.hasTrasfertaForDate(date)
+                ShiftRepository.getDayExtraInfo(date)
+                ShiftRepository.getComprehensiveReportStats(date.withDayOfMonth(1), date.withDayOfMonth(28))
+            }
+            val captured = restoredSnapshot.enter { DatabaseSnapshot.capture() }
+            assertEquals(1, stats.workedDays)
+            assertEquals(fifthProfile.id, captured.activeWorkProfileId)
+        } finally {
+            restoredSnapshot.dispose()
+        }
+    }
+
+    @Test
+    fun enablingTurnoSpecificoAfterClearingDayAppliesImmediately() {
+        val date = LocalDate.of(2026, 11, 18)
+        ShiftRepository.setActiveWorkProfile("principale")
+        ShiftRepository.saveShiftDefinition(
+            ShiftDefinition("pomeriggio", "Pomeriggio", "POM", "14:00", "22:00", workProfileId = "principale")
+        )
+        ShiftRepository.replaceShift(date, "pomeriggio")
+        ShiftRepository.clearWorkDayShifts(date, clearOnCall = true)
+        assertFalse(ShiftRepository.isOnCall(date))
+
+        ShiftRepository.replaceShift(date, "pomeriggio")
+        ShiftRepository.updateReperibilitaConfig {
+            it.copy(
+                mode = ReperibilitaMode.TURNO_SPECIFICO,
+                shiftSpecificIds = listOf("pomeriggio")
+            )
+        }
+        assertTrue(ShiftRepository.isOnCall(date))
+    }
+
+    @Test
+    fun updateReperibilitaConfigClearsStaleManualOffOnMatchingAssignedShifts() {
+        val date = LocalDate.of(2026, 11, 19)
+        ShiftRepository.setActiveWorkProfile("principale")
+        ShiftRepository.saveShiftDefinition(
+            ShiftDefinition("pomeriggio", "Pomeriggio", "POM", "14:00", "22:00", workProfileId = "principale")
+        )
+        ShiftRepository.replaceShift(date, "pomeriggio")
+        ShiftRepository.setDayOnCallManual(date, false)
+        assertFalse(ShiftRepository.isOnCall(date))
+
+        ShiftRepository.updateReperibilitaConfig {
+            it.copy(
+                mode = ReperibilitaMode.TURNO_SPECIFICO,
+                shiftSpecificIds = listOf("pomeriggio")
+            )
+        }
+        assertTrue(ShiftRepository.isOnCall(date))
+    }
 }

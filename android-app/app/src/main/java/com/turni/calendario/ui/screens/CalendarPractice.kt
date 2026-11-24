@@ -96,7 +96,12 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
     val dates = remember(monday) { calendarPracticeDates(LocalDate.now(), monday) }
     val firstDate = dates.first()
 
-    val coach = remember(lesson, subStep, mode, tool, brush, anchor, modelIds, modelNames, dates, cycle.id) {
+    val preferredEraseDay = remember(state) {
+        if (state.days.getOrNull(2)?.isNotEmpty() == true || 2 in state.bells) 2
+        else state.days.indexOfFirst { it.isNotEmpty() }.takeIf { it >= 0 } ?: 2
+    }
+
+    val coach = remember(lesson, subStep, mode, tool, brush, anchor, modelIds, modelNames, dates, cycle.id, history.size, preferredEraseDay) {
         evaluatePracticeCoach(
             lesson = lesson,
             subStep = subStep,
@@ -107,7 +112,9 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
             modelIds = modelIds,
             modelNames = modelNames,
             dates = dates,
-            rotationId = cycle.id
+            rotationId = cycle.id,
+            canUndo = history.isNotEmpty(),
+            preferredEraseDay = preferredEraseDay
         )
     }
 
@@ -264,15 +271,15 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         if (index !in state.days.indices || !interactive || !editing || isAdvancing) return
         runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
 
-        // If user taps quickly during Lesson 1 Step 1 (which requires a long-press), guide them gently!
+        // Lesson 1 Step 0 requires a long-press; guide gently on single tap
         if (showGuide && lesson == 1 && anchor == null && tool == null && mode == CalendarEditMode.REPLACE) {
             isSuccessBanner = false
             idleHintActive = true
-            message = "Quasi! Qui serve una pressione prolungata: tieni il dito premuto sul giorno ${dates[coach.target.dayIndex ?: index].dayOfMonth} finché non si attiva l’intervallo."
+            message = "Quasi! Tieni il dito premuto sul giorno ${dates[coach.target.dayIndex ?: index].dayOfMonth} finché non si apre l’intervallo."
             return
         }
 
-        // If user taps a day before picking the required toolbar button in Lessons 2, 3, 4, or 5 Step 0, nudge them!
+        // Guard against tapping a day before picking the required toolbar button in Lessons 2..5
         if (showGuide && lesson == 2 && mode != CalendarEditMode.ADD) {
             isSuccessBanner = false
             idleHintActive = true
@@ -282,7 +289,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
         if (showGuide && lesson == 3 && tool != "bell") {
             isSuccessBanner = false
             idleHintActive = true
-            message = "Prima tocca l’icona della campanella (Reperibilità) che lampeggia in alto nella barra."
+            message = "Prima tocca la campanella (Reperibilità) che lampeggia in alto nella barra."
             return
         }
         if (showGuide && lesson == 4 && mode != CalendarEditMode.ROTATION) {
@@ -291,10 +298,16 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
             message = "Prima tocca «Rotazione» che lampeggia a destra nella barra modalità."
             return
         }
-        if (showGuide && lesson == 5 && subStep == 0 && tool != "eraser") {
-            isSuccessBanner = false
-            idleHintActive = true
-            message = "Prima tocca l’icona della Gomma che lampeggia in alto nella barra."
+        if (showGuide && lesson == 5 && tool != "eraser") {
+            if (subStep >= 2 && history.isNotEmpty()) {
+                isSuccessBanner = false
+                idleHintActive = true
+                message = "Ora tocca il tasto Annulla (freccia indietro) che lampeggia in alto per recuperare!"
+            } else {
+                isSuccessBanner = false
+                idleHintActive = true
+                message = "Prima tocca l’icona della Gomma che lampeggia in alto nella barra."
+            }
             return
         }
 
@@ -315,7 +328,21 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
             anchor = index
             subStep = 2
             isSuccessBanner = true
-            message = "Ottimo! Inizio rotazione fissato al giorno ${dates[index].dayOfMonth}: ora tocca il giorno finale lampeggiante."
+            message = "Ottimo! Inizio rotazione sul giorno ${dates[index].dayOfMonth}: ora tocca il giorno finale lampeggiante."
+            return
+        }
+
+        if (lesson == 1 && anchor != null && index == anchor) {
+            isSuccessBanner = false
+            idleHintActive = true
+            message = "Hai toccato lo stesso giorno di partenza! Tocca un giorno diverso (es. ${dates[coach.target.dayIndex ?: 6].dayOfMonth}) per chiudere l’intervallo."
+            return
+        }
+
+        if (lesson == 2 && anchor != null && index == anchor) {
+            isSuccessBanner = false
+            idleHintActive = true
+            message = "Tocca un giorno diverso dal ${dates[anchor!!].dayOfMonth} per aggiungere i turni a tutto l’intervallo."
             return
         }
 
@@ -328,7 +355,14 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
 
         val first = anchor ?: index
         val erased = tool == "eraser"
-        change(applyCalendarPractice(state, first, index, brush, mode, erased, cycle.daySequence))
+        val nextState = applyCalendarPractice(state, first, index, brush, mode, erased, cycle.daySequence)
+        if (lesson == 5 && erased && anchor == null && nextState == state) {
+            isSuccessBanner = false
+            idleHintActive = true
+            message = "Il giorno ${dates[index].dayOfMonth} è già vuoto! Tocca un giorno con un turno (es. ${dates[preferredEraseDay].dayOfMonth})."
+            return
+        }
+        change(nextState)
         paintSequence++
         paintRequest = if (!erased && mode == CalendarEditMode.ROTATION) {
             val definitionId = cycle.daySequence[(index - first) % cycle.daySequence.size]
@@ -349,19 +383,25 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                     idleHintActive = true
                     message = "Hai cambiato il giorno! Ora prova a toccare prima $targetName che lampeggia nella barra e poi un giorno."
                 } else {
-                    celebrateAndAdvance(0, "Benissimo! Hai sostituito il turno sul giorno ${dates[index].dayOfMonth}. Ora proviamo su più giorni!")
+                    celebrateAndAdvance(0, "Benissimo! Hai inserito ${defs[brush]?.name ?: "il turno"} sul giorno ${dates[index].dayOfMonth}. Ora proviamo su più giorni!")
                 }
             }
             lesson == 1 && !erased && count > 1 -> {
                 celebrateAndAdvance(1, "Grande! Hai aggiornato $count giorni in un colpo solo. Passiamo a Più turni!")
             }
-            lesson == 1 && !erased && count == 1 -> {
-                isSuccessBanner = false
-                idleHintActive = true
-                message = "Hai toccato lo stesso giorno di partenza: tieni premuto sul primo giorno e poi tocca un giorno diverso per creare l’intervallo!"
-            }
             lesson == 2 && !erased && mode == CalendarEditMode.ADD -> {
-                celebrateAndAdvance(2, "Perfetto! Hai aggiunto un secondo turno sul giorno ${dates[index].dayOfMonth}. Ora proviamo la Reperibilità!")
+                if (subStep <= 1 && count == 1) {
+                    subStep = 2
+                    isSuccessBanner = true
+                    message = "2° turno aggiunto sul ${dates[index].dayOfMonth}! Vedi il pallino sotto? Tocca ancora per un 3° turno!"
+                } else {
+                    val msg = if (count > 1) {
+                        "Perfetto! Turno aggiunto su $count giorni insieme. I pallini (• •) indicano i turni extra. Passiamo alla Reperibilità!"
+                    } else {
+                        "Ecco i pallini (• •)! I turni extra restano leggibili senza comprimere i riquadri (nel mese intero ne vedi 2 impilati). Passiamo alla Reperibilità!"
+                    }
+                    celebrateAndAdvance(2, msg)
+                }
             }
             lesson == 4 && !erased && mode == CalendarEditMode.ROTATION -> {
                 celebrateAndAdvance(4, "Fantastico! Rotazione applicata su $count giorni. Ultimo passo: Gomma e Annulla!")
@@ -369,7 +409,11 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
             lesson == 5 && erased -> {
                 subStep = 2
                 isSuccessBanner = true
-                message = "Giorno ${dates[index].dayOfMonth} svuotato con la gomma! Ora tocca il tasto Annulla che lampeggia per recuperarlo."
+                message = if (count > 1) {
+                    "$count giorni svuotati con la gomma! Ora tocca il tasto Annulla che lampeggia per recuperarli."
+                } else {
+                    "Giorno ${dates[index].dayOfMonth} svuotato con la gomma! Ora tocca Annulla che lampeggia per recuperarlo."
+                }
             }
             else -> {
                 val achieved = completedLessonForAction(mode, tool, count)
@@ -571,18 +615,65 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                             if (isAdvancing) return@NativeMonthGrid
                             val idx = dates.indexOf(date)
                             if (idx >= 0) {
+                                if (showGuide) {
+                                    when {
+                                        lesson == 0 && subStep == 0 -> {
+                                            isSuccessBanner = false
+                                            idleHintActive = true
+                                            message = "Prima tocca il turno lampeggiante nella barra in basso."
+                                            return@NativeMonthGrid
+                                        }
+                                        lesson == 2 && mode != CalendarEditMode.ADD -> {
+                                            isSuccessBanner = false
+                                            idleHintActive = true
+                                            message = "Prima tocca «Più turni» che lampeggia nella barra modalità."
+                                            return@NativeMonthGrid
+                                        }
+                                        lesson == 3 -> {
+                                            isSuccessBanner = false
+                                            idleHintActive = true
+                                            message = if (tool == "bell") "Tocca il giorno evidenziato per inserire la reperibilità." else "Prima tocca la campanella (Reperibilità) in alto nella barra."
+                                            return@NativeMonthGrid
+                                        }
+                                        lesson == 4 && mode != CalendarEditMode.ROTATION -> {
+                                            isSuccessBanner = false
+                                            idleHintActive = true
+                                            message = "Prima tocca «Rotazione» che lampeggia nella barra modalità."
+                                            return@NativeMonthGrid
+                                        }
+                                        lesson == 5 && tool != "eraser" -> {
+                                            isSuccessBanner = false
+                                            idleHintActive = true
+                                            message = if (subStep >= 2 && history.isNotEmpty()) "Ora tocca Annulla in alto nella barra per recuperare il turno!" else "Prima tocca l’icona della Gomma in alto nella barra."
+                                            return@NativeMonthGrid
+                                        }
+                                    }
+                                }
                                 runCatching { haptic.performHapticFeedback(HapticFeedbackType.LongPress) }
                                 anchor = idx
                                 eraseChoice = null
-                                if (lesson == 1) {
-                                    subStep = 1
-                                    isSuccessBanner = true
-                                    message = "Perfetto! Inizio intervallo fissato sul giorno ${date.dayOfMonth}: ora tocca l’ultimo giorno che lampeggia."
-                                } else {
-                                    lesson = if (tool == "eraser") 5 else if (mode == CalendarEditMode.ADD) 2 else 1
-                                    subStep = 1
-                                    isSuccessBanner = true
-                                    message = "Inizio scelto sul giorno ${date.dayOfMonth}: ora tocca l’ultimo giorno."
+                                when {
+                                    tool == "eraser" -> {
+                                        lesson = 5
+                                        subStep = 1
+                                        isSuccessBanner = true
+                                        val endIdx = if (idx <= 4) 5 else (idx - 2).coerceAtLeast(0)
+                                        message = "Inizio gomma fissato sul ${date.dayOfMonth}! Ora tocca il giorno ${dates[endIdx].dayOfMonth} per svuotare l’intervallo."
+                                    }
+                                    mode == CalendarEditMode.ADD -> {
+                                        lesson = 2
+                                        subStep = 2
+                                        isSuccessBanner = true
+                                        val endIdx = if (idx == 6) 4 else 6
+                                        message = "Inizio intervallo in Più turni sul ${date.dayOfMonth}: ora tocca il giorno ${dates[endIdx].dayOfMonth}."
+                                    }
+                                    else -> {
+                                        lesson = 1
+                                        subStep = 1
+                                        isSuccessBanner = true
+                                        val endIdx = if (idx == 6) 4 else 6
+                                        message = "Perfetto! Inizio fissato sul giorno ${date.dayOfMonth}: ora tocca il giorno ${dates[endIdx].dayOfMonth} che lampeggia."
+                                    }
                                 }
                             }
                         },
@@ -622,15 +713,20 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                             lesson = 3
                             subStep = 1
                             isSuccessBanner = true
-                            message = "Campanella attiva! Ora tocca il giorno ${dates[coach.target.dayIndex ?: 5].dayOfMonth} che lampeggia sul calendario."
+                            message = "Campanella attiva! Ora tocca il giorno ${dates[5].dayOfMonth} che lampeggia sul calendario."
                         }
                         nextTool == "eraser" -> {
                             lesson = 5
-                            subStep = 1
+                            subStep = if (subStep >= 2 && history.isNotEmpty()) 2 else 1
                             isSuccessBanner = true
-                            message = "Gomma selezionata! Ora tocca il giorno ${dates[2].dayOfMonth} lampeggiante sul calendario per cancellarlo."
+                            message = if (subStep >= 2) {
+                                "Gomma attiva! Oppure tocca Annulla in alto per recuperare la modifica precedente."
+                            } else {
+                                "Gomma attiva! Tocca il giorno ${dates[preferredEraseDay].dayOfMonth} per svuotarlo (o tieni premuto per un intervallo)."
+                            }
                         }
                         else -> {
+                            if (lesson == 3 || (lesson == 5 && subStep <= 1)) subStep = 0
                             isSuccessBanner = false
                             message = if (clickedTool == "bell") "Reperibilità chiusa." else "Gomma chiusa."
                         }
@@ -648,7 +744,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                             lesson = 2
                             subStep = 1
                             isSuccessBanner = true
-                            message = "Modalità «Più turni» attiva! Ora tocca il giorno ${dates[4].dayOfMonth} lampeggiante per aggiungere un secondo turno."
+                            message = "Modalità «Più turni» attiva! Tocca il giorno ${dates[4].dayOfMonth} per aggiungere un 2° turno senza sostituire."
                         }
                         CalendarEditMode.ROTATION -> {
                             lesson = 4
@@ -658,7 +754,7 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                         }
                         else -> {
                             if (lesson != 1) lesson = 0
-                            subStep = if (lesson == 0 && brush != modelIds.first()) 1 else 0
+                            subStep = if (lesson == 0 && subStep >= 1 && brush != modelIds.first()) 1 else 0
                             isSuccessBanner = false
                             message = ""
                         }
@@ -669,15 +765,24 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                     runCatching { haptic.performHapticFeedback(HapticFeedbackType.TextHandleMove) }
                     brush = pickedBrush
                     tool = null
-                    anchor = null
+                    if (lesson != 1 && !(lesson == 2 && mode == CalendarEditMode.ADD)) {
+                        anchor = null
+                    }
                     val pickedName = defs[pickedBrush]?.name.orEmpty()
-                    if (lesson == 0) {
-                        subStep = 1
-                        isSuccessBanner = true
-                        message = "Ottimo, hai scelto $pickedName! Ora tocca il giorno ${dates[1].dayOfMonth} che lampeggia sul calendario."
-                    } else {
-                        isSuccessBanner = false
-                        message = "$pickedName selezionato: tocca il giorno evidenziato sul calendario."
+                    when {
+                        lesson == 0 -> {
+                            subStep = 1
+                            isSuccessBanner = true
+                            message = "Ottimo, hai scelto $pickedName! Ora tocca il giorno ${dates[1].dayOfMonth} che lampeggia sul calendario."
+                        }
+                        lesson == 2 && mode == CalendarEditMode.ADD -> {
+                            isSuccessBanner = true
+                            message = "$pickedName pronto: tocca il giorno ${dates[4].dayOfMonth} per aggiungerlo senza sostituire."
+                        }
+                        else -> {
+                            isSuccessBanner = false
+                            message = "$pickedName selezionato: tocca il giorno evidenziato sul calendario."
+                        }
                     }
                 },
                 onRotation = {
@@ -696,8 +801,11 @@ internal fun GesturePractice(showGuide: Boolean = true, interactive: Boolean = s
                         eraseChoice = null
                         paintRequest = null
                         editSession++
-                        if (lesson == 5) {
-                            celebrateAndAdvance(5, "Perfetto! Hai recuperato subito il turno con Annulla. Tutte le lezioni completate!")
+                        if (lesson == 5 && subStep >= 2) {
+                            celebrateAndAdvance(5, "Perfetto! Hai recuperato subito con Annulla. Tutte le lezioni completate!")
+                        } else if (lesson == 5) {
+                            isSuccessBanner = true
+                            message = "Modifica annullata. Ora prova la gomma: tocca Gomma e poi un giorno."
                         } else {
                             completedLessons = completedLessons + 5
                             isSuccessBanner = true

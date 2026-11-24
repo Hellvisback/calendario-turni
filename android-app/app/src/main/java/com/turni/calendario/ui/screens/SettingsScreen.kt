@@ -55,6 +55,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -144,6 +145,7 @@ fun SettingsScreen(
     var screen by remember { mutableStateOf(SettingsSubScreen.NONE) }
     var deleteStep by remember { mutableIntStateOf(0) }
     var message by remember { mutableStateOf<String?>(null) }
+    var messageType by remember { mutableStateOf(PopupType.SUCCESS) }
 
     LaunchedEffect(screen) {
         onSubScreenActiveChanged(screen != SettingsSubScreen.NONE)
@@ -272,48 +274,111 @@ fun SettingsScreen(
                             modifier = Modifier.padding(bottom = 8.dp),
                         )
                         PreferenceGroup {
-                            val onCallMode = ShiftRepository.reperibilitaConfig.mode
+                            val activeProfileId = ShiftRepository.activeWorkProfileId
+                            val onCallMode = ShiftRepository.reperibilitaConfigFor(activeProfileId).mode
+                            val onCallEnabled = onCallMode != ReperibilitaMode.MANUALE
+                            var lastOnCallAutoModeName by rememberSaveable(activeProfileId) {
+                                mutableStateOf(
+                                    if (onCallEnabled) onCallMode.name
+                                    else ReperibilitaMode.TURNO_SPECIFICO.name
+                                )
+                            }
+                            LaunchedEffect(activeProfileId, onCallMode) {
+                                if (onCallMode != ReperibilitaMode.MANUALE) {
+                                    lastOnCallAutoModeName = onCallMode.name
+                                }
+                            }
+                            val targetAutoMode = remember(lastOnCallAutoModeName) {
+                                runCatching { ReperibilitaMode.valueOf(lastOnCallAutoModeName) }
+                                    .getOrDefault(ReperibilitaMode.TURNO_SPECIFICO)
+                                    .takeIf { it != ReperibilitaMode.MANUALE }
+                                    ?: ReperibilitaMode.TURNO_SPECIFICO
+                            }
                             val onCallStatus = when (onCallMode) {
                                 ReperibilitaMode.TURNO_SPECIFICO -> "Per turno"
                                 ReperibilitaMode.ALTERNATA_STAGIONALE -> "Stagionale"
                                 ReperibilitaMode.MANUALE -> "Disattiva"
                             }
-                            PreferenceRow(
+                            val onCallBellMotion = remember { Animatable(0f) }
+                            var onCallBellJob by remember { mutableStateOf<Job?>(null) }
+                            TogglePreferenceRow(
                                 pastel = ExpressivePastel.AMBER,
                                 icon = "bell",
                                 title = "Reperibilità",
-                                trailingText = onCallStatus,
-                                trailingPill = onCallMode != ReperibilitaMode.MANUALE,
-                            ) {
-                                screen = SettingsSubScreen.REPERIBILITA
-                            }
+                                checked = onCallEnabled,
+                                statusText = onCallStatus,
+                                statusActive = onCallEnabled,
+                                switchContentDescription = "Reperibilità automatica",
+                                openContentDescription = "Apri reperibilità",
+                                externalProgress = { onCallBellMotion.value },
+                                onToggle = { enabled ->
+                                    val targetProfileId = ShiftRepository.activeWorkProfileId
+                                    onCallBellJob?.cancel()
+                                    onCallBellJob = scope.launch {
+                                        onCallBellMotion.snapTo(0f)
+                                        onCallBellMotion.animateTo(1f, tween(580, easing = FastOutSlowInEasing))
+                                        onCallBellMotion.snapTo(0f)
+                                    }
+                                    ShiftRepository.updateReperibilitaConfig(targetProfileId) { current ->
+                                        current.copy(
+                                            mode = if (enabled) targetAutoMode else ReperibilitaMode.MANUALE,
+                                        )
+                                    }
+                                },
+                                onOpen = {
+                                    screen = SettingsSubScreen.REPERIBILITA
+                                },
+                            )
                             SettingsDivider(Modifier.padding(horizontal = 4.dp))
-                            val alarms = ShiftRepository.smartAlarmsConfig
-                            SmartAlarmsPreferenceRow(
+                            val alarms = ShiftRepository.smartAlarmsConfigFor(activeProfileId)
+                            val activeAlarmRules = alarms.rules.count { it.isEnabled }
+                            val alarmPermissionsReady = runCatching {
+                                ShiftAlarmScheduler.canScheduleExactAlarms(context) &&
+                                    ShiftAlarmScheduler.hasNotificationPermission(context)
+                            }.getOrDefault(false)
+                            val alarmsStatus = when {
+                                !alarms.isGlobalEnabled -> "Disattive"
+                                !alarmPermissionsReady -> "Permessi richiesti"
+                                activeAlarmRules == 1 -> "1 regola attiva"
+                                else -> "$activeAlarmRules regole attive"
+                            }
+                            TogglePreferenceRow(
+                                pastel = ExpressivePastel.AMBER,
+                                icon = "alarm-clock",
+                                title = "Sveglie",
                                 checked = alarms.isGlobalEnabled,
+                                statusText = alarmsStatus,
+                                statusActive = alarms.isGlobalEnabled,
+                                switchContentDescription = "Sveglie automatiche",
+                                openContentDescription = "Apri sveglie",
                                 externalProgress = { bellMotion.value },
                                 onToggle = { enabled ->
-                                    val latest = ShiftRepository.smartAlarmsConfig
+                                    val targetProfileId = ShiftRepository.activeWorkProfileId
+                                    val latest = ShiftRepository.smartAlarmsConfigFor(targetProfileId)
                                     bellJob?.cancel()
                                     bellJob = scope.launch {
                                         bellMotion.snapTo(0f)
                                         bellMotion.animateTo(1f, tween(580, easing = FastOutSlowInEasing))
                                         bellMotion.snapTo(0f)
                                     }
+                                    ShiftRepository.setSmartAlarmsConfigFor(
+                                        targetProfileId,
+                                        latest.copy(isGlobalEnabled = enabled),
+                                    )
+                                    ShiftRepository.notifyDataChanged()
                                     if (enabled) {
-                                        ShiftRepository.smartAlarmsConfig = latest.copy(isGlobalEnabled = true)
-                                        ShiftRepository.notifyDataChanged()
-                                        if (ShiftAlarmScheduler.canScheduleExactAlarms(context) &&
-                                            ShiftAlarmScheduler.hasNotificationPermission(context)
-                                        ) {
-                                            ShiftAlarmScheduler.scheduleNextAlarm(context)
+                                        val hasPermissions = runCatching {
+                                            ShiftAlarmScheduler.canScheduleExactAlarms(context) &&
+                                                ShiftAlarmScheduler.hasNotificationPermission(context)
+                                        }.getOrDefault(false)
+                                        if (hasPermissions) {
+                                            runCatching { ShiftAlarmScheduler.scheduleNextAlarm(context) }
                                         } else {
-                                            screen = SettingsSubScreen.SMART_ALARMS
+                                            messageType = PopupType.WARNING
+                                            message = "Sveglie attivate · apri per i permessi"
                                         }
                                     } else {
-                                        ShiftRepository.smartAlarmsConfig = latest.copy(isGlobalEnabled = false)
-                                        ShiftAlarmScheduler.cancelScheduledAlarm(context)
-                                        ShiftRepository.notifyDataChanged()
+                                        runCatching { ShiftAlarmScheduler.cancelScheduledAlarm(context) }
                                     }
                                 },
                                 onOpen = {
@@ -401,6 +466,7 @@ fun SettingsScreen(
                     } else {
                         ShiftRepository.clearAllShifts()
                         deleteStep = 0
+                        messageType = PopupType.ERROR
                         message = "Turni eliminati"
                     }
                 },
@@ -408,7 +474,7 @@ fun SettingsScreen(
         }
         AnimatedStatusPopup(
             message = message,
-            type = if (message == "Turni eliminati") PopupType.ERROR else PopupType.SUCCESS,
+            type = messageType,
             onDismiss = { message = null },
         )
     }
@@ -755,9 +821,17 @@ private fun PreferenceRow(
 }
 
 @Composable
-private fun SmartAlarmsPreferenceRow(
+private fun TogglePreferenceRow(
+    pastel: ExpressivePastel?,
+    icon: String,
+    title: String,
     checked: Boolean,
-    externalProgress: () -> Float,
+    statusText: String? = null,
+    statusActive: Boolean = checked,
+    subtitle: String? = null,
+    switchContentDescription: String = title,
+    openContentDescription: String = "Apri $title",
+    externalProgress: () -> Float = { 0f },
     onToggle: (Boolean) -> Unit,
     onOpen: () -> Unit,
 ) {
@@ -770,12 +844,12 @@ private fun SmartAlarmsPreferenceRow(
     val rowPressAlpha by animateFloatAsState(
         targetValue = if (rowPressed) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 500f),
-        label = "smartAlarmsRowPress",
+        label = "toggleRowPress",
     )
     val chevronPressAlpha by animateFloatAsState(
         targetValue = if (chevronPressed) 1f else 0f,
         animationSpec = spring(dampingRatio = 0.85f, stiffness = 500f),
-        label = "smartAlarmsChevronPress",
+        label = "toggleRowChevronPress",
     )
     val tapHighlight = remember { Animatable(0f) }
     val motion = remember { Animatable(0f) }
@@ -827,29 +901,73 @@ private fun SmartAlarmsPreferenceRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             SettingsRowIconBadge(
-                icon = "alarm-clock",
-                pastel = ExpressivePastel.AMBER,
+                icon = icon,
+                pastel = pastel,
                 danger = false,
                 progress = leftIconPhase,
             )
             Spacer(Modifier.width(12.dp))
-            Text(
-                text = "Sveglie",
-                color = TextPrimary,
-                fontSize = 14.sp,
-                lineHeight = 19.sp,
-                fontWeight = FontWeight.SemiBold,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+            Column(
                 modifier = Modifier.weight(1f),
-            )
+                verticalArrangement = Arrangement.spacedBy(2.dp),
+            ) {
+                Text(
+                    text = title,
+                    color = TextPrimary,
+                    fontSize = 14.sp,
+                    lineHeight = 19.sp,
+                    fontWeight = FontWeight.SemiBold,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                if (!statusText.isNullOrBlank()) {
+                    if (statusActive) {
+                        Box(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(8.dp))
+                                .background(ObsidianSurfaceContainer)
+                                .padding(horizontal = 7.dp, vertical = 2.dp),
+                        ) {
+                            Text(
+                                text = statusText,
+                                color = BrandInk,
+                                fontSize = 10.5.sp,
+                                lineHeight = 14.sp,
+                                fontWeight = FontWeight.SemiBold,
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    } else {
+                        Text(
+                            text = statusText,
+                            color = TextSecondary,
+                            fontSize = 11.5.sp,
+                            lineHeight = 15.sp,
+                            fontWeight = FontWeight.Medium,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                    }
+                }
+                if (!subtitle.isNullOrBlank()) {
+                    Text(
+                        text = subtitle,
+                        color = TextSecondary,
+                        fontSize = 11.5.sp,
+                        lineHeight = 15.sp,
+                        maxLines = 2,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+            }
         }
         Spacer(Modifier.width(4.dp))
         TurniSwitch(
             checked = checked,
             onCheckedChange = onToggle,
             modifier = Modifier.semantics {
-                contentDescription = "Sveglie automatiche"
+                contentDescription = switchContentDescription
             },
         )
         Spacer(Modifier.width(4.dp))
@@ -858,12 +976,12 @@ private fun SmartAlarmsPreferenceRow(
                 .size(width = 40.dp, height = 48.dp)
                 .clip(RoundedCornerShape(12.dp))
                 .background(ObsidianSurfaceContainer.copy(alpha = 0.72f * maxOf(chevronPressAlpha, tapHighlight.value)))
-                .semantics { contentDescription = "Apri sveglie" }
+                .semantics { contentDescription = openContentDescription }
                 .clickable(
                     interactionSource = chevronInteraction,
                     indication = null,
                     role = Role.Button,
-                    onClickLabel = "Apri sveglie",
+                    onClickLabel = openContentDescription,
                 ) { openWithMotion() },
             contentAlignment = Alignment.Center,
         ) {

@@ -198,8 +198,12 @@ internal fun shiftColorStyle(
     val tone = shiftTone(source, definitionId)
     val original = tone?.fill(dark) ?: Color(source.toArgb() or 0xFF000000.toInt())
     // Light previews retain category hue; only the fill recedes, never the text.
-    val fill = if (subdued) lerp(backdrop, original, if (dark) .30f else .60f) else original
-    val preferred = if (subdued && dark) Color(palette.mutedText) else tone?.ink(dark) ?: Color(palette.text)
+    val fill = if (subdued) lerp(backdrop, original, if (dark) .30f else .26f) else original
+    val preferred = when {
+        subdued && dark -> Color(palette.mutedText)
+        subdued -> lerp(tone?.ink(dark) ?: Color(palette.text), Color(palette.outline), .30f)
+        else -> tone?.ink(dark) ?: Color(palette.text)
+    }
     val ink = readableInk(fill, preferred)
     // A full-color badge needs no extra dark stripe; preserve its clean, continuous fill.
     return ShiftColorStyle(fill, ink, fill, ink, fill)
@@ -208,16 +212,16 @@ internal fun shiftColorStyle(
 internal data class MetricColorStyle(val fill: Color, val ink: Color, val secondaryInk: Color)
 
 internal fun metricColorStyle(
-    source: Color, dark: Boolean, onCall: Boolean = false, style: PaletteStyle = TurniThemeState.style
+    source: Color, dark: Boolean, onCall: Boolean = false, style: PaletteStyle = TurniThemeState.style,
+    definitionId: String? = null
 ): MetricColorStyle {
     val palette = turniPalette(dark, style)
-    val tone = shiftTone(source)
+    val tone = shiftTone(source, definitionId)
     val raw = Color(source.toArgb() or 0xFF000000.toInt())
     val fill = when {
         onCall -> Color(palette.onCall.fill)
         tone != null -> tone.fill(dark)
-        dark -> raw
-        else -> lerp(raw, Color(palette.surface), .35f)
+        else -> raw
     }
     val preferred = when {
         onCall -> Color(palette.onCall.ink)

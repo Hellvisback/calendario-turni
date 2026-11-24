@@ -19,7 +19,16 @@ class PdfCaptureTest {
         val tags=ShiftRepository.dayTags.toList()
         val shifts=ShiftRepository.calendarShifts.mapValues{it.value.toList()}
         val extras=ShiftRepository.dayExtraInfo.toMap()
-        try{ShiftRepository.calendarShifts.clear();ShiftRepository.dayExtraInfo.clear();block()}
+        val activeId=ShiftRepository.activeWorkProfile.id
+        try{
+            ShiftRepository.calendarShifts.clear()
+            ShiftRepository.dayExtraInfo.clear()
+            if(ShiftRepository.shiftDefinitions.count{it.workProfileId==activeId && !it.isAllDay}<2){
+                ShiftRepository.shiftDefinitions.add(ShiftDefinition("pdf-fixture-m","Mattina","M","06:00","14:00",workProfileId=activeId))
+                ShiftRepository.shiftDefinitions.add(ShiftDefinition("pdf-fixture-p","Pomeriggio","P","14:00","22:00",workProfileId=activeId))
+            }
+            block()
+        }
         finally{
             ShiftRepository.shiftDefinitions.clear();ShiftRepository.shiftDefinitions.addAll(definitions)
             ShiftRepository.workProfiles.clear();ShiftRepository.workProfiles.addAll(profiles)

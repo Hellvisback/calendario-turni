@@ -89,13 +89,15 @@ fun PdfExportScreen(
     var zoom by remember { mutableStateOf(false) }
     val activeProfileId = ShiftRepository.activeWorkProfileId
     val calendar by remember { derivedStateOf { ShiftRepository.calendarShifts.mapValues { it.value.toList() } } }
-    val extras by remember { derivedStateOf { ShiftRepository.dayExtraInfoMapFor(activeProfileId).toMap() } }
+    val extras by remember(activeProfileId) {
+        derivedStateOf { ShiftRepository.dayExtraInfoByProfile[activeProfileId]?.toMap().orEmpty() }
+    }
     val definitions by remember { derivedStateOf { ShiftRepository.shiftDefinitions.toList() } }
     val activeDefinitions = remember(definitions, activeProfileId) {
         definitions.filter { it.workProfileId == activeProfileId }.sortedChronologically()
     }
-    val reperibilita by remember { derivedStateOf { ShiftRepository.reperibilitaConfigFor(activeProfileId) } }
-    val dayTags by remember { derivedStateOf { ShiftRepository.dayTagsFor(activeProfileId) } }
+    val reperibilita by remember(activeProfileId) { derivedStateOf { ShiftRepository.reperibilitaConfigFor(activeProfileId) } }
+    val dayTags by remember(activeProfileId) { derivedStateOf { ShiftRepository.dayTagsFor(activeProfileId) } }
     LaunchedEffect(options, activeProfileId, calendar, extras, definitions, reperibilita, dayTags) {
         previewLoading = true
         previewError = null
@@ -446,12 +448,17 @@ fun PdfExportScreen(
             )
         }
 
+        val showEmptyRowsToggle = options.mode == PdfExportMode.ELENCO ||
+            (options.mode == PdfExportMode.PERSONALIZZATO &&
+                !range.second.isBefore(range.first) &&
+                ChronoUnit.DAYS.between(range.first, range.second) + 1 <= 14)
+
         CloudCard("Contenuti") {
             PdfToggle("Nome del turno", options.includeTitle) { update(options.copy(includeTitle = it)) }
             SettingsDivider()
-            PdfToggle("Orario di inizio e fine", options.includeTime) { update(options.copy(includeTime = it)) }
+            PdfToggle("Orari del turno", options.includeTime) { update(options.copy(includeTime = it)) }
             SettingsDivider()
-            PdfToggle("Durata prevista", options.includeDuration) { update(options.copy(includeDuration = it)) }
+            PdfToggle("Durata turno", options.includeDuration) { update(options.copy(includeDuration = it)) }
             SettingsDivider()
             PdfToggle("Pausa", options.includeBreak) { update(options.copy(includeBreak = it)) }
             SettingsDivider()
@@ -461,9 +468,9 @@ fun PdfExportScreen(
             SettingsDivider()
             PdfToggle("Festività", options.includeEvents) { update(options.copy(includeEvents = it)) }
             SettingsDivider()
-            PdfToggle("Colori dei turni", options.includeIcon) { update(options.copy(includeIcon = it)) }
+            PdfToggle("Colori turni", options.includeIcon) { update(options.copy(includeIcon = it)) }
             AnimatedVisibility(
-                visible = options.mode == PdfExportMode.ELENCO,
+                visible = showEmptyRowsToggle,
                 enter = fadeIn(tween(180)) + expandVertically(tween(200)),
                 exit = fadeOut(tween(140)) + shrinkVertically(tween(160)),
             ) {
@@ -475,7 +482,7 @@ fun PdfExportScreen(
                 }
             }
             SettingsDivider()
-            PdfToggle("Marchio TurniSync", options.includeLogo) { update(options.copy(includeLogo = it)) }
+            PdfToggle("Logo TurniSync", options.includeLogo) { update(options.copy(includeLogo = it)) }
         }
 
         CloudCard("Nota del documento") {

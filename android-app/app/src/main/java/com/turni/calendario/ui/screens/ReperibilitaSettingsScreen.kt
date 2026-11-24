@@ -141,12 +141,7 @@ fun ReperibilitaSettingsScreen(
     }
 
     fun updateConfig(change: (ReperibilitaConfig) -> ReperibilitaConfig) {
-        val current = ShiftRepository.reperibilitaConfig
-        val updated = change(current)
-        if (updated != current) {
-            ShiftRepository.reperibilitaConfig = updated
-            ShiftRepository.notifyDataChanged()
-        }
+        ShiftRepository.updateReperibilitaConfig(update = change)
     }
 
     fun setReperibilitaMode(mode: ReperibilitaMode) {
